@@ -1,5 +1,6 @@
 import { Image, StyleSheet, Platform, FlatList, Pressable } from 'react-native';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
 
 import { HelloWave } from '@/components/HelloWave';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
@@ -7,10 +8,13 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { getPacks, Pack } from '@/services/packService';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePurchases } from '@/contexts/PurchasesContext';
 
 
 export default function HomeScreen() {
+  const router = useRouter();
   const { user, signOut } = useAuth();
+  const { subscriptionInfo } = usePurchases();
   const [packs, setPacks] = useState<Pack[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +43,10 @@ export default function HomeScreen() {
     }
   };
 
+  const navigateToSubscription = () => {
+    router.push('/subscription');
+  };
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
@@ -58,6 +66,24 @@ export default function HomeScreen() {
         <ThemedText>{user?.email || 'Not signed in'}</ThemedText>
         <Pressable style={styles.signOutButton} onPress={handleSignOut}>
           <ThemedText style={styles.signOutButtonText}>Sign Out</ThemedText>
+        </Pressable>
+      </ThemedView>
+
+      <ThemedView style={styles.stepContainer}>
+        <ThemedText type="subtitle">Subscription Status</ThemedText>
+        <ThemedText>
+          {subscriptionInfo.isSubscribed
+            ? `Subscribed (expires: ${
+                subscriptionInfo.expirationDate
+                  ? subscriptionInfo.expirationDate.toLocaleDateString()
+                  : 'unknown'
+              })`
+            : 'Not subscribed'}
+        </ThemedText>
+        <Pressable style={styles.subscribeButton} onPress={navigateToSubscription}>
+          <ThemedText style={styles.buttonText}>
+            {subscriptionInfo.isSubscribed ? 'Manage Subscription' : 'Subscribe Now'}
+          </ThemedText>
         </Pressable>
       </ThemedView>
 
@@ -159,6 +185,17 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   signOutButtonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  subscribeButton: {
+    marginTop: 8,
+    backgroundColor: '#4f46e5',
+    padding: 8,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+  },
+  buttonText: {
     color: 'white',
     fontWeight: '600',
   },

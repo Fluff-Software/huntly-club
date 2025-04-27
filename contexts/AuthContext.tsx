@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { User, getCurrentUser, signIn, signOut, signUp, onAuthStateChange } from '@/services/authService';
+import { updatePurchasesUserId, resetPurchasesUser } from '@/services/purchasesService';
 
 type AuthContextType = {
   user: User | null;
@@ -23,6 +24,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const user = await getCurrentUser();
         setUser(user);
+        
+        // If user exists, update RevenueCat user ID
+        if (user?.id) {
+          await updatePurchasesUserId(user.id);
+        }
       } catch (error) {
         console.error('Error fetching user:', error);
       } finally {
@@ -37,12 +43,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
       
       if (session?.user) {
-        setUser({
+        const userData = {
           id: session.user.id,
           email: session.user.email,
+        };
+        setUser(userData);
+        
+        // Update RevenueCat user ID
+        updatePurchasesUserId(userData.id).catch(err => {
+          console.error('Error updating RevenueCat user ID:', err);
         });
       } else {
         setUser(null);
+        
+        // Reset RevenueCat user
+        resetPurchasesUser().catch(err => {
+          console.error('Error resetting RevenueCat user:', err);
+        });
       }
     });
 
@@ -57,10 +74,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { session } = await signIn(email, password);
       setSession(session);
       if (session?.user) {
-        setUser({
+        const userData = {
           id: session.user.id,
           email: session.user.email,
-        });
+        };
+        setUser(userData);
+        
+        // Update RevenueCat user ID
+        await updatePurchasesUserId(userData.id);
       }
     } finally {
       setLoading(false);
@@ -73,10 +94,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { session } = await signUp(email, password);
       setSession(session);
       if (session?.user) {
-        setUser({
+        const userData = {
           id: session.user.id,
           email: session.user.email,
-        });
+        };
+        setUser(userData);
+        
+        // Update RevenueCat user ID
+        await updatePurchasesUserId(userData.id);
       }
     } finally {
       setLoading(false);
@@ -86,6 +111,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const handleSignOut = async () => {
     setLoading(true);
     try {
+      // Reset RevenueCat user before signing out
+      await resetPurchasesUser();
       await signOut();
       setSession(null);
       setUser(null);

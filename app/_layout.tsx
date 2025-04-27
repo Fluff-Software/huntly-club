@@ -9,6 +9,7 @@ import * as Linking from 'expo-linking';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { PurchasesProvider } from '@/contexts/PurchasesContext';
 import { AuthGuard } from '@/components/authentication/AuthGuard';
 
 import "../global.css"
@@ -66,16 +67,18 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <AuthGuard>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="auth" options={{ headerShown: false }} />
-            <Stack.Screen name="+not-found" />
-          </Stack>
-        </AuthGuard>
-        <StatusBar style="auto" />
-      </ThemeProvider>
+      <PurchasesProvider>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <AuthGuard>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="auth" options={{ headerShown: false }} />
+              <Stack.Screen name="+not-found" />
+            </Stack>
+          </AuthGuard>
+          <StatusBar style="auto" />
+        </ThemeProvider>
+      </PurchasesProvider>
     </AuthProvider>
   );
 }

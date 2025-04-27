@@ -1,4 +1,4 @@
-import { Image, StyleSheet, Platform, FlatList } from 'react-native';
+import { Image, StyleSheet, Platform, FlatList, Pressable } from 'react-native';
 import { useEffect, useState } from 'react';
 
 import { HelloWave } from '@/components/HelloWave';
@@ -6,9 +6,11 @@ import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { getPacks, Pack } from '@/services/packService';
+import { useAuth } from '@/contexts/AuthContext';
 
 
 export default function HomeScreen() {
+  const { user, signOut } = useAuth();
   const [packs, setPacks] = useState<Pack[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +31,14 @@ export default function HomeScreen() {
     fetchPacks();
   }, []);
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (err) {
+      console.error('Error signing out:', err);
+    }
+  };
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
@@ -41,6 +51,14 @@ export default function HomeScreen() {
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">Welcome!</ThemedText>
         <HelloWave />
+      </ThemedView>
+
+      <ThemedView style={styles.userContainer}>
+        <ThemedText type="subtitle">Current User</ThemedText>
+        <ThemedText>{user?.email || 'Not signed in'}</ThemedText>
+        <Pressable style={styles.signOutButton} onPress={handleSignOut}>
+          <ThemedText style={styles.signOutButtonText}>Sign Out</ThemedText>
+        </Pressable>
       </ThemedView>
 
       <ThemedView style={styles.stepContainer}>
@@ -110,6 +128,13 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 8,
   },
+  userContainer: {
+    gap: 8,
+    marginBottom: 16,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
   reactLogo: {
     height: 178,
     width: 290,
@@ -125,5 +150,16 @@ const styles = StyleSheet.create({
     marginVertical: 4,
     borderRadius: 8,
     backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  signOutButton: {
+    marginTop: 8,
+    backgroundColor: '#ef4444',
+    padding: 8,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+  },
+  signOutButtonText: {
+    color: 'white',
+    fontWeight: '600',
   },
 });

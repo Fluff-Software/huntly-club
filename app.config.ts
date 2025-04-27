@@ -12,6 +12,10 @@ export default ({ config }: { config: any }) => ({
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'software.fluff.huntly-club',
+    associatedDomains: [
+      'applinks:huntly.app',
+      'applinks:*.huntly.app'
+    ],
   },
   android: {
     adaptiveIcon: {
@@ -19,6 +23,19 @@ export default ({ config }: { config: any }) => ({
       backgroundColor: "#ffffff",
     },
     package: 'software.fluff.huntly-club',
+    intentFilters: [
+      {
+        action: "VIEW",
+        autoVerify: true,
+        data: [
+          {
+            scheme: "https",
+            host: "*.huntly.app",
+          },
+        ],
+        category: ["BROWSABLE", "DEFAULT"],
+      },
+    ],
   },
   web: {
     bundler: "metro",
@@ -43,5 +60,14 @@ export default ({ config }: { config: any }) => ({
   extra: {
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
     supabaseAnon: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+    eas: {
+      projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID,
+    },
+  },
+  owner: process.env.EXPO_PUBLIC_OWNER || "huntly",
+  splash: {
+    image: "./assets/images/splash-icon.png",
+    resizeMode: "contain",
+    backgroundColor: "#ffffff"
   },
 });

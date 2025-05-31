@@ -1,4 +1,4 @@
-import { Image, StyleSheet, Platform, FlatList, Pressable } from 'react-native';
+import { Image, StyleSheet, Platform, Pressable, View } from 'react-native';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 
@@ -96,16 +96,13 @@ export default function HomeScreen() {
         ) : packs.length === 0 ? (
           <ThemedText>No packs found</ThemedText>
         ) : (
-          <FlatList
-            data={packs}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <ThemedView style={styles.packItem}>
+          <View style={styles.packsList}>
+            {packs.map((item) => (
+              <ThemedView key={item.id} style={styles.packItem}>
                 <ThemedText type="defaultSemiBold">{item.name}</ThemedText>
               </ThemedView>
-            )}
-            style={styles.packsList}
-          />
+            ))}
+          </View>
         )}
       </ThemedView>
       

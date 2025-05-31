@@ -50,7 +50,7 @@ export const PurchasesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
     };
 
-    init();
+    // init();
   }, []);
 
   // Update user ID on login/logout

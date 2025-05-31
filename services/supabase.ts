@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import 'react-native-url-polyfill/auto';        // fixes URL & crypto in RN
 import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Get the environment variables from Expo Constants
 const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl;
@@ -14,6 +15,10 @@ export const supabase = createClient(
   supabaseUrl!,
   supabaseAnon!,
   {
-    auth: { persistSession: true, autoRefreshToken: true },
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      storage: AsyncStorage,
+    },
   }
 );

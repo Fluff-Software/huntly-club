@@ -1,39 +1,55 @@
-# Welcome to your Expo app 👋
+# Welcome to Huntly Club 👋
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+This is an Expo project, which uses Supabase for the back end.
 
-## Get started
+## Get started with local development
 
-1. Install dependencies
+1. Run Supabase locally
 
    ```bash
-   npm install
+   supabase start
    ```
 
-2. Start the app
+2. Set up a .env file. You'll need to add details from your fresh running supabase project.
+
+3. Install a development build on your device/simulator.
+
+4. Start the app
 
    ```bash
     npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+## Database
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+The core flow that we use to affect changes to the database and the associated types are:
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+1. Make changes to the database using the Supabase UI.
 
-## Get a fresh project
+2. Create a migration file using
 
-When you're ready, run:
+   ```bash
+   supabase db diff --local
+   ```
 
-```bash
-npm run reset-project
-```
+3. If needed, use this command to rebuild your database from the migrations:
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+   ```bash
+   supabase db reset
+   ```
+
+4. Recreate types using
+
+   ```bash
+   supabase gen types typescript --local > models/supabase.ts
+   ```
+
+5. Set up initial data:
+
+   ```bash
+   docker exec -i supabase_db_huntly-club psql -U postgres -d postgres < supabase/seed/initial_data.sql
+   ```
+
 
 ## Learn more
 

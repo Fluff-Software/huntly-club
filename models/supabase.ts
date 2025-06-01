@@ -57,25 +57,63 @@ export type Database = {
       }
       profiles: {
         Row: {
+          colour: string
+          created_at: string
+          id: number
+          name: string
+          team: number
+          user_id: string
+          xp: number
+        }
+        Insert: {
+          colour: string
+          created_at?: string
+          id?: number
+          name: string
+          team: number
+          user_id: string
+          xp?: number
+        }
+        Update: {
+          colour?: string
+          created_at?: string
+          id?: number
+          name?: string
+          team?: number
+          user_id?: string
+          xp?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_team_fkey"
+            columns: ["team"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
           colour: string | null
           created_at: string
           id: number
-          name: string | null
-          user_id: string | null
+          mascot_name: string
+          name: string
         }
         Insert: {
           colour?: string | null
           created_at?: string
           id?: number
-          name?: string | null
-          user_id?: string | null
+          mascot_name: string
+          name: string
         }
         Update: {
           colour?: string | null
           created_at?: string
           id?: number
-          name?: string | null
-          user_id?: string | null
+          mascot_name?: string
+          name?: string
         }
         Relationships: []
       }

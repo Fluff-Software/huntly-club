@@ -29,7 +29,7 @@ The core flow that we use to affect changes to the database and the associated t
 2. Create a migration file using
 
    ```bash
-   supabase db diff --local
+   supabase db diff --local --file <a_descriptive_name>
    ```
 
 3. If needed, use this command to rebuild your database from the migrations:

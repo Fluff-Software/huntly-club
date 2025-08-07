@@ -39,16 +39,28 @@ export type Database = {
           created_at: string
           id: number
           name: string
+          title: string
+          description: string | null
+          image: string | null
+          xp: number
         }
         Insert: {
           created_at?: string
           id?: number
           name: string
+          title: string
+          description?: string | null
+          image?: string | null
+          xp?: number
         }
         Update: {
           created_at?: string
           id?: number
           name?: string
+          title?: string
+          description?: string | null
+          image?: string | null
+          xp?: number
         }
         Relationships: []
       }
@@ -72,6 +84,45 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      pack_activities: {
+        Row: {
+          id: number
+          created_at: string
+          pack_id: number
+          activity_id: number
+          order: number
+        }
+        Insert: {
+          id?: number
+          created_at?: string
+          pack_id: number
+          activity_id: number
+          order?: number
+        }
+        Update: {
+          id?: number
+          created_at?: string
+          pack_id?: number
+          activity_id?: number
+          order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pack_activities_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "packs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pack_activities_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       profiles: {
         Row: {

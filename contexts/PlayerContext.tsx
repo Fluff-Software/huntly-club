@@ -33,10 +33,24 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({
       const profilesData = await getProfiles(user.id);
       setProfiles(profilesData);
 
-      // Set the first profile as current player if no player is selected
-      if (profilesData.length > 0 && !currentPlayer) {
-        setCurrentPlayer(profilesData[0]);
-      } else if (profilesData.length === 0) {
+      // Update current player with fresh data if it exists
+      if (profilesData.length > 0) {
+        if (currentPlayer) {
+          // Find the updated version of the current player
+          const updatedCurrentPlayer = profilesData.find(
+            (p) => p.id === currentPlayer.id
+          );
+          if (updatedCurrentPlayer) {
+            setCurrentPlayer(updatedCurrentPlayer);
+          } else {
+            // If current player no longer exists, set first profile
+            setCurrentPlayer(profilesData[0]);
+          }
+        } else {
+          // Set the first profile as current player if no player is selected
+          setCurrentPlayer(profilesData[0]);
+        }
+      } else {
         setCurrentPlayer(null);
       }
     } catch (error) {

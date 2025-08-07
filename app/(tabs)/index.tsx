@@ -1,15 +1,17 @@
+import React from "react";
 import { Pressable, View, ScrollView } from "react-native";
 import { useEffect, useState } from "react";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { BaseLayout } from "@/components/layout/BaseLayout";
 import { getPacks, Pack } from "@/services/packService";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { XPBar } from "@/components/XPBar";
 
 export default function PacksScreen() {
   const router = useRouter();
-  const { currentPlayer } = usePlayer();
+  const { currentPlayer, refreshProfiles } = usePlayer();
   const [packs, setPacks] = useState<Pack[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,9 +32,15 @@ export default function PacksScreen() {
     fetchPacks();
   }, []);
 
-  const handlePackPress = (packId: string) => {
-    // TODO: Navigate to pack details
-    console.log("Pack pressed:", packId);
+  // Refresh profiles when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      refreshProfiles();
+    }, [refreshProfiles])
+  );
+
+  const handlePackPress = (packId: number) => {
+    router.push(`/(tabs)/pack/${packId}`);
   };
 
   return (
@@ -45,7 +53,7 @@ export default function PacksScreen() {
           </ThemedText>
 
           {/* Character and Message */}
-          <View className="flex-row items-center bg-huntly-mint rounded-2xl p-4 mb-6">
+          <View className="flex-row items-center bg-huntly-mint rounded-2xl p-4 mb-4">
             <View className="flex-1">
               <ThemedText type="body" className="text-huntly-forest">
                 {currentPlayer?.nickname
@@ -57,6 +65,15 @@ export default function PacksScreen() {
               <ThemedText className="text-2xl">🦊</ThemedText>
             </View>
           </View>
+
+          {/* XP Bar */}
+          {currentPlayer && (
+            <XPBar
+              currentXP={currentPlayer.xp || 0}
+              level={Math.floor((currentPlayer.xp || 0) / 100) + 1}
+              className="mb-6"
+            />
+          )}
         </View>
 
         {/* Adventure Packs Section */}
@@ -105,7 +122,7 @@ export default function PacksScreen() {
                           type="caption"
                           className="text-white font-semibold"
                         >
-                          {index + 1} activities
+                          {pack.activities.length} activities
                         </ThemedText>
                       </View>
                     </View>
@@ -115,49 +132,6 @@ export default function PacksScreen() {
                   </View>
                 </Pressable>
               ))}
-
-              {/* Sample Adventure Packs (for demo) */}
-              <Pressable className="bg-huntly-leaf rounded-2xl overflow-hidden shadow-soft mb-6">
-                <View className="p-4">
-                  <View className="flex-row items-center justify-between mb-2">
-                    <ThemedText type="defaultSemiBold" className="text-white">
-                      Woodland Wonders
-                    </ThemedText>
-                    <View className="bg-white/20 px-3 py-1 rounded-full">
-                      <ThemedText
-                        type="caption"
-                        className="text-white font-semibold"
-                      >
-                        3 activities
-                      </ThemedText>
-                    </View>
-                  </View>
-                  <View className="w-12 h-12 bg-white/20 rounded-lg items-center justify-center mb-2">
-                    <ThemedText className="text-2xl">🌳</ThemedText>
-                  </View>
-                </View>
-              </Pressable>
-
-              <Pressable className="bg-huntly-ocean rounded-2xl overflow-hidden shadow-soft">
-                <View className="p-4">
-                  <View className="flex-row items-center justify-between mb-2">
-                    <ThemedText type="defaultSemiBold" className="text-white">
-                      Nature Explorers
-                    </ThemedText>
-                    <View className="bg-white/20 px-3 py-1 rounded-full">
-                      <ThemedText
-                        type="caption"
-                        className="text-white font-semibold"
-                      >
-                        4 activities
-                      </ThemedText>
-                    </View>
-                  </View>
-                  <View className="w-12 h-12 bg-white/20 rounded-lg items-center justify-center mb-2">
-                    <ThemedText className="text-2xl">🔍</ThemedText>
-                  </View>
-                </View>
-              </Pressable>
             </View>
           )}
         </View>

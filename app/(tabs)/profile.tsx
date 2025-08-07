@@ -7,7 +7,7 @@ import {
   ScrollView,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { ThemedText } from "@/components/ThemedText";
@@ -18,6 +18,8 @@ import {
   updateProfile,
   type Profile,
 } from "@/services/profileService";
+import { generateNickname } from "@/services/nicknameGenerator";
+import { XPBar } from "@/components/XPBar";
 
 const COLOR_OPTIONS = [
   "#FF6B35", // team-fox
@@ -42,12 +44,20 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
+  const [editNickname, setEditNickname] = useState("");
   const [editColor, setEditColor] = useState(COLOR_OPTIONS[0]);
   const [editTeam, setEditTeam] = useState<number | null>(null);
   const { user, signOut } = useAuth();
   const { currentPlayer, profiles, setCurrentPlayer, refreshProfiles } =
     usePlayer();
   const router = useRouter();
+
+  // Refresh profiles when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      refreshProfiles();
+    }, [refreshProfiles])
+  );
 
   useEffect(() => {
     const fetchTeams = async () => {
@@ -69,6 +79,7 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (currentPlayer && isEditing) {
       setEditName(currentPlayer.name);
+      setEditNickname(currentPlayer.nickname || generateNickname());
       setEditColor(currentPlayer.colour);
       setEditTeam(currentPlayer.team);
     }
@@ -108,7 +119,12 @@ export default function ProfileScreen() {
   };
 
   const handleSaveEdit = async () => {
-    if (!currentPlayer || !editName.trim() || !editTeam) {
+    if (
+      !currentPlayer ||
+      !editName.trim() ||
+      !editNickname.trim() ||
+      !editTeam
+    ) {
       Alert.alert("Error", "Please fill in all fields");
       return;
     }
@@ -117,6 +133,7 @@ export default function ProfileScreen() {
     try {
       const updatedProfile = await updateProfile(currentPlayer.id, {
         name: editName.trim(),
+        nickname: editNickname.trim(),
         colour: editColor,
         team: editTeam,
       });
@@ -136,6 +153,7 @@ export default function ProfileScreen() {
   const handleCancelEdit = () => {
     setIsEditing(false);
     setEditName("");
+    setEditNickname("");
     setEditColor(COLOR_OPTIONS[0]);
     setEditTeam(null);
   };
@@ -212,6 +230,37 @@ export default function ProfileScreen() {
                   onChangeText={setEditName}
                   autoCapitalize="words"
                 />
+
+                {/* Edit Nickname */}
+                <ThemedText
+                  type="defaultSemiBold"
+                  className="text-huntly-forest mb-4"
+                >
+                  Adventure Nickname
+                </ThemedText>
+                <View className="mb-4">
+                  <View className="flex-row items-center mb-3">
+                    <TextInput
+                      className="flex-1 h-14 border-2 border-huntly-mint rounded-xl px-4 bg-huntly-cream text-huntly-forest text-base mr-3"
+                      placeholder="Nickname"
+                      placeholderTextColor="#8B4513"
+                      value={editNickname}
+                      onChangeText={setEditNickname}
+                      autoCapitalize="words"
+                    />
+                    <Pressable
+                      className="bg-huntly-leaf h-14 px-4 rounded-xl justify-center items-center shadow-soft"
+                      onPress={() => setEditNickname(generateNickname())}
+                    >
+                      <ThemedText className="text-white font-semibold">
+                        🎲 Generate
+                      </ThemedText>
+                    </Pressable>
+                  </View>
+                  <ThemedText className="text-huntly-brown text-sm">
+                    Tap Generate to create a random adventure nickname!
+                  </ThemedText>
+                </View>
 
                 {/* Edit Color */}
                 <ThemedText
@@ -306,7 +355,7 @@ export default function ProfileScreen() {
             ) : (
               // Display Mode
               <View className="bg-white rounded-2xl p-4 shadow-soft border-2 border-huntly-leaf">
-                <View className="flex-row items-center">
+                <View className="flex-row items-center mb-4">
                   <View
                     style={{ backgroundColor: currentPlayer.colour }}
                     className="w-12 h-12 rounded-full mr-4 items-center justify-center"
@@ -340,6 +389,12 @@ export default function ProfileScreen() {
                     </ThemedText>
                   </View>
                 </View>
+
+                {/* XP Bar */}
+                <XPBar
+                  currentXP={currentPlayer.xp || 0}
+                  level={Math.floor((currentPlayer.xp || 0) / 100) + 1}
+                />
               </View>
             )}
           </View>

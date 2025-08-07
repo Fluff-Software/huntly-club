@@ -7,16 +7,17 @@ import {
   ScrollView,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { ThemedText } from "@/components/ThemedText";
 import { BaseLayout } from "@/components/layout/BaseLayout";
 import {
-  createProfile,
   getTeams,
   getProfiles,
+  updateProfile,
   type Profile,
 } from "@/services/profileService";
+import { generateNickname } from "@/services/nicknameGenerator";
 
 const COLOR_OPTIONS = [
   "#FF0000", // Red
@@ -33,104 +34,138 @@ const COLOR_OPTIONS = [
   "#808080", // Gray
 ];
 
-export default function ProfileScreen() {
+export default function ProfileIdScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [name, setName] = useState("");
+  const [nickname, setNickname] = useState("");
   const [selectedColor, setSelectedColor] = useState(COLOR_OPTIONS[0]);
   const [selectedTeam, setSelectedTeam] = useState<number | null>(null);
   const [teams, setTeams] = useState<
     { id: number; name: string; colour: string }[]
   >([]);
   const [loading, setLoading] = useState(false);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [saving, setSaving] = useState(false);
   const { user } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!id || !user) return;
+
       try {
+        setLoading(true);
         const [teamsData, profilesData] = await Promise.all([
           getTeams(),
-          user ? getProfiles(user.id) : [],
+          getProfiles(user.id),
         ]);
+
         setTeams(teamsData);
-        setProfiles(profilesData);
-        if (teamsData.length > 0) {
-          setSelectedTeam(teamsData[0].id);
+        const currentProfile = profilesData.find((p) => p.id === parseInt(id));
+
+        if (currentProfile) {
+          setProfile(currentProfile);
+          setName(currentProfile.name);
+          setNickname(currentProfile.nickname || generateNickname());
+          setSelectedColor(currentProfile.colour);
+          setSelectedTeam(currentProfile.team);
+        } else {
+          Alert.alert("Error", "Profile not found");
+          router.back();
         }
       } catch (error) {
         console.error("Error fetching data:", error);
-        Alert.alert("Error", "Failed to load data");
+        Alert.alert("Error", "Failed to load profile data");
+        router.back();
+      } finally {
+        setLoading(false);
       }
     };
-    fetchData();
-  }, [user]);
 
-  const handleCreateProfile = async () => {
-    if (!name.trim() || !selectedTeam) {
+    fetchData();
+  }, [id, user]);
+
+  const handleGenerateNickname = () => {
+    setNickname(generateNickname());
+  };
+
+  const handleSaveProfile = async () => {
+    if (!profile || !name.trim() || !nickname.trim() || !selectedTeam) {
       Alert.alert("Error", "Please fill in all fields");
       return;
     }
-    if (!user) {
-      Alert.alert("Error", "You must be logged in to create a profile");
-      return;
-    }
-    setLoading(true);
+
+    setSaving(true);
     try {
-      await createProfile({
-        user_id: user.id,
+      const updatedProfile = await updateProfile(profile.id, {
         name: name.trim(),
+        nickname: nickname.trim(),
         colour: selectedColor,
         team: selectedTeam,
       });
-      const updatedProfiles = await getProfiles(user.id);
-      setProfiles(updatedProfiles);
-      setName("");
+
+      setProfile(updatedProfile);
+      setNickname(updatedProfile.nickname);
+      Alert.alert("Success", "Profile updated successfully");
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to create profile");
+      Alert.alert("Error", error.message || "Failed to update profile");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
+
+  if (loading) {
+    return (
+      <BaseLayout>
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" />
+          <ThemedText className="mt-4">Loading profile...</ThemedText>
+        </View>
+      </BaseLayout>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <BaseLayout>
+        <View className="flex-1 justify-center items-center">
+          <ThemedText>Profile not found</ThemedText>
+        </View>
+      </BaseLayout>
+    );
+  }
 
   return (
     <BaseLayout>
       <ScrollView contentContainerClassName="p-5">
-        <ThemedText type="title" className="text-center mb-6">
-          Who's Playing?
-        </ThemedText>
+        <View className="flex-row items-center mb-6">
+          <Pressable onPress={() => router.back()} className="mr-4">
+            <ThemedText className="text-blue-600 text-lg">← Back</ThemedText>
+          </Pressable>
+          <ThemedText type="title" className="flex-1 text-center">
+            Edit Profile
+          </ThemedText>
+        </View>
 
-        {profiles.length > 0 && (
-          <View className="mb-6">
-            <ThemedText type="subtitle" className="mb-4">
-              Current Players
-            </ThemedText>
-            {profiles.map((profile) => (
-              <Pressable
-                key={profile.id}
-                className="flex-row items-center p-3 border border-gray-200 rounded-lg mb-2"
-                onPress={() => router.push(`/profile/${profile.id}`)}
-              >
-                <View
-                  style={{ backgroundColor: profile.colour }}
-                  className="w-5 h-5 rounded-full mr-3"
-                />
-                <View className="flex-1">
-                  <ThemedText>{profile.name}</ThemedText>
-                  {profile.nickname && (
-                    <ThemedText className="text-purple-600 text-sm font-medium">
-                      {profile.nickname}
-                    </ThemedText>
-                  )}
-                </View>
-              </Pressable>
-            ))}
+        <View className="mb-6 p-4 bg-gray-50 rounded-lg">
+          <View className="flex-row items-center mb-3">
+            <View
+              style={{ backgroundColor: profile.colour }}
+              className="w-8 h-8 rounded-full mr-3"
+            />
+            <View className="flex-1">
+              <ThemedText type="subtitle">{profile.name}</ThemedText>
+              <ThemedText className="text-purple-600 font-medium">
+                {nickname}
+              </ThemedText>
+            </View>
           </View>
-        )}
+          <ThemedText className="text-gray-600">XP: {profile.xp}</ThemedText>
+        </View>
 
         <ThemedText type="subtitle" className="mb-4">
-          Add New Player
+          Player Name
         </ThemedText>
-
         <TextInput
           className="h-12 mb-6 border border-gray-300 rounded-lg px-4 bg-white"
           placeholder="Player Name"
@@ -138,6 +173,32 @@ export default function ProfileScreen() {
           onChangeText={setName}
           autoCapitalize="words"
         />
+
+        <ThemedText type="subtitle" className="mb-4">
+          Nickname
+        </ThemedText>
+        <View className="mb-6">
+          <View className="flex-row items-center mb-3">
+            <TextInput
+              className="flex-1 h-12 border border-gray-300 rounded-lg px-4 bg-white mr-3"
+              placeholder="Nickname"
+              value={nickname}
+              onChangeText={setNickname}
+              autoCapitalize="words"
+            />
+            <Pressable
+              className="bg-purple-600 h-12 px-4 rounded-lg justify-center items-center"
+              onPress={handleGenerateNickname}
+            >
+              <ThemedText className="text-white font-medium">
+                🎲 Generate
+              </ThemedText>
+            </Pressable>
+          </View>
+          <ThemedText className="text-gray-500 text-sm">
+            Tap Generate to create a random nickname!
+          </ThemedText>
+        </View>
 
         <ThemedText type="subtitle" className="mb-4">
           Choose Your Color
@@ -193,14 +254,14 @@ export default function ProfileScreen() {
 
         <Pressable
           className="bg-blue-600 h-12 rounded-lg justify-center items-center mt-4"
-          onPress={handleCreateProfile}
-          disabled={loading}
+          onPress={handleSaveProfile}
+          disabled={saving}
         >
-          {loading ? (
+          {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
             <ThemedText className="text-white font-semibold text-lg">
-              Add Player
+              Save Changes
             </ThemedText>
           )}
         </Pressable>

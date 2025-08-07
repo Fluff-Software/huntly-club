@@ -1,160 +1,169 @@
-import React, { useState } from 'react';
-import { StyleSheet, TextInput, Alert, ActivityIndicator, Pressable } from 'react-native';
-import { useAuth } from '@/contexts/AuthContext';
-import { ThemedView } from '@/components/ThemedView';
-import { ThemedText } from '@/components/ThemedText';
+import React, { useState } from "react";
+import {
+  TextInput,
+  Alert,
+  ActivityIndicator,
+  Pressable,
+  View,
+  Image,
+} from "react-native";
+import { useAuth } from "@/contexts/AuthContext";
+import { ThemedView } from "@/components/ThemedView";
+import { ThemedText } from "@/components/ThemedText";
 
 type SignUpFormProps = {
   onLoginInstead: () => void;
 };
 
 export function SignUpForm({ onLoginInstead }: SignUpFormProps) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const { signUp, loading } = useAuth();
 
   const handleSignUp = async () => {
     if (!email.trim() || !password.trim() || !confirmPassword.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert("Error", "Please fill in all fields");
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      Alert.alert("Error", "Passwords do not match");
       return;
     }
 
     try {
       await signUp(email, password);
-      setSuccessMessage(`Account created! A confirmation link has been sent to ${email}. Please check your email to verify your account.`);
+      setSuccessMessage(
+        `Account created! A confirmation link has been sent to ${email}. Please check your email to verify your account.`
+      );
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to create account');
+      Alert.alert("Error", error.message || "Failed to create account");
     }
   };
 
   if (successMessage) {
     return (
-      <ThemedView style={styles.container}>
-        <ThemedText type="title" style={styles.title}>
-          Check Your Email
-        </ThemedText>
-        
-        <ThemedText style={styles.successMessage}>
-          {successMessage}
-        </ThemedText>
-        
-        <ThemedText style={[styles.successMessage, styles.emailNote]}>
-          If you don't see the email, check your spam folder.
-        </ThemedText>
-        
-        <Pressable style={styles.button} onPress={onLoginInstead}>
-          <ThemedText style={styles.buttonText}>Back to Login</ThemedText>
-        </Pressable>
-      </ThemedView>
+      <View className="p-5 w-full max-w-sm rounded-2xl self-center">
+        {/* Success State */}
+        <View className="items-center mb-6">
+          <View className="w-20 h-20 bg-huntly-leaf rounded-full items-center justify-center mb-4">
+            <ThemedText className="text-4xl">✅</ThemedText>
+          </View>
+          <ThemedText
+            type="title"
+            className="text-huntly-forest text-center mb-2"
+          >
+            Check Your Email
+          </ThemedText>
+        </View>
+
+        <View className="bg-white rounded-2xl p-6 shadow-soft">
+          <ThemedText
+            type="body"
+            className="text-huntly-charcoal text-center mb-6 leading-6"
+          >
+            {successMessage}
+          </ThemedText>
+
+          <ThemedText
+            type="caption"
+            className="text-huntly-brown text-center mb-6 italic"
+          >
+            If you don't see the email, check your spam folder.
+          </ThemedText>
+
+          <Pressable
+            className="bg-huntly-amber h-14 rounded-xl justify-center items-center shadow-soft"
+            onPress={onLoginInstead}
+          >
+            <ThemedText className="text-huntly-forest font-bold text-lg">
+              Back to Login
+            </ThemedText>
+          </Pressable>
+        </View>
+      </View>
     );
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="title" style={styles.title}>
-        Create Account
-      </ThemedText>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Confirm Password"
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-        secureTextEntry
-      />
-
-      <Pressable 
-        style={styles.button} 
-        onPress={handleSignUp}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <ThemedText style={styles.buttonText}>Create Account</ThemedText>
-        )}
-      </Pressable>
-
-      <Pressable onPress={onLoginInstead}>
-        <ThemedText style={styles.link}>
-          Already have an account? Sign in
+    <View className="p-5 w-full max-w-sm rounded-2xl self-center">
+      {/* Logo/Character */}
+      <View className="items-center mb-6">
+        <Image
+          source={require("@/assets/images/logo.png")}
+          className="w-80 h-80 mb-4"
+          resizeMode="contain"
+        />
+        <ThemedText
+          type="title"
+          className="text-huntly-forest text-center mb-2"
+        >
+          Join Huntly Club!
         </ThemedText>
-      </Pressable>
-    </ThemedView>
+        <ThemedText type="body" className="text-huntly-charcoal text-center">
+          Start your adventure today!
+        </ThemedText>
+      </View>
+
+      {/* Sign Up Form */}
+      <View className="bg-white rounded-2xl p-6 shadow-soft">
+        <ThemedText
+          type="subtitle"
+          className="text-huntly-forest text-center mb-6"
+        >
+          Create Account
+        </ThemedText>
+
+        <TextInput
+          className="h-14 mb-4 border-2 border-huntly-mint rounded-xl px-4 bg-huntly-cream text-huntly-forest text-base"
+          placeholder="Email"
+          placeholderTextColor="#8B4513"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+
+        <TextInput
+          className="h-14 mb-4 border-2 border-huntly-mint rounded-xl px-4 bg-huntly-cream text-huntly-forest text-base"
+          placeholder="Password"
+          placeholderTextColor="#8B4513"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+
+        <TextInput
+          className="h-14 mb-6 border-2 border-huntly-mint rounded-xl px-4 bg-huntly-cream text-huntly-forest text-base"
+          placeholder="Confirm Password"
+          placeholderTextColor="#8B4513"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          secureTextEntry
+        />
+
+        <Pressable
+          className="bg-huntly-amber h-14 rounded-xl justify-center items-center mb-4 shadow-soft"
+          onPress={handleSignUp}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#2D5A27" />
+          ) : (
+            <ThemedText className="text-huntly-forest font-bold text-lg">
+              Create Account
+            </ThemedText>
+          )}
+        </Pressable>
+
+        <Pressable onPress={onLoginInstead} className="items-center">
+          <ThemedText type="link" className="text-huntly-leaf text-center">
+            Already have an account? Sign in
+          </ThemedText>
+        </Pressable>
+      </View>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    width: '100%',
-    maxWidth: 400,
-    borderRadius: 8,
-    alignSelf: 'center',
-  },
-  title: {
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  input: {
-    height: 50,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    backgroundColor: '#fff',
-  },
-  button: {
-    backgroundColor: '#0284c7',
-    height: 50,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  link: {
-    textAlign: 'center',
-    marginTop: 8,
-    color: '#0284c7',
-  },
-  successMessage: {
-    textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 22,
-  },
-  emailNote: {
-    fontStyle: 'italic',
-    opacity: 0.7,
-    marginBottom: 32,
-  },
-}); 

@@ -1,15 +1,29 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, ActivityIndicator, FlatList, Pressable, Platform, Alert } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
-import { PurchasesPackage } from 'react-native-purchases';
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  Platform,
+  Alert,
+  View,
+  ScrollView,
+} from "react-native";
+import { Stack, useRouter } from "expo-router";
+import { PurchasesPackage } from "react-native-purchases";
 
-import { ThemedView } from '@/components/ThemedView';
-import { ThemedText } from '@/components/ThemedText';
-import { usePurchases } from '@/contexts/PurchasesContext';
+import { ThemedView } from "@/components/ThemedView";
+import { ThemedText } from "@/components/ThemedText";
+import { usePurchases } from "@/contexts/PurchasesContext";
 
 export default function SubscriptionScreen() {
   const router = useRouter();
-  const { offerings, subscriptionInfo, isLoading, purchasePackage, restorePurchases } = usePurchases();
+  const {
+    offerings,
+    subscriptionInfo,
+    isLoading,
+    purchasePackage,
+    restorePurchases,
+  } = usePurchases();
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
 
   useEffect(() => {
@@ -22,25 +36,38 @@ export default function SubscriptionScreen() {
     try {
       const customerInfo = await purchasePackage(pkg);
       if (customerInfo) {
-        Alert.alert('Success', 'Thank you for your purchase!');
+        Alert.alert("Success", "Thank you for your purchase!");
       }
     } catch (error) {
-      console.error('Purchase error:', error);
-      Alert.alert('Purchase Failed', 'There was an error processing your purchase.');
+      console.error("Purchase error:", error);
+      Alert.alert(
+        "Purchase Failed",
+        "There was an error processing your purchase."
+      );
     }
   };
 
   const handleRestore = async () => {
     try {
       const customerInfo = await restorePurchases();
-      if (customerInfo && customerInfo.entitlements.active && Object.keys(customerInfo.entitlements.active).length > 0) {
-        Alert.alert('Success', 'Your purchases have been restored!');
+      if (
+        customerInfo &&
+        customerInfo.entitlements.active &&
+        Object.keys(customerInfo.entitlements.active).length > 0
+      ) {
+        Alert.alert("Success", "Your purchases have been restored!");
       } else {
-        Alert.alert('No Purchases', 'No previous purchases were found to restore.');
+        Alert.alert(
+          "No Purchases",
+          "No previous purchases were found to restore."
+        );
       }
     } catch (error) {
-      console.error('Restore error:', error);
-      Alert.alert('Restore Failed', 'There was an error restoring your purchases.');
+      console.error("Restore error:", error);
+      Alert.alert(
+        "Restore Failed",
+        "There was an error restoring your purchases."
+      );
     }
   };
 
@@ -49,120 +76,137 @@ export default function SubscriptionScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <Stack.Screen options={{ title: 'Subscription', headerShown: true }} />
+    <ThemedView className="flex-1 bg-huntly-cream">
+      <Stack.Screen
+        options={{ title: "Premium Adventure", headerShown: true }}
+      />
 
       {subscriptionInfo.isSubscribed ? (
-        <ThemedView style={styles.subscribedContainer}>
-          <ThemedText type="title">You're Subscribed!</ThemedText>
-          <ThemedText>
-            Your subscription is active until{' '}
-            {subscriptionInfo.expirationDate
-              ? subscriptionInfo.expirationDate.toLocaleDateString()
-              : 'unknown date'}
-          </ThemedText>
-          <Pressable style={styles.backButton} onPress={() => router.back()}>
-            <ThemedText style={styles.buttonText}>Go Back</ThemedText>
-          </Pressable>
-        </ThemedView>
+        <View className="flex-1 justify-center items-center p-8">
+          <View className="bg-white rounded-2xl p-8 shadow-soft items-center">
+            <View className="w-20 h-20 bg-huntly-leaf rounded-full items-center justify-center mb-6">
+              <ThemedText className="text-4xl">🎉</ThemedText>
+            </View>
+            <ThemedText
+              type="title"
+              className="text-huntly-forest text-center mb-4"
+            >
+              You're a Premium Explorer!
+            </ThemedText>
+            <ThemedText
+              type="body"
+              className="text-huntly-charcoal text-center mb-6 leading-6"
+            >
+              Your premium adventure is active until{" "}
+              {subscriptionInfo.expirationDate
+                ? subscriptionInfo.expirationDate.toLocaleDateString()
+                : "unknown date"}
+            </ThemedText>
+            <Pressable
+              className="bg-huntly-amber px-6 py-3 rounded-xl shadow-soft"
+              onPress={() => router.back()}
+            >
+              <ThemedText className="text-huntly-forest font-bold text-lg">
+                Continue Exploring
+              </ThemedText>
+            </Pressable>
+          </View>
+        </View>
       ) : (
-        <>
-          <ThemedText type="title" style={styles.header}>Choose a Plan</ThemedText>
-          <ThemedText style={styles.description}>
-            Subscribe to unlock premium features and support our app.
-          </ThemedText>
+        <ScrollView className="flex-1 p-5" showsVerticalScrollIndicator={false}>
+          {/* Header */}
+          <View className="items-center mb-8">
+            <View className="w-20 h-20 bg-huntly-sage rounded-full items-center justify-center mb-4">
+              <ThemedText className="text-4xl">⭐</ThemedText>
+            </View>
+            <ThemedText
+              type="title"
+              className="text-huntly-forest text-center mb-2"
+            >
+              Unlock Premium Adventures
+            </ThemedText>
+            <ThemedText
+              type="body"
+              className="text-huntly-charcoal text-center leading-6"
+            >
+              Get unlimited access to all adventure packs and exclusive
+              features!
+            </ThemedText>
+          </View>
 
+          {/* Loading State */}
           {isLoading ? (
-            <ActivityIndicator size="large" style={styles.loader} />
+            <View className="items-center py-12">
+              <ActivityIndicator size="large" color="#4A7C59" />
+              <ThemedText type="body" className="text-huntly-charcoal mt-4">
+                Loading adventure options...
+              </ThemedText>
+            </View>
           ) : !offerings ? (
-            <ThemedText>No subscription options available at this time.</ThemedText>
+            <View className="bg-white rounded-2xl p-6 shadow-soft items-center">
+              <ThemedText
+                type="body"
+                className="text-huntly-charcoal text-center"
+              >
+                No premium adventures available at this time.
+              </ThemedText>
+            </View>
           ) : (
-            <FlatList
-              data={packages}
-              keyExtractor={(item) => item.identifier}
-              renderItem={({ item }) => (
-                <ThemedView style={styles.packageItem}>
-                  <ThemedView style={styles.packageInfo}>
-                    <ThemedText type="defaultSemiBold">{item.product.title}</ThemedText>
-                    <ThemedText>{item.product.description}</ThemedText>
-                    <ThemedText type="defaultSemiBold">
-                      {formatPrice(item.product.priceString, item.packageType)}
-                    </ThemedText>
-                  </ThemedView>
-                  <Pressable style={styles.purchaseButton} onPress={() => handlePurchase(item)}>
-                    <ThemedText style={styles.buttonText}>Subscribe</ThemedText>
-                  </Pressable>
-                </ThemedView>
-              )}
-              style={styles.packagesList}
-            />
+            <View className="space-y-4 mb-8">
+              {packages.map((item) => (
+                <View
+                  key={item.identifier}
+                  className="bg-white rounded-2xl p-6 shadow-soft"
+                >
+                  <View className="flex-row justify-between items-start mb-4">
+                    <View className="flex-1 mr-4">
+                      <ThemedText
+                        type="defaultSemiBold"
+                        className="text-huntly-forest mb-2"
+                      >
+                        {item.product.title}
+                      </ThemedText>
+                      <ThemedText
+                        type="body"
+                        className="text-huntly-charcoal mb-3 leading-5"
+                      >
+                        {item.product.description}
+                      </ThemedText>
+                      <ThemedText
+                        type="defaultSemiBold"
+                        className="text-huntly-leaf"
+                      >
+                        {formatPrice(
+                          item.product.priceString,
+                          item.packageType
+                        )}
+                      </ThemedText>
+                    </View>
+                    <Pressable
+                      className="bg-huntly-amber px-6 py-3 rounded-xl shadow-soft"
+                      onPress={() => handlePurchase(item)}
+                    >
+                      <ThemedText className="text-huntly-forest font-bold">
+                        Subscribe
+                      </ThemedText>
+                    </Pressable>
+                  </View>
+                </View>
+              ))}
+            </View>
           )}
 
-          <Pressable style={styles.restoreButton} onPress={handleRestore}>
-            <ThemedText>Restore Purchases</ThemedText>
+          {/* Restore Purchases */}
+          <Pressable
+            className="bg-huntly-mint py-4 rounded-xl items-center shadow-soft"
+            onPress={handleRestore}
+          >
+            <ThemedText type="defaultSemiBold" className="text-huntly-forest">
+              Restore Previous Adventures
+            </ThemedText>
           </Pressable>
-        </>
+        </ScrollView>
       )}
     </ThemedView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-  },
-  header: {
-    marginBottom: 8,
-  },
-  description: {
-    marginBottom: 24,
-  },
-  loader: {
-    marginTop: 20,
-  },
-  packagesList: {
-    flex: 1,
-  },
-  packageItem: {
-    padding: 16,
-    marginVertical: 8,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  packageInfo: {
-    flex: 1,
-    marginRight: 16,
-  },
-  purchaseButton: {
-    backgroundColor: '#4f46e5',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-  },
-  restoreButton: {
-    alignSelf: 'center',
-    padding: 12,
-    marginVertical: 16,
-  },
-  buttonText: {
-    color: 'white',
-    fontWeight: '600',
-  },
-  subscribedContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 16,
-  },
-  backButton: {
-    backgroundColor: '#4f46e5',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginTop: 16,
-  },
-}); 

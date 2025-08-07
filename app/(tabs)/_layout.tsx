@@ -1,6 +1,6 @@
-import { Tabs } from 'expo-router';
-import { FontAwesome } from '@expo/vector-icons';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { Tabs } from "expo-router";
+import { FontAwesome } from "@expo/vector-icons";
+import { useColorScheme } from "@/hooks/useColorScheme";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -8,33 +8,61 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: colorScheme === 'dark' ? '#fff' : '#000',
-        tabBarInactiveTintColor: colorScheme === 'dark' ? '#666' : '#999',
+        tabBarActiveTintColor: colorScheme === "dark" ? "#7FB069" : "#4A7C59", // huntly-sage : huntly-leaf
+        tabBarInactiveTintColor: colorScheme === "dark" ? "#A8D5BA" : "#8B4513", // huntly-mint : huntly-brown
         tabBarStyle: {
-          backgroundColor: colorScheme === 'dark' ? '#000' : '#fff',
-          borderTopColor: colorScheme === 'dark' ? '#333' : '#eee',
+          backgroundColor: colorScheme === "dark" ? "#2D5A27" : "#FFF8DC", // huntly-forest : huntly-cream
+          borderTopColor: colorScheme === "dark" ? "#4A7C59" : "#A8D5BA", // huntly-leaf : huntly-mint
+          borderTopWidth: 1,
+          height: 90,
+          paddingBottom: 16,
+          paddingTop: 8,
+          paddingHorizontal: 16,
+          elevation: 8,
+          shadowColor: "#000",
+          shadowOffset: {
+            width: 0,
+            height: -2,
+          },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: "600",
+          marginTop: 4,
+        },
+        tabBarIconStyle: {
+          marginTop: 4,
         },
         headerShown: false,
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Packs',
-          tabBarIcon: ({ color }) => <FontAwesome name="cube" size={24} color={color} />,
+          title: "Home",
+          tabBarIcon: ({ color }) => (
+            <FontAwesome name="home" size={24} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="social"
         options={{
-          title: 'Social',
-          tabBarIcon: ({ color }) => <FontAwesome name="users" size={24} color={color} />,
+          title: "My Team",
+          tabBarIcon: ({ color }) => (
+            <FontAwesome name="users" size={24} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
-          tabBarIcon: ({ color }) => <FontAwesome name="user" size={24} color={color} />,
+          title: "Profile",
+          tabBarIcon: ({ color }) => (
+            <FontAwesome name="user" size={24} color={color} />
+          ),
         }}
       />
     </Tabs>

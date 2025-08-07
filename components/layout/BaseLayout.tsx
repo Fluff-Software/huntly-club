@@ -1,42 +1,40 @@
-import { StyleSheet, View, ViewStyle } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ThemedView } from '@/components/ThemedView';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { View, ViewStyle } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { ThemedView } from "@/components/ThemedView";
+import { useColorScheme } from "@/hooks/useColorScheme";
 
 interface BaseLayoutProps {
   children: React.ReactNode;
   style?: ViewStyle;
   contentStyle?: ViewStyle;
-  edges?: Array<'top' | 'right' | 'bottom' | 'left'>;
+  edges?: Array<"top" | "right" | "bottom" | "left">;
+  className?: string;
+  contentClassName?: string;
 }
 
 export function BaseLayout({
   children,
   style,
   contentStyle,
-  edges = ['top', 'right', 'bottom', 'left'],
+  edges = ["top", "right", "bottom", "left"],
+  className,
+  contentClassName,
 }: BaseLayoutProps) {
   const colorScheme = useColorScheme();
-  const backgroundColor = colorScheme === 'dark' ? '#000' : '#fff';
+  const backgroundColor = colorScheme === "dark" ? "#2D5A27" : "#FFF8DC"; // huntly-forest : huntly-cream
 
   return (
     <SafeAreaView
       edges={edges}
-      style={[styles.container, { backgroundColor }, style]}
+      className={`flex-1 ${className || ""}`}
+      style={[{ backgroundColor }, style]}
     >
-      <ThemedView style={[styles.content, contentStyle]}>
+      <ThemedView
+        className={`flex-1 p-5 pb-2 ${contentClassName || ""}`}
+        style={contentStyle}
+      >
         {children}
       </ThemedView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-  },
-}); 

@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet } from 'react-native';
-import { useRouter, useSegments } from 'expo-router';
-import { useAuth } from '@/contexts/AuthContext';
-import { ThemedView } from '@/components/ThemedView';
-import { getProfiles } from '@/services/profileService';
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, StyleSheet } from "react-native";
+import { useRouter, useSegments } from "expo-router";
+import { useAuth } from "@/contexts/AuthContext";
+import { usePlayer } from "@/contexts/PlayerContext";
+import { ThemedView } from "@/components/ThemedView";
+import { getProfiles } from "@/services/profileService";
 
 type AuthGuardProps = {
   children: React.ReactNode;
@@ -11,6 +12,7 @@ type AuthGuardProps = {
 
 export function AuthGuard({ children }: AuthGuardProps) {
   const { user, loading } = useAuth();
+  const { currentPlayer } = usePlayer();
   const segments = useSegments();
   const router = useRouter();
   const [checkingProfiles, setCheckingProfiles] = useState(false);
@@ -18,20 +20,21 @@ export function AuthGuard({ children }: AuthGuardProps) {
   useEffect(() => {
     if (loading || checkingProfiles) return;
 
-    const inAuthGroup = segments[0] === 'auth';
-    
+    const inAuthGroup = segments[0] === "auth";
+    const inTabsGroup = segments[0] === "(tabs)";
+
     const checkProfiles = async () => {
       if (!user) return;
-      
+
       setCheckingProfiles(true);
       try {
         const profiles = await getProfiles(user.id);
-        if (profiles.length === 0) {
-          // No profiles found, redirect to profile tab
-          router.replace('/(tabs)/profile');
+        // Always redirect to profile tab after login to select an explorer
+        if (inTabsGroup && segments[1] !== "profile") {
+          router.replace("/(tabs)/profile");
         }
       } catch (error) {
-        console.error('Error checking profiles:', error);
+        console.error("Error checking profiles:", error);
       } finally {
         setCheckingProfiles(false);
       }
@@ -39,12 +42,20 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
     if (!user && !inAuthGroup) {
       // Redirect to the auth screen if user is not authenticated and not already on auth screen
-      router.replace('/auth');
+      router.replace("/auth");
     } else if (user && inAuthGroup) {
-      // Check profiles when user is authenticated and on auth screen
-      checkProfiles();
+      // When user logs in from auth screen, redirect to profile tab to select explorer
+      router.replace("/(tabs)/profile");
+    } else if (
+      user &&
+      inTabsGroup &&
+      !currentPlayer &&
+      segments[1] !== "profile"
+    ) {
+      // User is authenticated but no current player selected, redirect to profile tab
+      router.replace("/(tabs)/profile");
     }
-  }, [user, loading, segments, checkingProfiles]);
+  }, [user, loading, segments, checkingProfiles, currentPlayer]);
 
   if (loading || checkingProfiles) {
     return (
@@ -60,7 +71,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
-}); 
+});

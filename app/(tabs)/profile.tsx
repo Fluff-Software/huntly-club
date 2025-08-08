@@ -126,7 +126,18 @@ export default function ProfileScreen() {
       });
       await refreshProfiles();
       setName("");
-      Alert.alert("Success", "Explorer created successfully!");
+      Alert.alert(
+        "Explorer Created! 🎉",
+        "Your new explorer has been created and is now active! You can now access all the adventure features.",
+        [
+          {
+            text: "Start Adventure",
+            onPress: () => {
+              router.replace("/");
+            },
+          },
+        ]
+      );
     } catch (error: any) {
       Alert.alert("Error", error.message || "Failed to create explorer");
     } finally {
@@ -137,7 +148,19 @@ export default function ProfileScreen() {
   const handleSelectPlayer = (profile: Profile) => {
     setCurrentPlayer(profile);
     setIsEditing(false); // Exit edit mode when selecting a different player
-    Alert.alert("Success", `${profile.name} is now your active explorer!`);
+    Alert.alert(
+      "Explorer Selected! 🎉",
+      `${profile.name} is now your active explorer! All adventure features are now unlocked.`,
+      [
+        {
+          text: "Start Adventure",
+          onPress: () => {
+            // Navigate to home tab after selection
+            router.replace("/");
+          },
+        },
+      ]
+    );
   };
 
   const handleSaveEdit = async () => {
@@ -218,7 +241,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* Current Active Player */}
-        {currentPlayer && (
+        {currentPlayer ? (
           <View className="mb-8">
             <View className="flex-row items-center justify-between mb-4">
               <ThemedText type="subtitle" className="text-huntly-forest">
@@ -417,10 +440,10 @@ export default function ProfileScreen() {
               </View>
             )}
           </View>
-        )}
+        ) : null}
 
         {/* Available Players */}
-        {profiles.length > 0 && (
+        {profiles.length > 0 ? (
           <View className="mb-8">
             <ThemedText type="subtitle" className="text-huntly-forest mb-4">
               Available Explorers
@@ -467,7 +490,7 @@ export default function ProfileScreen() {
               ))}
             </View>
           </View>
-        )}
+        ) : null}
 
         {/* Add New Player Section */}
         <View className="bg-white rounded-2xl p-6 shadow-soft mb-8">

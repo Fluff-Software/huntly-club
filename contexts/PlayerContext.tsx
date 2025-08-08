@@ -29,6 +29,14 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastRefreshRef = useRef<number>(0);
 
+  // Clear current player when user logs out
+  useEffect(() => {
+    if (!user) {
+      setCurrentPlayer(null);
+      setProfiles([]);
+    }
+  }, [user]);
+
   const fetchProfiles = useCallback(async () => {
     if (!user) {
       setProfiles([]);
@@ -42,32 +50,35 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({
       const profilesData = await getProfiles(user.id);
       setProfiles(profilesData);
 
-      // Only update current player if we don't have one or if the current one no longer exists
+      // Only update current player if we already have one and it still exists
       if (profilesData.length > 0) {
-        if (currentPlayer) {
-          // Find the updated version of the current player
-          const updatedCurrentPlayer = profilesData.find(
-            (p) => p.id === currentPlayer.id
-          );
-          if (updatedCurrentPlayer) {
-            // Only update if the data has actually changed (compare specific fields instead of JSON.stringify)
-            if (
-              updatedCurrentPlayer.name !== currentPlayer.name ||
-              updatedCurrentPlayer.nickname !== currentPlayer.nickname ||
-              updatedCurrentPlayer.colour !== currentPlayer.colour ||
-              updatedCurrentPlayer.team !== currentPlayer.team ||
-              updatedCurrentPlayer.xp !== currentPlayer.xp
-            ) {
-              setCurrentPlayer(updatedCurrentPlayer);
+        setCurrentPlayer((prevCurrentPlayer) => {
+          if (prevCurrentPlayer) {
+            // Find the updated version of the current player
+            const updatedCurrentPlayer = profilesData.find(
+              (p) => p.id === prevCurrentPlayer.id
+            );
+            if (updatedCurrentPlayer) {
+              // Only update if the data has actually changed (compare specific fields instead of JSON.stringify)
+              if (
+                updatedCurrentPlayer.name !== prevCurrentPlayer.name ||
+                updatedCurrentPlayer.nickname !== prevCurrentPlayer.nickname ||
+                updatedCurrentPlayer.colour !== prevCurrentPlayer.colour ||
+                updatedCurrentPlayer.team !== prevCurrentPlayer.team ||
+                updatedCurrentPlayer.xp !== prevCurrentPlayer.xp
+              ) {
+                return updatedCurrentPlayer;
+              }
+              return prevCurrentPlayer; // No change needed
+            } else {
+              // If current player no longer exists, don't auto-select another one
+              return null;
             }
           } else {
-            // If current player no longer exists, set first profile
-            setCurrentPlayer(profilesData[0]);
+            // Don't automatically set a current player - user must select one
+            return null;
           }
-        } else {
-          // Set the first profile as current player if no player is selected
-          setCurrentPlayer(profilesData[0]);
-        }
+        });
       } else {
         setCurrentPlayer(null);
       }
@@ -76,7 +87,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setLoading(false);
     }
-  }, [user, currentPlayer]);
+  }, [user]);
 
   const refreshProfiles = useCallback(async () => {
     const now = Date.now();

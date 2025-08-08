@@ -1,9 +1,11 @@
 import { Tabs } from "expo-router";
 import { FontAwesome } from "@expo/vector-icons";
 import { useColorScheme } from "@/hooks/useColorScheme";
+import { usePlayer } from "@/contexts/PlayerContext";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const { currentPlayer } = usePlayer();
 
   return (
     <Tabs
@@ -45,6 +47,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <FontAwesome name="home" size={24} color={color} />
           ),
+          href: currentPlayer ? undefined : null,
         }}
       />
       <Tabs.Screen
@@ -54,6 +57,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <FontAwesome name="users" size={24} color={color} />
           ),
+          href: currentPlayer ? undefined : null,
         }}
       />
       <Tabs.Screen

@@ -1,7 +1,22 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Session } from '@supabase/supabase-js';
-import { User, getCurrentUser, signIn, signOut, signUp, onAuthStateChange } from '@/services/authService';
-import { updatePurchasesUserId, resetPurchasesUser } from '@/services/purchasesService';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
+import {
+  getCurrentUser,
+  signIn,
+  signUp,
+  signOut,
+  onAuthStateChange,
+} from "@/services/authService";
+import {
+  updatePurchasesUserId,
+  resetPurchasesUser,
+} from "@/services/purchasesService";
+import { User, Session } from "@supabase/supabase-js";
 
 type AuthContextType = {
   user: User | null;
@@ -14,112 +29,124 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const updateUser = useCallback(async (userData: User | null) => {
+    setUser(userData);
+    if (userData?.id) {
+      try {
+        await updatePurchasesUserId(userData.id);
+      } catch (err) {
+        console.error("Error updating RevenueCat user ID:", err);
+      }
+    } else {
+      try {
+        await resetPurchasesUser();
+      } catch (err) {
+        console.error("Error resetting RevenueCat user:", err);
+      }
+    }
+  }, []);
+
   useEffect(() => {
+    let isMounted = true;
+
     const fetchUser = async () => {
       try {
         const user = await getCurrentUser();
-        setUser(user);
-        
-        // If user exists, update RevenueCat user ID
-        if (user?.id) {
-          await updatePurchasesUserId(user.id);
+        if (isMounted) {
+          await updateUser(user);
         }
       } catch (error) {
-        console.error('Error fetching user:', error);
+        console.error("Error fetching user:", error);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchUser();
 
     const { data: authListener } = onAuthStateChange((session) => {
-      setSession(session);
-      setLoading(false);
-      
-      if (session?.user) {
-        const userData = {
-          id: session.user.id,
-          email: session.user.email,
-        };
-        setUser(userData);
-        
-        // Update RevenueCat user ID
-        updatePurchasesUserId(userData.id).catch(err => {
-          console.error('Error updating RevenueCat user ID:', err);
-        });
-      } else {
-        setUser(null);
-        
-        // Reset RevenueCat user
-        resetPurchasesUser().catch(err => {
-          console.error('Error resetting RevenueCat user:', err);
-        });
+      if (isMounted) {
+        setSession(session);
+        setLoading(false);
+
+        if (session?.user) {
+          const userData = {
+            id: session.user.id,
+            email: session.user.email,
+          };
+          updateUser(userData);
+        } else {
+          updateUser(null);
+        }
       }
     });
 
     return () => {
+      isMounted = false;
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [updateUser]);
 
-  const handleSignIn = async (email: string, password: string) => {
-    setLoading(true);
-    try {
-      const { session } = await signIn(email, password);
-      setSession(session);
-      if (session?.user) {
-        const userData = {
-          id: session.user.id,
-          email: session.user.email,
-        };
-        setUser(userData);
-        
-        // Update RevenueCat user ID
-        await updatePurchasesUserId(userData.id);
+  const handleSignIn = useCallback(
+    async (email: string, password: string) => {
+      setLoading(true);
+      try {
+        const { session } = await signIn(email, password);
+        setSession(session);
+        if (session?.user) {
+          const userData = {
+            id: session.user.id,
+            email: session.user.email,
+          };
+          await updateUser(userData);
+        }
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [updateUser]
+  );
 
-  const handleSignUp = async (email: string, password: string) => {
-    setLoading(true);
-    try {
-      const { session } = await signUp(email, password);
-      setSession(session);
-      if (session?.user) {
-        const userData = {
-          id: session.user.id,
-          email: session.user.email,
-        };
-        setUser(userData);
-        
-        // Update RevenueCat user ID
-        await updatePurchasesUserId(userData.id);
+  const handleSignUp = useCallback(
+    async (email: string, password: string) => {
+      setLoading(true);
+      try {
+        const { session } = await signUp(email, password);
+        setSession(session);
+        if (session?.user) {
+          const userData = {
+            id: session.user.id,
+            email: session.user.email,
+          };
+          await updateUser(userData);
+        }
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [updateUser]
+  );
 
-  const handleSignOut = async () => {
+  const handleSignOut = useCallback(async () => {
     setLoading(true);
     try {
-      // Reset RevenueCat user before signing out
       await resetPurchasesUser();
       await signOut();
       setSession(null);
-      setUser(null);
+      await updateUser(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, [updateUser]);
 
   return (
     <AuthContext.Provider
@@ -130,7 +157,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signIn: handleSignIn,
         signUp: handleSignUp,
         signOut: handleSignOut,
-      }}>
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -139,7 +167,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
-}; 
+};

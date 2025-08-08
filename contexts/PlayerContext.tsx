@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
 import { useAuth } from "./AuthContext";
 import { getProfiles, Profile } from "@/services/profileService";
 
@@ -19,8 +26,10 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({
   const [currentPlayer, setCurrentPlayer] = useState<Profile | null>(null);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastRefreshRef = useRef<number>(0);
 
-  const fetchProfiles = async () => {
+  const fetchProfiles = useCallback(async () => {
     if (!user) {
       setProfiles([]);
       setCurrentPlayer(null);
@@ -41,10 +50,13 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({
             (p) => p.id === currentPlayer.id
           );
           if (updatedCurrentPlayer) {
-            // Only update if the data has actually changed
+            // Only update if the data has actually changed (compare specific fields instead of JSON.stringify)
             if (
-              JSON.stringify(updatedCurrentPlayer) !==
-              JSON.stringify(currentPlayer)
+              updatedCurrentPlayer.name !== currentPlayer.name ||
+              updatedCurrentPlayer.nickname !== currentPlayer.nickname ||
+              updatedCurrentPlayer.colour !== currentPlayer.colour ||
+              updatedCurrentPlayer.team !== currentPlayer.team ||
+              updatedCurrentPlayer.xp !== currentPlayer.xp
             ) {
               setCurrentPlayer(updatedCurrentPlayer);
             }
@@ -64,15 +76,50 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, currentPlayer]);
 
-  const refreshProfiles = async () => {
+  const refreshProfiles = useCallback(async () => {
+    const now = Date.now();
+    const timeSinceLastRefresh = now - lastRefreshRef.current;
+
+    // Debounce: don't refresh more than once every 2 seconds
+    if (timeSinceLastRefresh < 2000) {
+      // Clear existing timeout and set a new one
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+
+      refreshTimeoutRef.current = setTimeout(() => {
+        fetchProfiles();
+        lastRefreshRef.current = Date.now();
+      }, 2000 - timeSinceLastRefresh);
+
+      return;
+    }
+
+    // If enough time has passed, refresh immediately
     await fetchProfiles();
-  };
+    lastRefreshRef.current = now;
+  }, [fetchProfiles]);
 
   useEffect(() => {
-    fetchProfiles();
-  }, [user]);
+    let isMounted = true;
+
+    const initProfiles = async () => {
+      if (isMounted) {
+        await fetchProfiles();
+      }
+    };
+
+    initProfiles();
+
+    return () => {
+      isMounted = false;
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, [fetchProfiles]);
 
   return (
     <PlayerContext.Provider

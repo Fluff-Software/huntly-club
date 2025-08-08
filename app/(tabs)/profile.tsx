@@ -55,24 +55,46 @@ export default function ProfileScreen() {
   // Refresh profiles when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
-      refreshProfiles();
+      let isMounted = true;
+
+      const refresh = async () => {
+        if (isMounted) {
+          await refreshProfiles();
+        }
+      };
+
+      refresh();
+
+      return () => {
+        isMounted = false;
+      };
     }, [refreshProfiles])
   );
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchTeams = async () => {
       try {
         const teamsData = await getTeams();
-        setTeams(teamsData);
-        if (teamsData.length > 0) {
-          setSelectedTeam(teamsData[0].id);
+        if (isMounted) {
+          setTeams(teamsData);
+          if (teamsData.length > 0) {
+            setSelectedTeam(teamsData[0].id);
+          }
         }
       } catch (error) {
         console.error("Error fetching teams:", error);
-        Alert.alert("Error", "Failed to load teams");
+        if (isMounted) {
+          Alert.alert("Error", "Failed to load teams");
+        }
       }
     };
     fetchTeams();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Initialize edit form when entering edit mode

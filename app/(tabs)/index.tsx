@@ -17,25 +17,49 @@ export default function PacksScreen() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchPacks = async () => {
       try {
         const packsData = await getPacks();
-        setPacks(packsData);
+        if (isMounted) {
+          setPacks(packsData);
+        }
       } catch (err) {
-        setError("Failed to load packs");
+        if (isMounted) {
+          setError("Failed to load packs");
+        }
         console.error(err);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchPacks();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Refresh profiles when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
-      refreshProfiles();
+      let isMounted = true;
+
+      const refresh = async () => {
+        if (isMounted) {
+          await refreshProfiles();
+        }
+      };
+
+      refresh();
+
+      return () => {
+        isMounted = false;
+      };
     }, [refreshProfiles])
   );
 

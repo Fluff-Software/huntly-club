@@ -11,37 +11,52 @@ import { usePlayer } from "@/contexts/PlayerContext";
 export default function PackDetailsScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  const { currentPlayer } = usePlayer();
+  const { currentPlayer, refreshProfiles } = usePlayer();
   const [pack, setPack] = useState<Pack | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchPack = async () => {
       try {
         if (!id) return;
         const packData = await getPackById(Number(id));
-        setPack(packData);
+        if (isMounted) {
+          setPack(packData);
+        }
       } catch (err) {
-        setError("Failed to load pack");
+        if (isMounted) {
+          setError("Failed to load pack");
+        }
         console.error(err);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchPack();
+
+    return () => {
+      isMounted = false;
+    };
   }, [id]);
 
   const handleActivityPress = async (activity: Activity) => {
-    if (!currentPlayer?.user_id) {
+    if (!currentPlayer?.id) {
       console.error("No current player");
       return;
     }
 
     try {
-      const result = await completeActivity(activity.id, currentPlayer.user_id);
+      const result = await completeActivity(activity.id, currentPlayer.id);
       if (result.success) {
+        // Refresh profiles to update XP in the UI
+        await refreshProfiles();
+
         Alert.alert(
           "Activity Completed!",
           `Congratulations! You earned ${result.xpGained} XP!`,

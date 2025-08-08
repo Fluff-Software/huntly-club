@@ -6,6 +6,7 @@ import {
   Pressable,
   ScrollView,
   View,
+  Image,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
@@ -264,38 +265,54 @@ export default function ProfileIdScreen() {
                   </ThemedText>
                 </View>
               ) : (
-                <View className="space-y-3">
-                  {teams.map((team) => (
-                    <Pressable
-                      key={team.id}
-                      className={`flex-row items-center p-4 rounded-xl border-2 ${
-                        selectedTeam === team.id
-                          ? "bg-huntly-leaf border-huntly-leaf"
-                          : "bg-white border-huntly-mint"
-                      }`}
-                      onPress={() => setSelectedTeam(team.id)}
-                    >
-                      <View
-                        className="w-8 h-8 rounded-full mr-3"
-                        style={{ backgroundColor: team.colour }}
-                      />
-                      <ThemedText
-                        type="defaultSemiBold"
-                        className={`flex-1 ${
-                          selectedTeam === team.id
-                            ? "text-white"
-                            : "text-huntly-forest"
-                        }`}
+                <View className="flex-row justify-center">
+                  {teams.map((team) => {
+                    // Map team names to image assets
+                    const getTeamImage = (teamName: string) => {
+                      switch (teamName.toLowerCase()) {
+                        case "foxes":
+                          return require("@/assets/images/fox.png");
+                        case "bears":
+                          return require("@/assets/images/bear.png");
+                        case "otters":
+                          return require("@/assets/images/otter.png");
+                        default:
+                          return null;
+                      }
+                    };
+
+                    return (
+                      <Pressable
+                        key={team.id}
+                        onPress={() => setSelectedTeam(team.id)}
                       >
-                        {team.name}
-                      </ThemedText>
-                      {selectedTeam === team.id && (
-                        <ThemedText className="text-white text-lg">
-                          ✓
-                        </ThemedText>
-                      )}
-                    </Pressable>
-                  ))}
+                        {getTeamImage(team.name) ? (
+                          <View
+                            className={`w-32 h-32 ${
+                              selectedTeam === team.id
+                                ? "border-4 border-huntly-leaf rounded-xl"
+                                : ""
+                            }`}
+                          >
+                            <Image
+                              source={getTeamImage(team.name)}
+                              className="w-full h-full"
+                              resizeMode="contain"
+                            />
+                          </View>
+                        ) : (
+                          <View
+                            className={`w-32 h-32 rounded-full ${
+                              selectedTeam === team.id
+                                ? "border-4 border-huntly-leaf"
+                                : ""
+                            }`}
+                            style={{ backgroundColor: team.colour }}
+                          />
+                        )}
+                      </Pressable>
+                    );
+                  })}
                 </View>
               )}
             </View>

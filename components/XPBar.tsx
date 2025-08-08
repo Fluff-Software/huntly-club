@@ -13,9 +13,11 @@ export const XPBar: React.FC<XPBarProps> = ({
   level = 1,
   className = "",
 }) => {
-  // Calculate XP needed for next level (simple progression)
-  const xpForNextLevel = level * 100;
-  const progress = Math.min((currentXP / xpForNextLevel) * 100, 100);
+  // Calculate XP needed for next level (500 XP per level)
+  const xpForNextLevel = level * 500;
+  // Calculate progress within the current level
+  const xpInCurrentLevel = currentXP % 500;
+  const progress = Math.min((xpInCurrentLevel / 500) * 100, 100);
 
   return (
     <View className={`bg-white rounded-2xl p-4 shadow-soft ${className}`}>
@@ -29,21 +31,21 @@ export const XPBar: React.FC<XPBarProps> = ({
           </ThemedText>
         </View>
         <ThemedText type="caption" className="text-huntly-charcoal">
-          {currentXP} / {xpForNextLevel} XP
+          {xpInCurrentLevel} / {500} XP
         </ThemedText>
       </View>
 
       {/* Progress Bar */}
-      <View className="h-3 bg-huntly-mint rounded-full overflow-hidden">
+      <View className="h-3 bg-huntly-mint rounded-full overflow-hidden border border-huntly-leaf">
         <View
-          className="h-full bg-gradient-to-r from-huntly-amber to-huntly-leaf rounded-full"
+          className="h-full bg-huntly-leaf rounded-full"
           style={{ width: `${progress}%` }}
         />
       </View>
 
       <View className="flex-row items-center justify-between mt-2">
         <ThemedText type="caption" className="text-huntly-charcoal">
-          {xpForNextLevel - currentXP} XP to next level
+          {500 - xpInCurrentLevel} XP to next level
         </ThemedText>
         <ThemedText type="caption" className="text-huntly-leaf font-semibold">
           {Math.round(progress)}%

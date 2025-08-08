@@ -83,7 +83,7 @@ export default function ProfileScreen() {
       setEditColor(currentPlayer.colour);
       setEditTeam(currentPlayer.team);
     }
-  }, [currentPlayer, isEditing]);
+  }, [isEditing, currentPlayer?.id]); // Only depend on isEditing and currentPlayer.id, not the entire currentPlayer object
 
   const handleCreateProfile = async () => {
     if (!name.trim() || !selectedTeam) {
@@ -240,16 +240,13 @@ export default function ProfileScreen() {
                 </ThemedText>
                 <View className="mb-4">
                   <View className="flex-row items-center mb-3">
-                    <TextInput
-                      className="flex-1 h-14 border-2 border-huntly-mint rounded-xl px-4 bg-huntly-cream text-huntly-forest text-base mr-3"
-                      placeholder="Nickname"
-                      placeholderTextColor="#8B4513"
-                      value={editNickname}
-                      onChangeText={setEditNickname}
-                      autoCapitalize="words"
-                    />
+                    <View className="flex-1 h-14 border-2 border-huntly-mint rounded-xl px-4 bg-huntly-cream justify-center">
+                      <ThemedText className="text-huntly-forest text-base">
+                        {editNickname}
+                      </ThemedText>
+                    </View>
                     <Pressable
-                      className="bg-huntly-leaf h-14 px-4 rounded-xl justify-center items-center shadow-soft"
+                      className="bg-huntly-leaf h-14 px-4 rounded-xl justify-center items-center shadow-soft ml-3"
                       onPress={() => setEditNickname(generateNickname())}
                     >
                       <ThemedText className="text-white font-semibold">

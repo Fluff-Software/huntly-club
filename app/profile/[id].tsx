@@ -12,6 +12,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { ThemedText } from "@/components/ThemedText";
 import { BaseLayout } from "@/components/layout/BaseLayout";
+import { Button } from "@/components/ui/Button";
 import {
   getTeams,
   getProfiles,
@@ -213,14 +214,14 @@ export default function ProfileIdScreen() {
                   onChangeText={setNickname}
                   autoCapitalize="words"
                 />
-                <Pressable
-                  className="bg-huntly-leaf h-14 px-4 rounded-xl justify-center items-center shadow-soft"
+                <Button
+                  variant="secondary"
+                  size="large"
                   onPress={handleGenerateNickname}
+                  className="px-4"
                 >
-                  <ThemedText className="text-white font-semibold">
-                    🎲 Generate
-                  </ThemedText>
-                </Pressable>
+                  🎲 Generate
+                </Button>
               </View>
               <ThemedText className="text-huntly-brown text-sm">
                 Tap Generate to create a random adventure nickname!
@@ -319,19 +320,15 @@ export default function ProfileIdScreen() {
           </View>
 
           {/* Save Button */}
-          <Pressable
-            className="bg-huntly-amber h-14 rounded-xl justify-center items-center mt-6 shadow-soft"
+          <Button
+            variant="primary"
+            size="large"
             onPress={handleSaveProfile}
-            disabled={saving}
+            loading={saving}
+            className="mt-6"
           >
-            {saving ? (
-              <ActivityIndicator color="#2D5A27" />
-            ) : (
-              <ThemedText className="text-huntly-forest font-bold text-lg">
-                Save Changes
-              </ThemedText>
-            )}
-          </Pressable>
+            Save Changes
+          </Button>
         </View>
       </ScrollView>
     </BaseLayout>

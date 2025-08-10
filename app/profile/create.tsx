@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import {
   TextInput,
   Alert,
-  ActivityIndicator,
   Pressable,
   ScrollView,
   View,
@@ -13,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ThemedText } from "@/components/ThemedText";
 import { BaseLayout } from "@/components/layout/BaseLayout";
 import { createProfile, getTeams } from "@/services/profileService";
+import { Button } from "@/components/ui/Button";
 
 const COLOR_OPTIONS = [
   "#FF0000",
@@ -237,34 +237,29 @@ export default function CreateProfileScreen() {
                 </View>
               )}
             </View>
-            <Pressable
-              className="bg-blue-600 h-12 rounded-lg justify-center items-center mt-2"
+            <Button
+              variant="secondary"
+              size="large"
               onPress={handleAddPlayer}
-              disabled={loading}
+              loading={loading}
+              className="mt-2 bg-blue-600"
             >
-              <ThemedText className="text-white font-semibold text-lg">
-                Add Player
-              </ThemedText>
-            </Pressable>
+              Add Player
+            </Button>
           </View>
         </ScrollView>
         {/* Sticky Continue Button */}
         <View className="absolute left-0 right-0 bottom-0 p-5 bg-white border-t border-gray-200">
-          <Pressable
-            className={`h-12 rounded-lg justify-center items-center ${
-              players.length > 0 ? "bg-blue-600" : "bg-gray-300"
-            }`}
+          <Button
+            variant={players.length > 0 ? "secondary" : "cancel"}
+            size="large"
             onPress={handleContinue}
-            disabled={loading || players.length === 0}
+            loading={loading}
+            disabled={players.length === 0}
+            className={players.length > 0 ? "bg-blue-600" : "bg-gray-300"}
           >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <ThemedText className="text-white font-semibold text-lg">
-                Continue
-              </ThemedText>
-            )}
-          </Pressable>
+            Continue
+          </Button>
         </View>
       </View>
     </BaseLayout>

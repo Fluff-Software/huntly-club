@@ -2,14 +2,13 @@ import React, { useState } from "react";
 import {
   TextInput,
   Alert,
-  ActivityIndicator,
   Pressable,
   View,
   Image,
 } from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
-import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
+import { Button } from "@/components/ui/Button";
 
 type SignUpFormProps = {
   onLoginInstead: () => void;
@@ -74,14 +73,13 @@ export function SignUpForm({ onLoginInstead }: SignUpFormProps) {
             If you don't see the email, check your spam folder.
           </ThemedText>
 
-          <Pressable
-            className="bg-huntly-amber h-14 rounded-xl justify-center items-center shadow-soft"
+          <Button
+            variant="primary"
+            size="large"
             onPress={onLoginInstead}
           >
-            <ThemedText className="text-huntly-forest font-bold text-lg">
-              Back to Login
-            </ThemedText>
-          </Pressable>
+            Back to Login
+          </Button>
         </View>
       </View>
     );
@@ -144,19 +142,15 @@ export function SignUpForm({ onLoginInstead }: SignUpFormProps) {
           secureTextEntry
         />
 
-        <Pressable
-          className="bg-huntly-amber h-14 rounded-xl justify-center items-center mb-4 shadow-soft"
+        <Button
+          variant="primary"
+          size="large"
           onPress={handleSignUp}
-          disabled={loading}
+          loading={loading}
+          className="mb-4"
         >
-          {loading ? (
-            <ActivityIndicator color="#2D5A27" />
-          ) : (
-            <ThemedText className="text-huntly-forest font-bold text-lg">
-              Create Account
-            </ThemedText>
-          )}
-        </Pressable>
+          Create Account
+        </Button>
 
         <Pressable onPress={onLoginInstead} className="items-center">
           <ThemedText type="link" className="text-huntly-leaf text-center">

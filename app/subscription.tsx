@@ -14,6 +14,7 @@ import { PurchasesPackage } from "react-native-purchases";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
 import { usePurchases } from "@/contexts/PurchasesContext";
+import { Button } from "@/components/ui/Button";
 
 export default function SubscriptionScreen() {
   const router = useRouter();
@@ -102,14 +103,14 @@ export default function SubscriptionScreen() {
                 ? subscriptionInfo.expirationDate.toLocaleDateString()
                 : "unknown date"}
             </ThemedText>
-            <Pressable
-              className="bg-huntly-amber px-6 py-3 rounded-xl shadow-soft"
+            <Button
+              variant="primary"
+              size="large"
               onPress={() => router.back()}
+              className="px-6"
             >
-              <ThemedText className="text-huntly-forest font-bold text-lg">
-                Continue Exploring
-              </ThemedText>
-            </Pressable>
+              Continue Exploring
+            </Button>
           </View>
         </View>
       ) : (
@@ -182,14 +183,14 @@ export default function SubscriptionScreen() {
                         )}
                       </ThemedText>
                     </View>
-                    <Pressable
-                      className="bg-huntly-amber px-6 py-3 rounded-xl shadow-soft"
+                    <Button
+                      variant="primary"
+                      size="medium"
                       onPress={() => handlePurchase(item)}
+                      className="px-6 py-3"
                     >
-                      <ThemedText className="text-huntly-forest font-bold">
-                        Subscribe
-                      </ThemedText>
-                    </Pressable>
+                      Subscribe
+                    </Button>
                   </View>
                 </View>
               ))}
@@ -197,14 +198,14 @@ export default function SubscriptionScreen() {
           )}
 
           {/* Restore Purchases */}
-          <Pressable
-            className="bg-huntly-mint py-4 rounded-xl items-center shadow-soft"
+          <Button
+            variant="secondary"
+            size="large"
             onPress={handleRestore}
+            className="bg-huntly-mint py-4"
           >
-            <ThemedText type="defaultSemiBold" className="text-huntly-forest">
-              Restore Previous Adventures
-            </ThemedText>
-          </Pressable>
+            Restore Previous Adventures
+          </Button>
         </ScrollView>
       )}
     </ThemedView>

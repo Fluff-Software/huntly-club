@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   TextInput,
   Alert,
-  ActivityIndicator,
   Pressable,
   View,
   Image,
@@ -10,6 +9,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
+import { Button } from "@/components/ui/Button";
 
 type LoginFormProps = {
   onCreateAccount: () => void;
@@ -81,19 +81,15 @@ export function LoginForm({ onCreateAccount }: LoginFormProps) {
           secureTextEntry
         />
 
-        <Pressable
-          className="bg-huntly-amber h-14 rounded-xl justify-center items-center mb-4 shadow-soft"
+        <Button
+          variant="primary"
+          size="large"
           onPress={handleSignIn}
-          disabled={loading}
+          loading={loading}
+          className="mb-4"
         >
-          {loading ? (
-            <ActivityIndicator color="#2D5A27" />
-          ) : (
-            <ThemedText className="text-huntly-forest font-bold text-lg">
-              Sign In
-            </ThemedText>
-          )}
-        </Pressable>
+          Sign In
+        </Button>
 
         <Pressable onPress={onCreateAccount} className="items-center">
           <ThemedText type="link" className="text-huntly-leaf text-center">

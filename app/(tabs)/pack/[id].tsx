@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { BaseLayout } from "@/components/layout/BaseLayout";
+import { Button } from "@/components/ui/Button";
 import { getPackById, Pack, Activity } from "@/services/packService";
 import { completeActivity } from "@/services/activityService";
 import { usePlayer } from "@/contexts/PlayerContext";
@@ -172,14 +173,14 @@ export default function PackDetailsScreen() {
                             </ThemedText>
                           </View>
 
-                          <Pressable
-                            className="bg-huntly-amber px-6 py-3 rounded-xl shadow-sm"
+                          <Button
+                            variant="primary"
+                            size="medium"
                             onPress={() => handleActivityPress(activity)}
+                            className="px-6 py-3"
                           >
-                            <ThemedText className="text-white font-bold text-sm">
-                              Complete
-                            </ThemedText>
-                          </Pressable>
+                            Complete
+                          </Button>
                         </View>
                       </View>
                     </View>

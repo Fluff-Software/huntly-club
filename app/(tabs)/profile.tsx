@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import {
   TextInput,
   Alert,
-  ActivityIndicator,
   Pressable,
   ScrollView,
   View,
@@ -13,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { ThemedText } from "@/components/ThemedText";
 import { BaseLayout } from "@/components/layout/BaseLayout";
+import { Button } from "@/components/ui/Button";
 import {
   createProfile,
   getTeams,
@@ -249,14 +249,13 @@ export default function ProfileScreen() {
                 Active Explorer
               </ThemedText>
               {!isEditing && (
-                <Pressable
-                  className="bg-huntly-leaf px-4 py-2 rounded-xl"
+                <Button
+                  variant="secondary"
+                  size="medium"
                   onPress={() => setIsEditing(true)}
                 >
-                  <ThemedText className="text-white font-semibold">
-                    Edit
-                  </ThemedText>
-                </Pressable>
+                  Edit
+                </Button>
               )}
             </View>
 
@@ -291,14 +290,14 @@ export default function ProfileScreen() {
                         {editNickname}
                       </ThemedText>
                     </View>
-                    <Pressable
-                      className="bg-huntly-leaf h-14 px-4 rounded-xl justify-center items-center shadow-soft ml-3"
+                    <Button
+                      variant="secondary"
+                      size="large"
                       onPress={() => setEditNickname(generateNickname())}
+                      className="ml-3 px-4"
                     >
-                      <ThemedText className="text-white font-semibold">
-                        🎲 Generate
-                      </ThemedText>
-                    </Pressable>
+                      🎲 Generate
+                    </Button>
                   </View>
                   <ThemedText className="text-huntly-brown text-sm">
                     Tap Generate to create a random adventure nickname!
@@ -388,27 +387,23 @@ export default function ProfileScreen() {
 
                 {/* Edit Action Buttons */}
                 <View className="flex-row space-x-3">
-                  <Pressable
-                    className="flex-1 bg-huntly-charcoal h-14 rounded-xl justify-center items-center"
+                  <Button
+                    variant="cancel"
+                    size="large"
                     onPress={handleCancelEdit}
+                    className="flex-1"
                   >
-                    <ThemedText className="text-white font-bold text-lg">
-                      Cancel
-                    </ThemedText>
-                  </Pressable>
-                  <Pressable
-                    className="flex-1 bg-huntly-amber h-14 rounded-xl justify-center items-center shadow-soft"
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="large"
                     onPress={handleSaveEdit}
-                    disabled={loading}
+                    loading={loading}
+                    className="flex-1"
                   >
-                    {loading ? (
-                      <ActivityIndicator color="#2D5A27" />
-                    ) : (
-                      <ThemedText className="text-huntly-forest font-bold text-lg">
-                        Save
-                      </ThemedText>
-                    )}
-                  </Pressable>
+                    Save
+                  </Button>
                 </View>
               </View>
             ) : (
@@ -617,19 +612,15 @@ export default function ProfileScreen() {
           </View>
 
           {/* Add Player Button */}
-          <Pressable
-            className="bg-huntly-amber h-14 rounded-xl justify-center items-center mt-4 shadow-soft"
+          <Button
+            variant="primary"
+            size="large"
             onPress={handleCreateProfile}
-            disabled={loading}
+            loading={loading}
+            className="mt-4"
           >
-            {loading ? (
-              <ActivityIndicator color="#2D5A27" />
-            ) : (
-              <ThemedText className="text-huntly-forest font-bold text-lg">
-                Add Explorer
-              </ThemedText>
-            )}
-          </Pressable>
+            Add Explorer
+          </Button>
         </View>
 
         {/* Logout Section */}
@@ -652,14 +643,13 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          <Pressable
-            className="bg-red-500 h-14 rounded-xl justify-center items-center shadow-soft"
+          <Button
+            variant="danger"
+            size="large"
             onPress={handleLogout}
           >
-            <ThemedText className="text-white font-bold text-lg">
-              Logout
-            </ThemedText>
-          </Pressable>
+            Logout
+          </Button>
         </View>
       </ScrollView>
     </BaseLayout>

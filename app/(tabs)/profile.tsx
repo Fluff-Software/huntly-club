@@ -18,6 +18,7 @@ import {
   getTeams,
   updateProfile,
   type Profile,
+  type Team,
 } from "@/services/profileService";
 import { generateNickname } from "@/services/nicknameGenerator";
 import { XPBar } from "@/components/XPBar";
@@ -28,9 +29,7 @@ export default function ProfileScreen() {
   const [name, setName] = useState("");
   const [selectedColor, setSelectedColor] = useState<string>("#FF6B35"); // Default to fox orange
   const [selectedTeam, setSelectedTeam] = useState<number | null>(null);
-  const [teams, setTeams] = useState<
-    { id: number; name: string; colour: string }[]
-  >([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
@@ -128,8 +127,9 @@ export default function ProfileScreen() {
           },
         ]
       );
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to create explorer");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to create explorer";
+      Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
     }
@@ -178,8 +178,9 @@ export default function ProfileScreen() {
       await refreshProfiles();
       setIsEditing(false);
       Alert.alert("Success", "Explorer updated successfully!");
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to update explorer");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to update explorer";
+      Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
     }
@@ -345,7 +346,7 @@ export default function ProfileScreen() {
                                   ? "border-4 border-huntly-leaf"
                                   : ""
                               }`}
-                              style={{ backgroundColor: team.colour }}
+                              style={{ backgroundColor: team.colour || "#cccccc" }}
                             />
                           )}
                         </Pressable>

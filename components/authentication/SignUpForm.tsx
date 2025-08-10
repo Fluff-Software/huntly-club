@@ -37,8 +37,9 @@ export function SignUpForm({ onLoginInstead }: SignUpFormProps) {
       setSuccessMessage(
         `Account created! A confirmation link has been sent to ${email}. Please check your email to verify your account.`
       );
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to create account");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to create account";
+      Alert.alert("Error", errorMessage);
     }
   };
 

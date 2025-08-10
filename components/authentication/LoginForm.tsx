@@ -28,8 +28,9 @@ export function LoginForm({ onCreateAccount }: LoginFormProps) {
 
     try {
       await signIn(email, password);
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to sign in");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to sign in";
+      Alert.alert("Error", errorMessage);
     }
   };
 

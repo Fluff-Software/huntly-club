@@ -1,6 +1,8 @@
 import 'dotenv/config';
 
-export default ({ config }: { config: any }) => ({
+import { ExpoConfig, ConfigContext } from 'expo/config';
+
+export default ({ config }: ConfigContext): ExpoConfig => ({
   name: "huntly-club",
   slug: "huntly-club",
   version: "1.0.0",

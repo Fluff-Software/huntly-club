@@ -5,6 +5,7 @@ import React, {
   useEffect,
   useCallback,
   useRef,
+  useMemo,
 } from "react";
 import { useAuth } from "./AuthContext";
 import { getProfiles, Profile } from "@/services/profileService";
@@ -26,122 +27,154 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({
   const [currentPlayer, setCurrentPlayer] = useState<Profile | null>(null);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Use refs for cleanup tracking
+  const isMountedRef = useRef(true);
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastRefreshRef = useRef<number>(0);
+  const lastRefreshTimeRef = useRef<number>(0);
+  const isRefreshingRef = useRef(false);
 
   // Clear current player when user logs out
   useEffect(() => {
     if (!user) {
       setCurrentPlayer(null);
       setProfiles([]);
+      setLoading(false);
     }
   }, [user]);
 
-  const fetchProfiles = useCallback(async () => {
-    if (!user) {
-      setProfiles([]);
-      setCurrentPlayer(null);
-      setLoading(false);
+  // Helper function to safely update current player
+  const updateCurrentPlayer = useCallback((newProfiles: Profile[], prevPlayer: Profile | null) => {
+    if (!prevPlayer || newProfiles.length === 0) {
+      return null;
+    }
+
+    // Find updated version of current player
+    const updatedPlayer = newProfiles.find(p => p.id === prevPlayer.id);
+    if (!updatedPlayer) {
+      return null; // Player no longer exists
+    }
+
+    // Simple field comparison to avoid unnecessary re-renders
+    const hasChanged = (
+      updatedPlayer.name !== prevPlayer.name ||
+      updatedPlayer.nickname !== prevPlayer.nickname ||
+      updatedPlayer.colour !== prevPlayer.colour ||
+      updatedPlayer.team !== prevPlayer.team ||
+      updatedPlayer.xp !== prevPlayer.xp
+    );
+
+    return hasChanged ? updatedPlayer : prevPlayer;
+  }, []);
+
+  const fetchProfiles = useCallback(async (): Promise<void> => {
+    if (!user || !isMountedRef.current || isRefreshingRef.current) {
       return;
     }
 
     try {
+      isRefreshingRef.current = true;
       setLoading(true);
+      
       const profilesData = await getProfiles(user.id);
-      setProfiles(profilesData);
-
-      // Only update current player if we already have one and it still exists
-      if (profilesData.length > 0) {
-        setCurrentPlayer((prevCurrentPlayer) => {
-          if (prevCurrentPlayer) {
-            // Find the updated version of the current player
-            const updatedCurrentPlayer = profilesData.find(
-              (p) => p.id === prevCurrentPlayer.id
-            );
-            if (updatedCurrentPlayer) {
-              // Only update if the data has actually changed (compare specific fields instead of JSON.stringify)
-              if (
-                updatedCurrentPlayer.name !== prevCurrentPlayer.name ||
-                updatedCurrentPlayer.nickname !== prevCurrentPlayer.nickname ||
-                updatedCurrentPlayer.colour !== prevCurrentPlayer.colour ||
-                updatedCurrentPlayer.team !== prevCurrentPlayer.team ||
-                updatedCurrentPlayer.xp !== prevCurrentPlayer.xp
-              ) {
-                return updatedCurrentPlayer;
-              }
-              return prevCurrentPlayer; // No change needed
-            } else {
-              // If current player no longer exists, don't auto-select another one
-              return null;
-            }
-          } else {
-            // Don't automatically set a current player - user must select one
-            return null;
-          }
-        });
-      } else {
-        setCurrentPlayer(null);
+      
+      // Only update state if component is still mounted
+      if (isMountedRef.current) {
+        setProfiles(profilesData);
+        setCurrentPlayer(prev => updateCurrentPlayer(profilesData, prev));
       }
     } catch (error) {
-      console.error("Error fetching profiles:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  const refreshProfiles = useCallback(async () => {
-    const now = Date.now();
-    const timeSinceLastRefresh = now - lastRefreshRef.current;
-
-    // Debounce: don't refresh more than once every 2 seconds
-    if (timeSinceLastRefresh < 2000) {
-      // Clear existing timeout and set a new one
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current);
+      if (isMountedRef.current) {
+        console.error("Error fetching profiles:", error);
+        // Don't clear profiles on error - keep current state
       }
+    } finally {
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
+      isRefreshingRef.current = false;
+    }
+  }, [user, updateCurrentPlayer]);
 
-      refreshTimeoutRef.current = setTimeout(() => {
-        fetchProfiles();
-        lastRefreshRef.current = Date.now();
-      }, 2000 - timeSinceLastRefresh);
+  // Simplified debounced refresh without complex timeout logic
+  const refreshProfiles = useCallback(async (): Promise<void> => {
+    if (!isMountedRef.current) return;
 
-      return;
+    const now = Date.now();
+    const timeSinceLastRefresh = now - lastRefreshTimeRef.current;
+    const DEBOUNCE_TIME = 2000; // 2 seconds
+
+    // Clear any existing timeout
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current);
+      refreshTimeoutRef.current = null;
     }
 
     // If enough time has passed, refresh immediately
-    await fetchProfiles();
-    lastRefreshRef.current = now;
+    if (timeSinceLastRefresh >= DEBOUNCE_TIME) {
+      lastRefreshTimeRef.current = now;
+      await fetchProfiles();
+      return;
+    }
+
+    // Otherwise, schedule a refresh
+    const remainingTime = DEBOUNCE_TIME - timeSinceLastRefresh;
+    refreshTimeoutRef.current = setTimeout(async () => {
+      if (isMountedRef.current) {
+        lastRefreshTimeRef.current = Date.now();
+        await fetchProfiles();
+      }
+      refreshTimeoutRef.current = null;
+    }, remainingTime);
   }, [fetchProfiles]);
 
+  // Initial fetch on mount and user change
   useEffect(() => {
-    let isMounted = true;
+    let mounted = true;
+    isMountedRef.current = true;
 
-    const initProfiles = async () => {
-      if (isMounted) {
+    const initializeProfiles = async () => {
+      if (mounted && user) {
         await fetchProfiles();
       }
     };
 
-    initProfiles();
+    initializeProfiles();
 
     return () => {
-      isMounted = false;
+      mounted = false;
+      isMountedRef.current = false;
+      
+      // Clean up timeout
       if (refreshTimeoutRef.current) {
         clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
       }
     };
-  }, [fetchProfiles]);
+  }, [user?.id]); // Only depend on user.id to avoid unnecessary re-runs
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  // Memoize context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    currentPlayer,
+    profiles,
+    setCurrentPlayer,
+    refreshProfiles,
+    loading,
+  }), [currentPlayer, profiles, refreshProfiles, loading]);
 
   return (
-    <PlayerContext.Provider
-      value={{
-        currentPlayer,
-        profiles,
-        setCurrentPlayer,
-        refreshProfiles,
-        loading,
-      }}
-    >
+    <PlayerContext.Provider value={contextValue}>
       {children}
     </PlayerContext.Provider>
   );

@@ -39,8 +39,9 @@ export default function ConfirmScreen() {
             router.replace('/auth');
           }, 3000);
         }
-      } catch (err: any) {
-        setError(err.message || 'An error occurred during confirmation');
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'An error occurred during confirmation';
+        setError(errorMessage);
         
         // Wait a moment before redirecting to login
         setTimeout(() => {

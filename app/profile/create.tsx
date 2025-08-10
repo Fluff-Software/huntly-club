@@ -11,20 +11,26 @@ import { useRouter } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { ThemedText } from "@/components/ThemedText";
 import { BaseLayout } from "@/components/layout/BaseLayout";
-import { createProfile, getTeams } from "@/services/profileService";
+import { createProfile, getTeams, type Team } from "@/services/profileService";
 import { Button } from "@/components/ui/Button";
 import { getTeamImageSource } from "@/utils/teamUtils";
 import { ColorPicker } from "@/components/ui/ColorPicker";
+
+type PlayerData = {
+  name: string;
+  colour: string;
+  team: number;
+  teamName: string;
+  teamColour: string | null;
+};
 
 export default function CreateProfileScreen() {
   const [name, setName] = useState("");
   const [selectedColor, setSelectedColor] = useState<string>("#FF6B35"); // Default to fox orange
   const [selectedTeam, setSelectedTeam] = useState<number | null>(null);
-  const [teams, setTeams] = useState<
-    { id: number; name: string; colour: string }[]
-  >([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(false);
-  const [players, setPlayers] = useState<any[]>([]);
+  const [players, setPlayers] = useState<PlayerData[]>([]);
   const { user } = useAuth();
   const router = useRouter();
 
@@ -56,14 +62,19 @@ export default function CreateProfileScreen() {
       return;
     }
     const teamObj = teams.find((t) => t.id === selectedTeam);
+    if (!teamObj) {
+      Alert.alert("Error", "Selected team not found");
+      return;
+    }
+    
     setPlayers([
       ...players,
       {
         name: name.trim(),
         colour: selectedColor,
         team: selectedTeam,
-        teamName: teamObj?.name,
-        teamColour: teamObj?.colour,
+        teamName: teamObj.name,
+        teamColour: teamObj.colour,
       },
     ]);
     resetForm();
@@ -89,8 +100,9 @@ export default function CreateProfileScreen() {
         });
       }
       router.replace("/");
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to save players");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to save players";
+      Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
     }
@@ -120,7 +132,7 @@ export default function CreateProfileScreen() {
                 </ThemedText>
                 <View
                   className="w-4 h-4 rounded-full mr-1"
-                  style={{ backgroundColor: player.teamColour }}
+                  style={{ backgroundColor: player.teamColour || "#cccccc" }}
                 />
                 <ThemedText className="text-xs text-gray-700">
                   {player.teamName}
@@ -197,7 +209,7 @@ export default function CreateProfileScreen() {
                                 ? "border-4 border-huntly-leaf"
                                 : ""
                             }`}
-                            style={{ backgroundColor: team.colour }}
+                            style={{ backgroundColor: team.colour || "#cccccc" }}
                           />
                         )}
                       </Pressable>

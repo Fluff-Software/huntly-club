@@ -96,8 +96,9 @@ export default function ProfileIdScreen() {
       setProfile(updatedProfile);
       setNickname(updatedProfile.nickname);
       Alert.alert("Success", "Profile updated successfully");
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to update profile");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to update profile";
+      Alert.alert("Error", errorMessage);
     } finally {
       setSaving(false);
     }

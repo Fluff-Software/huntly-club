@@ -22,23 +22,11 @@ import {
 import { generateNickname } from "@/services/nicknameGenerator";
 import { XPBar } from "@/components/XPBar";
 import { getTeamImageSource } from "@/utils/teamUtils";
-
-const COLOR_OPTIONS = [
-  "#FF6B35", // team-fox
-  "#8B4513", // team-bear
-  "#4682B4", // team-otter
-  "#4A7C59", // huntly-leaf
-  "#7FB069", // huntly-sage
-  "#FFA500", // huntly-amber
-  "#FFD93D", // huntly-sunshine
-  "#87CEEB", // huntly-sky
-  "#A8D5BA", // huntly-mint
-  "#FFB347", // huntly-peach
-];
+import { ColorPicker } from "@/components/ui/ColorPicker";
 
 export default function ProfileScreen() {
   const [name, setName] = useState("");
-  const [selectedColor, setSelectedColor] = useState(COLOR_OPTIONS[0]);
+  const [selectedColor, setSelectedColor] = useState<string>("#FF6B35"); // Default to fox orange
   const [selectedTeam, setSelectedTeam] = useState<number | null>(null);
   const [teams, setTeams] = useState<
     { id: number; name: string; colour: string }[]
@@ -47,7 +35,7 @@ export default function ProfileScreen() {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editNickname, setEditNickname] = useState("");
-  const [editColor, setEditColor] = useState(COLOR_OPTIONS[0]);
+  const [editColor, setEditColor] = useState<string>("#FF6B35");
   const [editTeam, setEditTeam] = useState<number | null>(null);
   const { user, signOut } = useAuth();
   const { currentPlayer, profiles, setCurrentPlayer, refreshProfiles } =
@@ -201,7 +189,7 @@ export default function ProfileScreen() {
     setIsEditing(false);
     setEditName("");
     setEditNickname("");
-    setEditColor(COLOR_OPTIONS[0]);
+    setEditColor("#FF6B35");
     setEditTeam(null);
   };
 
@@ -312,19 +300,12 @@ export default function ProfileScreen() {
                 >
                   Choose Your Color
                 </ThemedText>
-                <View className="flex-row flex-wrap mb-6">
-                  {COLOR_OPTIONS.map((color) => (
-                    <Pressable
-                      key={color}
-                      className={`w-12 h-12 rounded-full mr-3 mb-3 ${
-                        editColor === color
-                          ? "border-4 border-huntly-forest"
-                          : "border-2 border-huntly-mint"
-                      }`}
-                      style={{ backgroundColor: color }}
-                      onPress={() => setEditColor(color)}
-                    />
-                  ))}
+                <View className="mb-6">
+                  <ColorPicker
+                    selectedColor={editColor}
+                    onColorSelect={setEditColor}
+                    size="medium"
+                  />
                 </View>
 
                 {/* Edit Team */}
@@ -514,19 +495,12 @@ export default function ProfileScreen() {
           >
             Choose Your Color
           </ThemedText>
-          <View className="flex-row flex-wrap mb-6">
-            {COLOR_OPTIONS.map((color) => (
-              <Pressable
-                key={color}
-                className={`w-12 h-12 rounded-full mr-3 mb-3 ${
-                  selectedColor === color
-                    ? "border-4 border-huntly-forest"
-                    : "border-2 border-huntly-mint"
-                }`}
-                style={{ backgroundColor: color }}
-                onPress={() => setSelectedColor(color)}
-              />
-            ))}
+          <View className="mb-6">
+            <ColorPicker
+              selectedColor={selectedColor}
+              onColorSelect={setSelectedColor}
+              size="medium"
+            />
           </View>
 
           {/* Team Selection */}

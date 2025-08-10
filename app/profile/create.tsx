@@ -14,25 +14,11 @@ import { BaseLayout } from "@/components/layout/BaseLayout";
 import { createProfile, getTeams } from "@/services/profileService";
 import { Button } from "@/components/ui/Button";
 import { getTeamImageSource } from "@/utils/teamUtils";
-
-const COLOR_OPTIONS = [
-  "#FF0000",
-  "#00FF00",
-  "#0000FF",
-  "#FFFF00",
-  "#FF00FF",
-  "#00FFFF",
-  "#FFA500",
-  "#800080",
-  "#008000",
-  "#800000",
-  "#000080",
-  "#808080",
-];
+import { ColorPicker } from "@/components/ui/ColorPicker";
 
 export default function CreateProfileScreen() {
   const [name, setName] = useState("");
-  const [selectedColor, setSelectedColor] = useState(COLOR_OPTIONS[0]);
+  const [selectedColor, setSelectedColor] = useState<string>("#FF6B35"); // Default to fox orange
   const [selectedTeam, setSelectedTeam] = useState<number | null>(null);
   const [teams, setTeams] = useState<
     { id: number; name: string; colour: string }[]
@@ -60,7 +46,7 @@ export default function CreateProfileScreen() {
 
   const resetForm = () => {
     setName("");
-    setSelectedColor(COLOR_OPTIONS[0]);
+    setSelectedColor("#FF6B35");
     setSelectedTeam(teams[0]?.id ?? null);
   };
 
@@ -166,17 +152,12 @@ export default function CreateProfileScreen() {
             <ThemedText type="subtitle" className="mb-4">
               Choose Your Color
             </ThemedText>
-            <View className="flex-row flex-wrap mb-6 px-1">
-              {COLOR_OPTIONS.map((color) => (
-                <Pressable
-                  key={color}
-                  className={`w-10 h-10 rounded-full mr-3 mb-3 ${
-                    selectedColor === color ? "border-4 border-black" : ""
-                  }`}
-                  style={{ backgroundColor: color }}
-                  onPress={() => setSelectedColor(color)}
-                />
-              ))}
+            <View className="mb-6">
+              <ColorPicker
+                selectedColor={selectedColor}
+                onColorSelect={setSelectedColor}
+                size="small"
+              />
             </View>
             <ThemedText type="subtitle" className="mb-4">
               Choose Your Team

@@ -21,26 +21,14 @@ import {
 } from "@/services/profileService";
 import { generateNickname } from "@/services/nicknameGenerator";
 import { getTeamImageSource } from "@/utils/teamUtils";
-
-const COLOR_OPTIONS = [
-  "#FF6B35", // team-fox
-  "#8B4513", // team-bear
-  "#4682B4", // team-otter
-  "#4A7C59", // huntly-leaf
-  "#7FB069", // huntly-sage
-  "#FFA500", // huntly-amber
-  "#FFD93D", // huntly-sunshine
-  "#87CEEB", // huntly-sky
-  "#A8D5BA", // huntly-mint
-  "#FFB347", // huntly-peach
-];
+import { ColorPicker } from "@/components/ui/ColorPicker";
 
 export default function ProfileIdScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [name, setName] = useState("");
   const [nickname, setNickname] = useState("");
-  const [selectedColor, setSelectedColor] = useState(COLOR_OPTIONS[0]);
+  const [selectedColor, setSelectedColor] = useState<string>("#FF6B35"); // Default to fox orange
   const [selectedTeam, setSelectedTeam] = useState<number | null>(null);
   const [teams, setTeams] = useState<
     { id: number; name: string; colour: string }[]
@@ -235,20 +223,11 @@ export default function ProfileIdScreen() {
             <ThemedText type="subtitle" className="text-huntly-forest mb-4">
               Choose Your Color
             </ThemedText>
-            <View className="flex-row flex-wrap">
-              {COLOR_OPTIONS.map((color) => (
-                <Pressable
-                  key={color}
-                  className={`w-12 h-12 rounded-full mr-3 mb-3 ${
-                    selectedColor === color
-                      ? "border-4 border-huntly-forest"
-                      : "border-2 border-huntly-mint"
-                  }`}
-                  style={{ backgroundColor: color }}
-                  onPress={() => setSelectedColor(color)}
-                />
-              ))}
-            </View>
+            <ColorPicker
+              selectedColor={selectedColor}
+              onColorSelect={setSelectedColor}
+              size="medium"
+            />
           </View>
 
           {/* Team Selection */}

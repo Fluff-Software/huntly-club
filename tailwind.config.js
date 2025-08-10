@@ -35,6 +35,20 @@ module.exports = {
           bear: "#8B4513", // Brown for Bear team
           otter: "#4682B4", // Blue for Otter team
         },
+
+        // Profile color options for avatars
+        profile: {
+          1: "#FF6B35", // team-fox
+          2: "#8B4513", // team-bear  
+          3: "#4682B4", // team-otter
+          4: "#4A7C59", // huntly-leaf
+          5: "#7FB069", // huntly-sage
+          6: "#FFA500", // huntly-amber
+          7: "#FFD93D", // huntly-sunshine
+          8: "#87CEEB", // huntly-sky
+          9: "#A8D5BA", // huntly-mint
+          10: "#FFB347", // huntly-peach
+        },
       },
       fontFamily: {
         rounded: ["System", "sans-serif"], // Rounded, friendly font for kids

@@ -21,6 +21,7 @@ import {
 } from "@/services/profileService";
 import { generateNickname } from "@/services/nicknameGenerator";
 import { XPBar } from "@/components/XPBar";
+import { getTeamImageSource } from "@/utils/teamUtils";
 
 const COLOR_OPTIONS = [
   "#FF6B35", // team-fox
@@ -336,26 +337,13 @@ export default function ProfileScreen() {
                 <View className="mb-6">
                   <View className="flex-row justify-center">
                     {teams.map((team) => {
-                      // Map team names to image assets
-                      const getTeamImage = (teamName: string) => {
-                        switch (teamName.toLowerCase()) {
-                          case "foxes":
-                            return require("@/assets/images/fox.png");
-                          case "bears":
-                            return require("@/assets/images/bear.png");
-                          case "otters":
-                            return require("@/assets/images/otter.png");
-                          default:
-                            return null;
-                        }
-                      };
-
+                      const teamImage = getTeamImageSource(team.name);
                       return (
                         <Pressable
                           key={team.id}
                           onPress={() => setEditTeam(team.id)}
                         >
-                          {getTeamImage(team.name) ? (
+                          {teamImage ? (
                             <View
                               className={`w-32 h-32 ${
                                 editTeam === team.id
@@ -364,7 +352,7 @@ export default function ProfileScreen() {
                               }`}
                             >
                               <Image
-                                source={getTeamImage(team.name)}
+                                source={teamImage}
                                 className="w-full h-full"
                                 resizeMode="contain"
                               />
@@ -561,26 +549,13 @@ export default function ProfileScreen() {
             ) : (
               <View className="flex-row justify-center">
                 {teams.map((team) => {
-                  // Map team names to image assets
-                  const getTeamImage = (teamName: string) => {
-                    switch (teamName.toLowerCase()) {
-                      case "foxes":
-                        return require("@/assets/images/fox.png");
-                      case "bears":
-                        return require("@/assets/images/bear.png");
-                      case "otters":
-                        return require("@/assets/images/otter.png");
-                      default:
-                        return null;
-                    }
-                  };
-
+                  const teamImage = getTeamImageSource(team.name);
                   return (
                     <Pressable
                       key={team.id}
                       onPress={() => setSelectedTeam(team.id)}
                     >
-                      {getTeamImage(team.name) ? (
+                      {teamImage ? (
                         <View
                           className={`w-32 h-32 ${
                             selectedTeam === team.id
@@ -589,7 +564,7 @@ export default function ProfileScreen() {
                           }`}
                         >
                           <Image
-                            source={getTeamImage(team.name)}
+                            source={teamImage}
                             className="w-full h-full"
                             resizeMode="contain"
                           />

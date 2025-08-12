@@ -17,8 +17,10 @@ import {
   completeActivity as completeActivityProgress,
   ActivityProgress,
 } from "@/services/activityProgressService";
-import { uploadActivityImage } from "@/services/storageService";
+import { uploadUserActivityPhoto } from "@/services/storageService";
 import { usePlayer } from "@/contexts/PlayerContext";
+import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
 
 export default function ActivityDetailScreen() {
   const router = useRouter();
@@ -81,12 +83,33 @@ export default function ActivityDetailScreen() {
   }, [id, currentPlayer?.id]);
 
   const pickImage = async () => {
-    // Temporarily disabled - will be re-enabled once expo-image-picker is properly configured
-    Alert.alert(
-      "Photo Upload",
-      "Photo upload functionality will be available soon!"
-    );
-    setUploadedPhoto("placeholder-photo");
+    try {
+      // Request permissions
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission Required",
+          "Sorry, we need camera roll permissions to upload photos for activities."
+        );
+        return;
+      }
+
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setUploadedPhoto(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error("Image picker error:", error);
+      Alert.alert("Error", "Failed to pick image. Please try again.");
+    }
   };
 
   const uploadPhotoToStorage = async (
@@ -95,19 +118,52 @@ export default function ActivityDetailScreen() {
     if (!currentPlayer?.id) return null;
 
     try {
-      // Convert URI to blob
-      const response = await fetch(photoUri);
-      const blob = await response.blob();
+      console.log("Reading file from URI:", photoUri);
 
-      // Upload to Supabase Storage
+      // Check if file exists
+      const fileInfo = await FileSystem.getInfoAsync(photoUri);
+      console.log("File info:", fileInfo);
+
+      if (!fileInfo.exists) {
+        console.error("File does not exist:", photoUri);
+        return null;
+      }
+
+      // Create a temporary file with proper extension
+      const tempFileName = `temp_${Date.now()}.jpg`;
+      const tempUri = `${FileSystem.cacheDirectory}${tempFileName}`;
+
+      // Copy the file to temp location
+      await FileSystem.copyAsync({
+        from: photoUri,
+        to: tempUri,
+      });
+
+      console.log("File copied to temp location:", tempUri);
+
+      // Upload the file directly using the file object
       const fileName = `activity-${activity?.id}-${Date.now()}.jpg`;
-      const result = await uploadActivityImage(
-        blob,
+      const fileObject = {
+        uri: tempUri,
+        type: "image/jpeg",
+        name: tempFileName,
+      };
+
+      const result = await uploadUserActivityPhoto(
+        fileObject,
         fileName,
         currentPlayer.id.toString()
       );
 
+      // Clean up temp file
+      try {
+        await FileSystem.deleteAsync(tempUri);
+      } catch (cleanupError) {
+        console.log("Temp file cleanup failed:", cleanupError);
+      }
+
       if (result.success && result.url) {
+        console.log("Upload successful, URL:", result.url);
         return result.url;
       } else {
         console.error("Upload failed:", result.error);
@@ -150,7 +206,7 @@ export default function ActivityDetailScreen() {
 
       // Upload photo to storage if provided
       let photoUrl: string | undefined;
-      if (uploadedPhoto && uploadedPhoto !== "placeholder-photo") {
+      if (uploadedPhoto) {
         photoUrl = await uploadPhotoToStorage(uploadedPhoto);
         if (!photoUrl) {
           Alert.alert(
@@ -348,17 +404,11 @@ export default function ActivityDetailScreen() {
             >
               {uploadedPhoto ? (
                 <View className="items-center">
-                  {uploadedPhoto === "placeholder-photo" ? (
-                    <View className="w-32 h-32 rounded-xl mb-3 bg-huntly-leaf/20 items-center justify-center">
-                      <ThemedText className="text-4xl">📷</ThemedText>
-                    </View>
-                  ) : (
-                    <Image
-                      source={{ uri: uploadedPhoto }}
-                      className="w-32 h-32 rounded-xl mb-3"
-                      resizeMode="cover"
-                    />
-                  )}
+                  <Image
+                    source={{ uri: uploadedPhoto }}
+                    className="w-32 h-32 rounded-xl mb-3"
+                    resizeMode="cover"
+                  />
                   <ThemedText
                     type="body"
                     className="text-huntly-leaf font-semibold"

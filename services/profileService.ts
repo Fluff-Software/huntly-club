@@ -76,6 +76,21 @@ export const getTeams = async (): Promise<Team[]> => {
   return data || [];
 };
 
+export const getTeamById = async (teamId: number): Promise<Team | null> => {
+  const { data, error } = await supabase
+    .from("teams")
+    .select("*")
+    .eq("id", teamId)
+    .single();
+
+  if (error) {
+    console.error("Error fetching team:", error);
+    throw new Error(`Failed to fetch team: ${error.message}`);
+  }
+
+  return data;
+};
+
 export const updateProfile = async (
   profileId: number,
   updates: Partial<ProfileUpdate>

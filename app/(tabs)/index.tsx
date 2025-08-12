@@ -6,13 +6,16 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { BaseLayout } from "@/components/layout/BaseLayout";
 import { getPacks, Pack } from "@/services/packService";
+import { getPackCompletionPercentage } from "@/services/activityProgressService";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { XPBar } from "@/components/XPBar";
+import { PackProgressBar } from "@/components/PackProgressBar";
 
 export default function PacksScreen() {
   const router = useRouter();
   const { currentPlayer, refreshProfiles } = usePlayer();
   const [packs, setPacks] = useState<Pack[]>([]);
+  const [packProgress, setPackProgress] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,6 +27,27 @@ export default function PacksScreen() {
         const packsData = await getPacks();
         if (isMounted) {
           setPacks(packsData);
+
+          // Fetch progress for each pack
+          if (currentPlayer?.id) {
+            const progressData: Record<number, number> = {};
+            for (const pack of packsData) {
+              try {
+                const percentage = await getPackCompletionPercentage(
+                  currentPlayer.id,
+                  pack.id
+                );
+                progressData[pack.id] = percentage;
+              } catch (err) {
+                console.error(
+                  `Failed to fetch progress for pack ${pack.id}:`,
+                  err
+                );
+                progressData[pack.id] = 0;
+              }
+            }
+            setPackProgress(progressData);
+          }
         }
       } catch (err) {
         if (isMounted) {
@@ -42,16 +66,37 @@ export default function PacksScreen() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [currentPlayer?.id]);
 
-  // Refresh profiles when screen comes into focus
+  // Refresh profiles and pack progress when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       let isMounted = true;
 
       const refresh = async () => {
-        if (isMounted) {
+        if (isMounted && currentPlayer?.id) {
           await refreshProfiles();
+
+          // Refresh pack progress
+          const progressData: Record<number, number> = {};
+          for (const pack of packs) {
+            try {
+              const percentage = await getPackCompletionPercentage(
+                currentPlayer.id,
+                pack.id
+              );
+              progressData[pack.id] = percentage;
+            } catch (err) {
+              console.error(
+                `Failed to fetch progress for pack ${pack.id}:`,
+                err
+              );
+              progressData[pack.id] = 0;
+            }
+          }
+          if (isMounted) {
+            setPackProgress(progressData);
+          }
         }
       };
 
@@ -60,7 +105,7 @@ export default function PacksScreen() {
       return () => {
         isMounted = false;
       };
-    }, [refreshProfiles])
+    }, [refreshProfiles, currentPlayer?.id, packs])
   );
 
   const handlePackPress = (packId: number) => {
@@ -130,17 +175,28 @@ export default function PacksScreen() {
               {packs.map((pack, index) => (
                 <Pressable
                   key={pack.id}
-                  className="bg-white rounded-2xl overflow-hidden shadow-soft mb-6"
+                  className={`rounded-2xl overflow-hidden shadow-soft mb-6 ${
+                    packProgress[pack.id] === 100
+                      ? "bg-huntly-leaf/10 border-2 border-huntly-leaf/30"
+                      : "bg-white"
+                  }`}
                   onPress={() => handlePackPress(pack.id)}
                 >
                   <View className="p-4">
                     <View className="flex-row items-center justify-between mb-2">
-                      <ThemedText
-                        type="defaultSemiBold"
-                        className="text-huntly-forest"
-                      >
-                        {pack.name}
-                      </ThemedText>
+                      <View className="flex-row items-center flex-1">
+                        <ThemedText
+                          type="defaultSemiBold"
+                          className="text-huntly-forest"
+                        >
+                          {pack.name}
+                        </ThemedText>
+                        {packProgress[pack.id] === 100 && (
+                          <View className="ml-2">
+                            <ThemedText className="text-2xl">🏆</ThemedText>
+                          </View>
+                        )}
+                      </View>
                       <View className="bg-huntly-leaf px-3 py-1 rounded-full">
                         <ThemedText
                           type="caption"
@@ -150,9 +206,21 @@ export default function PacksScreen() {
                         </ThemedText>
                       </View>
                     </View>
-                    <ThemedText type="body" className="text-huntly-charcoal">
-                      Explore nature and discover amazing adventures!
+                    <ThemedText
+                      type="body"
+                      className="text-huntly-charcoal mb-3"
+                    >
+                      {packProgress[pack.id] === 100
+                        ? "🎉 Congratulations! You've completed all activities in this pack!"
+                        : "Explore nature and discover amazing adventures!"}
                     </ThemedText>
+
+                    {/* Progress Bar */}
+                    <PackProgressBar
+                      percentage={packProgress[pack.id] || 0}
+                      showCompletionBadge={packProgress[pack.id] === 100}
+                      className="mt-2"
+                    />
                   </View>
                 </Pressable>
               ))}

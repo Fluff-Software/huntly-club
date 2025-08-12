@@ -15,20 +15,33 @@ function transformActivity(activityData: any): Activity {
     name: activityData.name,
     title: activityData.title,
     description: activityData.description,
+    long_description: activityData.long_description,
+    hints: activityData.hints,
+    tips: activityData.tips,
+    trivia: activityData.trivia,
+    photo_required: activityData.photo_required,
     image: activityData.image,
     xp: activityData.xp,
     created_at: activityData.created_at,
   };
 }
 
+// Helper function to get the correct image source
+export function getActivityImageSource(imageName: string | null) {
+  if (!imageName) return null;
+
+  // Return as URI for all images (now stored in Supabase Storage)
+  return { uri: imageName };
+}
+
 // Helper function to check if data looks like an activity
 function isValidActivity(data: any): boolean {
   return (
     data &&
-    typeof data === 'object' &&
-    typeof data.id === 'number' &&
-    typeof data.name === 'string' &&
-    typeof data.title === 'string'
+    typeof data === "object" &&
+    typeof data.id === "number" &&
+    typeof data.name === "string" &&
+    typeof data.title === "string"
   );
 }
 
@@ -48,6 +61,11 @@ export const getPacks = async (): Promise<Pack[]> => {
             name,
             title,
             description,
+            long_description,
+            hints,
+            tips,
+            trivia,
+            photo_required,
             image,
             xp,
             created_at
@@ -69,10 +87,12 @@ export const getPacks = async (): Promise<Pack[]> => {
   // Transform the data to flatten the activities with proper type safety
   const transformedPacks: Pack[] = data.map((pack: any) => {
     const packActivities = pack.pack_activities || [];
-    
+
     // Sort by order and extract activities with proper validation
     const activities: Activity[] = packActivities
-      .filter((pa: any) => pa && pa.activities && isValidActivity(pa.activities))
+      .filter(
+        (pa: any) => pa && pa.activities && isValidActivity(pa.activities)
+      )
       .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
       .map((pa: any) => transformActivity(pa.activities));
 
@@ -114,6 +134,11 @@ export const getPackById = async (packId: number): Promise<Pack | null> => {
         name,
         title,
         description,
+        long_description,
+        hints,
+        tips,
+        trivia,
+        photo_required,
         image,
         xp,
         created_at
@@ -124,7 +149,11 @@ export const getPackById = async (packId: number): Promise<Pack | null> => {
     .order("order");
 
   if (activitiesError) {
-    console.error("Error fetching activities for pack:", packId, activitiesError);
+    console.error(
+      "Error fetching activities for pack:",
+      packId,
+      activitiesError
+    );
     // Return pack with empty activities array instead of null
     return {
       ...packData,
@@ -141,4 +170,23 @@ export const getPackById = async (packId: number): Promise<Pack | null> => {
     ...packData,
     activities,
   };
+};
+
+export const getActivityById = async (
+  activityId: number
+): Promise<Activity | null> => {
+  const { data, error } = await supabase
+    .from("activities")
+    .select("*")
+    .eq("id", activityId)
+    .single();
+
+  if (error) {
+    console.error("Error fetching activity:", error);
+    throw new Error(`Failed to fetch activity: ${error.message}`);
+  }
+
+  if (!data) return null;
+
+  return transformActivity(data);
 };

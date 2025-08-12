@@ -15,7 +15,7 @@ const sizeClasses = {
 };
 
 const borderClasses = {
-  selected: "border-4 border-huntly-forest",
+  selected: "border-4 border-huntly-forest shadow-lg",
   unselected: "border-2 border-huntly-mint",
 };
 
@@ -25,11 +25,11 @@ export function ColorPicker({
   size = "medium",
 }: ColorPickerProps) {
   return (
-    <View className="flex-row flex-wrap">
+    <View className="flex-row flex-wrap justify-center">
       {PROFILE_COLOR_OPTIONS.map((colorOption) => {
         const hexValue = getTailwindColorHex(colorOption.value);
         const isSelected = selectedColor === hexValue;
-        
+
         return (
           <Pressable
             key={colorOption.value}
@@ -40,6 +40,9 @@ export function ColorPicker({
             accessibilityLabel={colorOption.label}
             accessibilityRole="button"
             accessibilityState={{ selected: isSelected }}
+            style={{
+              backgroundColor: hexValue, // Ensure the color is applied
+            }}
           />
         );
       })}

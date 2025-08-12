@@ -29,13 +29,14 @@ export const TeamActivityLog: React.FC<TeamActivityLogProps> = ({
   const getActivityMessage = (activity: TeamActivityLogEntry) => {
     const playerName = activity.profile.nickname || activity.profile.name;
     const activityTitle = activity.activity.title;
+    const playerColor = activity.profile.colour;
 
     if (activity.status === "completed") {
-      return `${playerName} completed ${activityTitle}`;
+      return { text: `completed ${activityTitle}`, playerName, playerColor };
     } else if (activity.status === "started") {
-      return `${playerName} started ${activityTitle}`;
+      return { text: `started ${activityTitle}`, playerName, playerColor };
     }
-    return `${playerName} is working on ${activityTitle}`;
+    return { text: `is working on ${activityTitle}`, playerName, playerColor };
   };
 
   if (loading) {
@@ -86,24 +87,41 @@ export const TeamActivityLog: React.FC<TeamActivityLogProps> = ({
         contentContainerStyle={{ padding: 16 }}
       >
         <View>
-          {activities.map((activity, index) => (
-            <View key={activity.id}>
-              <View className="py-2">
-                <ThemedText
-                  type="defaultSemiBold"
-                  className="text-huntly-forest mb-1"
-                >
-                  {getActivityMessage(activity)}
-                </ThemedText>
-                <ThemedText type="caption" className="text-huntly-charcoal/70">
-                  {formatTimeAgo(activity.completed_at || activity.started_at)}
-                </ThemedText>
+          {activities.map((activity, index) => {
+            const messageData = getActivityMessage(activity);
+            return (
+              <View key={activity.id}>
+                <View className="py-2">
+                  <View className="flex-row flex-wrap">
+                    <ThemedText
+                      type="defaultSemiBold"
+                      className="text-huntly-forest"
+                      style={{ color: messageData.playerColor }}
+                    >
+                      {messageData.playerName}
+                    </ThemedText>
+                    <ThemedText
+                      type="defaultSemiBold"
+                      className="text-huntly-forest ml-1"
+                    >
+                      {messageData.text}
+                    </ThemedText>
+                  </View>
+                  <ThemedText
+                    type="caption"
+                    className="text-huntly-charcoal/70"
+                  >
+                    {formatTimeAgo(
+                      activity.completed_at || activity.started_at
+                    )}
+                  </ThemedText>
+                </View>
+                {index < activities.length - 1 && (
+                  <View className="h-px bg-huntly-mint/20 my-2" />
+                )}
               </View>
-              {index < activities.length - 1 && (
-                <View className="h-px bg-huntly-mint/20 my-2" />
-              )}
-            </View>
-          ))}
+            );
+          })}
         </View>
       </ScrollView>
     </View>

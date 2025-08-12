@@ -66,7 +66,7 @@ export default function CreateProfileScreen() {
       Alert.alert("Error", "Selected team not found");
       return;
     }
-    
+
     setPlayers([
       ...players,
       {
@@ -101,7 +101,8 @@ export default function CreateProfileScreen() {
       }
       router.replace("/");
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to save players";
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to save players";
       Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
@@ -209,7 +210,9 @@ export default function CreateProfileScreen() {
                                 ? "border-4 border-huntly-leaf"
                                 : ""
                             }`}
-                            style={{ backgroundColor: team.colour || "#cccccc" }}
+                            style={{
+                              backgroundColor: team.colour || "#cccccc",
+                            }}
                           />
                         )}
                       </Pressable>

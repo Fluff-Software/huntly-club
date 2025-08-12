@@ -30,13 +30,29 @@ export const TeamActivityLog: React.FC<TeamActivityLogProps> = ({
     const playerName = activity.profile.nickname || activity.profile.name;
     const activityTitle = activity.activity.title;
     const playerColor = activity.profile.colour;
+    const teamXpGained = Math.floor(activity.activity.xp * 0.5); // Team gets 50% of individual XP
 
     if (activity.status === "completed") {
-      return { text: `completed ${activityTitle}`, playerName, playerColor };
+      return {
+        text: `completed ${activityTitle}`,
+        playerName,
+        playerColor,
+        teamXpGained,
+      };
     } else if (activity.status === "started") {
-      return { text: `started ${activityTitle}`, playerName, playerColor };
+      return {
+        text: `started ${activityTitle}`,
+        playerName,
+        playerColor,
+        teamXpGained: 0,
+      };
     }
-    return { text: `is working on ${activityTitle}`, playerName, playerColor };
+    return {
+      text: `is working on ${activityTitle}`,
+      playerName,
+      playerColor,
+      teamXpGained: 0,
+    };
   };
 
   if (loading) {
@@ -92,7 +108,7 @@ export const TeamActivityLog: React.FC<TeamActivityLogProps> = ({
             return (
               <View key={activity.id}>
                 <View className="py-2">
-                  <View className="flex-row flex-wrap">
+                  <View className="flex-row flex-wrap items-center">
                     <ThemedText
                       type="defaultSemiBold"
                       className="text-huntly-forest"
@@ -106,6 +122,16 @@ export const TeamActivityLog: React.FC<TeamActivityLogProps> = ({
                     >
                       {messageData.text}
                     </ThemedText>
+                    {messageData.teamXpGained > 0 && (
+                      <View className="ml-2 bg-huntly-leaf px-2 py-1 rounded-full">
+                        <ThemedText
+                          type="caption"
+                          className="text-white font-bold"
+                        >
+                          +{messageData.teamXpGained} team XP
+                        </ThemedText>
+                      </View>
+                    )}
                   </View>
                   <ThemedText
                     type="caption"

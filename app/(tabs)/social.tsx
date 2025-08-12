@@ -1,19 +1,21 @@
-import { View, ScrollView, RefreshControl, Image } from "react-native";
-import { useState, useEffect, useCallback } from "react";
-import { useColorScheme } from "@/hooks/useColorScheme";
-import { BaseLayout } from "@/components/layout/BaseLayout";
+import React, { useState, useEffect, useCallback } from "react";
+import { View, ScrollView, RefreshControl, Image, Alert } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+import { BaseLayout } from "@/components/layout/BaseLayout";
 import { TeamActivityLog } from "@/components/TeamActivityLog";
 import {
   getTeamActivityLogs,
   TeamActivityLogEntry,
+  getTeamInfo,
+  getAllTeamsWithXp,
+  TeamInfo,
 } from "@/services/teamActivityService";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { getTeamImageSource } from "@/utils/teamUtils";
 import { getTeamById } from "@/services/profileService";
 
 export default function SocialScreen() {
-  const colorScheme = useColorScheme();
   const { currentPlayer } = usePlayer();
   const [teamActivities, setTeamActivities] = useState<TeamActivityLogEntry[]>(
     []
@@ -21,26 +23,23 @@ export default function SocialScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [teamInfo, setTeamInfo] = useState<{
-    id: number;
-    name: string;
-    colour: string | null;
-  } | null>(null);
+  const [teamInfo, setTeamInfo] = useState<TeamInfo | null>(null);
+  const [allTeams, setAllTeams] = useState<TeamInfo[]>([]);
 
   const fetchTeamActivities = useCallback(async () => {
-    if (!currentPlayer?.team) {
-      setLoading(false);
-      return;
-    }
+    if (!currentPlayer?.team) return;
 
     try {
       setError(null);
-      const [activities, team] = await Promise.all([
-        getTeamActivityLogs(currentPlayer.team, 50),
-        getTeamById(currentPlayer.team),
+      const [activities, teamData, teamsData] = await Promise.all([
+        getTeamActivityLogs(currentPlayer.team),
+        getTeamInfo(currentPlayer.team),
+        getAllTeamsWithXp(),
       ]);
+
       setTeamActivities(activities);
-      setTeamInfo(team);
+      setTeamInfo(teamData);
+      setAllTeams(teamsData);
     } catch (err) {
       console.error("Error fetching team activities:", err);
       setError("Failed to load team activities");
@@ -49,81 +48,144 @@ export default function SocialScreen() {
     }
   }, [currentPlayer?.team]);
 
+  useEffect(() => {
+    fetchTeamActivities();
+  }, [fetchTeamActivities]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchTeamActivities();
     setRefreshing(false);
   }, [fetchTeamActivities]);
 
-  useEffect(() => {
-    fetchTeamActivities();
-  }, [fetchTeamActivities]);
-
   if (!currentPlayer) {
     return (
-      <BaseLayout className="bg-huntly-cream">
-        <View className="flex-1 items-center justify-center p-8">
-          <ThemedText type="body" className="text-huntly-charcoal text-center">
-            Please select a profile to view team activities
+      <BaseLayout>
+        <ThemedView className="flex-1 justify-center items-center p-6">
+          <ThemedText
+            type="title"
+            className="text-huntly-forest text-center mb-4"
+          >
+            Select Your Explorer
           </ThemedText>
-        </View>
+          <ThemedText type="body" className="text-huntly-charcoal text-center">
+            Choose an explorer profile to view your team activities
+          </ThemedText>
+        </ThemedView>
       </BaseLayout>
     );
   }
 
-  const teamImage = teamInfo ? getTeamImageSource(teamInfo.name) : null;
-
   return (
-    <BaseLayout className="bg-huntly-cream">
+    <BaseLayout>
       <ScrollView
         className="flex-1"
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-        showsVerticalScrollIndicator={false}
       >
         {/* Header */}
         <View className="p-6 pb-4">
           <View className="flex-row items-center mb-4">
-            {teamImage ? (
-              <View className="w-12 h-12 mr-3">
+            {teamInfo && (
+              <>
                 <Image
-                  source={teamImage}
-                  className="w-full h-full"
+                  source={
+                    getTeamImageSource(teamInfo.name) ||
+                    require("@/assets/images/fox.png")
+                  }
+                  className="w-12 h-12 mr-3"
                   resizeMode="contain"
                 />
-              </View>
-            ) : (
-              <View
-                className="w-12 h-12 rounded-full mr-3"
-                style={{
-                  backgroundColor: teamInfo?.colour || currentPlayer.colour,
-                }}
-              />
+                <View className="flex-1">
+                  <ThemedText type="title" className="text-huntly-forest">
+                    Team Activities
+                  </ThemedText>
+                  <ThemedText type="subtitle" className="text-huntly-charcoal">
+                    See what your teammates are up to
+                  </ThemedText>
+                </View>
+              </>
             )}
-            <View className="flex-1">
-              <ThemedText type="title" className="text-huntly-forest">
-                Team Activities
+          </View>
+
+          {/* Team XP Display */}
+          {teamInfo && (
+            <View className="bg-huntly-mint rounded-xl p-4 mb-4">
+              <ThemedText type="subtitle" className="text-huntly-forest mb-2">
+                Team XP: {teamInfo.team_xp}
               </ThemedText>
-              <ThemedText type="body" className="text-huntly-charcoal">
-                See what your teammates are up to
+              <ThemedText type="caption" className="text-huntly-charcoal">
+                Complete activities to earn XP for your team!
               </ThemedText>
             </View>
-          </View>
+          )}
+
+          {/* Team Rankings */}
+          {allTeams.length > 0 && (
+            <View className="bg-white rounded-xl p-4 mb-4 border border-huntly-mint/30">
+              <ThemedText type="subtitle" className="text-huntly-forest mb-3">
+                Team Rankings
+              </ThemedText>
+              {allTeams.map((team, index) => (
+                <View
+                  key={team.id}
+                  className={`flex-row items-center justify-between py-2 ${
+                    index < allTeams.length - 1
+                      ? "border-b border-huntly-mint/20"
+                      : ""
+                  }`}
+                >
+                  <View className="flex-row items-center">
+                    <View className="w-6 h-6 mr-3">
+                      <Image
+                        source={
+                          getTeamImageSource(team.name) ||
+                          require("@/assets/images/fox.png")
+                        }
+                        className="w-full h-full"
+                        resizeMode="contain"
+                      />
+                    </View>
+                    <ThemedText
+                      type="defaultSemiBold"
+                      className={`${
+                        team.id === currentPlayer.team
+                          ? "text-huntly-leaf"
+                          : "text-huntly-forest"
+                      }`}
+                    >
+                      {team.name}
+                    </ThemedText>
+                  </View>
+                  <View className="flex-row items-center">
+                    <ThemedText
+                      type="body"
+                      className="text-huntly-charcoal mr-2"
+                    >
+                      {team.team_xp} XP
+                    </ThemedText>
+                    {index === 0 && (
+                      <View className="w-4 h-4 bg-yellow-400 rounded-full items-center justify-center">
+                        <ThemedText className="text-xs font-bold">
+                          🥇
+                        </ThemedText>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* Team Activity Log */}
         <View className="px-6 pb-6">
           {error ? (
-            <View className="flex-1 justify-center items-center py-8">
-              <ThemedText type="body" className="text-red-500 text-center mb-4">
+            <View className="bg-red-50 rounded-xl p-4 border border-red-200">
+              <ThemedText type="body" className="text-red-600 text-center">
                 {error}
-              </ThemedText>
-              <ThemedText
-                type="body"
-                className="text-huntly-charcoal text-center"
-              >
-                Pull down to refresh
               </ThemedText>
             </View>
           ) : (

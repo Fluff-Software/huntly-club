@@ -37,32 +37,86 @@ export type Database = {
       activities: {
         Row: {
           created_at: string
-          id: number
-          name: string
-          title: string
           description: string | null
+          hints: string | null
+          id: number
           image: string | null
-          xp: number
+          long_description: string | null
+          name: string
+          photo_required: boolean | null
+          tips: string | null
+          title: string
+          trivia: string | null
+          xp: number | null
         }
         Insert: {
           created_at?: string
-          id?: number
-          name: string
-          title: string
           description?: string | null
+          hints?: string | null
+          id?: number
           image?: string | null
-          xp?: number
+          long_description?: string | null
+          name: string
+          photo_required?: boolean | null
+          tips?: string | null
+          title: string
+          trivia?: string | null
+          xp?: number | null
         }
         Update: {
           created_at?: string
-          id?: number
-          name?: string
-          title?: string
           description?: string | null
+          hints?: string | null
+          id?: number
           image?: string | null
-          xp?: number
+          long_description?: string | null
+          name?: string
+          photo_required?: boolean | null
+          tips?: string | null
+          title?: string
+          trivia?: string | null
+          xp?: number | null
         }
         Relationships: []
+      }
+      pack_activities: {
+        Row: {
+          activity_id: number
+          created_at: string
+          id: number
+          order: number
+          pack_id: number
+        }
+        Insert: {
+          activity_id: number
+          created_at?: string
+          id?: number
+          order?: number
+          pack_id: number
+        }
+        Update: {
+          activity_id?: number
+          created_at?: string
+          id?: number
+          order?: number
+          pack_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pack_activities_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pack_activities_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "packs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       packs: {
         Row: {
@@ -85,51 +139,13 @@ export type Database = {
         }
         Relationships: []
       }
-      pack_activities: {
-        Row: {
-          id: number
-          created_at: string
-          pack_id: number
-          activity_id: number
-          order: number
-        }
-        Insert: {
-          id?: number
-          created_at?: string
-          pack_id: number
-          activity_id: number
-          order?: number
-        }
-        Update: {
-          id?: number
-          created_at?: string
-          pack_id?: number
-          activity_id?: number
-          order?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pack_activities_pack_id_fkey"
-            columns: ["pack_id"]
-            isOneToOne: false
-            referencedRelation: "packs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pack_activities_activity_id_fkey"
-            columns: ["activity_id"]
-            isOneToOne: false
-            referencedRelation: "activities"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
       profiles: {
         Row: {
           colour: string
           created_at: string
           id: number
           name: string
+          nickname: string | null
           team: number
           user_id: string
           xp: number
@@ -139,6 +155,7 @@ export type Database = {
           created_at?: string
           id?: number
           name: string
+          nickname?: string | null
           team: number
           user_id: string
           xp?: number
@@ -148,6 +165,7 @@ export type Database = {
           created_at?: string
           id?: number
           name?: string
+          nickname?: string | null
           team?: number
           user_id?: string
           xp?: number
@@ -169,6 +187,7 @@ export type Database = {
           id: number
           mascot_name: string
           name: string
+          team_xp: number
         }
         Insert: {
           colour?: string | null
@@ -176,6 +195,7 @@ export type Database = {
           id?: number
           mascot_name: string
           name: string
+          team_xp?: number
         }
         Update: {
           colour?: string | null
@@ -183,15 +203,74 @@ export type Database = {
           id?: number
           mascot_name?: string
           name?: string
+          team_xp?: number
         }
         Relationships: []
+      }
+      user_activity_progress: {
+        Row: {
+          activity_id: number
+          completed_at: string | null
+          created_at: string
+          id: number
+          notes: string | null
+          photo_url: string | null
+          profile_id: number
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          activity_id: number
+          completed_at?: string | null
+          created_at?: string
+          id?: number
+          notes?: string | null
+          photo_url?: string | null
+          profile_id: number
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          activity_id?: number
+          completed_at?: string | null
+          created_at?: string
+          id?: number
+          notes?: string | null
+          photo_url?: string | null
+          profile_id?: number
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_activity_progress_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_activity_progress_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      add_team_xp: {
+        Args: { team_id: number; xp_amount: number }
+        Returns: undefined
+      }
+      get_team_xp: {
+        Args: { team_id: number }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never

@@ -4,7 +4,7 @@ import { Activity } from "./packService";
 export const completeActivity = async (
   activityId: number,
   profileId: number
-): Promise<{ success: boolean; xpGained: number }> => {
+): Promise<{ success: boolean; xpGained: number; teamXpGained: number }> => {
   try {
     // Get the activity to know how much XP to award
     const { data: activity, error: activityError } = await supabase
@@ -17,31 +17,45 @@ export const completeActivity = async (
       throw new Error("Activity not found");
     }
 
-    // Update the profile's XP
+    // Get the profile to know which team they belong to
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("xp")
+      .select("xp, team")
       .eq("id", profileId)
       .single();
 
-    if (profileError) {
+    if (profileError || !profile) {
       throw new Error("Profile not found");
     }
 
-    const newXp = (profile?.xp || 0) + activity.xp;
+    const newXp = (profile.xp || 0) + activity.xp;
+    const teamXpGained = Math.floor(activity.xp * 0.5); // Team gets 50% of individual XP
 
-    const { error: updateError } = await supabase
+    // Update the profile's XP
+    const { error: updateProfileError } = await supabase
       .from("profiles")
       .update({ xp: newXp })
       .eq("id", profileId);
 
-    if (updateError) {
-      throw new Error("Failed to update XP");
+    if (updateProfileError) {
+      throw new Error("Failed to update profile XP");
+    }
+
+    // Add XP to the team
+    const { error: teamXpError } = await supabase.rpc("add_team_xp", {
+      team_id: profile.team,
+      xp_amount: teamXpGained,
+    });
+
+    if (teamXpError) {
+      console.error("Failed to update team XP:", teamXpError);
+      // Don't fail the entire operation if team XP update fails
     }
 
     return {
       success: true,
       xpGained: activity.xp,
+      teamXpGained: teamXpGained,
     };
   } catch (error) {
     console.error("Error completing activity:", error);

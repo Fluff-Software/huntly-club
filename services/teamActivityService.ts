@@ -26,6 +26,13 @@ export interface TeamActivityLogEntry {
   };
 }
 
+export interface TeamInfo {
+  id: number;
+  name: string;
+  colour: string | null;
+  team_xp: number;
+}
+
 export const getTeamActivityLogs = async (
   teamId: number,
   limit: number = 20
@@ -102,6 +109,35 @@ export const getTeamActivityLogsByStatus = async (
   if (error) {
     console.error("Error fetching team activity logs by status:", error);
     throw new Error(`Failed to fetch team activity logs: ${error.message}`);
+  }
+
+  return data || [];
+};
+
+export const getTeamInfo = async (teamId: number): Promise<TeamInfo | null> => {
+  const { data, error } = await supabase
+    .from("teams")
+    .select("id, name, colour, team_xp")
+    .eq("id", teamId)
+    .single();
+
+  if (error) {
+    console.error("Error fetching team info:", error);
+    throw new Error(`Failed to fetch team info: ${error.message}`);
+  }
+
+  return data;
+};
+
+export const getAllTeamsWithXp = async (): Promise<TeamInfo[]> => {
+  const { data, error } = await supabase
+    .from("teams")
+    .select("id, name, colour, team_xp")
+    .order("team_xp", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching teams with XP:", error);
+    throw new Error(`Failed to fetch teams with XP: ${error.message}`);
   }
 
   return data || [];

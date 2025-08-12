@@ -243,7 +243,7 @@ export default function ActivityDetailScreen() {
 
         Alert.alert(
           "Activity Completed!",
-          `Congratulations! You earned ${result.xpGained} XP!`,
+          `Congratulations! You earned ${result.xpGained} XP and your team earned ${result.teamXpGained} XP!`,
           [{ text: "Continue", onPress: () => router.back() }]
         );
       }

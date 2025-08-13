@@ -62,6 +62,9 @@ export default function SocialScreen() {
     return (
       <BaseLayout>
         <ThemedView className="flex-1 justify-center items-center p-6">
+          <View className="w-20 h-20 bg-huntly-mint rounded-full items-center justify-center mb-6">
+            <ThemedText className="text-3xl">👥</ThemedText>
+          </View>
           <ThemedText
             type="title"
             className="text-huntly-forest text-center mb-4"
@@ -85,21 +88,23 @@ export default function SocialScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Header */}
+        {/* Header Section */}
         <View className="p-6 pb-4">
-          <View className="flex-row items-center mb-4">
+          <View className="flex-row items-center mb-6">
             {teamInfo && (
               <>
-                <Image
-                  source={
-                    getTeamImageSource(teamInfo.name) ||
-                    require("@/assets/images/fox.png")
-                  }
-                  className="w-12 h-12 mr-3"
-                  resizeMode="contain"
-                />
+                <View className="w-16 h-16 mr-4">
+                  <Image
+                    source={
+                      getTeamImageSource(teamInfo.name) ||
+                      require("@/assets/images/fox.png")
+                    }
+                    className="w-full h-full"
+                    resizeMode="contain"
+                  />
+                </View>
                 <View className="flex-1">
-                  <ThemedText type="title" className="text-huntly-forest">
+                  <ThemedText type="title" className="text-huntly-forest mb-1">
                     Team Activities
                   </ThemedText>
                   <ThemedText type="subtitle" className="text-huntly-charcoal">
@@ -110,35 +115,92 @@ export default function SocialScreen() {
             )}
           </View>
 
-          {/* Team XP Display */}
+          {/* Team XP Display Card */}
           {teamInfo && (
-            <View className="bg-huntly-mint rounded-xl p-4 mb-4">
-              <ThemedText type="subtitle" className="text-huntly-forest mb-2">
-                Team XP: {teamInfo.team_xp}
-              </ThemedText>
+            <View className="bg-gradient-to-br from-huntly-mint to-huntly-sage rounded-2xl p-6 mb-6 shadow-soft">
+              <View className="flex-row items-center justify-between mb-3">
+                <ThemedText type="subtitle" className="text-huntly-forest">
+                  Team XP
+                </ThemedText>
+                <View className="bg-white/20 rounded-full px-3 py-1">
+                  <ThemedText
+                    type="defaultSemiBold"
+                    className="text-huntly-forest"
+                  >
+                    {teamInfo.team_xp}
+                  </ThemedText>
+                </View>
+              </View>
               <ThemedText type="caption" className="text-huntly-charcoal">
                 Complete activities to earn XP for your team!
               </ThemedText>
+
+              {/* XP Progress Bar */}
+              <View className="mt-4 bg-white/20 rounded-full h-2">
+                <View
+                  className="bg-huntly-leaf h-2 rounded-full shadow-sm"
+                  style={{
+                    width: `${Math.min((teamInfo.team_xp / 100) * 100, 100)}%`,
+                  }}
+                />
+              </View>
             </View>
           )}
 
-          {/* Team Rankings */}
+          {/* Team Rankings Card */}
           {allTeams.length > 0 && (
-            <View className="bg-white rounded-xl p-4 mb-4 border border-huntly-mint/30">
-              <ThemedText type="subtitle" className="text-huntly-forest mb-3">
-                Team Rankings
-              </ThemedText>
+            <View className="bg-white rounded-2xl p-6 mb-6 shadow-soft border border-huntly-mint/20">
+              <View className="flex-row items-center mb-4">
+                <ThemedText type="subtitle" className="text-huntly-forest mr-2">
+                  Team Rankings
+                </ThemedText>
+                <View className="bg-huntly-leaf rounded-full px-2 py-1">
+                  <ThemedText type="caption" className="text-white font-bold">
+                    {allTeams.length} Teams
+                  </ThemedText>
+                </View>
+              </View>
+
               {allTeams.map((team, index) => (
                 <View
                   key={team.id}
-                  className={`flex-row items-center justify-between py-2 ${
+                  className={`flex-row items-center justify-between py-3 ${
                     index < allTeams.length - 1
                       ? "border-b border-huntly-mint/20"
                       : ""
                   }`}
                 >
-                  <View className="flex-row items-center">
-                    <View className="w-6 h-6 mr-3">
+                  <View className="flex-row items-center flex-1">
+                    {/* Position Badge */}
+                    <View
+                      className={`w-8 h-8 rounded-full items-center justify-center mr-3 ${
+                        index === 0
+                          ? "bg-yellow-400"
+                          : index === 1
+                          ? "bg-gray-300"
+                          : index === 2
+                          ? "bg-amber-600"
+                          : "bg-huntly-mint"
+                      }`}
+                    >
+                      <ThemedText
+                        type="caption"
+                        className={`font-bold ${
+                          index === 0
+                            ? "text-white"
+                            : index === 1
+                            ? "text-gray-600"
+                            : index === 2
+                            ? "text-white"
+                            : "text-huntly-forest"
+                        }`}
+                      >
+                        {index + 1}
+                      </ThemedText>
+                    </View>
+
+                    {/* Team Icon */}
+                    <View className="w-8 h-8 mr-3">
                       <Image
                         source={
                           getTeamImageSource(team.name) ||
@@ -148,9 +210,11 @@ export default function SocialScreen() {
                         resizeMode="contain"
                       />
                     </View>
+
+                    {/* Team Name */}
                     <ThemedText
                       type="defaultSemiBold"
-                      className={`${
+                      className={`flex-1 ${
                         team.id === currentPlayer.team
                           ? "text-huntly-leaf"
                           : "text-huntly-forest"
@@ -159,15 +223,17 @@ export default function SocialScreen() {
                       {team.name}
                     </ThemedText>
                   </View>
+
+                  {/* XP Display */}
                   <View className="flex-row items-center">
                     <ThemedText
                       type="body"
-                      className="text-huntly-charcoal mr-2"
+                      className="text-huntly-charcoal mr-2 font-semibold"
                     >
                       {team.team_xp} XP
                     </ThemedText>
                     {index === 0 && (
-                      <View className="w-4 h-4 bg-yellow-400 rounded-full items-center justify-center">
+                      <View className="w-5 h-5 bg-yellow-400 rounded-full items-center justify-center">
                         <ThemedText className="text-xs font-bold">
                           🥇
                         </ThemedText>
@@ -182,14 +248,33 @@ export default function SocialScreen() {
 
         {/* Team Activity Log */}
         <View className="px-6 pb-6">
+          {/* Section Header */}
+          <View className="mb-4">
+            <ThemedText type="subtitle" className="text-huntly-forest">
+              Recent Activities
+            </ThemedText>
+          </View>
+
           {error ? (
-            <View className="bg-red-50 rounded-xl p-4 border border-red-200">
-              <ThemedText type="body" className="text-red-600 text-center">
+            <View className="bg-red-50 rounded-2xl p-6 border border-red-200 shadow-soft">
+              <View className="flex-row items-center mb-2">
+                <View className="w-6 h-6 bg-red-500 rounded-full items-center justify-center mr-3">
+                  <ThemedText className="text-white text-sm font-bold">
+                    !
+                  </ThemedText>
+                </View>
+                <ThemedText type="body" className="text-red-600 font-semibold">
+                  Error Loading Activities
+                </ThemedText>
+              </View>
+              <ThemedText type="body" className="text-red-600">
                 {error}
               </ThemedText>
             </View>
           ) : (
-            <TeamActivityLog activities={teamActivities} loading={loading} />
+            <View className="mt-2">
+              <TeamActivityLog activities={teamActivities} loading={loading} />
+            </View>
           )}
         </View>
       </ScrollView>

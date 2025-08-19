@@ -1,7 +1,15 @@
-import React from "react";
-import { View, ScrollView } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, ScrollView, TouchableOpacity } from "react-native";
 import { ThemedText } from "./ThemedText";
 import { TeamActivityLogEntry } from "@/services/teamActivityService";
+import { ReactionButton } from "./ReactionButton";
+import {
+  getReactionsForActivity,
+  toggleReaction,
+  ReactionCount,
+  ReactionType,
+} from "@/services/reactionService";
+import { usePlayer } from "@/contexts/PlayerContext";
 
 interface TeamActivityLogProps {
   activities: TeamActivityLogEntry[];
@@ -12,6 +20,82 @@ export const TeamActivityLog: React.FC<TeamActivityLogProps> = ({
   activities,
   loading = false,
 }) => {
+  const { currentPlayer } = usePlayer();
+  const [reactions, setReactions] = useState<Map<number, ReactionCount[]>>(
+    new Map()
+  );
+  const [loadingReactions, setLoadingReactions] = useState<Set<number>>(
+    new Set()
+  );
+
+  // Load reactions for all activities
+  useEffect(() => {
+    if (!currentPlayer?.id || activities.length === 0) return;
+
+    const loadReactions = async () => {
+      const reactionsMap = new Map<number, ReactionCount[]>();
+
+      for (const activity of activities) {
+        try {
+          const activityReactions = await getReactionsForActivity(
+            activity.id,
+            currentPlayer.id
+          );
+          reactionsMap.set(activity.id, activityReactions);
+        } catch (error) {
+          console.error(
+            `Error loading reactions for activity ${activity.id}:`,
+            error
+          );
+          // Initialize with empty reactions if there's an error
+          reactionsMap.set(activity.id, []);
+        }
+      }
+
+      setReactions(reactionsMap);
+    };
+
+    loadReactions();
+  }, [activities, currentPlayer?.id]);
+
+  const handleReactionPress = async (
+    activityId: number,
+    reactionType: ReactionType
+  ) => {
+    if (!currentPlayer?.id) return;
+
+    setLoadingReactions((prev) => new Set(prev).add(activityId));
+
+    try {
+      await toggleReaction(activityId, currentPlayer.id, reactionType);
+
+      // Update local state
+      const currentReactions = reactions.get(activityId) || [];
+      const updatedReactions = currentReactions.map((reaction) => {
+        if (reaction.reaction_type === reactionType) {
+          const newHasReacted = !reaction.has_reacted;
+          return {
+            ...reaction,
+            has_reacted: newHasReacted,
+            count: newHasReacted
+              ? reaction.count + 1
+              : Math.max(0, reaction.count - 1),
+          };
+        }
+        return reaction;
+      });
+
+      setReactions((prev) => new Map(prev).set(activityId, updatedReactions));
+    } catch (error) {
+      console.error("Error toggling reaction:", error);
+    } finally {
+      setLoadingReactions((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(activityId);
+        return newSet;
+      });
+    }
+  };
   const formatTimeAgo = (dateString: string | null) => {
     if (!dateString) return "";
 
@@ -193,6 +277,27 @@ export const TeamActivityLog: React.FC<TeamActivityLogProps> = ({
                         </ThemedText>
                       </View>
                     </View>
+                  </View>
+                </View>
+
+                {/* Reactions Section */}
+                <View className="mt-3">
+                  <View className="flex-row flex-wrap">
+                    {(reactions.get(activity.id) || []).map((reaction) => (
+                      <ReactionButton
+                        key={reaction.reaction_type}
+                        reactionType={reaction.reaction_type}
+                        count={reaction.count}
+                        hasReacted={reaction.has_reacted}
+                        onPress={() =>
+                          handleReactionPress(
+                            activity.id,
+                            reaction.reaction_type
+                          )
+                        }
+                        disabled={loadingReactions.has(activity.id)}
+                      />
+                    ))}
                   </View>
                 </View>
 

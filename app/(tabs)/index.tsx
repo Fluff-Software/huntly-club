@@ -10,19 +10,29 @@ import { getPackCompletionPercentage } from "@/services/activityProgressService"
 import { usePlayer } from "@/contexts/PlayerContext";
 import { XPBar } from "@/components/XPBar";
 import { PackProgressBar } from "@/components/PackProgressBar";
+import {
+  getUserBadges,
+  UserBadge,
+  getBadgeDisplay,
+} from "@/services/badgeService";
+import { BadgeDetailModal } from "@/components/BadgeDetailModal";
 
 export default function PacksScreen() {
   const router = useRouter();
   const { currentPlayer, refreshProfiles } = usePlayer();
   const [packs, setPacks] = useState<Pack[]>([]);
   const [packProgress, setPackProgress] = useState<Record<number, number>>({});
+  const [userBadges, setUserBadges] = useState<UserBadge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedBadge, setSelectedBadge] = useState<UserBadge | null>(null);
+  const [showBadgeModal, setShowBadgeModal] = useState(false);
+  const [currentBadgeIndex, setCurrentBadgeIndex] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
 
-    const fetchPacks = async () => {
+    const fetchData = async () => {
       try {
         const packsData = await getPacks();
         if (isMounted) {
@@ -61,12 +71,39 @@ export default function PacksScreen() {
       }
     };
 
-    fetchPacks();
+    fetchData();
 
     return () => {
       isMounted = false;
     };
   }, [currentPlayer?.id]);
+
+  // Fetch user badges
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchUserBadges = async () => {
+      if (currentPlayer?.user_id && currentPlayer?.id) {
+        try {
+          const badges = await getUserBadges(
+            currentPlayer.user_id,
+            currentPlayer.id
+          );
+          if (isMounted) {
+            setUserBadges(badges);
+          }
+        } catch (err) {
+          console.error("Failed to fetch user badges:", err);
+        }
+      }
+    };
+
+    fetchUserBadges();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentPlayer?.user_id, currentPlayer?.id]);
 
   // Refresh profiles and pack progress when screen comes into focus
   useFocusEffect(
@@ -97,6 +134,21 @@ export default function PacksScreen() {
           if (isMounted) {
             setPackProgress(progressData);
           }
+
+          // Refresh user badges
+          if (currentPlayer?.user_id && currentPlayer?.id) {
+            try {
+              const badges = await getUserBadges(
+                currentPlayer.user_id,
+                currentPlayer.id
+              );
+              if (isMounted) {
+                setUserBadges(badges);
+              }
+            } catch (err) {
+              console.error("Failed to fetch user badges:", err);
+            }
+          }
         }
       };
 
@@ -105,11 +157,45 @@ export default function PacksScreen() {
       return () => {
         isMounted = false;
       };
-    }, [refreshProfiles, currentPlayer?.id, packs])
+    }, [refreshProfiles, currentPlayer?.id, currentPlayer?.user_id, packs])
   );
 
   const handlePackPress = (packId: number) => {
     router.push(`/(tabs)/pack/${packId}`);
+  };
+
+  const handleBadgePress = (badge: UserBadge) => {
+    setSelectedBadge(badge);
+    setShowBadgeModal(true);
+  };
+
+  const handleNextBadge = () => {
+    if (currentBadgeIndex < userBadges.length - 1) {
+      setCurrentBadgeIndex(currentBadgeIndex + 1);
+      setSelectedBadge(userBadges[currentBadgeIndex + 1]);
+    }
+  };
+
+  const handlePrevBadge = () => {
+    if (currentBadgeIndex > 0) {
+      setCurrentBadgeIndex(currentBadgeIndex - 1);
+      setSelectedBadge(userBadges[currentBadgeIndex - 1]);
+    }
+  };
+
+  const closeBadgeModal = () => {
+    setShowBadgeModal(false);
+    setSelectedBadge(null);
+    setCurrentBadgeIndex(0);
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
   };
 
   return (
@@ -234,26 +320,96 @@ export default function PacksScreen() {
             MY BADGES
           </ThemedText>
 
-          <View className="bg-white rounded-2xl p-4 shadow-soft">
-            <View className="flex-row items-center">
-              <View className="w-16 h-16 bg-huntly-sage rounded-full items-center justify-center mr-4">
-                <ThemedText className="text-2xl">🐻</ThemedText>
+          {userBadges.length === 0 ? (
+            <View className="bg-white rounded-2xl p-6 items-center shadow-soft">
+              <View className="w-16 h-16 bg-huntly-mint/30 rounded-full items-center justify-center mb-4">
+                <ThemedText className="text-2xl">🏆</ThemedText>
               </View>
-              <View className="flex-1">
-                <ThemedText
-                  type="defaultSemiBold"
-                  className="text-huntly-forest"
-                >
-                  Trail Tracker
-                </ThemedText>
-                <ThemedText type="caption" className="text-huntly-brown">
-                  Earned 1 April 2024
-                </ThemedText>
-              </View>
+              <ThemedText
+                type="subtitle"
+                className="text-huntly-forest text-center mb-2"
+              >
+                No badges yet
+              </ThemedText>
+              <ThemedText
+                type="body"
+                className="text-huntly-charcoal text-center"
+              >
+                Complete activities to earn your first badge!
+              </ThemedText>
             </View>
-          </View>
+          ) : (
+            <View>
+              {userBadges.slice(0, 3).map((userBadge, index) => {
+                const badgeDisplay = getBadgeDisplay(userBadge.badge);
+                return (
+                  <Pressable
+                    key={userBadge.id}
+                    className="bg-white rounded-2xl p-4 shadow-soft mb-4"
+                    onPress={() => handleBadgePress(userBadge)}
+                  >
+                    <View className="flex-row items-center">
+                      <View className="w-16 h-16 bg-huntly-sage rounded-full items-center justify-center mr-4">
+                        {badgeDisplay.type === "image" ? (
+                          <ThemedText className="text-2xl">🏆</ThemedText>
+                        ) : (
+                          <ThemedText className="text-2xl">
+                            {badgeDisplay.content}
+                          </ThemedText>
+                        )}
+                      </View>
+                      <View className="flex-1">
+                        <ThemedText
+                          type="defaultSemiBold"
+                          className="text-huntly-forest"
+                        >
+                          {userBadge.badge.name}
+                        </ThemedText>
+                        <ThemedText
+                          type="caption"
+                          className="text-huntly-brown"
+                        >
+                          Earned {formatDate(userBadge.earned_at)}
+                        </ThemedText>
+                      </View>
+                      {/* Navigation Arrow */}
+                      {userBadges.length > 1 && (
+                        <View className="ml-2">
+                          <ThemedText className="text-huntly-charcoal text-lg">
+                            →
+                          </ThemedText>
+                        </View>
+                      )}
+                    </View>
+                  </Pressable>
+                );
+              })}
+              {userBadges.length > 3 && (
+                <View className="bg-huntly-mint/20 rounded-2xl p-4 items-center">
+                  <ThemedText
+                    type="body"
+                    className="text-huntly-forest text-center"
+                  >
+                    +{userBadges.length - 3} more badges earned!
+                  </ThemedText>
+                </View>
+              )}
+            </View>
+          )}
         </View>
       </ScrollView>
+
+      {/* Badge Detail Modal */}
+      <BadgeDetailModal
+        visible={showBadgeModal}
+        badge={selectedBadge?.badge || null}
+        earnedAt={selectedBadge?.earned_at}
+        onClose={closeBadgeModal}
+        allBadges={userBadges}
+        currentIndex={currentBadgeIndex}
+        onNext={handleNextBadge}
+        onPrev={handlePrevBadge}
+      />
     </BaseLayout>
   );
 }

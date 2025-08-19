@@ -115,18 +115,31 @@ export const getTeamActivityLogsByStatus = async (
 };
 
 export const getTeamInfo = async (teamId: number): Promise<TeamInfo | null> => {
-  const { data, error } = await supabase
-    .from("teams")
-    .select("id, name, colour, team_xp")
-    .eq("id", teamId)
-    .single();
+  try {
+    console.log("Fetching team info for team ID:", teamId);
 
-  if (error) {
-    console.error("Error fetching team info:", error);
-    throw new Error(`Failed to fetch team info: ${error.message}`);
+    const { data, error } = await supabase
+      .from("teams")
+      .select("id, name, colour, team_xp")
+      .eq("id", teamId)
+      .single();
+
+    if (error) {
+      console.error("Error fetching team info:", error);
+      if (error.code === "PGRST116") {
+        // No rows returned
+        console.log("No team found with ID:", teamId);
+        return null;
+      }
+      throw new Error(`Failed to fetch team info: ${error.message}`);
+    }
+
+    console.log("Team info fetched successfully:", data);
+    return data;
+  } catch (err) {
+    console.error("Exception in getTeamInfo:", err);
+    throw err;
   }
-
-  return data;
 };
 
 export const getAllTeamsWithXp = async (): Promise<TeamInfo[]> => {

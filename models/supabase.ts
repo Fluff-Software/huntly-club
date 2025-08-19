@@ -79,6 +79,45 @@ export type Database = {
         }
         Relationships: []
       }
+      badges: {
+        Row: {
+          category: string
+          created_at: string
+          description: string
+          id: number
+          image_url: string
+          local_image_path: string | null
+          name: string
+          requirement_type: string
+          requirement_value: number
+          uses_custom_image: boolean
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description: string
+          id?: number
+          image_url: string
+          local_image_path?: string | null
+          name: string
+          requirement_type: string
+          requirement_value: number
+          uses_custom_image?: boolean
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string
+          id?: number
+          image_url?: string
+          local_image_path?: string | null
+          name?: string
+          requirement_type?: string
+          requirement_value?: number
+          uses_custom_image?: boolean
+        }
+        Relationships: []
+      }
       pack_activities: {
         Row: {
           activity_id: number
@@ -251,6 +290,48 @@ export type Database = {
           },
           {
             foreignKeyName: "user_activity_progress_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_badges: {
+        Row: {
+          badge_id: number
+          created_at: string
+          earned_at: string
+          id: number
+          profile_id: number | null
+          user_id: string
+        }
+        Insert: {
+          badge_id: number
+          created_at?: string
+          earned_at?: string
+          id?: number
+          profile_id?: number | null
+          user_id: string
+        }
+        Update: {
+          badge_id?: number
+          created_at?: string
+          earned_at?: string
+          id?: number
+          profile_id?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_badges_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"

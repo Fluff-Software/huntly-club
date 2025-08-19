@@ -1,10 +1,16 @@
 import { supabase } from "./supabase";
 import { Activity } from "./packService";
+import { checkAndAwardBadges } from "./badgeService";
 
 export const completeActivity = async (
   activityId: number,
   profileId: number
-): Promise<{ success: boolean; xpGained: number; teamXpGained: number }> => {
+): Promise<{
+  success: boolean;
+  xpGained: number;
+  teamXpGained: number;
+  newBadges: any[];
+}> => {
   try {
     // Get the activity to know how much XP to award
     const { data: activity, error: activityError } = await supabase
@@ -20,7 +26,7 @@ export const completeActivity = async (
     // Get the profile to know which team they belong to
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("xp, team")
+      .select("xp, team, user_id, team_contribution")
       .eq("id", profileId)
       .single();
 
@@ -30,11 +36,15 @@ export const completeActivity = async (
 
     const newXp = (profile.xp || 0) + activity.xp;
     const teamXpGained = Math.floor(activity.xp * 0.5); // Team gets 50% of individual XP
+    const newTeamContribution = (profile.team_contribution || 0) + teamXpGained;
 
-    // Update the profile's XP
+    // Update the profile's XP and team contribution
     const { error: updateProfileError } = await supabase
       .from("profiles")
-      .update({ xp: newXp })
+      .update({
+        xp: newXp,
+        team_contribution: newTeamContribution,
+      })
       .eq("id", profileId);
 
     if (updateProfileError) {
@@ -52,10 +62,24 @@ export const completeActivity = async (
       // Don't fail the entire operation if team XP update fails
     }
 
+    // Check for new badges
+    const newBadges = await checkAndAwardBadges(
+      profile.user_id,
+      profileId,
+      activity.xp,
+      teamXpGained
+    );
+
+    console.log(`Badge check result for profile ${profileId}:`, {
+      newBadges: newBadges.length,
+      badges: newBadges.map((b) => b.name),
+    });
+
     return {
       success: true,
       xpGained: activity.xp,
       teamXpGained: teamXpGained,
+      newBadges: newBadges,
     };
   } catch (error) {
     console.error("Error completing activity:", error);

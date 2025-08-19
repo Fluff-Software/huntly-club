@@ -19,6 +19,8 @@ import {
 } from "@/services/activityProgressService";
 import { uploadUserActivityPhoto } from "@/services/storageService";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { BadgePopupModal } from "@/components/BadgePopupModal";
+import { Badge } from "@/services/badgeService";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
 
@@ -33,6 +35,8 @@ export default function ActivityDetailScreen() {
   const [error, setError] = useState<string | null>(null);
   const [uploadedPhoto, setUploadedPhoto] = useState<string | null>(null);
   const [completing, setCompleting] = useState(false);
+  const [showBadgePopup, setShowBadgePopup] = useState(false);
+  const [earnedBadge, setEarnedBadge] = useState<Badge | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -221,7 +225,7 @@ export default function ActivityDetailScreen() {
       const progressResult = await completeActivityProgress(
         currentPlayer.id,
         activity.id,
-        photoUrl
+        photoUrl || undefined
       );
       console.log("Activity progress updated:", progressResult);
 
@@ -241,11 +245,17 @@ export default function ActivityDetailScreen() {
         // Refresh profiles to update XP in the UI
         await refreshProfiles();
 
-        Alert.alert(
-          "Activity Completed!",
-          `Congratulations! You earned ${result.xpGained} XP and your team earned ${result.teamXpGained} XP!`,
-          [{ text: "Continue", onPress: () => router.back() }]
-        );
+        // Check if any badges were earned
+        if (result.newBadges && result.newBadges.length > 0) {
+          setEarnedBadge(result.newBadges[0]); // Show the first badge earned
+          setShowBadgePopup(true);
+        } else {
+          Alert.alert(
+            "Activity Completed!",
+            `Congratulations! You earned ${result.xpGained} XP and your team earned ${result.teamXpGained} XP!`,
+            [{ text: "Continue", onPress: () => router.back() }]
+          );
+        }
       }
     } catch (err) {
       console.error("Failed to complete activity:", err);
@@ -464,6 +474,21 @@ export default function ActivityDetailScreen() {
         {/* Bottom Spacing */}
         <View className="h-6" />
       </ScrollView>
+
+      <BadgePopupModal
+        visible={showBadgePopup}
+        badge={earnedBadge}
+        onClose={() => {
+          setShowBadgePopup(false);
+          setEarnedBadge(null);
+          router.back();
+        }}
+        onViewAllBadges={() => {
+          setShowBadgePopup(false);
+          setEarnedBadge(null);
+          router.push("/");
+        }}
+      />
     </BaseLayout>
   );
 }

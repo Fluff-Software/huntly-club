@@ -186,7 +186,7 @@ export const TeamActivityLog: React.FC<TeamActivityLogProps> = ({
 
   // Calculate dynamic height based on number of activities
   const minHeight = 120; // Minimum height for 1-2 activities
-  const maxHeight = 400; // Maximum height for scrolling
+  const maxHeight = 600; // Increased maximum height for scrolling
   const estimatedActivityHeight = 80; // Approximate height per activity
   const dynamicHeight = Math.min(
     Math.max(minHeight, activities.length * estimatedActivityHeight + 32), // +32 for padding
@@ -303,7 +303,7 @@ export const TeamActivityLog: React.FC<TeamActivityLogProps> = ({
 
                 {/* Separator */}
                 {index < activities.length - 1 && (
-                  <View className="h-px bg-gradient-to-r from-transparent via-huntly-mint/30 to-transparent my-2" />
+                  <View className="h-px bg-gray-300 my-3" />
                 )}
               </View>
             );

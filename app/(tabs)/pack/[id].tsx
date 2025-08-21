@@ -9,6 +9,7 @@ import {
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { BaseLayout } from "@/components/layout/BaseLayout";
+import { CategoryTags } from "@/components/CategoryTags";
 import {
   getPackById,
   Pack,
@@ -225,10 +226,20 @@ export default function PackDetailsScreen() {
                           {/* Description */}
                           <ThemedText
                             type="body"
-                            className="text-huntly-charcoal mb-4 leading-6"
+                            className="text-huntly-charcoal mb-3 leading-6"
                           >
                             {activity.description}
                           </ThemedText>
+
+                          {/* Category Tags */}
+                          {activity.categories &&
+                            activity.categories.length > 0 && (
+                              <CategoryTags
+                                categories={activity.categories}
+                                size="small"
+                                maxDisplay={3}
+                              />
+                            )}
                         </View>
                       </View>
                     </View>

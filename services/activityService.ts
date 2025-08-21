@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import { Activity } from "./packService";
+import { Activity } from "@/types/activity";
 import { checkAndAwardBadges } from "./badgeService";
 
 export const completeActivity = async (
@@ -92,7 +92,7 @@ export const getActivityById = async (
 ): Promise<Activity | null> => {
   const { data, error } = await supabase
     .from("activities")
-    .select("id, name, title, description, image, xp")
+    .select("id, name, title, description, image, xp, categories")
     .eq("id", activityId)
     .single();
 

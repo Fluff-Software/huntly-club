@@ -5,6 +5,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { BaseLayout } from "@/components/layout/BaseLayout";
 import { Button } from "@/components/ui/Button";
+import { CategoryTags } from "@/components/CategoryTags";
 import {
   getActivityById,
   Activity,
@@ -307,6 +308,17 @@ export default function ActivityDetailScreen() {
               +{activity.xp} XP
             </ThemedText>
           </View>
+
+          {/* Category Tags */}
+          {activity.categories && activity.categories.length > 0 && (
+            <View className="mb-4">
+              <CategoryTags
+                categories={activity.categories}
+                size="medium"
+                maxDisplay={5}
+              />
+            </View>
+          )}
         </View>
 
         {/* Activity Image */}

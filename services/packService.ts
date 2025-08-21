@@ -1,8 +1,8 @@
 import { supabase } from "./supabase";
 import { Tables } from "@/models/supabase";
+import { Activity } from "@/types/activity";
 
 // Use Supabase generated types
-export type Activity = Tables<"activities">;
 export type Pack = Tables<"packs"> & {
   activities: Activity[];
 };
@@ -22,6 +22,7 @@ function transformActivity(activityData: any): Activity {
     photo_required: activityData.photo_required,
     image: activityData.image,
     xp: activityData.xp,
+    categories: activityData.categories || [],
     created_at: activityData.created_at,
   };
 }
@@ -68,6 +69,7 @@ export const getPacks = async (): Promise<Pack[]> => {
             photo_required,
             image,
             xp,
+            categories,
             created_at
           )
         )

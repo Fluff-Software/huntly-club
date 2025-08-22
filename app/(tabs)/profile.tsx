@@ -36,6 +36,7 @@ export default function ProfileScreen() {
   const [editNickname, setEditNickname] = useState("");
   const [editColor, setEditColor] = useState<string>("#FF6B35");
   const [editTeam, setEditTeam] = useState<number | null>(null);
+  const [showAddExplorer, setShowAddExplorer] = useState(false);
   const { user, signOut } = useAuth();
   const { currentPlayer, profiles, setCurrentPlayer, refreshProfiles } =
     usePlayer();
@@ -115,6 +116,7 @@ export default function ProfileScreen() {
       });
       await refreshProfiles();
       setName("");
+      setShowAddExplorer(false); // Close the dropdown
       Alert.alert(
         "Explorer Created! 🎉",
         "Your new explorer has been created and is now active! You can now access all the adventure features.",
@@ -128,7 +130,8 @@ export default function ProfileScreen() {
         ]
       );
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to create explorer";
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to create explorer";
       Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
@@ -179,7 +182,8 @@ export default function ProfileScreen() {
       setIsEditing(false);
       Alert.alert("Success", "Explorer updated successfully!");
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to update explorer";
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to update explorer";
       Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
@@ -346,7 +350,9 @@ export default function ProfileScreen() {
                                   ? "border-4 border-huntly-leaf"
                                   : ""
                               }`}
-                              style={{ backgroundColor: team.colour || "#cccccc" }}
+                              style={{
+                                backgroundColor: team.colour || "#cccccc",
+                              }}
                             />
                           )}
                         </Pressable>
@@ -474,102 +480,163 @@ export default function ProfileScreen() {
           </View>
         ) : null}
 
-        {/* Add New Player Section */}
-        <View className="bg-white rounded-2xl p-6 shadow-soft mb-8">
-          <ThemedText type="subtitle" className="text-huntly-forest mb-4">
-            Add New Explorer
-          </ThemedText>
-
-          <TextInput
-            className="h-14 mb-6 border-2 border-huntly-mint rounded-xl px-4 bg-huntly-cream text-huntly-forest text-base"
-            placeholder="Explorer Name"
-            placeholderTextColor="#8B4513"
-            value={name}
-            onChangeText={setName}
-            autoCapitalize="words"
-          />
-
-          {/* Color Selection */}
-          <ThemedText
-            type="defaultSemiBold"
-            className="text-huntly-forest mb-4"
+        {/* Add New Explorer Dropdown */}
+        <View className="bg-white rounded-2xl shadow-soft mb-8 overflow-hidden">
+          {/* Dropdown Header */}
+          <Pressable
+            onPress={() => setShowAddExplorer(!showAddExplorer)}
+            className="flex-row items-center justify-between p-6"
           >
-            Choose Your Color
-          </ThemedText>
-          <View className="mb-6">
-            <ColorPicker
-              selectedColor={selectedColor}
-              onColorSelect={setSelectedColor}
-              size="medium"
-            />
-          </View>
-
-          {/* Team Selection */}
-          <ThemedText
-            type="defaultSemiBold"
-            className="text-huntly-forest mb-4"
-          >
-            Choose Your Team
-          </ThemedText>
-          <View className="mb-6">
-            {teams.length === 0 ? (
-              <View className="bg-huntly-mint rounded-xl p-4 items-center">
-                <ThemedText
-                  type="body"
-                  className="text-huntly-forest text-center"
-                >
-                  No teams available yet
+            <View className="flex-row items-center">
+              <View className="w-10 h-10 bg-huntly-mint rounded-full items-center justify-center mr-3">
+                <ThemedText className="text-huntly-forest text-lg">
+                  ➕
                 </ThemedText>
               </View>
-            ) : (
-              <View className="flex-row justify-center">
-                {teams.map((team) => {
-                  const teamImage = getTeamImageSource(team.name);
-                  return (
-                    <Pressable
-                      key={team.id}
-                      onPress={() => setSelectedTeam(team.id)}
-                    >
-                      {teamImage ? (
-                        <View
-                          className={`w-32 h-32 ${
-                            selectedTeam === team.id
-                              ? "border-4 border-huntly-leaf rounded-xl"
-                              : ""
-                          }`}
-                        >
-                          <Image
-                            source={teamImage}
-                            className="w-full h-full"
-                            resizeMode="contain"
-                          />
-                        </View>
-                      ) : (
-                        <View
-                          className={`w-32 h-32 rounded-full ${
-                            selectedTeam === team.id
-                              ? "border-4 border-huntly-leaf"
-                              : ""
-                          }`}
-                          style={{ backgroundColor: team.colour }}
-                        />
-                      )}
-                    </Pressable>
-                  );
-                })}
+              <View>
+                <ThemedText
+                  type="defaultSemiBold"
+                  className="text-huntly-forest"
+                >
+                  Add New Explorer
+                </ThemedText>
+                <ThemedText type="caption" className="text-huntly-charcoal">
+                  Create a new explorer profile
+                </ThemedText>
               </View>
-            )}
+            </View>
+            <View className="w-6 h-6 items-center justify-center">
+              <ThemedText className="text-huntly-forest text-lg">
+                {showAddExplorer ? "−" : "+"}
+              </ThemedText>
+            </View>
+          </Pressable>
+
+          {/* Dropdown Content */}
+          {showAddExplorer && (
+            <View className="px-6 pb-6 border-t border-huntly-mint/20">
+              <TextInput
+                className="h-14 mb-6 border-2 border-huntly-mint rounded-xl px-4 bg-huntly-cream text-huntly-forest text-base"
+                placeholder="Explorer Name"
+                placeholderTextColor="#8B4513"
+                value={name}
+                onChangeText={setName}
+                autoCapitalize="words"
+              />
+
+              {/* Color Selection */}
+              <ThemedText
+                type="defaultSemiBold"
+                className="text-huntly-forest mb-4"
+              >
+                Choose Your Color
+              </ThemedText>
+              <View className="mb-6">
+                <ColorPicker
+                  selectedColor={selectedColor}
+                  onColorSelect={setSelectedColor}
+                  size="medium"
+                />
+              </View>
+
+              {/* Team Selection */}
+              <ThemedText
+                type="defaultSemiBold"
+                className="text-huntly-forest mb-4"
+              >
+                Choose Your Team
+              </ThemedText>
+              <View className="mb-6">
+                {teams.length === 0 ? (
+                  <View className="bg-huntly-mint rounded-xl p-4 items-center">
+                    <ThemedText
+                      type="body"
+                      className="text-huntly-forest text-center"
+                    >
+                      No teams available yet
+                    </ThemedText>
+                  </View>
+                ) : (
+                  <View className="flex-row justify-center">
+                    {teams.map((team) => {
+                      const teamImage = getTeamImageSource(team.name);
+                      return (
+                        <Pressable
+                          key={team.id}
+                          onPress={() => setSelectedTeam(team.id)}
+                        >
+                          {teamImage ? (
+                            <View
+                              className={`w-32 h-32 ${
+                                selectedTeam === team.id
+                                  ? "border-4 border-huntly-leaf rounded-xl"
+                                  : ""
+                              }`}
+                            >
+                              <Image
+                                source={teamImage}
+                                className="w-full h-full"
+                                resizeMode="contain"
+                              />
+                            </View>
+                          ) : (
+                            <View
+                              className={`w-32 h-32 rounded-full ${
+                                selectedTeam === team.id
+                                  ? "border-4 border-huntly-leaf"
+                                  : ""
+                              }`}
+                              style={{ backgroundColor: team.colour }}
+                            />
+                          )}
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
+
+              {/* Add Explorer Button */}
+              <Button
+                variant="primary"
+                size="large"
+                onPress={handleCreateProfile}
+                loading={loading}
+                className="mt-4"
+              >
+                Add Explorer
+              </Button>
+            </View>
+          )}
+        </View>
+
+        {/* Parents Dashboard Section */}
+        <View className="bg-white rounded-2xl p-6 shadow-soft mb-6">
+          <ThemedText type="subtitle" className="text-huntly-forest mb-4">
+            Parents Dashboard
+          </ThemedText>
+
+          <View className="flex-row items-center mb-4">
+            <View className="w-10 h-10 bg-huntly-mint rounded-full items-center justify-center mr-3">
+              <ThemedText className="text-huntly-forest text-lg">👨‍👩‍👧‍👦</ThemedText>
+            </View>
+            <View className="flex-1">
+              <ThemedText type="defaultSemiBold" className="text-huntly-forest">
+                Explorer Insights
+              </ThemedText>
+              <ThemedText type="caption" className="text-huntly-charcoal">
+                Track progress and achievements
+              </ThemedText>
+            </View>
           </View>
 
-          {/* Add Player Button */}
           <Button
-            variant="primary"
+            variant="secondary"
             size="large"
-            onPress={handleCreateProfile}
-            loading={loading}
-            className="mt-4"
+            onPress={() => router.push("/(tabs)/parents")}
+            className="mb-4"
           >
-            Add Explorer
+            View Dashboard
           </Button>
         </View>
 
@@ -593,11 +660,7 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          <Button
-            variant="danger"
-            size="large"
-            onPress={handleLogout}
-          >
+          <Button variant="danger" size="large" onPress={handleLogout}>
             Logout
           </Button>
         </View>

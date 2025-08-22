@@ -316,9 +316,18 @@ export default function PacksScreen() {
 
         {/* My Badges Section */}
         <View className="mb-6">
-          <ThemedText type="subtitle" className="text-huntly-forest mb-4">
-            MY BADGES
-          </ThemedText>
+          <View className="flex-row items-center justify-between mb-4">
+            <ThemedText type="subtitle" className="text-huntly-forest">
+              MY BADGES
+            </ThemedText>
+            {userBadges.length > 0 && (
+              <View className="bg-huntly-leaf px-3 py-1 rounded-full">
+                <ThemedText type="caption" className="text-white font-semibold">
+                  {userBadges.length} earned
+                </ThemedText>
+              </View>
+            )}
+          </View>
 
           {userBadges.length === 0 ? (
             <View className="bg-white rounded-2xl p-6 items-center shadow-soft">
@@ -340,7 +349,7 @@ export default function PacksScreen() {
             </View>
           ) : (
             <View>
-              {userBadges.slice(0, 3).map((userBadge, index) => {
+              {userBadges.map((userBadge, index) => {
                 const badgeDisplay = getBadgeDisplay(userBadge.badge);
                 return (
                   <Pressable
@@ -373,27 +382,15 @@ export default function PacksScreen() {
                         </ThemedText>
                       </View>
                       {/* Navigation Arrow */}
-                      {userBadges.length > 1 && (
-                        <View className="ml-2">
-                          <ThemedText className="text-huntly-charcoal text-lg">
-                            →
-                          </ThemedText>
-                        </View>
-                      )}
+                      <View className="ml-2">
+                        <ThemedText className="text-huntly-charcoal text-lg">
+                          →
+                        </ThemedText>
+                      </View>
                     </View>
                   </Pressable>
                 );
               })}
-              {userBadges.length > 3 && (
-                <View className="bg-huntly-mint/20 rounded-2xl p-4 items-center">
-                  <ThemedText
-                    type="body"
-                    className="text-huntly-forest text-center"
-                  >
-                    +{userBadges.length - 3} more badges earned!
-                  </ThemedText>
-                </View>
-              )}
             </View>
           )}
         </View>

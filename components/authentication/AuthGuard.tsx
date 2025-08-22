@@ -50,9 +50,11 @@ export function AuthGuard({ children }: AuthGuardProps) {
       user &&
       inTabsGroup &&
       !currentPlayer &&
-      segments[1] !== "profile"
+      segments[1] !== "profile" &&
+      segments[1] !== "parents"
     ) {
       // User is authenticated but no current player selected, redirect to profile tab
+      // Allow access to parents screen even without current player
       router.replace("/(tabs)/profile");
     }
   }, [user, loading, segments, checkingProfiles, currentPlayer]);

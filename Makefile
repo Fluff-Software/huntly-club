@@ -30,7 +30,7 @@ endef
 
 # ---- Targets ----
 
-.PHONY: dev supabase-up expo stop down logs status seed reset test ios android web lint format
+.PHONY: dev supabase-up expo stop down logs status seed reset restart test ios android web lint format
 
 help:
 	@echo "dev: start Supabase (if needed), wait for it, then start Expo"
@@ -41,7 +41,8 @@ help:
 	@echo "logs: tail Supabase logs"
 	@echo "status: check Supabase status"
 	@echo "seed: run your local seed script against Supabase (adjust as needed)"
-	@echo "reset: stop Supabase and reset it"
+	@echo "reset: reset Supabase database (drops all data and re-runs migrations)"
+	@echo "restart: restart Supabase containers (preserves data)"
 	@echo "test: run your tests"
 	@echo "lint: run your linting"
 	@echo "format: run your formatting"
@@ -91,8 +92,14 @@ seed:
 	# $(PKG) --filter @repo/scripts seed:local
 	echo "Add your seed command here."
 
-reset: down supabase-up
-	@true
+reset:
+	$(call need,supabase)
+	echo "▶ Resetting Supabase database (this will drop all data and re-run migrations)…"
+	supabase db reset
+	echo "✓ Supabase database reset complete."
+
+restart: down supabase-up
+	echo "✓ Supabase restarted."
 
 test:
 	# Adjust to your test runner

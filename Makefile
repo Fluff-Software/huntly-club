@@ -30,12 +30,11 @@ endef
 
 # ---- Targets ----
 
-.PHONY: dev supabase-up supabase-wait expo stop down logs status seed reset test ios android web lint format
+.PHONY: dev supabase-up expo stop down logs status seed reset test ios android web lint format
 
 help:
 	@echo "dev: start Supabase (if needed), wait for it, then start Expo"
 	@echo "supabase-up: start Supabase (if not already running)"
-	@echo "supabase-wait: wait for Supabase to be healthy"
 	@echo "expo: start Expo"
 	@echo "stop: stop Expo"
 	@echo "down: stop Supabase containers and volumes"
@@ -51,7 +50,7 @@ help:
 	@echo "web: start Expo in Web"
 
 
-dev: supabase-up supabase-wait expo
+dev: supabase-up expo
 
 supabase-up:
 	$(call need,supabase)
@@ -59,19 +58,6 @@ supabase-up:
 	# supabase start is idempotent; if running, it will no-op
 	supabase start >/dev/null
 	echo "✓ Supabase command issued."
-
-supabase-wait:
-	$(call need,curl)
-	echo "⏳ Waiting for Supabase API at $(SUPABASE_HEALTH_URL)…"
-	for i in {1..60}; do \
-		if curl -fsS "$(SUPABASE_HEALTH_URL)" >/dev/null; then \
-			echo "✓ Supabase is healthy."; \
-			exit 0; \
-		fi; \
-		sleep 1; \
-	done; \
-	echo "✖ Timed out waiting for Supabase on $(SUPABASE_HEALTH_URL)"; \
-	exit 1
 
 expo:
 	# Use your package manager to start Expo from the monorepo root,

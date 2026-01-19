@@ -52,6 +52,8 @@ module.exports = {
       },
       fontFamily: {
         rounded: ["System", "sans-serif"], // Rounded, friendly font for kids
+        jua: ["Jua_400Regular", "sans-serif"], // Jua for buttons and headings
+        "comic-neue": ["ComicNeue_400Regular", "sans-serif"], // Comic Neue for body copy
       },
       borderRadius: {
         xl: "16px",

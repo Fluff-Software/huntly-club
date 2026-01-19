@@ -10,6 +10,15 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import "react-native-reanimated";
 import * as Linking from "expo-linking";
+import {
+  useFonts as useJuaFonts,
+  Jua_400Regular,
+} from "@expo-google-fonts/jua";
+import {
+  useFonts as useComicNeueFonts,
+  ComicNeue_400Regular,
+  ComicNeue_700Bold,
+} from "@expo-google-fonts/comic-neue";
 
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -24,15 +33,24 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
+  const [juaLoaded] = useJuaFonts({
+    Jua_400Regular,
+  });
+  const [comicNeueLoaded] = useComicNeueFonts({
+    ComicNeue_400Regular,
+    ComicNeue_700Bold,
+  });
+  const [spaceMonoLoaded] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
 
+  const fontsLoaded = juaLoaded && comicNeueLoaded && spaceMonoLoaded;
+
   useEffect(() => {
-    if (loaded) {
+    if (fontsLoaded) {
       SplashScreen.hideAsync();
     }
-  }, [loaded]);
+  }, [fontsLoaded]);
 
   // Handle deep links
   useEffect(() => {
@@ -66,7 +84,7 @@ export default function RootLayout() {
     };
   }, []);
 
-  if (!loaded) {
+  if (!fontsLoaded) {
     return null;
   }
 

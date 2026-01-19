@@ -77,7 +77,7 @@ export function Button({
       ) : (
         <ThemedText
           type={textSize === "caption" ? "caption" : undefined}
-          className={`${textColor} font-bold ${
+          className={`${textColor} font-bold font-jua ${
             size === "large" ? "text-lg" : size === "small" ? "text-sm" : ""
           }`}
         >

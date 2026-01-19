@@ -104,10 +104,10 @@ export default function HomeScreen() {
             onPress={() => switchMode("activity")}
             className="bg-white/90 rounded-full px-4 py-2 flex-row items-center"
           >
-            <ThemedText type="body" className="text-huntly-forest">
+            <ThemedText type="body" className="text-huntly-forest font-jua">
               Activity
             </ThemedText>
-            <ThemedText className="text-huntly-forest ml-2">→</ThemedText>
+            <ThemedText className="text-huntly-forest ml-2 font-jua">→</ThemedText>
           </Pressable>
         </View>
       );
@@ -118,8 +118,8 @@ export default function HomeScreen() {
             onPress={() => switchMode("profile")}
             className="bg-white/90 rounded-full px-4 py-2 flex-row items-center"
           >
-            <ThemedText className="text-huntly-forest mr-2">←</ThemedText>
-            <ThemedText type="body" className="text-huntly-forest">
+            <ThemedText className="text-huntly-forest mr-2 font-jua">←</ThemedText>
+            <ThemedText type="body" className="text-huntly-forest font-jua">
               Profile
             </ThemedText>
           </Pressable>
@@ -128,10 +128,10 @@ export default function HomeScreen() {
             onPress={() => switchMode("missions")}
             className="bg-white/90 rounded-full px-4 py-2 flex-row items-center"
           >
-            <ThemedText type="body" className="text-huntly-forest">
+            <ThemedText type="body" className="text-huntly-forest font-jua">
               Missions
             </ThemedText>
-            <ThemedText className="text-huntly-forest ml-2">→</ThemedText>
+            <ThemedText className="text-huntly-forest ml-2 font-jua">→</ThemedText>
           </Pressable>
         </View>
       );
@@ -142,8 +142,8 @@ export default function HomeScreen() {
             onPress={() => switchMode("activity")}
             className="bg-white/90 rounded-full px-4 py-2 flex-row items-center"
           >
-            <ThemedText className="text-huntly-forest mr-2">←</ThemedText>
-            <ThemedText type="body" className="text-huntly-forest">
+            <ThemedText className="text-huntly-forest mr-2 font-jua">←</ThemedText>
+            <ThemedText type="body" className="text-huntly-forest font-jua">
               Activity
             </ThemedText>
           </Pressable>
@@ -184,7 +184,7 @@ export default function HomeScreen() {
         </View>
 
         <Pressable className="bg-white/90 rounded-2xl p-4 mb-6">
-          <ThemedText type="defaultSemiBold" className="text-huntly-forest text-center">
+          <ThemedText type="defaultSemiBold" className="text-huntly-forest text-center font-jua">
             Your profile
           </ThemedText>
         </Pressable>
@@ -310,7 +310,7 @@ export default function HomeScreen() {
               Create a laser maze using string, wool or tape. Rules are up to you: time limit, penalties, silent mode.
             </ThemedText>
             <Pressable className="bg-huntly-leaf rounded-xl py-3">
-              <ThemedText type="defaultSemiBold" className="text-white text-center">
+              <ThemedText type="defaultSemiBold" className="text-white text-center font-jua">
                 Start
               </ThemedText>
             </Pressable>
@@ -324,7 +324,7 @@ export default function HomeScreen() {
               Go outside and listen carefully to the sounds the wind makes. What do you hear?
             </ThemedText>
             <Pressable className="bg-huntly-mint rounded-xl py-3">
-              <ThemedText type="defaultSemiBold" className="text-huntly-forest text-center">
+              <ThemedText type="defaultSemiBold" className="text-huntly-forest text-center font-jua">
                 Start
               </ThemedText>
             </Pressable>
@@ -338,7 +338,7 @@ export default function HomeScreen() {
               Work with your team to build a wind catcher and see how it moves in the breeze.
             </ThemedText>
             <Pressable className="bg-huntly-amber rounded-xl py-3">
-              <ThemedText type="defaultSemiBold" className="text-huntly-forest text-center">
+              <ThemedText type="defaultSemiBold" className="text-huntly-forest text-center font-jua">
                 Start
               </ThemedText>
             </Pressable>
@@ -346,7 +346,7 @@ export default function HomeScreen() {
         </View>
 
         <Pressable className="bg-white/90 rounded-2xl p-4">
-          <ThemedText type="defaultSemiBold" className="text-huntly-forest text-center">
+          <ThemedText type="defaultSemiBold" className="text-huntly-forest text-center font-jua">
             See all missions
           </ThemedText>
         </Pressable>

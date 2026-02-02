@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from "react";
 import {
   View,
   ScrollView,
+  Image,
   ImageBackground,
   Dimensions,
   Animated,
@@ -11,93 +12,76 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { getTeamById, type Team } from "@/services/profileService";
+import { getTeamImageSource } from "@/utils/teamUtils";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 type HomeMode = "profile" | "activity" | "missions";
+const HOME_MODES: HomeMode[] = ["profile", "activity", "missions"];
 
 const BG_IMAGE = require("@/assets/images/bg.png");
 
 export default function HomeScreen() {
   const { currentPlayer } = usePlayer();
-  const [currentMode, setCurrentMode] = useState<HomeMode>("activity");
-  const [displayedMode, setDisplayedMode] = useState<HomeMode>("activity");
-  // Calculate background scroll positions
-  // The background image will be 3x screen width to show different sections
-  const profileOffset = 0;
-  const activityOffset = -SCREEN_WIDTH;
-  const missionsOffset = -SCREEN_WIDTH * 2;
-  
-  // Initialize scrollX to activity offset since that's the default mode
-  const scrollX = useRef(new Animated.Value(activityOffset)).current;
-  const contentOpacity = useRef(new Animated.Value(1)).current;
-  const isInitialMount = useRef(true);
+  const initialIndex = 1; // activity
+  const [currentIndex, setCurrentIndex] = useState<number>(initialIndex);
+  const currentMode = HOME_MODES[currentIndex] ?? "activity";
+  const [currentTeam, setCurrentTeam] = useState<Team | null>(null);
+  const [isLoadingTeam, setIsLoadingTeam] = useState(false);
+
+  const pagerRef = useRef<ScrollView>(null);
+  const pagerX = useRef(new Animated.Value(SCREEN_WIDTH * initialIndex)).current;
+  const backgroundTranslateX = Animated.multiply(pagerX, -1);
 
   useEffect(() => {
-    // Skip animation on initial mount
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
+    // Ensure we start centered on Activity (index 1).
+    const timer = setTimeout(() => {
+      pagerRef.current?.scrollTo({ x: SCREEN_WIDTH * initialIndex, animated: false });
+    }, 0);
 
-    // Only animate if mode actually changed
-    if (currentMode === displayedMode) {
-      return;
-    }
+    return () => clearTimeout(timer);
+  }, []);
 
-    let targetOffset: number;
-    switch (currentMode) {
-      case "profile":
-        targetOffset = profileOffset;
-        break;
-      case "activity":
-        targetOffset = activityOffset;
-        break;
-      case "missions":
-        targetOffset = missionsOffset;
-        break;
-      default:
-        targetOffset = activityOffset;
-    }
+  useEffect(() => {
+    let cancelled = false;
 
-    // Sequence: fade out current -> change displayed mode -> move background -> delay -> fade in new
-    Animated.sequence([
-      // Fade out current content
-      Animated.timing(contentOpacity, {
-        toValue: 0,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      // After fade out completes, change the displayed content
-      setDisplayedMode(currentMode);
-      
-      // Then animate background and fade in
-      Animated.sequence([
-        // Move background
-        Animated.timing(scrollX, {
-          toValue: targetOffset,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        // Small delay
-        Animated.delay(100),
-        // Fade in new content
-        Animated.timing(contentOpacity, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    });
-  }, [currentMode, displayedMode, scrollX, contentOpacity]);
+    const loadTeam = async () => {
+      const teamId = currentPlayer?.team;
+      if (!teamId) {
+        setCurrentTeam(null);
+        return;
+      }
+
+      setIsLoadingTeam(true);
+      try {
+        const team = await getTeamById(teamId);
+        if (!cancelled) setCurrentTeam(team);
+      } catch (error) {
+        console.error("Error loading current player's team:", error);
+        if (!cancelled) setCurrentTeam(null);
+      } finally {
+        if (!cancelled) setIsLoadingTeam(false);
+      }
+    };
+
+    loadTeam();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentPlayer?.team]);
 
   const switchMode = (mode: HomeMode) => {
-    setCurrentMode(mode);
+    const nextIndex = HOME_MODES.indexOf(mode);
+    if (nextIndex < 0) return;
+
+    pagerRef.current?.scrollTo({ x: SCREEN_WIDTH * nextIndex, animated: true });
+    setCurrentIndex(nextIndex);
   };
 
   const renderNavigationButtons = () => {
-    if (displayedMode === "profile") {
+    if (currentMode === "profile") {
       return (
         <View className="flex-row items-center justify-end px-6 pt-4">
           <Pressable
@@ -111,7 +95,7 @@ export default function HomeScreen() {
           </Pressable>
         </View>
       );
-    } else if (displayedMode === "activity") {
+    } else if (currentMode === "activity") {
       return (
         <View className="flex-row items-center justify-between px-6 pt-4">
           <Pressable
@@ -157,6 +141,7 @@ export default function HomeScreen() {
       className="flex-1"
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
+      nestedScrollEnabled
     >
       <View className="px-6 pt-4">
         <ThemedText type="title" className="text-white mb-6 text-center">
@@ -231,6 +216,7 @@ export default function HomeScreen() {
       className="flex-1"
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
+      nestedScrollEnabled
     >
       <View className="px-6 pt-4">
         <ThemedText type="title" className="text-white mb-2 text-center">
@@ -245,15 +231,28 @@ export default function HomeScreen() {
             We're doing great helping test the wind clues this week!
           </ThemedText>
           <View className="flex-row items-center">
-            <View className="w-16 h-16 bg-huntly-amber rounded-full items-center justify-center mr-4">
-              <ThemedText className="text-3xl">🐻</ThemedText>
+            <View
+              className="w-16 h-16 bg-huntly-amber rounded-full items-center justify-center mr-4"
+              style={currentTeam?.colour ? { backgroundColor: currentTeam.colour } : undefined}
+            >
+              {currentTeam?.name && getTeamImageSource(currentTeam.name) ? (
+                <Image
+                  source={getTeamImageSource(currentTeam.name)!}
+                  style={styles.teamAvatarImage}
+                  resizeMode="contain"
+                />
+              ) : (
+                <ThemedText className="text-3xl">
+                  {(currentTeam?.mascot_name || "👥").slice(0, 2)}
+                </ThemedText>
+              )}
             </View>
             <View className="flex-1">
               <ThemedText type="defaultSemiBold" className="text-huntly-forest">
-                Bears
+                {currentTeam?.name || (isLoadingTeam ? "Loading team..." : "Your team")}
               </ThemedText>
               <ThemedText type="caption" className="text-huntly-brown">
-                Your team
+                {currentTeam?.mascot_name ? `${currentTeam.mascot_name} team` : "Your team"}
               </ThemedText>
             </View>
           </View>
@@ -291,6 +290,7 @@ export default function HomeScreen() {
       className="flex-1"
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
+      nestedScrollEnabled
     >
       <View className="px-6 pt-4">
         <ThemedText type="title" className="text-white mb-6 text-center">
@@ -360,7 +360,7 @@ export default function HomeScreen() {
         style={[
           styles.backgroundContainer,
           {
-            transform: [{ translateX: scrollX }],
+            transform: [{ translateX: backgroundTranslateX }],
           },
         ]}
       >
@@ -375,18 +375,35 @@ export default function HomeScreen() {
 
       <SafeAreaView edges={["top"]} className="flex-1">
         {renderNavigationButtons()}
-        <Animated.View
-          style={[
-            styles.contentWrapper,
-            {
-              opacity: contentOpacity,
-            },
-          ]}
+        <Animated.ScrollView
+          ref={pagerRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          bounces={false}
+          directionalLockEnabled
+          scrollEventThrottle={16}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { x: pagerX } } }],
+            { useNativeDriver: true }
+          )}
+          onMomentumScrollEnd={(e) => {
+            const x = e.nativeEvent.contentOffset.x;
+            const next = Math.round(x / SCREEN_WIDTH);
+            setCurrentIndex(next);
+          }}
+          onScrollEndDrag={(e) => {
+            const x = e.nativeEvent.contentOffset.x;
+            const next = Math.round(x / SCREEN_WIDTH);
+            setCurrentIndex(next);
+          }}
+          style={styles.pager}
+          contentContainerStyle={styles.pagerContent}
         >
-          {displayedMode === "profile" && renderProfileContent()}
-          {displayedMode === "activity" && renderActivityContent()}
-          {displayedMode === "missions" && renderMissionsContent()}
-        </Animated.View>
+          <View style={styles.pagerPage}>{renderProfileContent()}</View>
+          <View style={styles.pagerPage}>{renderActivityContent()}</View>
+          <View style={styles.pagerPage}>{renderMissionsContent()}</View>
+        </Animated.ScrollView>
       </SafeAreaView>
     </View>
   );
@@ -415,7 +432,18 @@ const styles = StyleSheet.create({
   contentContainer: {
     paddingBottom: 100,
   },
-  contentWrapper: {
+  pager: {
     flex: 1,
+  },
+  pagerContent: {
+    width: SCREEN_WIDTH * HOME_MODES.length,
+  },
+  pagerPage: {
+    width: SCREEN_WIDTH,
+    flex: 1,
+  },
+  teamAvatarImage: {
+    width: 44,
+    height: 44,
   },
 });

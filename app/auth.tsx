@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Image,
@@ -8,7 +8,7 @@ import {
   Platform,
   useWindowDimensions,
 } from "react-native";
-import { Stack } from "expo-router";
+import { Stack, useLocalSearchParams, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -20,6 +20,10 @@ const HUNTLY_GREEN = "#4F6F52";
 const GRADIENT_TOP = "#8FA5EE";
 const BUTTON_BG = "#F4F0EB";
 
+/** Reference design size (logical pts). Scale layout to current window logical pixels. */
+const REFERENCE_WIDTH = 390;
+const REFERENCE_HEIGHT = 844;
+
 enum AuthScreenMode {
   WELCOME,
   LOGIN,
@@ -29,7 +33,16 @@ enum AuthScreenMode {
 export default function AuthScreen() {
   const [mode, setMode] = useState(AuthScreenMode.WELCOME);
   const { width, height } = useWindowDimensions();
-  const heroHeight = height * 0.45;
+  const params = useLocalSearchParams<{ mode?: string }>();
+
+  const scaleW = (n: number) => Math.round((width / REFERENCE_WIDTH) * n);
+  const scaleH = (n: number) => Math.round((height / REFERENCE_HEIGHT) * n);
+  const heroHeight = scaleW(350);
+
+  useEffect(() => {
+    if (params.mode === "signup") setMode(AuthScreenMode.SIGNUP);
+    if (params.mode === "login") setMode(AuthScreenMode.LOGIN);
+  }, [params.mode]);
 
   if (mode !== AuthScreenMode.WELCOME) {
     return (
@@ -42,7 +55,11 @@ export default function AuthScreen() {
         >
           <ScrollView
             className="flex-1"
-            contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 20 }}
+            contentContainerStyle={{
+              flexGrow: 1,
+              justifyContent: "center",
+              padding: scaleW(20),
+            }}
             keyboardShouldPersistTaps="handled"
           >
             {mode === AuthScreenMode.LOGIN ? (
@@ -78,20 +95,20 @@ export default function AuthScreen() {
       >
         <View
           style={{
-            width: 350,
-            height: 228,
+            width: scaleW(350),
+            height: scaleH(228),
             position: "relative",
-            marginTop: -60,
+            marginTop: scaleW(-100),
           }}
         >
           {/* Characters behind - inline with banner */}
           <View
             style={{
               position: "absolute",
-              left: 5,
-              top: -85,
-              width: 169,
-              height: 169,
+              left: scaleW(20),
+              top: scaleH(-60),
+              width: scaleW(130),
+              height: scaleW(150),
               zIndex: 1,
               transform: [{ rotate: "-10deg" }],
             }}
@@ -99,23 +116,32 @@ export default function AuthScreen() {
             <Image
               source={require("@/assets/images/bear-wave.png")}
               resizeMode="contain"
-              style={{ width: 169, height: 169 }}
-            />
-          </View>
-          <View style={{ position: "absolute", left: 78, top: -107, width: 195, height: 195, zIndex: 2 }}>
-            <Image
-              source={require("@/assets/images/fox.png")}
-              resizeMode="contain"
-              style={{ width: 195, height: 195 }}
+              style={{ width: scaleW(150), height: scaleW(150) }}
             />
           </View>
           <View
             style={{
               position: "absolute",
-              left: 175,
-              top: -85,
-              width: 169,
-              height: 169,
+              left: scaleW(85),
+              top: scaleW(-82),
+              width: scaleW(170),
+              height: scaleW(170),
+              zIndex: 2,
+            }}
+          >
+            <Image
+              source={require("@/assets/images/fox.png")}
+              resizeMode="contain"
+              style={{ width: scaleW(170), height: scaleW(170) }}
+            />
+          </View>
+          <View
+            style={{
+              position: "absolute",
+              left: scaleW(169),
+              top: scaleH(-65),
+              width: scaleW(150),
+              height: scaleW(150),
               zIndex: 1,
               transform: [{ rotate: "10deg" }],
             }}
@@ -123,7 +149,7 @@ export default function AuthScreen() {
             <Image
               source={require("@/assets/images/otter.png")}
               resizeMode="contain"
-              style={{ width: 169, height: 169 }}
+              style={{ width: scaleW(150), height: scaleW(150) }}
             />
           </View>
           {/* Banner in front - big, on top */}
@@ -132,8 +158,8 @@ export default function AuthScreen() {
               position: "absolute",
               left: 0,
               top: 0,
-              width: 350,
-              height: 175,
+              width: scaleW(350),
+              height: scaleW(175),
               zIndex: 2,
               alignItems: "center",
               justifyContent: "center",
@@ -142,7 +168,7 @@ export default function AuthScreen() {
             <Image
               source={require("@/assets/images/huntly-world-banner.png")}
               resizeMode="contain"
-              style={{ width: 350, height: 350 }}
+              style={{ width: scaleW(300), height: scaleW(300) }}
             />
           </View>
         </View>
@@ -151,13 +177,13 @@ export default function AuthScreen() {
       <View
         style={{
           position: "absolute",
-          width: "200%",
-          top: heroHeight - (width * 0.1),
-          left: -width / 2,
+          width: scaleW(800),
+          top: heroHeight - scaleW(36),
+          left: -scaleW(200),
           bottom: 0,
           backgroundColor: HUNTLY_GREEN,
-          borderTopLeftRadius: "200%",
-          borderTopRightRadius: "200%",
+          borderTopLeftRadius: "50%",
+          borderTopRightRadius: "50%",
           zIndex: 1,
           overflow: "hidden",
         }}
@@ -178,10 +204,10 @@ export default function AuthScreen() {
             position: "absolute",
             left: 0,
             right: 0,
-            top: 100,
-            paddingHorizontal: 24,
-            paddingTop: 24,
-            paddingBottom: 40,
+            top: scaleH(100),
+            paddingHorizontal: scaleW(24),
+            paddingTop: scaleH(24),
+            paddingBottom: scaleH(40),
             alignItems: "center",
           }}
         >
@@ -189,18 +215,23 @@ export default function AuthScreen() {
             type="heading"
             lightColor="#FFFFFF"
             darkColor="#FFFFFF"
-            style={{ marginBottom: 80, textAlign: "center", fontWeight: "600", fontSize: 28 }}
+            style={{
+              marginBottom: scaleW(80),
+              textAlign: "center",
+              fontWeight: "600",
+              fontSize: scaleW(26),
+            }}
           >
             Where curiosity grows.
           </ThemedText>
           <Pressable
-            onPress={() => setMode(AuthScreenMode.SIGNUP)}
+            onPress={() => router.push("/get-started")}
             style={{
-              width: 260,
-              paddingVertical: 20,
+              width: scaleW(240),
+              paddingVertical: scaleH(20),
               borderRadius: 999,
               backgroundColor: BUTTON_BG,
-              marginBottom: 40,
+              marginBottom: scaleH(40),
               alignItems: "center",
               justifyContent: "center",
               shadowColor: "#000",
@@ -210,15 +241,15 @@ export default function AuthScreen() {
               elevation: 2,
             }}
           >
-            <ThemedText type="heading" style={{ color: HUNTLY_GREEN, fontSize: 18, fontWeight: "600" }}>
+            <ThemedText type="heading" style={{ color: HUNTLY_GREEN, fontSize: scaleW(16), fontWeight: "600" }}>
               Get started
             </ThemedText>
           </Pressable>
           <Pressable
             onPress={() => setMode(AuthScreenMode.LOGIN)}
             style={{
-              width: 260,
-              paddingVertical: 20,
+              width: scaleW(240),
+              paddingVertical: scaleH(20),
               borderRadius: 999,
               backgroundColor: BUTTON_BG,
               alignItems: "center",
@@ -230,7 +261,7 @@ export default function AuthScreen() {
               elevation: 2,
             }}
           >
-            <ThemedText type="heading" style={{ color: HUNTLY_GREEN, fontSize: 18, fontWeight: "600" }}>
+            <ThemedText type="heading" style={{ color: HUNTLY_GREEN, fontSize: scaleW(16), fontWeight: "600" }}>
               I already have an account
             </ThemedText>
           </Pressable>

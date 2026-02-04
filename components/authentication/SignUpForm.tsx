@@ -7,8 +7,12 @@ import {
   Image,
 } from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/ui/Button";
+import { getCurrentUser } from "@/services/authService";
+import { getTeams } from "@/services/profileService";
+import { createProfile } from "@/services/profileService";
 
 type SignUpFormProps = {
   onLoginInstead: () => void;
@@ -20,6 +24,7 @@ export function SignUpForm({ onLoginInstead }: SignUpFormProps) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const { signUp, loading } = useAuth();
+  const signUpContext = useSignUpOptional();
 
   const handleSignUp = async () => {
     if (!email.trim() || !password.trim() || !confirmPassword.trim()) {
@@ -34,6 +39,31 @@ export function SignUpForm({ onLoginInstead }: SignUpFormProps) {
 
     try {
       await signUp(email, password);
+      const user = await getCurrentUser();
+      if (user && signUpContext && signUpContext.players.length > 0) {
+        try {
+          const teams = await getTeams();
+          const chosenName = signUpContext.selectedTeamName?.trim();
+          const team = chosenName
+            ? teams.find((t) => t.name.toLowerCase() === chosenName.toLowerCase())
+            : teams[0];
+          const teamId = team?.id;
+          if (teamId) {
+            for (const player of signUpContext.players) {
+              await createProfile({
+                user_id: user.id,
+                name: player.name,
+                colour: player.colour,
+                team: teamId,
+                nickname: player.nickname,
+              });
+            }
+          }
+          signUpContext.clearSignUpData();
+        } catch (profileError) {
+          console.error("Error creating explorer profiles:", profileError);
+        }
+      }
       setSuccessMessage(
         `Account created! A confirmation link has been sent to ${email}. Please check your email to verify your account.`
       );

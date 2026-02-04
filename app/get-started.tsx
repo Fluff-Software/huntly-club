@@ -68,18 +68,18 @@ export default function GetStartedScreen() {
         animated: true,
       });
     } else {
-      router.replace({ pathname: "/auth", params: { mode: "signup" } });
+      router.replace("/sign-up");
     }
   };
 
   const skip = () => {
-    router.replace({ pathname: "/auth", params: { mode: "signup" } });
+    router.replace("/sign-up");
   };
 
   const renderSlide = ({ item, index }: { item: (typeof INTRO_SLIDES)[0]; index: number }) => {
     const isLast = index === INTRO_SLIDES.length - 1;
     return (
-      <View style={{ width, height, backgroundColor: item.background, paddingHorizontal: scaleW(24) }}>
+      <View style={{ width, flex: 1, backgroundColor: item.background, paddingHorizontal: scaleW(24) }}>
         {/* Pagination: dots connected by lines */}
         <View
           style={{
@@ -155,12 +155,12 @@ export default function GetStartedScreen() {
               <Image
                 source={require("@/assets/images/get-started-icon-1.png")}
                 resizeMode="contain"
-                style={{ width: scaleW(120), height: scaleW(120), marginTop: scaleW(80) }}
+                style={{ width: scaleW(120), height: scaleW(120), marginTop: scaleW(140) }}
               />
               <Image
                 source={require("@/assets/images/get-started-icon-2.png")}
                 resizeMode="contain"
-                style={{ width: scaleW(100), height: scaleW(100), marginTop: scaleW(-80) }}
+                style={{ width: scaleW(100), height: scaleW(100), marginTop: scaleW(-20) }}
               />
             </View>
           )}

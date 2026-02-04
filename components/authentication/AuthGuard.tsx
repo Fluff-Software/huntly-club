@@ -22,7 +22,9 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
     const inAuthGroup = segments[0] === "auth";
     const inGetStarted = segments[0] === "get-started";
-    const inUnauthFlow = inAuthGroup || inGetStarted;
+    const inSignUp = segments[0] === "sign-up";
+    const inPrivacy = segments[0] === "privacy";
+    const inUnauthFlow = inAuthGroup || inGetStarted || inSignUp || inPrivacy;
     const inTabsGroup = segments[0] === "(tabs)";
 
     const checkProfiles = async () => {
@@ -45,7 +47,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
     if (!user && !inUnauthFlow) {
       // Redirect to the auth screen if user is not authenticated and not in auth/get-started flow
       router.replace("/auth");
-    } else if (user && (inAuthGroup || inGetStarted)) {
+    } else if (user && (inAuthGroup || inGetStarted || inSignUp)) {
       // When user logs in from auth screen, redirect to profile tab to select explorer
       router.replace("/(tabs)/profile");
     } else if (

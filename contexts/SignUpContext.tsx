@@ -9,6 +9,9 @@ export type SignUpPlayer = {
 type SignUpContextValue = {
   parentEmail: string;
   setParentEmail: (email: string) => void;
+  /** Account password (collected on first sign-up step). */
+  password: string;
+  setPassword: (password: string) => void;
   players: SignUpPlayer[];
   addPlayer: (player: SignUpPlayer) => void;
   removePlayer: (index: number) => void;
@@ -26,6 +29,7 @@ const SignUpContext = createContext<SignUpContextValue | null>(null);
 
 export function SignUpProvider({ children }: { children: React.ReactNode }) {
   const [parentEmail, setParentEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [players, setPlayers] = useState<SignUpPlayer[]>([]);
   const [selectedTeamName, setSelectedTeamName] = useState<string | null>(null);
 
@@ -59,6 +63,7 @@ export function SignUpProvider({ children }: { children: React.ReactNode }) {
 
   const clearSignUpData = useCallback(() => {
     setParentEmail("");
+    setPassword("");
     setPlayers([]);
     setSelectedTeamName(null);
   }, []);
@@ -68,6 +73,8 @@ export function SignUpProvider({ children }: { children: React.ReactNode }) {
       value={{
         parentEmail,
         setParentEmail,
+        password,
+        setPassword,
         players,
         addPlayer,
         removePlayer,

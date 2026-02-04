@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   useWindowDimensions,
+  ActivityIndicator,
 } from "react-native";
 import { router } from "expo-router";
 import { Stack } from "expo-router";
@@ -15,6 +16,7 @@ import { StatusBar } from "expo-status-bar";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useSignUp } from "@/contexts/SignUpContext";
+import { checkEmailAvailable } from "@/services/authService";
 
 const HUNTLY_GREEN = "#4F6F52";
 
@@ -26,23 +28,69 @@ const REFERENCE_HEIGHT = 844;
 const isValidEmail = (value: string): boolean =>
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 
+const MIN_PASSWORD_LENGTH = 6;
+
 export default function SignUpParentEmailScreen() {
   const { width, height } = useWindowDimensions();
-  const { setParentEmail } = useSignUp();
+  const { setParentEmail, setPassword } = useSignUp();
   const [email, setEmail] = useState("");
+  const [passwordValue, setPasswordValue] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   const scaleW = (n: number) => Math.round((width / REFERENCE_WIDTH) * n);
   const scaleH = (n: number) => Math.round((height / REFERENCE_HEIGHT) * n);
 
   const isEmailValid = isValidEmail(email);
+  const isPasswordValid =
+    passwordValue.length >= MIN_PASSWORD_LENGTH &&
+    passwordValue === confirmPassword;
 
-  const handleContinue = () => {
-    setParentEmail(email.trim());
+  const canContinue = isEmailValid && isPasswordValid;
+
+  const disabledReason = ((): string | null => {
+    if (checkingEmail) return "Checking email…";
+    if (canContinue) return null;
+    if (!email.trim()) return "Enter your email to continue.";
+    if (!isEmailValid) return "Please enter a valid email address.";
+    if (passwordValue.length < MIN_PASSWORD_LENGTH)
+      return `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
+    if (passwordValue !== confirmPassword) return "Passwords do not match.";
+    return "Complete all fields to continue.";
+  })();
+
+  const isDisabled = !canContinue || checkingEmail;
+
+  const handleContinue = async () => {
+    setEmailError(null);
+    const trimmed = email.trim();
+    if (!isValidEmail(trimmed)) return;
+
+    setCheckingEmail(true);
+    const { available, error } = await checkEmailAvailable(trimmed);
+    setCheckingEmail(false);
+
+    if (error) {
+      setEmailError(error);
+      return;
+    }
+    if (!available) {
+      setEmailError("This email is already in use. Sign in or use a different email.");
+      return;
+    }
+
+    setParentEmail(trimmed);
+    setPassword(passwordValue);
     router.push("/sign-up/players");
   };
 
   const openPrivacyPolicy = () => {
     router.push("/privacy");
+  };
+
+  const goToSignIn = () => {
+    router.replace({ pathname: "/auth", params: { mode: "login" } });
   };
 
   return (
@@ -96,7 +144,7 @@ export default function SignUpParentEmailScreen() {
             style={{
               fontWeight: "600",
               fontSize: scaleW(16),
-              marginTop: scaleH(120),
+              marginTop: scaleH(40),
               textAlign: "center",
             }}
           >
@@ -104,7 +152,10 @@ export default function SignUpParentEmailScreen() {
           </ThemedText>
           <TextInput
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(v) => {
+              setEmail(v);
+              setEmailError(null);
+            }}
             placeholder="e.g. parent@example.com"
             placeholderTextColor="#9CA3AF"
             autoCapitalize="none"
@@ -121,8 +172,87 @@ export default function SignUpParentEmailScreen() {
               marginTop: scaleH(12),
             }}
           />
+          {emailError !== null && (
+            <ThemedText
+              lightColor="#FEE2E2"
+              darkColor="#FEE2E2"
+              style={{
+                fontSize: scaleW(14),
+                marginTop: scaleH(8),
+                textAlign: "center",
+              }}
+            >
+              {emailError}
+            </ThemedText>
+          )}
 
-          <Pressable onPress={openPrivacyPolicy} style={{ marginTop: scaleH(24) }}>
+          <ThemedText
+            type="subtitle"
+            lightColor="#FFFFFF"
+            darkColor="#FFFFFF"
+            style={{
+              fontWeight: "600",
+              fontSize: scaleW(16),
+              marginTop: scaleH(24),
+              textAlign: "center",
+            }}
+          >
+            Password
+          </ThemedText>
+          <TextInput
+            value={passwordValue}
+            onChangeText={setPasswordValue}
+            placeholder="Min 6 characters"
+            placeholderTextColor="#9CA3AF"
+            autoCapitalize="none"
+            autoCorrect={false}
+            secureTextEntry
+            style={{
+              width: "100%",
+              height: scaleH(56),
+              backgroundColor: "#FFFFFF",
+              borderRadius: scaleW(16),
+              paddingHorizontal: scaleW(20),
+              fontSize: scaleW(16),
+              color: "#36454F",
+              marginTop: scaleH(12),
+            }}
+          />
+
+          <ThemedText
+            type="subtitle"
+            lightColor="#FFFFFF"
+            darkColor="#FFFFFF"
+            style={{
+              fontWeight: "600",
+              fontSize: scaleW(16),
+              marginTop: scaleH(24),
+              textAlign: "center",
+            }}
+          >
+            Confirm password
+          </ThemedText>
+          <TextInput
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            placeholder="Repeat your password"
+            placeholderTextColor="#9CA3AF"
+            autoCapitalize="none"
+            autoCorrect={false}
+            secureTextEntry
+            style={{
+              width: "100%",
+              height: scaleH(56),
+              backgroundColor: "#FFFFFF",
+              borderRadius: scaleW(16),
+              paddingHorizontal: scaleW(20),
+              fontSize: scaleW(16),
+              color: "#36454F",
+              marginTop: scaleH(12),
+            }}
+          />
+
+          <Pressable onPress={openPrivacyPolicy} style={{ marginTop: scaleH(28) }}>
             <ThemedText
               lightColor="#FFFFFF"
               darkColor="#FFFFFF"
@@ -140,36 +270,73 @@ export default function SignUpParentEmailScreen() {
             </ThemedText>
           </Pressable>
 
+          <Pressable onPress={goToSignIn} style={{ marginTop: scaleH(24) }}>
+            <ThemedText
+              lightColor="#FFFFFF"
+              darkColor="#FFFFFF"
+              style={{
+                fontSize: scaleW(14),
+                textAlign: "center",
+                opacity: 0.95,
+                marginHorizontal: scaleW(40),
+              }}
+            >
+              Already have an account?{" "}
+              <Text style={{ color: "#FFFFFF", textDecorationLine: "underline", fontWeight: "600" }}>
+                Sign In
+              </Text>
+            </ThemedText>
+          </Pressable>
+
           <View style={{ flex: 1, minHeight: scaleH(80) }} />
+
+          {disabledReason !== null && !emailError && (
+            <ThemedText
+              lightColor="#FFFFFF"
+              darkColor="#FFFFFF"
+              style={{
+                textAlign: "center",
+                fontSize: scaleW(14),
+                opacity: 0.9,
+                marginBottom: scaleH(12),
+              }}
+            >
+              {disabledReason}
+            </ThemedText>
+          )}
 
           <Pressable
             onPress={handleContinue}
-            disabled={!isEmailValid}
+            disabled={isDisabled}
             style={{
               alignSelf: "center",
               width: "100%",
               maxWidth: scaleW(220),
               paddingVertical: scaleH(18),
               borderRadius: scaleW(50),
-              backgroundColor: isEmailValid ? "#FFFFFF" : "#9CA3AF",
+              backgroundColor: isDisabled ? "#9CA3AF" : "#FFFFFF",
               alignItems: "center",
               justifyContent: "center",
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: isEmailValid ? 0.3 : 0.1,
+              shadowOpacity: isDisabled ? 0.1 : 0.3,
               shadowRadius: 4,
               elevation: 2,
-              opacity: isEmailValid ? 1 : 0.8,
+              opacity: isDisabled ? 0.8 : 1,
             }}
           >
-            <ThemedText
-              type="heading"
-              lightColor={isEmailValid ? HUNTLY_GREEN : "#6B7280"}
-              darkColor={isEmailValid ? HUNTLY_GREEN : "#6B7280"}
-              style={{ fontSize: scaleW(18), fontWeight: "600" }}
-            >
-              Continue
-            </ThemedText>
+            {checkingEmail ? (
+              <ActivityIndicator size="small" color={HUNTLY_GREEN} />
+            ) : (
+              <ThemedText
+                type="heading"
+                lightColor={isDisabled ? "#6B7280" : HUNTLY_GREEN}
+                darkColor={isDisabled ? "#6B7280" : HUNTLY_GREEN}
+                style={{ fontSize: scaleW(18), fontWeight: "600" }}
+              >
+                Continue
+              </ThemedText>
+            )}
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>

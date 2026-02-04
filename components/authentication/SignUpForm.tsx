@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   TextInput,
   Alert,
@@ -25,6 +25,14 @@ export function SignUpForm({ onLoginInstead }: SignUpFormProps) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const { signUp, loading } = useAuth();
   const signUpContext = useSignUpOptional();
+
+  useEffect(() => {
+    if (signUpContext?.parentEmail) setEmail(signUpContext.parentEmail);
+    if (signUpContext?.password) {
+      setPassword(signUpContext.password);
+      setConfirmPassword(signUpContext.password);
+    }
+  }, [signUpContext?.parentEmail, signUpContext?.password]);
 
   const handleSignUp = async () => {
     if (!email.trim() || !password.trim() || !confirmPassword.trim()) {

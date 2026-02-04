@@ -5,12 +5,17 @@ import {
   ScrollView,
   Image,
   useWindowDimensions,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useSignUp } from "@/contexts/SignUpContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { getCurrentUser, checkEmailAvailable } from "@/services/authService";
+import { getTeams, createProfile } from "@/services/profileService";
 
 const HUNTLY_GREEN = "#4F6F52";
 const CREAM = "#F4F0EB";
@@ -48,16 +53,80 @@ const HARDCODED_TEAMS = [
 
 export default function SignUpTeamScreen() {
   const { width, height } = useWindowDimensions();
-  const { setSelectedTeamName } = useSignUp();
+  const {
+    parentEmail,
+    password,
+    players,
+    setSelectedTeamName,
+    clearSignUpData,
+  } = useSignUp();
+  const { signUp } = useAuth();
   const [selectedName, setSelectedName] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const scaleW = (n: number) => Math.round((width / REFERENCE_WIDTH) * n);
   const scaleH = (n: number) => Math.round((height / REFERENCE_HEIGHT) * n);
 
-  const handleEnterHuntlyWorld = () => {
+  const handleEnterHuntlyWorld = async () => {
     if (!selectedName) return;
+    if (!parentEmail.trim() || !password) {
+      Alert.alert("Error", "Missing email or password. Please go back and complete the sign-up steps.");
+      return;
+    }
+
     setSelectedTeamName(selectedName);
-    router.push("/sign-up/intro");
+    setCreating(true);
+
+    try {
+      const { available, error } = await checkEmailAvailable(parentEmail.trim());
+      if (error) {
+        Alert.alert("Error", error);
+        return;
+      }
+      if (!available) {
+        Alert.alert(
+          "Email already in use",
+          "This email is already registered. Sign in or use a different email."
+        );
+        return;
+      }
+
+      await signUp(parentEmail.trim(), password);
+      const user = await getCurrentUser();
+      if (user && players.length > 0) {
+        const teams = await getTeams();
+        const team = teams.find((t) => t.name.toLowerCase() === selectedName.toLowerCase());
+        const teamId = team?.id ?? teams[0]?.id;
+        if (teamId) {
+          for (const player of players) {
+            await createProfile({
+              user_id: user.id,
+              name: player.name,
+              colour: player.colour,
+              team: teamId,
+              nickname: player.nickname,
+            });
+          }
+        }
+      }
+      clearSignUpData();
+
+      Alert.alert(
+        "Account created",
+        "Your account has been created. A confirmation link has been sent to your email—please check it to verify your account.",
+        [
+          {
+            text: "OK",
+            onPress: () => router.push("/sign-up/intro"),
+          },
+        ]
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to create account.";
+      Alert.alert("Error", message);
+    } finally {
+      setCreating(false);
+    }
   };
 
   return (
@@ -183,7 +252,7 @@ export default function SignUpTeamScreen() {
           })}
           <Pressable
             onPress={handleEnterHuntlyWorld}
-            disabled={!selectedName}
+            disabled={!selectedName || creating}
             style={{
               alignSelf: "center",
               width: "100%",
@@ -191,7 +260,7 @@ export default function SignUpTeamScreen() {
               paddingVertical: scaleH(18),
               borderRadius: scaleW(50),
               marginTop: scaleH(20),
-              backgroundColor: selectedName ? CREAM : "#9CA3AF",
+              backgroundColor: selectedName && !creating ? CREAM : "#9CA3AF",
               alignItems: "center",
               justifyContent: "center",
               shadowColor: "#000",
@@ -199,16 +268,21 @@ export default function SignUpTeamScreen() {
               shadowOpacity: 0.3,
               shadowRadius: 4,
               elevation: 2,
+              opacity: creating ? 0.8 : 1,
             }}
           >
-            <ThemedText
-              type="heading"
-              lightColor={selectedName ? HUNTLY_GREEN : "#6B7280"}
-              darkColor={selectedName ? HUNTLY_GREEN : "#6B7280"}
-              style={{ fontSize: scaleW(18), fontWeight: "600" }}
-            >
-              Enter Huntly World
-            </ThemedText>
+            {creating ? (
+              <ActivityIndicator size="small" color={HUNTLY_GREEN} />
+            ) : (
+              <ThemedText
+                type="heading"
+                lightColor={selectedName ? HUNTLY_GREEN : "#6B7280"}
+                darkColor={selectedName ? HUNTLY_GREEN : "#6B7280"}
+                style={{ fontSize: scaleW(18), fontWeight: "600" }}
+              >
+                Enter Huntly World
+              </ThemedText>
+            )}
           </Pressable>
         </ScrollView>
       </View>

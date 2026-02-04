@@ -48,8 +48,11 @@ export function AuthGuard({ children }: AuthGuardProps) {
       // Redirect to the auth screen if user is not authenticated and not in auth/get-started flow
       router.replace("/auth");
     } else if (user && (inAuthGroup || inGetStarted || inSignUp)) {
-      // When user logs in from auth screen, redirect to profile tab to select explorer
-      router.replace("/(tabs)/profile");
+      // Let authenticated users stay on sign-up/intro (post-account-creation flow)
+      const onSignUpIntro = inSignUp && (segments[1] === "team" || segments[1] === "intro");
+      if (!onSignUpIntro) {
+        router.replace("/(tabs)/profile");
+      }
     } else if (
       user &&
       inTabsGroup &&

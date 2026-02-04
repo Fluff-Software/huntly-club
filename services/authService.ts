@@ -3,6 +3,27 @@ import { User as SupabaseUser, Session as SupabaseSession } from '@supabase/supa
 import Constants from 'expo-constants';
 import * as Linking from 'expo-linking';
 
+/** Check if an email is already registered (via Edge Function). Returns true if available to use. */
+export const checkEmailAvailable = async (email: string): Promise<{ available: boolean; error?: string }> => {
+  const trimmed = email.trim().toLowerCase();
+  if (!trimmed) {
+    return { available: false, error: 'Email is required.' };
+  }
+  try {
+    const { data, error } = await supabase.functions.invoke<{ taken: boolean }>('check-email', {
+      body: { email: trimmed },
+    });
+    if (error) {
+      return { available: true, error: error.message };
+    }
+    const taken = data?.taken ?? false;
+    return { available: !taken };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'Could not check email.';
+    return { available: true, error: message };
+  }
+};
+
 export type User = {
   id: string;
   email: string | undefined;

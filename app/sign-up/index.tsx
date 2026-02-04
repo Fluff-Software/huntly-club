@@ -38,7 +38,7 @@ export default function SignUpParentEmailScreen() {
 
   const handleContinue = () => {
     setParentEmail(email.trim());
-    router.replace("/sign-up/players");
+    router.push("/sign-up/players");
   };
 
   const openPrivacyPolicy = () => {

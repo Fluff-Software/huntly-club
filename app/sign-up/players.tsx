@@ -111,7 +111,7 @@ export default function SignUpPlayersScreen() {
     }
     const totalPlayers = currentName ? players.length + 1 : players.length;
     if (totalPlayers === 0) return;
-    router.replace("/sign-up/team");
+    router.push("/sign-up/team");
   };
 
   const canContinue = useMemo(

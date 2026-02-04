@@ -57,7 +57,7 @@ export default function SignUpTeamScreen() {
   const handleEnterHuntlyWorld = () => {
     if (!selectedName) return;
     setSelectedTeamName(selectedName);
-    router.replace({ pathname: "/auth", params: { mode: "signup" } });
+    router.push("/sign-up/intro");
   };
 
   return (

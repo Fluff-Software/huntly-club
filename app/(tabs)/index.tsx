@@ -484,7 +484,7 @@ export default function HomeScreen() {
         </View>
 
         <Pressable
-          onPress={() => router.push("/pack" as Parameters<typeof router.push>[0])}
+          onPress={() => router.push("/(tabs)/missions")}
           style={styles.creamButton}
         >
           <ThemedText type="defaultSemiBold" className="text-huntly-forest text-center font-jua">

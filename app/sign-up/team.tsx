@@ -4,7 +4,6 @@ import {
   Pressable,
   ScrollView,
   Image,
-  useWindowDimensions,
   Alert,
   ActivityIndicator,
 } from "react-native";
@@ -16,13 +15,10 @@ import { useSignUp } from "@/contexts/SignUpContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { getCurrentUser, checkEmailAvailable } from "@/services/authService";
 import { getTeams, createProfile } from "@/services/profileService";
+import { useLayoutScale } from "@/hooks/useLayoutScale";
 
 const HUNTLY_GREEN = "#4F6F52";
 const CREAM = "#F4F0EB";
-
-/** Reference design size (logical pts). */
-const REFERENCE_WIDTH = 390;
-const REFERENCE_HEIGHT = 844;
 
 const HARDCODED_TEAMS = [
   {
@@ -52,7 +48,7 @@ const HARDCODED_TEAMS = [
 ] as const;
 
 export default function SignUpTeamScreen() {
-  const { width, height } = useWindowDimensions();
+  const { scaleW, scaleH } = useLayoutScale();
   const {
     parentEmail,
     password,
@@ -63,9 +59,6 @@ export default function SignUpTeamScreen() {
   const { signUp } = useAuth();
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
-
-  const scaleW = (n: number) => Math.round((width / REFERENCE_WIDTH) * n);
-  const scaleH = (n: number) => Math.round((height / REFERENCE_HEIGHT) * n);
 
   const handleEnterHuntlyWorld = async () => {
     if (!selectedName) return;

@@ -1,16 +1,14 @@
 import React from "react";
-import { View, ScrollView, useWindowDimensions } from "react-native";
+import { ScrollView } from "react-native";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/ui/Button";
-
-const REFERENCE_WIDTH = 390;
+import { useLayoutScale } from "@/hooks/useLayoutScale";
 
 export default function PrivacyScreen() {
-  const { width } = useWindowDimensions();
-  const scaleW = (n: number) => Math.round((width / REFERENCE_WIDTH) * n);
+  const { scaleW, scaleH } = useLayoutScale();
 
   return (
     <>
@@ -26,16 +24,16 @@ export default function PrivacyScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{
           padding: scaleW(24),
-          paddingBottom: 40,
+          paddingBottom: scaleH(40),
         }}
       >
-        <ThemedText type="title" style={{ marginBottom: 16 }}>
+        <ThemedText type="title" style={{ marginBottom: scaleH(16) }}>
           Privacy Policy
         </ThemedText>
-        <ThemedText type="body" style={{ marginBottom: 12 }}>
+        <ThemedText type="body" style={{ marginBottom: scaleH(12) }}>
           Huntly Club respects your privacy. This page is a placeholder for your full privacy policy.
         </ThemedText>
-        <ThemedText type="body" style={{ marginBottom: 24 }}>
+        <ThemedText type="body" style={{ marginBottom: scaleH(24) }}>
           Add your privacy policy content here.
         </ThemedText>
         <Button variant="primary" size="large" onPress={() => router.back()}>

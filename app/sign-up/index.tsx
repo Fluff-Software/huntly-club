@@ -7,7 +7,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  useWindowDimensions,
   ActivityIndicator,
 } from "react-native";
 import { router } from "expo-router";
@@ -17,12 +16,9 @@ import { StatusBar } from "expo-status-bar";
 import { ThemedText } from "@/components/ThemedText";
 import { useSignUp } from "@/contexts/SignUpContext";
 import { checkEmailAvailable } from "@/services/authService";
+import { useLayoutScale } from "@/hooks/useLayoutScale";
 
 const HUNTLY_GREEN = "#4F6F52";
-
-/** Reference design size (logical pts). Scale layout to current window logical pixels. */
-const REFERENCE_WIDTH = 390;
-const REFERENCE_HEIGHT = 844;
 
 /** Basic email validation: local@domain.tld */
 const isValidEmail = (value: string): boolean =>
@@ -31,16 +27,13 @@ const isValidEmail = (value: string): boolean =>
 const MIN_PASSWORD_LENGTH = 6;
 
 export default function SignUpParentEmailScreen() {
-  const { width, height } = useWindowDimensions();
+  const { scaleW, scaleH } = useLayoutScale();
   const { setParentEmail, setPassword } = useSignUp();
   const [email, setEmail] = useState("");
   const [passwordValue, setPasswordValue] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [checkingEmail, setCheckingEmail] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
-
-  const scaleW = (n: number) => Math.round((width / REFERENCE_WIDTH) * n);
-  const scaleH = (n: number) => Math.round((height / REFERENCE_HEIGHT) * n);
 
   const isEmailValid = isValidEmail(email);
   const isPasswordValid =

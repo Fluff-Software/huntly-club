@@ -6,7 +6,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  useWindowDimensions,
 } from "react-native";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -14,6 +13,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useSignUp } from "@/contexts/SignUpContext";
+import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { generateNickname } from "@/services/nicknameGenerator";
 import {
   PROFILE_COLOR_OPTIONS,
@@ -24,12 +24,8 @@ const HUNTLY_GREEN = "#4F6F52";
 const CREAM = "#F4F0EB";
 const LIGHT_GREEN = "#A8D5BA";
 
-/** Reference design size (logical pts). */
-const REFERENCE_WIDTH = 390;
-const REFERENCE_HEIGHT = 844;
-
 export default function SignUpPlayersScreen() {
-  const { width, height } = useWindowDimensions();
+  const { scaleW, scaleH } = useLayoutScale();
   const { players, addPlayer, removePlayer, replacePlayer } = useSignUp();
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [name, setName] = useState("");
@@ -37,9 +33,6 @@ export default function SignUpPlayersScreen() {
   const [selectedColor, setSelectedColor] = useState(() =>
     getTailwindColorHex("bg-profile-3")
   );
-
-  const scaleW = (n: number) => Math.round((width / REFERENCE_WIDTH) * n);
-  const scaleH = (n: number) => Math.round((height / REFERENCE_HEIGHT) * n);
 
   const resetForm = () => {
     setName("");

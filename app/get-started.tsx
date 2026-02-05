@@ -4,7 +4,6 @@ import {
   Image,
   Pressable,
   FlatList,
-  useWindowDimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from "react-native";
@@ -13,14 +12,11 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 
 import { ThemedText } from "@/components/ThemedText";
+import { useLayoutScale } from "@/hooks/useLayoutScale";
 
 const HUNTLY_GREEN = "#4F6F52";
 const PAGINATION_ACTIVE = "#4D7653";
 const PAGINATION_INACTIVE = "#FFFFFF";
-
-/** Reference design size (logical pts). Scale layout from this to current window (logical pixels). */
-const REFERENCE_WIDTH = 390;
-const REFERENCE_HEIGHT = 844;
 
 const INTRO_SLIDES = [
   {
@@ -48,13 +44,9 @@ const INTRO_SLIDES = [
 ];
 
 export default function GetStartedScreen() {
-  const { width, height } = useWindowDimensions();
+  const { scaleW, scaleH, width } = useLayoutScale();
   const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-
-  // Scale from reference design (logical pts) to current window logical pixels
-  const scaleW = (n: number) => Math.round((width / REFERENCE_WIDTH) * n);
-  const scaleH = (n: number) => Math.round((height / REFERENCE_HEIGHT) * n);
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const index = Math.round(e.nativeEvent.contentOffset.x / width);

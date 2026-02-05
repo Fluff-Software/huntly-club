@@ -6,7 +6,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  useWindowDimensions,
 } from "react-native";
 import { Stack, useLocalSearchParams, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -15,14 +14,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import { ThemedText } from "@/components/ThemedText";
 import { LoginForm } from "@/components/authentication/LoginForm";
 import { SignUpForm } from "@/components/authentication/SignUpForm";
+import { useLayoutScale } from "@/hooks/useLayoutScale";
 
 const HUNTLY_GREEN = "#4F6F52";
 const GRADIENT_TOP = "#8FA5EE";
 const BUTTON_BG = "#F4F0EB";
-
-/** Reference design size (logical pts). Scale layout to current window logical pixels. */
-const REFERENCE_WIDTH = 390;
-const REFERENCE_HEIGHT = 844;
 
 enum AuthScreenMode {
   WELCOME,
@@ -32,11 +28,9 @@ enum AuthScreenMode {
 
 export default function AuthScreen() {
   const [mode, setMode] = useState(AuthScreenMode.WELCOME);
-  const { width, height } = useWindowDimensions();
+  const { scaleW, scaleH, width } = useLayoutScale();
   const params = useLocalSearchParams<{ mode?: string }>();
 
-  const scaleW = (n: number) => Math.round((width / REFERENCE_WIDTH) * n);
-  const scaleH = (n: number) => Math.round((height / REFERENCE_HEIGHT) * n);
   const heroHeight = scaleW(350);
 
   useEffect(() => {

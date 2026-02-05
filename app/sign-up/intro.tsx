@@ -6,17 +6,15 @@ import {
   Pressable,
   FlatList,
   ScrollView,
-  useWindowDimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from "react-native";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 
-const HUNTLY_GREEN = "#4F6F52";
+import { useLayoutScale } from "@/hooks/useLayoutScale";
 
-const REFERENCE_WIDTH = 390;
-const REFERENCE_HEIGHT = 844;
+const HUNTLY_GREEN = "#4F6F52";
 
 const INTRO_PAGES = [
   {
@@ -30,12 +28,9 @@ const INTRO_PAGES = [
 ];
 
 export default function SignUpIntroScreen() {
-  const { width, height } = useWindowDimensions();
+  const { scaleW, scaleH, width, height } = useLayoutScale();
   const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-
-  const scaleW = (n: number) => Math.round((width / REFERENCE_WIDTH) * n);
-  const scaleH = (n: number) => Math.round((height / REFERENCE_HEIGHT) * n);
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const index = Math.round(e.nativeEvent.contentOffset.x / width);

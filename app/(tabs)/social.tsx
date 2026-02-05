@@ -210,8 +210,6 @@ export default function SocialScreen() {
           backgroundColor: CARD_GRAY,
           width: scaleW(240),
           flexDirection: "row",
-          borderWidth: 1,
-          borderColor: "rgba(0,0,0,0.06)",
         },
         achievementIcon: {
           width: scaleW(100),

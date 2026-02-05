@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { MissionCard } from "@/components/MissionCard";
+import { StatCard } from "@/components/StatCard";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { MISSION_CARDS } from "@/constants/missionCards";
 
@@ -24,8 +25,6 @@ const BEAR_WAVE_IMAGE = require("@/assets/images/bear-wave.png");
 const LASER_FORTRESS_IMAGE = require("@/assets/images/laser-fortress.jpg");
 const WHISPERING_WIND_IMAGE = require("@/assets/images/whispering-wind.png");
 
-const CARD_PINK = "#FFB5B5";
-const CARD_GREEN = "#B5FFCE";
 const CREAM = "#F4F0EB";
 const ORANGE_BANNER = "#EBCDBB";
 
@@ -74,26 +73,6 @@ export default function HomeScreen() {
         pager: { flex: 1 },
         pagerContent: { width: width * HOME_MODES.length },
         pagerPage: { width, flex: 1 },
-        statCard: {
-          flex: 1,
-          borderRadius: scaleW(20),
-          paddingVertical: scaleW(32),
-          paddingHorizontal: scaleW(16),
-          alignItems: "center",
-          justifyContent: "center",
-        },
-        statCardHeading: {
-          fontSize: scaleW(44),
-          lineHeight: scaleW(52),
-          fontWeight: "600",
-          color: "#000",
-          marginBottom: scaleW(24),
-        },
-        statCardBody: {
-          fontSize: scaleW(16),
-          fontWeight: "600",
-          color: "#000",
-        },
         creamButton: {
           backgroundColor: CREAM,
           width: scaleW(220),
@@ -255,30 +234,16 @@ export default function HomeScreen() {
           gap: scaleW(16),
           paddingHorizontal: scaleW(12),
         }}>
-          <View style={[styles.statCard, { backgroundColor: CARD_PINK }]}>
-            <ThemedText
-              type="heading"
-              style={styles.statCardHeading}>
-              41
-            </ThemedText>
-            <ThemedText
-              type="heading"
-              style={styles.statCardBody}>
-              Days played
-            </ThemedText>
-          </View>
-          <View style={[styles.statCard, { backgroundColor: CARD_GREEN }]}>
-            <ThemedText
-              type="heading"
-              style={styles.statCardHeading}>
-              139
-            </ThemedText>
-            <ThemedText
-              type="heading"
-              style={styles.statCardBody}>
-              Points Earned
-            </ThemedText>
-          </View>
+          <StatCard
+            value={41}
+            label="Days played"
+            color="pink"
+          />
+          <StatCard
+            value={139}
+            label="Points Earned"
+            color="green"
+          />
         </View>
 
         <Pressable

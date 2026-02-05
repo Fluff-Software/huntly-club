@@ -341,11 +341,16 @@ export default function ParentsScreen() {
         settingsButton: {
           width: scaleW(240),
           backgroundColor: COLORS.cream,
-          borderRadius: scaleW(24),
+          borderRadius: scaleW(48),
           paddingVertical: scaleH(14),
           paddingHorizontal: scaleW(24),
           alignItems: "center",
           marginTop: scaleH(8),
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.3,
+          shadowRadius: 2,
+          elevation: 2,
         },
         settingsButtonText: {
           fontSize: scaleW(16),
@@ -563,7 +568,10 @@ export default function ParentsScreen() {
         <ThemedText style={styles.sectionDesc}>
           Access settings to control your account and preferences.
         </ThemedText>
-        <Pressable style={styles.settingsButton}>
+        <Pressable
+          style={styles.settingsButton}
+          onPress={() => router.push("/(tabs)/settings")}
+        >
           <ThemedText type="heading" style={styles.settingsButtonText}>Settings</ThemedText>
         </Pressable>
       </ScrollView>

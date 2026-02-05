@@ -71,7 +71,7 @@ export default function ProfileScreen() {
   const [recentActivities, setRecentActivities] = useState<
     RecentCompletedActivity[]
   >([]);
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const { currentPlayer, profiles, setCurrentPlayer, refreshProfiles } =
     usePlayer();
   const router = useRouter();
@@ -210,23 +210,6 @@ export default function ProfileScreen() {
     setEditNickname("");
     setEditColor("#FF6B35");
     setEditTeam(null);
-  };
-
-  const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Logout",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await signOut();
-          } catch {
-            Alert.alert("Error", "Failed to logout");
-          }
-        },
-      },
-    ]);
   };
 
   const formatActivityDate = (dateStr: string | null) => {
@@ -433,26 +416,14 @@ export default function ProfileScreen() {
           marginTop: scaleH(8),
           marginBottom: scaleH(24),
           marginHorizontal: scaleW(40),
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.3,
+          shadowRadius: 2,
+          elevation: 2,
         },
         parentZoneText: {
           fontSize: scaleW(17),
-          fontWeight: "600",
-        },
-        accountRow: {
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          paddingVertical: scaleH(8),
-        },
-        accountEmail: {
-          fontSize: scaleW(12),
-          color: "rgba(255,255,255,0.7)",
-          flex: 1,
-          marginRight: scaleW(12),
-        },
-        logoutText: {
-          fontSize: scaleW(12),
-          color: "rgba(255,255,255,0.9)",
           fontWeight: "600",
         },
         modalOverlay: {
@@ -769,16 +740,6 @@ export default function ProfileScreen() {
         >
           <ThemedText type="heading" style={styles.parentZoneText}>Parent Zone</ThemedText>
         </Pressable>
-
-        {/* Account / Logout - subtle */}
-        <View style={styles.accountRow}>
-          <ThemedText style={styles.accountEmail} numberOfLines={1}>
-            {user?.email}
-          </ThemedText>
-          <Pressable onPress={handleLogout} hitSlop={8}>
-            <ThemedText style={styles.logoutText}>Log out</ThemedText>
-          </Pressable>
-        </View>
       </ScrollView>
 
       {/* Edit modal */}

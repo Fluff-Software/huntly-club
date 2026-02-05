@@ -12,7 +12,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
+import { MissionCard } from "@/components/MissionCard";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { MISSION_CARDS } from "@/constants/missionCards";
 
 type HomeMode = "profile" | "activity" | "missions";
 const HOME_MODES: HomeMode[] = ["profile", "activity", "missions"];
@@ -144,51 +146,11 @@ export default function HomeScreen() {
           elevation: 2,
         },
         clubCardImage: { width: "100%", height: "100%" },
-        missionCardSwipeable: {
-          width: scaleW(280),
-          marginRight: scaleW(12),
-        },
-        missionCardInner: {
-          width: "100%",
-          backgroundColor: "#FFF",
-          borderRadius: scaleW(28),
-          padding: scaleW(12),
-          borderWidth: 6,
-          borderColor: "#7FAF8A",
-          shadowColor: "#000",
-          shadowOpacity: 0.3,
-          shadowRadius: 2,
-          shadowOffset: { width: 0, height: 2 },
-          elevation: 2,
-        },
-        missionCardImageWrap: {
-          width: "100%",
-          height: scaleW(160),
-          borderRadius: scaleW(16),
-          overflow: "hidden",
-          marginBottom: scaleH(12),
-          backgroundColor: "#1a1a2e",
-        },
-        missionCardImage: { width: "100%", height: "100%" },
         horizontalMissionCardsContainer: {
           paddingLeft: Math.max(0, (width - scaleW(48) - scaleW(280)) / 2),
           paddingRight: scaleW(16),
           paddingBottom: scaleW(8),
           gap: scaleW(12),
-        },
-        startButton: {
-          backgroundColor: "#7FAF8A",
-          borderRadius: scaleW(32),
-          paddingVertical: scaleH(12),
-          marginHorizontal: scaleW(12),
-          marginBottom: scaleH(6),
-          alignItems: "center",
-          justifyContent: "center",
-          shadowColor: "#000",
-          shadowOpacity: 0.3,
-          shadowRadius: 2,
-          shadowOffset: { width: 0, height: 2 },
-          elevation: 2,
         },
       }),
     [scaleW, scaleH, width, height]
@@ -343,21 +305,6 @@ export default function HomeScreen() {
     { id: "2", image: LASER_FORTRESS_IMAGE, title: "Into the maze", author: "Tal" },
   ];
 
-  const missionCards = [
-    {
-      id: "1",
-      image: LASER_FORTRESS_IMAGE,
-      title: "Build a Laser Maze",
-      description: "Create a laser maze using string, wool or tape. Rules are up to you: time limit, penalties, silent mode.",
-    },
-    {
-      id: "2",
-      image: LASER_FORTRESS_IMAGE,
-      title: "Build a Laser Maze",
-      description: "Create a laser maze using string, wool or tape. Rules are up to you: time limit, penalties, silent mode.",
-    },
-  ];
-
   const renderActivityContent = () => (
     <ScrollView
       className="flex-1"
@@ -409,19 +356,23 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <View style={{
-          backgroundColor: "#BBE5EB",
-          borderRadius: scaleW(15),
-          paddingTop: scaleW(16),
-          paddingBottom: scaleW(32),
-          borderWidth: 4,
-          borderColor: "#FFF",
-          shadowColor: "#000",
-          shadowOpacity: 0.3,
-          shadowRadius: 2,
-          shadowOffset: { width: 0, height: 2 },
-          elevation: 2,
-        }}>
+        <View
+          style={{
+            backgroundColor: "#BBE5EB",
+            borderRadius: scaleW(15),
+            paddingTop: scaleW(16),
+            paddingBottom: scaleW(32),
+            borderWidth: 4,
+            borderColor: "#FFF",
+            shadowColor: "#000",
+            shadowOpacity: 0.3,
+            shadowRadius: 2,
+            shadowOffset: { width: 0, height: 2 },
+            elevation: 2,
+            overflow: Platform.OS === "android" ? "visible" : undefined,
+          }}
+          collapsable={Platform.OS !== "android"}
+        >
           <ThemedText type="heading" style={{ color: "#000", fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(32), textAlign: "center" }}>
             From around the club
           </ThemedText>
@@ -431,6 +382,8 @@ export default function HomeScreen() {
             contentContainerStyle={styles.horizontalCardsContainer}
             style={{ overflow: "visible" }}
             nestedScrollEnabled={Platform.OS === "android"}
+            removeClippedSubviews={false}
+            overScrollMode="never"
           >
             {clubCards.map((card, index) => (
               <Pressable
@@ -509,72 +462,26 @@ export default function HomeScreen() {
           Your help is needed!
         </ThemedText>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.horizontalMissionCardsContainer}
-          style={{ overflow: "visible", marginBottom: scaleH(24) }}
-          nestedScrollEnabled={Platform.OS === "android"}
-        >
-          {missionCards.map((card, index) => (
-            <Pressable
+        <View collapsable={Platform.OS !== "android"}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.horizontalMissionCardsContainer}
+            style={{ overflow: "visible", marginBottom: scaleH(24) }}
+            nestedScrollEnabled={Platform.OS === "android"}
+            removeClippedSubviews={false}
+            overScrollMode="never"
+          >
+          {MISSION_CARDS.map((card, index) => (
+            <MissionCard
               key={card.id}
-              style={[
-                styles.missionCardSwipeable,
-                {
-                  transform: [{ rotate: index % 2 === 0 ? "-0.5deg" : "0.5deg" }],
-                  marginTop: index % 2 === 0 ? scaleW(-2) : scaleW(2),
-                },
-              ]}
-            >
-              <View style={styles.missionCardInner}>
-                <View style={styles.missionCardImageWrap}>
-                  <Image source={card.image} style={styles.missionCardImage} resizeMode="cover" />
-                </View>
-                <ThemedText
-                  type="heading"
-                  style={{
-                    fontSize: scaleW(18),
-                    fontWeight: "600",
-                    marginBottom: scaleW(16),
-                    textAlign: "center",
-                    color: "#000",
-                  }}
-                >
-                  {card.title}
-                </ThemedText>
-                <ThemedText
-                  type="body"
-                  style={{
-                    fontSize: scaleW(16),
-                    fontWeight: "400",
-                    marginBottom: scaleW(24),
-                    textAlign: "center",
-                    color: "#000",
-                  }}
-                >
-                  {card.description}
-                </ThemedText>
-                <Pressable
-                  onPress={() => router.push("/pack" as Parameters<typeof router.push>[0])}
-                  style={styles.startButton}
-                >
-                  <ThemedText
-                    type="heading"
-                    style={{
-                      fontSize: scaleW(16),
-                      fontWeight: "600",
-                      textAlign: "center",
-                      color: "#FFF",
-                    }}
-                  >
-                    Start
-                  </ThemedText>
-                </Pressable>
-              </View>
-            </Pressable>
-          ))}
-        </ScrollView>
+              card={card}
+              tiltDeg={index % 2 === 0 ? -0.5 : 0.5}
+              marginTopOffset={index % 2 === 0 ? scaleW(-2) : scaleW(2)}
+            />
+            ))}
+          </ScrollView>
+        </View>
 
         <Pressable
           onPress={() => router.push("/pack" as Parameters<typeof router.push>[0])}

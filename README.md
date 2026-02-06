@@ -57,7 +57,15 @@ You can keep your local `.env` for local dev only. Hosted Supabase is updated by
 ### 1. One-time hosted setup
 
 1. Create a project at [supabase.com](https://supabase.com). Note the **project ref** from the dashboard URL (`https://supabase.com/dashboard/project/<project-ref>`).
-2. **Authentication → URL configuration**: add `huntlyclub://auth/confirm` to **Redirect URLs**.
+
+2. **⚠️ CRITICAL: Configure Authentication URLs** (otherwise confirmation emails will have localhost links):
+   - Go to **Authentication → URL Configuration** in your Supabase dashboard
+   - Set **Site URL** to your app's deep link URL: `huntlyclub://auth/confirm`
+   - Add `huntlyclub://auth/confirm` to **Redirect URLs**
+   - This ensures confirmation emails contain the correct deep link that opens your mobile app
+   
+   > **Why this matters:** Supabase generates email confirmation links using the Site URL. If left as default (localhost), users will receive emails with localhost links that don't work in production. The Site URL must be the deep link scheme that opens your mobile app.
+
 3. (Optional) Seed data once via the dashboard SQL editor or a one-off script.
 
 ### 2. GitHub Actions (migrations + functions)
@@ -92,6 +100,38 @@ After that you do not need to run migrations or deploy functions locally for the
    Or use `make create-preview-build` for the same. Install the built app on registered devices via the link EAS provides.
 
 Your local `.env` stays for local dev (e.g. ngrok + local anon key). Hosted is handled by GitHub Actions (GH secrets) and EAS builds (EAS secrets). Use the **production** profile when you are ready for store builds.
+
+## Troubleshooting
+
+### Confirmation emails contain localhost links
+
+**Cause:** The Supabase project's Site URL is not configured correctly in the hosted environment.
+
+**Solution:**
+1. Log in to your Supabase dashboard at [supabase.com](https://supabase.com)
+2. Select your project
+3. Go to **Authentication → URL Configuration**
+4. Set **Site URL** to: `huntlyclub://auth/confirm`
+5. Ensure `huntlyclub://auth/confirm` is in the **Redirect URLs** list
+6. Click **Save**
+
+**Important notes:**
+- The `supabase/config.toml` file in this repository only affects local development
+- Hosted Supabase projects have separate configuration in the Supabase dashboard
+- Email templates use the Site URL from the dashboard, not from code
+- Changes take effect immediately after saving in the dashboard
+
+### Preview builds not connecting to hosted Supabase
+
+**Solution:** Verify EAS secrets are set correctly:
+```bash
+eas secret:list --scope project
+```
+You should see `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`. If missing, set them:
+```bash
+eas secret:create --name EXPO_PUBLIC_SUPABASE_URL --value "https://YOUR_PROJECT_REF.supabase.co" --scope project
+eas secret:create --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "YOUR_ANON_KEY" --scope project
+```
 
 ## Learn more
 

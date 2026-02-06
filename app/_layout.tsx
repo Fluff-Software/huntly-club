@@ -24,6 +24,7 @@ import { useColorScheme } from "@/hooks/useColorScheme";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { PurchasesProvider } from "@/contexts/PurchasesContext";
 import { PlayerProvider } from "@/contexts/PlayerContext";
+import { SignUpProvider } from "@/contexts/SignUpContext";
 import { AuthGuard } from "@/components/authentication/AuthGuard";
 
 import "../global.css";
@@ -90,9 +91,10 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <PurchasesProvider>
-        <PlayerProvider>
-          <ThemeProvider
+      <SignUpProvider>
+        <PurchasesProvider>
+          <PlayerProvider>
+            <ThemeProvider
             value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
           >
             <AuthGuard>
@@ -102,6 +104,7 @@ export default function RootLayout() {
           </ThemeProvider>
         </PlayerProvider>
       </PurchasesProvider>
+      </SignUpProvider>
     </AuthProvider>
   );
 }

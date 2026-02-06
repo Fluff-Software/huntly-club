@@ -1,51 +1,109 @@
 import { Tabs } from "expo-router";
-import { FontAwesome } from "@expo/vector-icons";
-import { useColorScheme } from "@/hooks/useColorScheme";
+import { Image, Platform, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { useLayoutScale } from "@/hooks/useLayoutScale";
+
+const HOME_CLUBHOUSE = require("@/assets/images/home-clubhouse.png");
+const HOME_STORY = require("@/assets/images/home-story.png");
+const HOME_MISSIONS = require("@/assets/images/home-missions.png");
+const HOME_TEAM = require("@/assets/images/home-team.png");
+
+const TAB_BAR_COLORS: Record<string, string> = {
+  index: "#4F6F52",
+  story: "#4B9CD2",
+  missions: "#D2684B",
+  social: "#F7A676",
+};
+
+function TabIcon({
+  source,
+  color,
+  size = 24,
+}: {
+  source: number;
+  color: string;
+  size?: number;
+}) {
+  return (
+    <Image
+      source={source}
+      style={[styles.tabIcon, { width: size, height: size, tintColor: color }]}
+      resizeMode="contain"
+    />
+  );
+}
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
   const { currentPlayer } = usePlayer();
+  const { scaleW, scaleH } = useLayoutScale();
+  const insets = useSafeAreaInsets();
+
+  const activeColor = "#FFFFFF";
+  const inactiveColor = "rgba(255,255,255,0.6)";
+
+  const bottomInset =
+    Platform.OS === "android" && insets.bottom === 0
+      ? scaleH(24)
+      : insets.bottom;
+  const tabBarPaddingBottom = scaleH(16) + bottomInset;
+  const tabBarHeight = scaleH(72) + bottomInset;
 
   return (
     <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: colorScheme === "dark" ? "#7FB069" : "#4A7C59", // huntly-sage : huntly-leaf
-        tabBarInactiveTintColor: colorScheme === "dark" ? "#A8D5BA" : "#8B4513", // huntly-mint : huntly-brown
+      screenOptions={({ route }) => ({
+        tabBarActiveTintColor: activeColor,
+        tabBarInactiveTintColor: inactiveColor,
         tabBarStyle: {
-          backgroundColor: colorScheme === "dark" ? "#2D5A27" : "#FFF8DC", // huntly-forest : huntly-cream
-          borderTopColor: colorScheme === "dark" ? "#4A7C59" : "#A8D5BA", // huntly-leaf : huntly-mint
-          borderTopWidth: 1,
-          height: 90,
-          paddingBottom: 16,
-          paddingTop: 8,
-          paddingHorizontal: 16,
+          borderTopWidth: 0,
+          height: tabBarHeight,
+          paddingTop: scaleH(16),
+          paddingBottom: tabBarPaddingBottom,
+          paddingHorizontal: scaleW(8),
           elevation: 8,
           shadowColor: "#000",
-          shadowOffset: {
-            width: 0,
-            height: -2,
-          },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
+          shadowOffset: { width: 0, height: scaleH(-2) },
+          shadowOpacity: 0.12,
+          shadowRadius: scaleW(4),
+          backgroundColor: TAB_BAR_COLORS[route.name] ?? TAB_BAR_COLORS.index,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: scaleW(12),
           fontWeight: "600",
-          marginTop: 4,
+          marginTop: scaleH(4),
         },
         tabBarIconStyle: {
-          marginTop: 4,
+          marginTop: 0,
         },
         headerShown: false,
-      }}
+      })}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: "Clubhouse",
           tabBarIcon: ({ color }) => (
-            <FontAwesome name="home" size={24} color={color} />
+            <TabIcon source={HOME_CLUBHOUSE} color={color} size={scaleW(24)} />
+          ),
+          href: currentPlayer ? undefined : null,
+        }}
+      />
+      <Tabs.Screen
+        name="story"
+        options={{
+          title: "Story",
+          tabBarIcon: ({ color }) => (
+            <TabIcon source={HOME_STORY} color={color} size={scaleW(24)} />
+          ),
+          href: currentPlayer ? undefined : null,
+        }}
+      />
+      <Tabs.Screen
+        name="missions"
+        options={{
+          title: "Missions",
+          tabBarIcon: ({ color }) => (
+            <TabIcon source={HOME_MISSIONS} color={color} size={scaleW(24)} />
           ),
           href: currentPlayer ? undefined : null,
         }}
@@ -53,9 +111,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="social"
         options={{
-          title: "My Team",
+          title: "Team",
           tabBarIcon: ({ color }) => (
-            <FontAwesome name="users" size={24} color={color} />
+            <TabIcon source={HOME_TEAM} color={color} size={scaleW(24)} />
           ),
           href: currentPlayer ? undefined : null,
         }}
@@ -63,10 +121,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
-          tabBarIcon: ({ color }) => (
-            <FontAwesome name="user" size={24} color={color} />
-          ),
+          href: null,
         }}
       />
       <Tabs.Screen
@@ -81,6 +136,16 @@ export default function TabLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabIcon: {},
+});

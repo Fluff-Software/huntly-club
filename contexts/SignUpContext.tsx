@@ -1,0 +1,103 @@
+import React, { createContext, useContext, useState, useCallback } from "react";
+
+export type SignUpPlayer = {
+  name: string;
+  nickname: string;
+  colour: string;
+};
+
+type SignUpContextValue = {
+  parentEmail: string;
+  setParentEmail: (email: string) => void;
+  /** Account password (collected on first sign-up step). */
+  password: string;
+  setPassword: (password: string) => void;
+  players: SignUpPlayer[];
+  addPlayer: (player: SignUpPlayer) => void;
+  removePlayer: (index: number) => void;
+  /** Move player at fromIndex to toIndex (e.g. to top with toIndex 0). */
+  movePlayer: (fromIndex: number, toIndex: number) => void;
+  /** Replace player at index (e.g. after editing). */
+  replacePlayer: (index: number, player: SignUpPlayer) => void;
+  /** Team name chosen on "Choose your team" (e.g. "Bears", "Foxes", "Otters"). */
+  selectedTeamName: string | null;
+  setSelectedTeamName: (name: string | null) => void;
+  clearSignUpData: () => void;
+};
+
+const SignUpContext = createContext<SignUpContextValue | null>(null);
+
+export function SignUpProvider({ children }: { children: React.ReactNode }) {
+  const [parentEmail, setParentEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [players, setPlayers] = useState<SignUpPlayer[]>([]);
+  const [selectedTeamName, setSelectedTeamName] = useState<string | null>(null);
+
+  const addPlayer = useCallback((player: SignUpPlayer) => {
+    setPlayers((prev) => [...prev, player]);
+  }, []);
+
+  const removePlayer = useCallback((index: number) => {
+    setPlayers((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const movePlayer = useCallback((fromIndex: number, toIndex: number) => {
+    setPlayers((prev) => {
+      if (fromIndex === toIndex || fromIndex < 0 || fromIndex >= prev.length) return prev;
+      const item = prev[fromIndex];
+      const next = [...prev];
+      next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, item);
+      return next;
+    });
+  }, []);
+
+  const replacePlayer = useCallback((index: number, player: SignUpPlayer) => {
+    setPlayers((prev) => {
+      if (index < 0 || index >= prev.length) return prev;
+      const next = [...prev];
+      next[index] = player;
+      return next;
+    });
+  }, []);
+
+  const clearSignUpData = useCallback(() => {
+    setParentEmail("");
+    setPassword("");
+    setPlayers([]);
+    setSelectedTeamName(null);
+  }, []);
+
+  return (
+    <SignUpContext.Provider
+      value={{
+        parentEmail,
+        setParentEmail,
+        password,
+        setPassword,
+        players,
+        addPlayer,
+        removePlayer,
+        movePlayer,
+        replacePlayer,
+        selectedTeamName,
+        setSelectedTeamName,
+        clearSignUpData,
+      }}
+    >
+      {children}
+    </SignUpContext.Provider>
+  );
+}
+
+export function useSignUp() {
+  const ctx = useContext(SignUpContext);
+  if (!ctx) {
+    throw new Error("useSignUp must be used within SignUpProvider");
+  }
+  return ctx;
+}
+
+export function useSignUpOptional() {
+  return useContext(SignUpContext);
+}

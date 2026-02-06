@@ -26,6 +26,15 @@ jobs:
       - name: Link project
         run: supabase link --project-ref $SUPABASE_PROJECT_REF
 
+      - name: Verify auth configuration
+        run: |
+          echo "⚠️  REMINDER: Ensure Supabase dashboard auth is configured correctly:"
+          echo "   - Site URL should be: huntlyclub://auth/confirm"
+          echo "   - Redirect URLs should include: huntlyclub://auth/confirm"
+          echo "   - Configure at: https://supabase.com/dashboard/project/$SUPABASE_PROJECT_REF/auth/url-configuration"
+          echo ""
+          echo "Note: Site URL cannot be set via CLI, it must be configured in the dashboard."
+
       - name: Push migrations
         run: supabase db push
 

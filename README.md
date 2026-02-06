@@ -2,6 +2,8 @@
 
 This is an Expo project, which uses Supabase for the back end.
 
+> **🚨 Confirmation emails showing localhost?** See [QUICK_FIX.md](./QUICK_FIX.md) for immediate solution.
+
 ## Get started with local development
 
 1. Run Supabase locally

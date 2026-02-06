@@ -44,7 +44,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!pendingData) return;
       
       // Check if this is the user who created these pending profiles
-      if (pendingData.email.toLowerCase() !== userEmail?.toLowerCase()) {
+      if (!userEmail || pendingData.email.toLowerCase() !== userEmail.toLowerCase()) {
+        // Clear stale pending data from a different user or missing email
+        await clearPendingProfiles();
         return;
       }
       

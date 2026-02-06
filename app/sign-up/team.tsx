@@ -13,8 +13,7 @@ import { StatusBar } from "expo-status-bar";
 import { ThemedText } from "@/components/ThemedText";
 import { useSignUp } from "@/contexts/SignUpContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { checkEmailAvailable } from "@/services/authService";
-import { savePendingProfiles } from "@/services/pendingProfileService";
+import { getTeams, createProfile } from "@/services/profileService";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 
 const HUNTLY_GREEN = "#4F6F52";
@@ -50,20 +49,18 @@ const HARDCODED_TEAMS = [
 export default function SignUpTeamScreen() {
   const { scaleW, scaleH } = useLayoutScale();
   const {
-    parentEmail,
-    password,
     players,
     setSelectedTeamName,
     clearSignUpData,
   } = useSignUp();
-  const { signUp } = useAuth();
+  const { user } = useAuth();
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
   const handleEnterHuntlyWorld = async () => {
     if (!selectedName) return;
-    if (!parentEmail.trim() || !password) {
-      Alert.alert("Error", "Missing email or password. Please go back and complete the sign-up steps.");
+    if (!user) {
+      Alert.alert("Error", "You must be signed in to continue. Please verify your email.");
       return;
     }
 
@@ -71,49 +68,37 @@ export default function SignUpTeamScreen() {
     setCreating(true);
 
     try {
-      const { available, error } = await checkEmailAvailable(parentEmail.trim());
-      if (error) {
-        Alert.alert("Error", error);
-        return;
-      }
-      if (!available) {
-        Alert.alert(
-          "Email already in use",
-          "This email is already registered. Sign in or use a different email."
-        );
-        return;
-      }
-
-      await signUp(parentEmail.trim(), password);
-      
-      // Save pending profile data to be created after email verification
+      // User is already authenticated, just create profiles
       if (players.length > 0) {
-        try {
-          await savePendingProfiles({
-            players: players,
-            selectedTeamName: selectedName,
-            email: parentEmail.trim(),
-          });
-        } catch (storageError) {
-          console.error("Error saving pending profiles:", storageError);
-          // Continue anyway - user can recreate profiles later
+        const teams = await getTeams();
+        const team = teams.find((t) => t.name.toLowerCase() === selectedName.toLowerCase());
+        const teamId = team?.id ?? teams[0]?.id;
+        if (teamId) {
+          for (const player of players) {
+            await createProfile({
+              user_id: user.id,
+              name: player.name,
+              colour: player.colour,
+              team: teamId,
+              nickname: player.nickname,
+            });
+          }
         }
       }
-      
       clearSignUpData();
 
       Alert.alert(
-        "Account created",
-        "Your account has been created. A confirmation link has been sent to your email—please check it and verify your account before signing in.",
+        "Welcome to Huntly Club!",
+        "Your explorers are ready for adventure!",
         [
           {
-            text: "OK",
+            text: "Let's Go!",
             onPress: () => router.push("/sign-up/intro"),
           },
         ]
       );
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to create account.";
+      const message = error instanceof Error ? error.message : "Failed to create profiles.";
       Alert.alert("Error", message);
     } finally {
       setCreating(false);

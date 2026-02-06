@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { router } from "expo-router";
 import { Stack } from "expo-router";
@@ -15,7 +16,7 @@ import { StatusBar } from "expo-status-bar";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useSignUp } from "@/contexts/SignUpContext";
-import { checkEmailAvailable } from "@/services/authService";
+import { checkEmailAvailable, signUp } from "@/services/authService";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 
 const HUNTLY_GREEN = "#4F6F52";
@@ -33,6 +34,7 @@ export default function SignUpParentEmailScreen() {
   const [passwordValue, setPasswordValue] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [checkingEmail, setCheckingEmail] = useState(false);
+  const [creatingAccount, setCreatingAccount] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
 
   const isEmailValid = isValidEmail(email);
@@ -44,6 +46,7 @@ export default function SignUpParentEmailScreen() {
 
   const disabledReason = ((): string | null => {
     if (checkingEmail) return "Checking email…";
+    if (creatingAccount) return "Creating account…";
     if (canContinue) return null;
     if (!email.trim()) return "Enter your email to continue.";
     if (!isEmailValid) return "Please enter a valid email address.";
@@ -53,7 +56,7 @@ export default function SignUpParentEmailScreen() {
     return "Complete all fields to continue.";
   })();
 
-  const isDisabled = !canContinue || checkingEmail;
+  const isDisabled = !canContinue || checkingEmail || creatingAccount;
 
   const handleContinue = async () => {
     setEmailError(null);
@@ -73,9 +76,23 @@ export default function SignUpParentEmailScreen() {
       return;
     }
 
-    setParentEmail(trimmed);
-    setPassword(passwordValue);
-    router.push("/sign-up/players");
+    // Create the account immediately
+    setCreatingAccount(true);
+    try {
+      await signUp(trimmed, passwordValue);
+      
+      // Save email and password to context for later use
+      setParentEmail(trimmed);
+      setPassword(passwordValue);
+      
+      // Redirect to verification waiting screen
+      router.push("/sign-up/verify-email");
+    } catch (signUpError) {
+      setCreatingAccount(false);
+      const errorMessage = signUpError instanceof Error ? signUpError.message : "Failed to create account";
+      Alert.alert("Error", errorMessage);
+      setEmailError(errorMessage);
+    }
   };
 
   const openPrivacyPolicy = () => {
@@ -318,7 +335,7 @@ export default function SignUpParentEmailScreen() {
               opacity: isDisabled ? 0.8 : 1,
             }}
           >
-            {checkingEmail ? (
+            {checkingEmail || creatingAccount ? (
               <ActivityIndicator size="small" color={HUNTLY_GREEN} />
             ) : (
               <ThemedText

@@ -13,8 +13,8 @@ import { StatusBar } from "expo-status-bar";
 import { ThemedText } from "@/components/ThemedText";
 import { useSignUp } from "@/contexts/SignUpContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { getCurrentUser, checkEmailAvailable } from "@/services/authService";
-import { getTeams, createProfile } from "@/services/profileService";
+import { checkEmailAvailable } from "@/services/authService";
+import { savePendingProfiles } from "@/services/pendingProfileService";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 
 const HUNTLY_GREEN = "#4F6F52";
@@ -85,28 +85,26 @@ export default function SignUpTeamScreen() {
       }
 
       await signUp(parentEmail.trim(), password);
-      const user = await getCurrentUser();
-      if (user && players.length > 0) {
-        const teams = await getTeams();
-        const team = teams.find((t) => t.name.toLowerCase() === selectedName.toLowerCase());
-        const teamId = team?.id ?? teams[0]?.id;
-        if (teamId) {
-          for (const player of players) {
-            await createProfile({
-              user_id: user.id,
-              name: player.name,
-              colour: player.colour,
-              team: teamId,
-              nickname: player.nickname,
-            });
-          }
+      
+      // Save pending profile data to be created after email verification
+      if (players.length > 0) {
+        try {
+          await savePendingProfiles({
+            players: players,
+            selectedTeamName: selectedName,
+            email: parentEmail.trim(),
+          });
+        } catch (storageError) {
+          console.error("Error saving pending profiles:", storageError);
+          // Continue anyway - user can recreate profiles later
         }
       }
+      
       clearSignUpData();
 
       Alert.alert(
         "Account created",
-        "Your account has been created. A confirmation link has been sent to your email—please check it to verify your account.",
+        "Your account has been created. A confirmation link has been sent to your email—please check it and verify your account before signing in.",
         [
           {
             text: "OK",

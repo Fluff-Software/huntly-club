@@ -10,9 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/ui/Button";
-import { getCurrentUser } from "@/services/authService";
-import { getTeams } from "@/services/profileService";
-import { createProfile } from "@/services/profileService";
+import { savePendingProfiles } from "@/services/pendingProfileService";
 
 type SignUpFormProps = {
   onLoginInstead: () => void;
@@ -47,33 +45,24 @@ export function SignUpForm({ onLoginInstead }: SignUpFormProps) {
 
     try {
       await signUp(email, password);
-      const user = await getCurrentUser();
-      if (user && signUpContext && signUpContext.players.length > 0) {
+      
+      // Save pending profile data to be created after email verification
+      if (signUpContext && signUpContext.players.length > 0 && signUpContext.selectedTeamName) {
         try {
-          const teams = await getTeams();
-          const chosenName = signUpContext.selectedTeamName?.trim();
-          const team = chosenName
-            ? teams.find((t) => t.name.toLowerCase() === chosenName.toLowerCase())
-            : teams[0];
-          const teamId = team?.id;
-          if (teamId) {
-            for (const player of signUpContext.players) {
-              await createProfile({
-                user_id: user.id,
-                name: player.name,
-                colour: player.colour,
-                team: teamId,
-                nickname: player.nickname,
-              });
-            }
-          }
+          await savePendingProfiles({
+            players: signUpContext.players,
+            selectedTeamName: signUpContext.selectedTeamName,
+            email: email.trim(),
+          });
           signUpContext.clearSignUpData();
-        } catch (profileError) {
-          console.error("Error creating explorer profiles:", profileError);
+        } catch (storageError) {
+          console.error("Error saving pending profiles:", storageError);
+          // Continue anyway - user can recreate profiles later
         }
       }
+      
       setSuccessMessage(
-        `Account created! A confirmation link has been sent to ${email}. Please check your email to verify your account.`
+        `Account created! A confirmation link has been sent to ${email}. Please check your email to verify your account before signing in.`
       );
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to create account";

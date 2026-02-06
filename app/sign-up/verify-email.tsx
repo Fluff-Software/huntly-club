@@ -42,6 +42,12 @@ export default function VerifyEmailScreen() {
           setVerificationComplete(true);
           setChecking(false);
           
+          // Clear the interval immediately
+          if (checkIntervalRef.current) {
+            clearInterval(checkIntervalRef.current);
+            checkIntervalRef.current = null;
+          }
+          
           // Wait a moment to show success message, then proceed
           setTimeout(() => {
             router.replace("/sign-up/players");

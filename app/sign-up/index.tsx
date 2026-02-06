@@ -85,6 +85,9 @@ export default function SignUpParentEmailScreen() {
       setParentEmail(trimmed);
       setPassword(passwordValue);
       
+      // Clear loading state before navigation
+      setCreatingAccount(false);
+      
       // Redirect to verification waiting screen
       router.push("/sign-up/verify-email");
     } catch (signUpError) {

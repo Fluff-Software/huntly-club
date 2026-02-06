@@ -38,6 +38,9 @@ jobs:
         run: npm ci
 
       - name: Trigger EAS Preview Build
+        env:
+          EXPO_PUBLIC_EAS_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_EAS_PROJECT_ID }}
+          EXPO_PUBLIC_OWNER: ${{ secrets.EXPO_PUBLIC_OWNER }}
         run: |
           echo "Starting EAS preview build for platform: ${{ github.event.inputs.platform }}"
           eas build --profile preview --platform ${{ github.event.inputs.platform }} --non-interactive --no-wait

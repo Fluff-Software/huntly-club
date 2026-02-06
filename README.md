@@ -72,6 +72,8 @@ Add these **GitHub repository secrets** (Settings → Secrets and variables → 
 | `SUPABASE_PROJECT_REF` | Project ref from the project URL (e.g. `abcdefghijklmnop`) |
 | `SUPABASE_DB_PASSWORD` | Project **Settings → Database → Database password** (the one you set when creating the project) |
 | `EXPO_TOKEN` | [Expo dashboard](https://expo.dev/accounts/[account]/settings/access-tokens) → Access Tokens → Create Token |
+| `EXPO_PUBLIC_EAS_PROJECT_ID` | Your EAS project ID from `app.config.ts` or run `eas init` locally to generate one |
+| `EXPO_PUBLIC_OWNER` | Your Expo account username or organization name (e.g. `fluffsoftware`) |
 
 After that you do not need to run migrations or deploy functions locally for the hosted project, and you do not need hosted URL/keys in your local `.env`.
 

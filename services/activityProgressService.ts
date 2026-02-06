@@ -151,6 +151,42 @@ export const completeActivity = async (
   }
 };
 
+export interface RecentCompletedActivity {
+  id: number;
+  activity_id: number;
+  completed_at: string | null;
+  activity: { id: number; title: string };
+}
+
+export const getRecentCompletedActivities = async (
+  profileId: number,
+  limit: number = 8
+): Promise<RecentCompletedActivity[]> => {
+  const { data, error } = await supabase
+    .from("user_activity_progress")
+    .select(
+      `
+      id,
+      activity_id,
+      completed_at,
+      activity:activities!inner(
+        id,
+        title
+      )
+    `
+    )
+    .eq("profile_id", profileId)
+    .eq("status", "completed")
+    .order("completed_at", { ascending: false, nullsLast: true })
+    .limit(limit);
+
+  if (error) {
+    console.error("Error fetching recent completed activities:", error);
+    return [];
+  }
+  return (data || []) as RecentCompletedActivity[];
+};
+
 export const getActivityProgressForPack = async (
   profileId: number,
   packId: number

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   TextInput,
   Alert,
@@ -6,13 +6,18 @@ import {
   ScrollView,
   View,
   Image,
+  StyleSheet,
+  Modal,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
-import { BaseLayout } from "@/components/layout/BaseLayout";
 import { Button } from "@/components/ui/Button";
+import { StatCard } from "@/components/StatCard";
+import { useLayoutScale } from "@/hooks/useLayoutScale";
 import {
   createProfile,
   getTeams,
@@ -21,13 +26,38 @@ import {
   type Team,
 } from "@/services/profileService";
 import { generateNickname } from "@/services/nicknameGenerator";
-import { XPBar } from "@/components/XPBar";
 import { getTeamImageSource } from "@/utils/teamUtils";
 import { ColorPicker } from "@/components/ui/ColorPicker";
+import { getUserBadges, type UserBadge } from "@/services/badgeService";
+import {
+  getRecentCompletedActivities,
+  type RecentCompletedActivity,
+} from "@/services/activityProgressService";
+import { MaterialIcons } from "@expo/vector-icons";
+
+// Design colors from reference
+const COLORS = {
+  darkGreen: "#4F6F52",
+  cream: "#F8F7F4",
+  accentBlue: "#A7D9ED",
+  accentGreen: "#BEE6BE",
+  activityCard: "#E8E8E8",
+  arrow: "#C98D8D",
+  white: "#FFFFFF",
+  black: "#000000",
+  charcoal: "#333333",
+};
+
+const PLAYER_ACCENTS = [COLORS.accentBlue, COLORS.accentGreen];
+
+const BADGE_IMAGE = require("@/assets/images/badge.png");
+const PLANTING_IMAGE = require("@/assets/images/planting.png");
+const MATHS_IMAGE = require("@/assets/images/maths.png");
+const RESILIENCE_IMAGE = require("@/assets/images/resilience.png");
 
 export default function ProfileScreen() {
   const [name, setName] = useState("");
-  const [selectedColor, setSelectedColor] = useState<string>("#FF6B35"); // Default to fox orange
+  const [selectedColor, setSelectedColor] = useState<string>("#FF6B35");
   const [selectedTeam, setSelectedTeam] = useState<number | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(false);
@@ -37,24 +67,23 @@ export default function ProfileScreen() {
   const [editColor, setEditColor] = useState<string>("#FF6B35");
   const [editTeam, setEditTeam] = useState<number | null>(null);
   const [showAddExplorer, setShowAddExplorer] = useState(false);
-  const { user, signOut } = useAuth();
+  const [userBadges, setUserBadges] = useState<UserBadge[]>([]);
+  const [recentActivities, setRecentActivities] = useState<
+    RecentCompletedActivity[]
+  >([]);
+  const { user } = useAuth();
   const { currentPlayer, profiles, setCurrentPlayer, refreshProfiles } =
     usePlayer();
   const router = useRouter();
+  const { scaleW, scaleH } = useLayoutScale();
 
-  // Refresh profiles when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       let isMounted = true;
-
       const refresh = async () => {
-        if (isMounted) {
-          await refreshProfiles();
-        }
+        if (isMounted) await refreshProfiles();
       };
-
       refresh();
-
       return () => {
         isMounted = false;
       };
@@ -63,31 +92,34 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     let isMounted = true;
-
     const fetchTeams = async () => {
       try {
         const teamsData = await getTeams();
         if (isMounted) {
           setTeams(teamsData);
-          if (teamsData.length > 0) {
-            setSelectedTeam(teamsData[0].id);
-          }
+          if (teamsData.length > 0) setSelectedTeam(teamsData[0].id);
         }
       } catch (error) {
         console.error("Error fetching teams:", error);
-        if (isMounted) {
-          Alert.alert("Error", "Failed to load teams");
-        }
+        if (isMounted) Alert.alert("Error", "Failed to load teams");
       }
     };
     fetchTeams();
-
     return () => {
       isMounted = false;
     };
   }, []);
 
-  // Initialize edit form when entering edit mode
+  useEffect(() => {
+    if (currentPlayer && user) {
+      getUserBadges(user.id, currentPlayer.id).then(setUserBadges).catch(() => setUserBadges([]));
+      getRecentCompletedActivities(currentPlayer.id).then(setRecentActivities).catch(() => setRecentActivities([]));
+    } else {
+      setUserBadges([]);
+      setRecentActivities([]);
+    }
+  }, [currentPlayer?.id, user?.id]);
+
   useEffect(() => {
     if (currentPlayer && isEditing) {
       setEditName(currentPlayer.name);
@@ -95,7 +127,7 @@ export default function ProfileScreen() {
       setEditColor(currentPlayer.colour);
       setEditTeam(currentPlayer.team);
     }
-  }, [isEditing, currentPlayer?.id]); // Only depend on isEditing and currentPlayer.id, not the entire currentPlayer object
+  }, [isEditing, currentPlayer?.id]);
 
   const handleCreateProfile = async () => {
     if (!name.trim() || !selectedTeam) {
@@ -116,23 +148,16 @@ export default function ProfileScreen() {
       });
       await refreshProfiles();
       setName("");
-      setShowAddExplorer(false); // Close the dropdown
+      setShowAddExplorer(false);
       Alert.alert(
         "Explorer Created! 🎉",
-        "Your new explorer has been created and is now active! You can now access all the adventure features.",
-        [
-          {
-            text: "Start Adventure",
-            onPress: () => {
-              router.replace("/");
-            },
-          },
-        ]
+        "Your new explorer has been created and is now active!",
+        [{ text: "OK", onPress: () => router.replace("/") }]
       );
     } catch (error) {
-      const errorMessage =
+      const msg =
         error instanceof Error ? error.message : "Failed to create explorer";
-      Alert.alert("Error", errorMessage);
+      Alert.alert("Error", msg);
     } finally {
       setLoading(false);
     }
@@ -140,19 +165,11 @@ export default function ProfileScreen() {
 
   const handleSelectPlayer = (profile: Profile) => {
     setCurrentPlayer(profile);
-    setIsEditing(false); // Exit edit mode when selecting a different player
+    setIsEditing(false);
     Alert.alert(
       "Explorer Selected! 🎉",
-      `${profile.name} is now your active explorer! All adventure features are now unlocked.`,
-      [
-        {
-          text: "Start Adventure",
-          onPress: () => {
-            // Navigate to home tab after selection
-            router.replace("/");
-          },
-        },
-      ]
+      `${profile.name} is now your active explorer!`,
+      [{ text: "OK", onPress: () => router.replace("/") }]
     );
   };
 
@@ -166,7 +183,6 @@ export default function ProfileScreen() {
       Alert.alert("Error", "Please fill in all fields");
       return;
     }
-
     setLoading(true);
     try {
       const updatedProfile = await updateProfile(currentPlayer.id, {
@@ -175,16 +191,14 @@ export default function ProfileScreen() {
         colour: editColor,
         team: editTeam,
       });
-
-      // Update the current player with the new data
       setCurrentPlayer(updatedProfile);
       await refreshProfiles();
       setIsEditing(false);
       Alert.alert("Success", "Explorer updated successfully!");
     } catch (error) {
-      const errorMessage =
+      const msg =
         error instanceof Error ? error.message : "Failed to update explorer";
-      Alert.alert("Error", errorMessage);
+      Alert.alert("Error", msg);
     } finally {
       setLoading(false);
     }
@@ -198,473 +212,721 @@ export default function ProfileScreen() {
     setEditTeam(null);
   };
 
-  const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
-      {
-        text: "Logout",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await signOut();
-            // The AuthGuard will handle redirecting to login
-          } catch (error) {
-            Alert.alert("Error", "Failed to logout");
-          }
-        },
-      },
-    ]);
+  const formatActivityDate = (dateStr: string | null) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    const day = d.getDate();
+    const suffix =
+      day === 1 || day === 21 || day === 31
+        ? "st"
+        : day === 2 || day === 22
+          ? "nd"
+          : day === 3 || day === 23
+            ? "rd"
+            : "th";
+    const months = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December",
+    ];
+    return `Completed ${day}${suffix} ${months[d.getMonth()]} ${d.getFullYear()}`;
   };
 
+  const daysPlayed =
+    recentActivities.length > 0
+      ? new Set(
+          recentActivities
+            .map((a) => a.completed_at && a.completed_at.slice(0, 10))
+            .filter(Boolean)
+        ).size
+      : 0;
+
+  const pointsEarned = currentPlayer?.xp ?? 0;
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        safeArea: {
+          flex: 1,
+          backgroundColor: COLORS.darkGreen,
+        },
+        scrollView: {
+          flex: 1,
+        },
+        scrollContent: {
+          paddingHorizontal: scaleW(20),
+          paddingTop: scaleH(16),
+          paddingBottom: scaleH(32),
+        },
+        section: {
+          marginBottom: scaleH(24),
+        },
+        sectionHeader: {
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: scaleH(12),
+        },
+        sectionTitle: {
+          fontSize: scaleW(18),
+          fontWeight: "600",
+          color: COLORS.white,
+          marginBottom: scaleW(12),
+        },
+        editIconWrap: {
+          padding: scaleW(4),
+        },
+        cardCream: {
+          backgroundColor: COLORS.cream,
+          borderRadius: scaleW(20),
+          padding: scaleW(16),
+        },
+        cardTextPrimary: {
+          fontSize: scaleW(16),
+          fontWeight: "600",
+          color: COLORS.black,
+        },
+        cardTextSecondary: {
+          fontSize: scaleW(14),
+          color: COLORS.charcoal,
+          marginTop: scaleH(4),
+        },
+        playerCard: {
+          flexDirection: "row",
+          backgroundColor: COLORS.cream,
+          borderRadius: scaleW(20),
+          marginBottom: scaleH(12),
+          overflow: "hidden",
+          minHeight: scaleH(64),
+        },
+        playerAccent: {
+          width: scaleW(20),
+          borderRadius: scaleW(2),
+        },
+        playerCardContent: {
+          flex: 1,
+          paddingVertical: scaleH(12),
+          paddingHorizontal: scaleW(16),
+          justifyContent: "center",
+        },
+        playerName: {
+          fontSize: scaleW(18),
+          fontWeight: "600",
+          color: COLORS.black,
+        },
+        playerNickname: {
+          fontSize: scaleW(14),
+          color: COLORS.charcoal,
+          marginTop: scaleH(2),
+        },
+        addExplorerRow: {
+          flexDirection: "row",
+          alignItems: "center",
+          marginTop: scaleH(8),
+        },
+        addExplorerIcon: {
+          width: scaleW(40),
+          height: scaleH(40),
+          borderRadius: scaleW(20),
+          backgroundColor: "rgba(255,255,255,0.25)",
+          alignItems: "center",
+          justifyContent: "center",
+          marginRight: scaleW(12),
+        },
+        progressRow: {
+          flexDirection: "row",
+          justifyContent: "center",
+          gap: scaleW(16),
+          paddingHorizontal: scaleW(12),
+        },
+        skillsCard: {
+          backgroundColor: COLORS.white,
+          borderRadius: scaleW(20),
+          padding: scaleW(20),
+          alignItems: "center",
+        },
+        skillsRow: {
+          flexDirection: "row",
+          justifyContent: "space-around",
+          width: "100%",
+          marginBottom: scaleH(12),
+          paddingVertical: scaleW(20),
+        },
+        skillItem: {
+          alignItems: "center",
+        },
+        skillIcon: {
+          width: scaleW(24),
+          height: scaleH(24),
+        },
+        skillLabel: {
+          fontSize: scaleW(14),
+          color: COLORS.black,
+          fontWeight: "600",
+          marginTop: scaleH(6),
+        },
+        skillsTitle: {
+          fontSize: scaleW(18),
+          fontWeight: "600",
+          color: COLORS.black,
+        },
+        badgesWrap: {
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: scaleW(12),
+        },
+        badgeIcon: {
+          width: scaleW(100),
+          height: scaleW(100),
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        badgeImage: {
+          width: scaleW(100),
+          height: scaleW(100),
+        },
+        activityCard: {
+          flexDirection: "row",
+          alignItems: "center",
+          backgroundColor: COLORS.activityCard,
+          borderRadius: scaleW(18),
+          padding: scaleW(20),
+          marginBottom: scaleH(8),
+        },
+        activityCardContent: {
+          flex: 1,
+        },
+        activityName: {
+          fontSize: scaleW(18),
+          fontWeight: "600",
+          color: COLORS.black,
+        },
+        activityDate: {
+          fontSize: scaleW(16),
+          color: COLORS.charcoal,
+          marginTop: scaleH(2),
+        },
+        activityArrow: {
+          marginLeft: scaleW(8),
+        },
+        parentZoneButton: {
+          backgroundColor: COLORS.cream,
+          borderRadius: scaleW(40),
+          paddingVertical: scaleH(16),
+          alignItems: "center",
+          marginTop: scaleH(8),
+          marginBottom: scaleH(24),
+          marginHorizontal: scaleW(40),
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.3,
+          shadowRadius: 2,
+          elevation: 2,
+        },
+        parentZoneText: {
+          fontSize: scaleW(17),
+          fontWeight: "600",
+        },
+        modalOverlay: {
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.5)",
+          justifyContent: "center",
+          padding: scaleW(24),
+        },
+        modalContent: {
+          backgroundColor: COLORS.white,
+          borderRadius: scaleW(24),
+          padding: scaleW(24),
+          maxHeight: "85%",
+        },
+        modalTitle: {
+          fontSize: scaleW(20),
+          fontWeight: "700",
+          color: COLORS.charcoal,
+          marginBottom: scaleH(16),
+        },
+        input: {
+          height: scaleH(52),
+          borderWidth: 2,
+          borderColor: "#BEE6BE",
+          borderRadius: scaleW(14),
+          paddingHorizontal: scaleW(16),
+          backgroundColor: COLORS.cream,
+          fontSize: scaleW(16),
+          color: COLORS.charcoal,
+          marginBottom: scaleH(16),
+        },
+        inputLabel: {
+          fontSize: scaleW(15),
+          fontWeight: "600",
+          color: COLORS.charcoal,
+          marginBottom: scaleH(8),
+        },
+        nicknameRow: {
+          flexDirection: "row",
+          alignItems: "center",
+          marginBottom: scaleH(16),
+        },
+        nicknameDisplay: {
+          flex: 1,
+          height: scaleH(52),
+          borderWidth: 2,
+          borderColor: "#BEE6BE",
+          borderRadius: scaleW(14),
+          paddingHorizontal: scaleW(16),
+          backgroundColor: COLORS.cream,
+          justifyContent: "center",
+        },
+        nicknameText: {
+          fontSize: scaleW(16),
+          color: COLORS.charcoal,
+        },
+        generateBtn: {
+          marginLeft: scaleW(12),
+          paddingVertical: scaleH(14),
+          paddingHorizontal: scaleW(16),
+          backgroundColor: "#4F6F52",
+          borderRadius: scaleW(14),
+        },
+        generateBtnText: {
+          fontSize: scaleW(15),
+          fontWeight: "600",
+          color: COLORS.white,
+        },
+        colorPickerWrap: {
+          marginBottom: scaleH(16),
+        },
+        teamsScroll: {
+          marginBottom: scaleH(20),
+        },
+        teamOption: {
+          width: scaleW(80),
+          height: scaleH(80),
+          marginRight: scaleW(12),
+          borderRadius: scaleW(14),
+          overflow: "hidden",
+          borderWidth: 3,
+          borderColor: "transparent",
+        },
+        teamOptionSelected: {
+          borderColor: "#4F6F52",
+        },
+        teamImage: {
+          width: "100%",
+          height: "100%",
+        },
+        teamColorDot: {
+          width: "100%",
+          height: "100%",
+          borderRadius: scaleW(14),
+        },
+        modalActions: {
+          flexDirection: "row",
+          gap: scaleW(12),
+        },
+        modalButton: {
+          flex: 1,
+          height: scaleH(52),
+          borderRadius: scaleW(14),
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        modalButtonCancel: {
+          backgroundColor: COLORS.charcoal,
+        },
+        modalButtonCancelText: {
+          fontSize: scaleW(16),
+          fontWeight: "600",
+          color: COLORS.white,
+        },
+        modalButtonSave: {
+          backgroundColor: "#4F6F52",
+        },
+        modalButtonSaveText: {
+          fontSize: scaleW(16),
+          fontWeight: "600",
+          color: COLORS.white,
+        },
+        noTeams: {
+          padding: scaleW(16),
+          backgroundColor: "#E8F5E9",
+          borderRadius: scaleW(14),
+          alignItems: "center",
+          marginBottom: scaleH(20),
+        },
+        noTeamsText: {
+          fontSize: scaleW(15),
+          color: COLORS.charcoal,
+        },
+        modalClose: {
+          marginTop: scaleH(12),
+          alignItems: "center",
+        },
+        modalCloseText: {
+          fontSize: scaleW(15),
+          color: COLORS.charcoal,
+          fontWeight: "600",
+        },
+      }),
+    [scaleW, scaleH]
+  );
+
   return (
-    <BaseLayout className="bg-huntly-cream">
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View className="mb-6">
-          <ThemedText
-            type="title"
-            className="text-huntly-forest text-center mb-2"
-          >
-            Who's Playing?
-          </ThemedText>
-          <ThemedText type="body" className="text-huntly-charcoal text-center">
-            Choose your character and join the adventure!
-          </ThemedText>
-        </View>
-
-        {/* Current Active Player */}
-        {currentPlayer ? (
-          <View className="mb-8">
-            <View className="flex-row items-center justify-between mb-4">
-              <ThemedText type="subtitle" className="text-huntly-forest">
-                Active Explorer
-              </ThemedText>
-              {!isEditing && (
-                <Button
-                  variant="secondary"
-                  size="medium"
-                  onPress={() => setIsEditing(true)}
-                >
-                  Edit
-                </Button>
-              )}
-            </View>
-
-            {isEditing ? (
-              // Edit Mode
-              <View className="bg-white rounded-2xl p-6 shadow-soft border-2 border-huntly-amber">
-                <ThemedText type="subtitle" className="text-huntly-forest mb-4">
-                  Edit Explorer
-                </ThemedText>
-
-                {/* Edit Name */}
-                <TextInput
-                  className="h-14 mb-4 border-2 border-huntly-mint rounded-xl px-4 bg-huntly-cream text-huntly-forest text-base"
-                  placeholder="Explorer Name"
-                  placeholderTextColor="#8B4513"
-                  value={editName}
-                  onChangeText={setEditName}
-                  autoCapitalize="words"
-                />
-
-                {/* Edit Nickname */}
-                <ThemedText
-                  type="defaultSemiBold"
-                  className="text-huntly-forest mb-4"
-                >
-                  Adventure Nickname
-                </ThemedText>
-                <View className="mb-4">
-                  <View className="flex-row items-center mb-3">
-                    <View className="flex-1 h-14 border-2 border-huntly-mint rounded-xl px-4 bg-huntly-cream justify-center">
-                      <ThemedText className="text-huntly-forest text-base">
-                        {editNickname}
-                      </ThemedText>
-                    </View>
-                    <Button
-                      variant="secondary"
-                      size="large"
-                      onPress={() => setEditNickname(generateNickname())}
-                      className="ml-3 px-4"
-                    >
-                      🎲 Generate
-                    </Button>
-                  </View>
-                  <ThemedText className="text-huntly-brown text-sm">
-                    Tap Generate to create a random adventure nickname!
-                  </ThemedText>
-                </View>
-
-                {/* Edit Color */}
-                <ThemedText
-                  type="defaultSemiBold"
-                  className="text-huntly-forest mb-4"
-                >
-                  Choose Your Color
-                </ThemedText>
-                <View className="mb-6">
-                  <ColorPicker
-                    selectedColor={editColor}
-                    onColorSelect={setEditColor}
-                    size="medium"
-                  />
-                </View>
-
-                {/* Edit Team */}
-                <ThemedText
-                  type="defaultSemiBold"
-                  className="text-huntly-forest mb-4"
-                >
-                  Choose Your Team
-                </ThemedText>
-                <View className="mb-6">
-                  <View className="flex-row justify-center">
-                    {teams.map((team) => {
-                      const teamImage = getTeamImageSource(team.name);
-                      return (
-                        <Pressable
-                          key={team.id}
-                          onPress={() => setEditTeam(team.id)}
-                        >
-                          {teamImage ? (
-                            <View
-                              className={`w-32 h-32 ${
-                                editTeam === team.id
-                                  ? "border-4 border-huntly-leaf rounded-xl"
-                                  : ""
-                              }`}
-                            >
-                              <Image
-                                source={teamImage}
-                                className="w-full h-full"
-                                resizeMode="contain"
-                              />
-                            </View>
-                          ) : (
-                            <View
-                              className={`w-32 h-32 rounded-full ${
-                                editTeam === team.id
-                                  ? "border-4 border-huntly-leaf"
-                                  : ""
-                              }`}
-                              style={{
-                                backgroundColor: team.colour || "#cccccc",
-                              }}
-                            />
-                          )}
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </View>
-
-                {/* Edit Action Buttons */}
-                <View className="flex-row space-x-3">
-                  <Button
-                    variant="cancel"
-                    size="large"
-                    onPress={handleCancelEdit}
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="large"
-                    onPress={handleSaveEdit}
-                    loading={loading}
-                    className="flex-1"
-                  >
-                    Save
-                  </Button>
-                </View>
-              </View>
-            ) : (
-              // Display Mode
-              <View className="bg-white rounded-2xl p-4 shadow-soft border-2 border-huntly-leaf">
-                <View className="flex-row items-center mb-4">
-                  <View
-                    style={{ backgroundColor: currentPlayer.colour }}
-                    className="w-12 h-12 rounded-full mr-4 items-center justify-center"
-                  >
-                    <ThemedText className="text-white text-lg font-bold">
-                      {currentPlayer.name.charAt(0).toUpperCase()}
-                    </ThemedText>
-                  </View>
-                  <View className="flex-1">
-                    <ThemedText
-                      type="defaultSemiBold"
-                      className="text-huntly-forest"
-                    >
-                      {currentPlayer.name}
-                    </ThemedText>
-                    {currentPlayer.nickname && (
-                      <ThemedText
-                        type="caption"
-                        className="text-huntly-leaf font-medium"
-                      >
-                        {currentPlayer.nickname}
-                      </ThemedText>
-                    )}
-                  </View>
-                  <View className="bg-huntly-leaf px-3 py-1 rounded-full">
-                    <ThemedText
-                      type="caption"
-                      className="text-white font-semibold"
-                    >
-                      ACTIVE
-                    </ThemedText>
-                  </View>
-                </View>
-
-                {/* XP Bar */}
-                <XPBar
-                  currentXP={currentPlayer.xp || 0}
-                  level={Math.floor((currentPlayer.xp || 0) / 100) + 1}
-                />
-              </View>
-            )}
-          </View>
-        ) : null}
-
-        {/* Available Players */}
-        {profiles.length > 0 ? (
-          <View className="mb-8">
-            <ThemedText type="subtitle" className="text-huntly-forest mb-4">
-              Available Explorers
-            </ThemedText>
-            <View>
-              {profiles.map((profile) => (
-                <Pressable
-                  key={profile.id}
-                  className={`flex-row items-center bg-white p-4 rounded-2xl shadow-soft border-2 mb-3 ${
-                    currentPlayer?.id === profile.id
-                      ? "border-huntly-leaf"
-                      : "border-huntly-mint"
-                  }`}
-                  onPress={() => handleSelectPlayer(profile)}
-                >
-                  <View
-                    style={{ backgroundColor: profile.colour }}
-                    className="w-12 h-12 rounded-full mr-4 items-center justify-center"
-                  >
-                    <ThemedText className="text-white text-lg font-bold">
-                      {profile.name.charAt(0).toUpperCase()}
-                    </ThemedText>
-                  </View>
-                  <View className="flex-1">
-                    <ThemedText
-                      type="defaultSemiBold"
-                      className="text-huntly-forest"
-                    >
-                      {profile.name}
-                    </ThemedText>
-                    {profile.nickname && (
-                      <ThemedText
-                        type="caption"
-                        className="text-huntly-leaf font-medium"
-                      >
-                        {profile.nickname}
-                      </ThemedText>
-                    )}
-                  </View>
-                  <ThemedText className="text-huntly-charcoal">
-                    Tap to select
-                  </ThemedText>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        ) : null}
-
-        {/* Add New Explorer Dropdown */}
-        <View className="bg-white rounded-2xl shadow-soft mb-8 overflow-hidden">
-          {/* Dropdown Header */}
-          <Pressable
-            onPress={() => setShowAddExplorer(!showAddExplorer)}
-            className="flex-row items-center justify-between p-6"
-          >
-            <View className="flex-row items-center">
-              <View className="w-10 h-10 bg-huntly-mint rounded-full items-center justify-center mr-3">
-                <ThemedText className="text-huntly-forest text-lg">
-                  ➕
-                </ThemedText>
-              </View>
-              <View>
-                <ThemedText
-                  type="defaultSemiBold"
-                  className="text-huntly-forest"
-                >
-                  Add New Explorer
-                </ThemedText>
-                <ThemedText type="caption" className="text-huntly-charcoal">
-                  Create a new explorer profile
-                </ThemedText>
-              </View>
-            </View>
-            <View className="w-6 h-6 items-center justify-center">
-              <ThemedText className="text-huntly-forest text-lg">
-                {showAddExplorer ? "−" : "+"}
-              </ThemedText>
-            </View>
-          </Pressable>
-
-          {/* Dropdown Content */}
-          {showAddExplorer && (
-            <View className="px-6 pb-6 border-t border-huntly-mint/20">
-              <TextInput
-                className="h-14 mb-6 border-2 border-huntly-mint rounded-xl px-4 bg-huntly-cream text-huntly-forest text-base"
-                placeholder="Explorer Name"
-                placeholderTextColor="#8B4513"
-                value={name}
-                onChangeText={setName}
-                autoCapitalize="words"
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Your players */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <ThemedText type="heading" style={styles.sectionTitle}>Your players</ThemedText>
+            <Pressable
+              onPress={() => profiles.length > 0 && setIsEditing(true)}
+              style={styles.editIconWrap}
+              hitSlop={12}
+            >
+              <MaterialIcons
+                name="edit"
+                size={22}
+                color={COLORS.white}
               />
-
-              {/* Color Selection */}
-              <ThemedText
-                type="defaultSemiBold"
-                className="text-huntly-forest mb-4"
-              >
-                Choose Your Color
+            </Pressable>
+          </View>
+          {profiles.length === 0 ? (
+            <View style={styles.cardCream}>
+              <ThemedText style={styles.cardTextPrimary}>No players yet</ThemedText>
+              <ThemedText style={styles.cardTextSecondary}>
+                Add an explorer to get started
               </ThemedText>
-              <View className="mb-6">
-                <ColorPicker
-                  selectedColor={selectedColor}
-                  onColorSelect={setSelectedColor}
-                  size="medium"
-                />
-              </View>
-
-              {/* Team Selection */}
-              <ThemedText
-                type="defaultSemiBold"
-                className="text-huntly-forest mb-4"
-              >
-                Choose Your Team
-              </ThemedText>
-              <View className="mb-6">
-                {teams.length === 0 ? (
-                  <View className="bg-huntly-mint rounded-xl p-4 items-center">
-                    <ThemedText
-                      type="body"
-                      className="text-huntly-forest text-center"
-                    >
-                      No teams available yet
-                    </ThemedText>
-                  </View>
-                ) : (
-                  <View className="flex-row justify-center">
-                    {teams.map((team) => {
-                      const teamImage = getTeamImageSource(team.name);
-                      return (
-                        <Pressable
-                          key={team.id}
-                          onPress={() => setSelectedTeam(team.id)}
-                        >
-                          {teamImage ? (
-                            <View
-                              className={`w-32 h-32 ${
-                                selectedTeam === team.id
-                                  ? "border-4 border-huntly-leaf rounded-xl"
-                                  : ""
-                              }`}
-                            >
-                              <Image
-                                source={teamImage}
-                                className="w-full h-full"
-                                resizeMode="contain"
-                              />
-                            </View>
-                          ) : (
-                            <View
-                              className={`w-32 h-32 rounded-full ${
-                                selectedTeam === team.id
-                                  ? "border-4 border-huntly-leaf"
-                                  : ""
-                              }`}
-                              style={{ backgroundColor: team.colour }}
-                            />
-                          )}
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                )}
-              </View>
-
-              {/* Add Explorer Button */}
-              <Button
-                variant="primary"
-                size="large"
-                onPress={handleCreateProfile}
-                loading={loading}
-                className="mt-4"
-              >
-                Add Explorer
-              </Button>
             </View>
+          ) : (
+            profiles.map((profile, index) => (
+              <Pressable
+                key={profile.id}
+                style={styles.playerCard}
+                onPress={() => handleSelectPlayer(profile)}
+              >
+                <View
+                  style={[
+                    styles.playerAccent,
+                    { backgroundColor: PLAYER_ACCENTS[index % PLAYER_ACCENTS.length] },
+                  ]}
+                />
+                <View style={styles.playerCardContent}>
+                  <ThemedText type="heading" style={styles.playerName}>{profile.name}</ThemedText>
+                  <ThemedText style={styles.playerNickname}>
+                    {profile.nickname || "Explorer"}
+                  </ThemedText>
+                </View>
+              </Pressable>
+            ))
           )}
         </View>
 
-        {/* Parents Dashboard Section */}
-        <View className="bg-white rounded-2xl p-6 shadow-soft mb-6">
-          <ThemedText type="subtitle" className="text-huntly-forest mb-4">
-            Parents Dashboard
-          </ThemedText>
-
-          <View className="flex-row items-center mb-4">
-            <View className="w-10 h-10 bg-huntly-mint rounded-full items-center justify-center mr-3">
-              <ThemedText className="text-huntly-forest text-lg">👨‍👩‍👧‍👦</ThemedText>
-            </View>
-            <View className="flex-1">
-              <ThemedText type="defaultSemiBold" className="text-huntly-forest">
-                Explorer Insights
-              </ThemedText>
-              <ThemedText type="caption" className="text-huntly-charcoal">
-                Track progress and achievements
-              </ThemedText>
-            </View>
+        {/* Your progress */}
+        <View style={styles.section}>
+          <ThemedText type="heading" style={styles.sectionTitle}>Your progress</ThemedText>
+          <View style={styles.progressRow}>
+            <StatCard
+              value={daysPlayed}
+              label="Days played"
+              color="pink"
+            />
+            <StatCard
+              value={pointsEarned}
+              label="Points Earned"
+              color="green"
+            />
           </View>
-
-          <Button
-            variant="secondary"
-            size="large"
-            onPress={() => router.push("/(tabs)/parents")}
-            className="mb-4"
-          >
-            View Dashboard
-          </Button>
         </View>
 
-        {/* Logout Section */}
-        <View className="bg-white rounded-2xl p-6 shadow-soft mb-6">
-          <ThemedText type="subtitle" className="text-huntly-forest mb-4">
-            Account Settings
-          </ThemedText>
-
-          <View className="flex-row items-center mb-4">
-            <View className="w-10 h-10 bg-huntly-mint rounded-full items-center justify-center mr-3">
-              <ThemedText className="text-huntly-forest text-lg">👤</ThemedText>
+        {/* Top Skills */}
+        <View style={styles.section}>
+          <View style={styles.skillsCard}>
+            <View style={styles.skillsRow}>
+              <View style={styles.skillItem}>
+                <Image
+                  source={PLANTING_IMAGE}
+                  style={styles.skillIcon}
+                  resizeMode="contain"
+                />
+                <ThemedText type="heading" style={styles.skillLabel}>Planting</ThemedText>
+              </View>
+              <View style={styles.skillItem}>
+                <Image
+                  source={MATHS_IMAGE}
+                  style={styles.skillIcon}
+                  resizeMode="contain"
+                />
+                <ThemedText type="heading" style={styles.skillLabel}>Maths</ThemedText>
+              </View>
+              <View style={styles.skillItem}>
+                <Image
+                  source={RESILIENCE_IMAGE}
+                  style={styles.skillIcon}
+                  resizeMode="contain"
+                />
+                <ThemedText type="heading" style={styles.skillLabel}>Resilience</ThemedText>
+              </View>
             </View>
-            <View className="flex-1">
-              <ThemedText type="defaultSemiBold" className="text-huntly-forest">
-                {user?.email}
-              </ThemedText>
-              <ThemedText type="caption" className="text-huntly-charcoal">
-                Signed in
-              </ThemedText>
-            </View>
+            <ThemedText type="heading" style={styles.skillsTitle}>Top Skills</ThemedText>
           </View>
-
-          <Button variant="danger" size="large" onPress={handleLogout}>
-            Logout
-          </Button>
         </View>
+
+        {/* Your badges */}
+        <View style={styles.section}>
+          <ThemedText type="heading" style={styles.sectionTitle}>Your badges</ThemedText>
+          <View style={styles.badgesWrap}>
+            {(userBadges.length > 0
+              ? userBadges.slice(0, 5)
+              : [1, 2, 3, 4, 5]
+            ).map((item, i) => (
+              <View
+                key={typeof item === "number" ? `badge-placeholder-${item}` : item.id}
+                style={styles.badgeIcon}
+              >
+                <Image
+                  source={BADGE_IMAGE}
+                  style={styles.badgeImage}
+                  resizeMode="contain"
+                />
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Recent activities */}
+        <View style={styles.section}>
+          <ThemedText type="heading" style={styles.sectionTitle}>Recent activities</ThemedText>
+          {recentActivities.length === 0 ? (
+            <View style={styles.activityCard}>
+              <View style={styles.activityCardContent}>
+                <ThemedText type="heading" style={styles.activityName}>No activities yet</ThemedText>
+                <ThemedText style={styles.activityDate}>Complete missions to see them here</ThemedText>
+              </View>
+              <MaterialIcons name="chevron-right" size={24} color={COLORS.arrow} style={styles.activityArrow} />
+            </View>
+          ) : (
+            recentActivities.map((act) => (
+              <Pressable
+                key={act.id}
+                style={styles.activityCard}
+                onPress={() => router.push("/(tabs)/missions")}
+              >
+                <View style={styles.activityCardContent}>
+                  <ThemedText type="heading" style={styles.activityName} numberOfLines={1}>
+                    {act.activity?.title ?? "Activity"}
+                  </ThemedText>
+                  <ThemedText style={styles.activityDate}>
+                    {formatActivityDate(act.completed_at)}
+                  </ThemedText>
+                </View>
+                <MaterialIcons
+                  name="chevron-right"
+                  size={24}
+                  color={COLORS.arrow}
+                  style={styles.activityArrow}
+                />
+              </Pressable>
+            ))
+          )}
+        </View>
+
+        {/* Parent Zone */}
+        <Pressable
+          style={styles.parentZoneButton}
+          onPress={() => router.push("/(tabs)/parents")}
+        >
+          <ThemedText type="heading" style={styles.parentZoneText}>Parent Zone</ThemedText>
+        </Pressable>
       </ScrollView>
-    </BaseLayout>
+
+      {/* Edit modal */}
+      <Modal
+        visible={isEditing}
+        animationType="slide"
+        transparent
+        onRequestClose={handleCancelEdit}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <ThemedText style={styles.modalTitle}>Edit Explorer</ThemedText>
+            <TextInput
+              style={styles.input}
+              placeholder="Explorer Name"
+              placeholderTextColor="#8B4513"
+              value={editName}
+              onChangeText={setEditName}
+              autoCapitalize="words"
+            />
+            <ThemedText style={styles.inputLabel}>Adventure Nickname</ThemedText>
+            <View style={styles.nicknameRow}>
+              <View style={styles.nicknameDisplay}>
+                <ThemedText style={styles.nicknameText}>{editNickname}</ThemedText>
+              </View>
+              <Pressable
+                style={styles.generateBtn}
+                onPress={() => setEditNickname(generateNickname())}
+              >
+                <ThemedText style={styles.generateBtnText}>🎲 Generate</ThemedText>
+              </Pressable>
+            </View>
+            <ThemedText style={styles.inputLabel}>Choose Your Color</ThemedText>
+            <View style={styles.colorPickerWrap}>
+              <ColorPicker
+                selectedColor={editColor}
+                onColorSelect={setEditColor}
+                size="medium"
+              />
+            </View>
+            <ThemedText style={styles.inputLabel}>Choose Your Team</ThemedText>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.teamsScroll}
+            >
+              {teams.map((team) => {
+                const teamImage = getTeamImageSource(team.name);
+                const isSelected = editTeam === team.id;
+                return (
+                  <Pressable
+                    key={team.id}
+                    onPress={() => setEditTeam(team.id)}
+                    style={[
+                      styles.teamOption,
+                      isSelected && styles.teamOptionSelected,
+                    ]}
+                  >
+                    {teamImage ? (
+                      <Image
+                        source={teamImage}
+                        style={styles.teamImage}
+                        resizeMode="contain"
+                      />
+                    ) : (
+                      <View
+                        style={[
+                          styles.teamColorDot,
+                          { backgroundColor: team.colour || "#ccc" },
+                        ]}
+                      />
+                    )}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+            <View style={styles.modalActions}>
+              <Pressable
+                style={[styles.modalButton, styles.modalButtonCancel]}
+                onPress={handleCancelEdit}
+              >
+                <ThemedText style={styles.modalButtonCancelText}>Cancel</ThemedText>
+              </Pressable>
+              <Pressable
+                style={[styles.modalButton, styles.modalButtonSave]}
+                onPress={handleSaveEdit}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color={COLORS.white} />
+                ) : (
+                  <ThemedText style={styles.modalButtonSaveText}>Save</ThemedText>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Add explorer modal */}
+      <Modal
+        visible={showAddExplorer}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowAddExplorer(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <ThemedText style={styles.modalTitle}>Add New Explorer</ThemedText>
+            <TextInput
+              style={styles.input}
+              placeholder="Explorer Name"
+              placeholderTextColor="#8B4513"
+              value={name}
+              onChangeText={setName}
+              autoCapitalize="words"
+            />
+            <ThemedText style={styles.inputLabel}>Choose Your Color</ThemedText>
+            <View style={styles.colorPickerWrap}>
+              <ColorPicker
+                selectedColor={selectedColor}
+                onColorSelect={setSelectedColor}
+                size="medium"
+              />
+            </View>
+            <ThemedText style={styles.inputLabel}>Choose Your Team</ThemedText>
+            {teams.length === 0 ? (
+              <View style={styles.noTeams}>
+                <ThemedText style={styles.noTeamsText}>No teams available yet</ThemedText>
+              </View>
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.teamsScroll}
+              >
+                {teams.map((team) => {
+                  const teamImage = getTeamImageSource(team.name);
+                  const isSelected = selectedTeam === team.id;
+                  return (
+                    <Pressable
+                      key={team.id}
+                      onPress={() => setSelectedTeam(team.id)}
+                      style={[
+                        styles.teamOption,
+                        isSelected && styles.teamOptionSelected,
+                      ]}
+                    >
+                      {teamImage ? (
+                        <Image
+                          source={teamImage}
+                          style={styles.teamImage}
+                          resizeMode="contain"
+                        />
+                      ) : (
+                        <View
+                          style={[
+                            styles.teamColorDot,
+                            { backgroundColor: team.colour || "#ccc" },
+                          ]}
+                        />
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            )}
+            <Pressable
+              style={[styles.modalButton, styles.modalButtonSave]}
+              onPress={handleCreateProfile}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color={COLORS.white} />
+              ) : (
+                <ThemedText style={styles.modalButtonSaveText}>Add Explorer</ThemedText>
+              )}
+            </Pressable>
+            <Pressable
+              style={styles.modalClose}
+              onPress={() => setShowAddExplorer(false)}
+            >
+              <ThemedText style={styles.modalCloseText}>Cancel</ThemedText>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
   );
 }

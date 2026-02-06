@@ -1,0 +1,130 @@
+import React, { useMemo } from "react";
+import {
+  View,
+  Image,
+  Pressable,
+  StyleSheet,
+  type ImageSourcePropType,
+} from "react-native";
+import { router } from "expo-router";
+import { ThemedText } from "@/components/ThemedText";
+import { useLayoutScale } from "@/hooks/useLayoutScale";
+import type { MissionCardData } from "@/constants/missionCards";
+
+const HUNTLY_GREEN = "#7FAF8A";
+
+type MissionCardProps = {
+  card: MissionCardData;
+  tiltDeg?: number;
+  marginTopOffset?: number;
+  onStartPress?: () => void;
+};
+
+export function MissionCard({
+  card,
+  tiltDeg = 0,
+  marginTopOffset = 0,
+  onStartPress,
+}: MissionCardProps) {
+  const { scaleW, scaleH } = useLayoutScale();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        outer: {
+          width: scaleW(270),
+          marginRight: scaleW(12),
+          transform: [{ rotate: `${tiltDeg}deg` }],
+          marginTop: marginTopOffset,
+        },
+        inner: {
+          width: "100%",
+          backgroundColor: "#FFF",
+          borderRadius: scaleW(24),
+          padding: scaleW(12),
+          overflow: "hidden",
+          borderWidth: 6,
+          borderColor: HUNTLY_GREEN,
+          shadowColor: "#000",
+          shadowOpacity: 0.3,
+          shadowRadius: 2,
+          shadowOffset: { width: 0, height: 2 },
+          elevation: 2,
+        },
+        imageWrap: {
+          width: "100%",
+          height: scaleH(160),
+          borderRadius: scaleW(14),
+          overflow: "hidden",
+          marginBottom: scaleH(12),
+          backgroundColor: "#1a1a2e",
+        },
+        image: { width: "100%", height: "100%" },
+        title: {
+          fontSize: scaleW(18),
+          fontWeight: "600",
+          marginBottom: scaleH(8),
+          textAlign: "center",
+          color: "#000",
+        },
+        description: {
+          fontSize: scaleW(15),
+          lineHeight: scaleW(20),
+          marginBottom: scaleH(16),
+          marginHorizontal: scaleW(8),
+          textAlign: "center",
+          color: "#000",
+        },
+        startButton: {
+          backgroundColor: HUNTLY_GREEN,
+          borderRadius: scaleW(24),
+          paddingVertical: scaleH(12),
+          marginHorizontal: scaleW(24),
+          alignItems: "center",
+          justifyContent: "center",
+          shadowColor: "#000",
+          shadowOpacity: 0.2,
+          shadowRadius: 2,
+          shadowOffset: { width: 0, height: 1 },
+          elevation: 2,
+        },
+      }),
+    [scaleW, scaleH, tiltDeg, marginTopOffset]
+  );
+
+  const handleStart = () => {
+    if (onStartPress) {
+      onStartPress();
+    } else {
+      router.push("/pack" as Parameters<typeof router.push>[0]);
+    }
+  };
+
+  return (
+    <View style={styles.outer}>
+      <View style={styles.inner}>
+        <View style={styles.imageWrap}>
+          <Image
+            source={card.image}
+            style={styles.image}
+            resizeMode="cover"
+          />
+        </View>
+        <ThemedText type="heading" style={styles.title}>{card.title}</ThemedText>
+        <ThemedText style={styles.description}>{card.description}</ThemedText>
+        <Pressable style={styles.startButton} onPress={handleStart}>
+          <ThemedText
+            type="heading"
+            style={{
+              fontSize: scaleW(16),
+              fontWeight: "600",
+              color: "#FFF",
+            }}
+          >
+            Start
+          </ThemedText>
+        </Pressable>
+      </View>
+    </View>
+  );
+}

@@ -34,12 +34,12 @@ export const getProfiles = async (userId: string): Promise<Profile[]> => {
 };
 
 export const createProfile = async (
-  profile: Omit<ProfileInsert, "id" | "xp" | "nickname">
+  profile: Omit<ProfileInsert, "id" | "xp">
 ): Promise<Profile> => {
   const profileData = {
     ...profile,
     xp: 0,
-    nickname: generateNickname()
+    nickname: profile.nickname ?? generateNickname()
   };
 
   const { data, error } = await supabase

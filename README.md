@@ -71,6 +71,7 @@ Add these **GitHub repository secrets** (Settings → Secrets and variables → 
 | `SUPABASE_ACCESS_TOKEN` | [Supabase dashboard](https://supabase.com/dashboard/account/tokens) → Access Tokens → Generate |
 | `SUPABASE_PROJECT_REF` | Project ref from the project URL (e.g. `abcdefghijklmnop`) |
 | `SUPABASE_DB_PASSWORD` | Project **Settings → Database → Database password** (the one you set when creating the project) |
+| `EXPO_TOKEN` | [Expo dashboard](https://expo.dev/accounts/[account]/settings/access-tokens) → Access Tokens → Create Token |
 
 After that you do not need to run migrations or deploy functions locally for the hosted project, and you do not need hosted URL/keys in your local `.env`.
 
@@ -90,6 +91,16 @@ After that you do not need to run migrations or deploy functions locally for the
    eas build --profile preview --platform all
    ```
    Or use `make create-preview-build` for the same. Install the built app on registered devices via the link EAS provides.
+
+#### Triggering builds from GitHub Actions
+
+Instead of running builds locally, you can trigger EAS preview builds from GitHub Actions:
+
+1. Go to **Actions → EAS Preview Build → Run workflow**
+2. Select the platform to build (all, ios, or android)
+3. Click **Run workflow**
+
+The workflow will trigger the build and exit without waiting for completion. Check [Expo dashboard](https://expo.dev) for build status and download links.
 
 Your local `.env` stays for local dev (e.g. ngrok + local anon key). Hosted is handled by GitHub Actions (GH secrets) and EAS builds (EAS secrets). Use the **production** profile when you are ready for store builds.
 

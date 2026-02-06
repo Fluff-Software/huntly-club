@@ -24,7 +24,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       foregroundImage: "./assets/images/adaptive-icon.png",
       backgroundColor: "#ffffff",
     },
-    package: 'software.fluff.huntly-club',
+    package: 'software.fluff.huntlyclub',
     intentFilters: [
       {
         action: "VIEW",

@@ -10,6 +10,7 @@ export default function SignUpLayout() {
       }}
     >
       <Stack.Screen name="index" />
+      <Stack.Screen name="verify-email" />
       <Stack.Screen name="players" />
       <Stack.Screen name="team" />
       <Stack.Screen name="intro" />

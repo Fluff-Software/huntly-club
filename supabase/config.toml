@@ -50,13 +50,6 @@ max_client_conn = 100
 # Supports glob patterns relative to supabase directory: "./schemas/*.sql"
 schema_paths = []
 
-[db.seed]
-# If enabled, seeds the database after migrations during a db reset.
-enabled = true
-# Specifies an ordered list of seed files to load during db reset.
-# Supports glob patterns relative to supabase directory: "./seeds/*.sql"
-sql_paths = ["./seed.sql"]
-
 [realtime]
 enabled = true
 # Bind realtime via either IPv4 or IPv6. (default: IPv4)

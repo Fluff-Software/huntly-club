@@ -68,25 +68,34 @@ export default function SignUpTeamScreen() {
     setCreating(true);
 
     try {
-      // User is already authenticated, just create profiles
-      if (players.length > 0) {
-        const teams = await getTeams();
-        const team = teams.find((t) => t.name.toLowerCase() === selectedName.toLowerCase());
-        const teamId = team?.id ?? teams[0]?.id;
-        if (teamId) {
-          for (const player of players) {
-            await createProfile({
-              user_id: user.id,
-              name: player.name,
-              colour: player.colour,
-              team: teamId,
-              nickname: player.nickname,
-            });
-          }
-        }
+      if (players.length === 0) {
+        Alert.alert("Add explorers", "Please go back and add at least one explorer.");
+        return;
+      }
+
+      const teams = await getTeams();
+      const team = teams.find((t) => t.name.toLowerCase() === selectedName.toLowerCase());
+      const teamId = team?.id ?? teams[0]?.id;
+      if (!teams.length || !teamId) {
+        Alert.alert(
+          "Setup required",
+          "Teams could not be loaded. Try resetting the database (e.g. make reset) so migrations run."
+        );
+        return;
+      }
+
+      let created = 0;
+      for (const player of players) {
+        await createProfile({
+          user_id: user.id,
+          name: player.name,
+          colour: player.colour,
+          team: teamId,
+          nickname: player.nickname,
+        });
+        created += 1;
       }
       clearSignUpData();
-
       Alert.alert(
         "Welcome to Huntly Club!",
         "Your explorers are ready for adventure!",

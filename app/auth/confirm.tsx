@@ -27,9 +27,8 @@ export default function ConfirmScreen() {
         if (data?.session) {
           setMessage('Your email has been confirmed!');
           
-          // Wait a moment before redirecting
           setTimeout(() => {
-            router.replace('/');
+            router.replace('/sign-up/players');
           }, 2000);
         } else {
           setError('Unable to confirm your account. Try signing in.');
@@ -67,7 +66,7 @@ export default function ConfirmScreen() {
       )}
       
       <ThemedText style={styles.redirectText}>
-        {error ? 'Redirecting to login...' : 'Redirecting to home...'}
+        {error ? 'Redirecting to login...' : 'Redirecting to set up your explorers...'}
       </ThemedText>
     </ThemedView>
   );

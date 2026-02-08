@@ -81,7 +81,12 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({
       // Only update state if component is still mounted
       if (isMountedRef.current) {
         setProfiles(profilesData);
-        setCurrentPlayer(prev => updateCurrentPlayer(profilesData, prev));
+        setCurrentPlayer(prev => {
+          const updated = updateCurrentPlayer(profilesData, prev);
+          if (updated) return updated;
+          if (profilesData.length > 0) return profilesData[0];
+          return null;
+        });
       }
     } catch (error) {
       if (isMountedRef.current) {

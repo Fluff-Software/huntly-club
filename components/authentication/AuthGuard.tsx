@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useRouter, useSegments } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
@@ -27,60 +27,77 @@ export function AuthGuard({ children }: AuthGuardProps) {
     const inUnauthFlow = inAuthGroup || inGetStarted || inSignUp || inPrivacy;
     const inTabsGroup = segments[0] === "(tabs)";
 
-    const checkProfiles = async () => {
-      if (!user) return;
-
-      setCheckingProfiles(true);
-      try {
-        const profiles = await getProfiles(user.id);
-        // Always redirect to profile tab after login to select an explorer
-        if (inTabsGroup && segments[1] !== "profile") {
-          router.replace("/(tabs)/profile");
-        }
-      } catch (error) {
-        console.error("Error checking profiles:", error);
-      } finally {
-        setCheckingProfiles(false);
-      }
-    };
-
     if (!user && !inUnauthFlow) {
-      // Redirect to the auth screen if user is not authenticated and not in auth/get-started flow
       router.replace("/auth");
-    } else if (user && (inAuthGroup || inGetStarted || inSignUp)) {
-      // Let authenticated users stay on sign-up/intro (post-account-creation flow)
-      const onSignUpIntro = inSignUp && (segments[1] === "team" || segments[1] === "intro");
-      if (!onSignUpIntro) {
-        router.replace("/(tabs)/profile");
+      return;
+    }
+
+    if (user && (inAuthGroup || inGetStarted || inSignUp)) {
+      if (!inSignUp) {
+        setCheckingProfiles(true);
+        getProfiles(user.id)
+          .then((profiles) => {
+            if (profiles.length === 0) {
+              router.replace("/sign-up/players");
+            } else {
+              router.replace("/(tabs)");
+            }
+          })
+          .catch((error) => {
+            console.error("Error checking profiles:", error);
+            router.replace("/(tabs)");
+          })
+          .finally(() => setCheckingProfiles(false));
       }
-    } else if (
+      return;
+    }
+
+    if (
       user &&
       inTabsGroup &&
       !currentPlayer &&
       segments[1] !== "profile" &&
       segments[1] !== "parents"
     ) {
-      // User is authenticated but no current player selected, redirect to profile tab
-      // Allow access to parents screen even without current player
-      router.replace("/(tabs)/profile");
+      setCheckingProfiles(true);
+      getProfiles(user.id)
+        .then((profiles) => {
+          if (profiles.length === 0) {
+            router.replace("/sign-up/players");
+          } else {
+            // Stay on current tab (e.g. dashboard); PlayerContext will auto-select first profile
+          }
+        })
+        .catch((error) => {
+          console.error("Error checking profiles:", error);
+          router.replace("/(tabs)");
+        })
+        .finally(() => setCheckingProfiles(false));
     }
   }, [user, loading, segments, checkingProfiles, currentPlayer]);
 
-  if (loading || checkingProfiles) {
-    return (
-      <ThemedView style={styles.container}>
-        <ActivityIndicator size="large" />
-      </ThemedView>
-    );
-  }
+  const showOverlay = loading || checkingProfiles;
 
-  return <>{children}</>;
+  return (
+    <View style={styles.wrapper}>
+      {children}
+      {showOverlay && (
+        <ThemedView style={styles.overlay}>
+          <ActivityIndicator size="large" />
+        </ThemedView>
+      )}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  wrapper: {
     flex: 1,
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "transparent",
   },
 });

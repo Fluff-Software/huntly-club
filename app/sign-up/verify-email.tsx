@@ -32,23 +32,20 @@ export default function VerifyEmailScreen() {
       return;
     }
 
-    // Check for email verification status
     const checkVerification = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session?.user) {
-          // Email is verified!
+        const { data: { session } } = await supabase.auth.refreshSession();
+        const sessionToCheck = session ?? (await supabase.auth.getSession()).data.session;
+
+        if (sessionToCheck?.user) {
           setVerificationComplete(true);
           setChecking(false);
-          
-          // Clear the interval immediately
+
           if (checkIntervalRef.current) {
             clearInterval(checkIntervalRef.current);
             checkIntervalRef.current = null;
           }
-          
-          // Wait a moment to show success message, then proceed
+
           setTimeout(() => {
             router.replace("/sign-up/players");
           }, 1500);

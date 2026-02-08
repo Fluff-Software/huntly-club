@@ -18,6 +18,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'applinks:huntly.app',
       'applinks:*.huntly.app'
     ],
+    config: {
+      usesNonExemptEncryption: false
+    }
   },
   android: {
     adaptiveIcon: {

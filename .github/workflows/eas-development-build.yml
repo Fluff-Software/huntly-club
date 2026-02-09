@@ -47,6 +47,7 @@ jobs:
         run: npm ci
 
       - name: Trigger EAS Development Build(s) - Android
+        working-directory: apps/mobile
         if: github.event.inputs.platform == 'android' || github.event.inputs.platform == 'all'
         env:
           EXPO_PUBLIC_EAS_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_EAS_PROJECT_ID }}
@@ -57,6 +58,7 @@ jobs:
           echo "Android development build triggered."
 
       - name: Trigger EAS Development Build(s) - iOS device
+        working-directory: apps/mobile
         if: (github.event.inputs.platform == 'ios' || github.event.inputs.platform == 'all') && (github.event.inputs.ios_target == 'device' || github.event.inputs.ios_target == 'both')
         env:
           EXPO_PUBLIC_EAS_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_EAS_PROJECT_ID }}
@@ -67,6 +69,7 @@ jobs:
           echo "iOS device development build triggered."
 
       - name: Trigger EAS Development Build(s) - iOS simulator
+        working-directory: apps/mobile
         if: (github.event.inputs.platform == 'ios' || github.event.inputs.platform == 'all') && (github.event.inputs.ios_target == 'simulator' || github.event.inputs.ios_target == 'both')
         env:
           EXPO_PUBLIC_EAS_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_EAS_PROJECT_ID }}

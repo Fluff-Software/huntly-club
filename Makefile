@@ -14,9 +14,9 @@ SHELL := bash
 .SILENT:
 
 # ---- Config: tweak these for your repo ----
-APP_PATH ?= app          # where your Expo app lives
-PKG ?= npm                    # or npm / yarn
-EXPO_CMD ?= npm start  # e.g. 'expo start' or '$(PKG) --filter apps/expo dev'
+APP_PATH ?= apps/mobile
+PKG ?= npm
+EXPO_CMD ?= npm run start -w @huntly-club/mobile
 
 # Supabase defaults (local)
 SUPABASE_API_HOST ?= 127.0.0.1
@@ -96,14 +96,13 @@ restart: down supabase-up
 	echo "✓ Supabase restarted."
 
 test:
-	# Adjust to your test runner
-	$(PKG) test -w
+	$(PKG) run test -w @huntly-club/mobile
 
 lint:
-	$(PKG) lint -w
+	$(PKG) run lint -w @huntly-club/mobile
 
 format:
-	$(PKG) format -w
+	$(PKG) run format -w 2>/dev/null || true
 
 ios:
 	$(EXPO_CMD) --ios
@@ -115,11 +114,11 @@ web:
 	$(EXPO_CMD) --web
 
 create-development-build:
-	eas build --profile development
+	cd apps/mobile && eas build --profile development
 
 create-preview-build:
-	eas build --profile preview
+	cd apps/mobile && eas build --profile preview
 
 create-production-build:
-	eas build --profile production
+	cd apps/mobile && eas build --profile production
 	

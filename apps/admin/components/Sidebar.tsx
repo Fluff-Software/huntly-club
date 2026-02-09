@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase-browser";
 
 const nav = [
   { href: "/dashboard", label: "Dashboard" },
@@ -11,6 +12,14 @@ const nav = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function handleSignOut() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <aside
@@ -47,6 +56,15 @@ export function Sidebar() {
           );
         })}
       </nav>
+      <div className="border-t border-huntly-leaf/40 p-3">
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="w-full rounded-xl px-4 py-2.5 text-left text-sm font-medium text-huntly-mint transition-colors hover:bg-huntly-leaf/90 hover:text-huntly-cream focus:outline-none focus:ring-2 focus:ring-huntly-sage focus:ring-inset"
+        >
+          Sign out
+        </button>
+      </div>
     </aside>
   );
 }

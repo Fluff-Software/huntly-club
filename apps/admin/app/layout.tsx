@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Sidebar } from "@/components/Sidebar";
 import "./globals.css";
 
 export const dynamic = "force-dynamic";
@@ -17,10 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en-GB">
       <body className="min-h-screen bg-stone-50 text-stone-900 antialiased">
-        <div className="flex min-h-screen">
-          <Sidebar />
-          <main className="flex-1 p-8">{children}</main>
-        </div>
+        {children}
       </body>
     </html>
   );

@@ -1,4 +1,8 @@
 import type { Metadata } from "next";
+import { Sidebar } from "@/components/Sidebar";
+import "./globals.css";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Huntly Club Admin",
@@ -12,7 +16,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en-GB">
-      <body>{children}</body>
+      <body className="min-h-screen bg-stone-50 text-stone-900 antialiased">
+        <div className="flex min-h-screen">
+          <Sidebar />
+          <main className="flex-1 p-8">{children}</main>
+        </div>
+      </body>
     </html>
   );
 }

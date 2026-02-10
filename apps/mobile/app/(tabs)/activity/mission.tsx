@@ -4,6 +4,7 @@ import {
   ScrollView,
   Image,
   Pressable,
+  Text,
   TextInput,
   StyleSheet,
   Dimensions,
@@ -14,13 +15,14 @@ import { useRouter } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { MissionCard } from "@/components/MissionCard";
+import { MISSION_CARDS } from "@/constants/missionCards";
 
 const TEXT_SECONDARY = "#2F3336";
 const HUNTLY_GREEN = "#4F6F52";
 const LIGHT_GREEN = "#7FAF8A";
 const LIGHT_BG = "#f8f8f8";
 const CREAM = "#F6F5F1";
-const PAGE2_BG = "#81A67B";
 const CARD_BAR_BLUE = "#87CEEB";
 const CARD_BAR_GREEN = "#98D8A8";
 
@@ -33,8 +35,15 @@ const CLUB_1 = require("@/assets/images/club-1.png");
 const CLUB_2 = require("@/assets/images/club-2.png");
 const GALLERY_ICON = require("@/assets/images/gallery.png");
 const CAMERA_ICON = require("@/assets/images/camera.png");
+const BADGE_ICON = require("@/assets/images/badge.png");
+const STAR_ICON = require("@/assets/images/get-started-icon-2.png");
+const CELEBRATE_ICON = require("@/assets/images/celebrate.png");
+
+const CARD_GRAY = "#D9D9D9";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+const COMPLETION_CARD = MISSION_CARDS[0];
 
 export default function ActivityMissionScreen() {
   const router = useRouter();
@@ -389,6 +398,96 @@ export default function ActivityMissionScreen() {
           fontSize: scaleW(17),
           fontWeight: "600",
         },
+        page3Outer: {
+          flex: 1,
+          backgroundColor: LIGHT_GREEN,
+        },
+        page3Scroll: {
+          flex: 1,
+          paddingHorizontal: scaleW(24),
+          paddingTop: scaleW(60),
+          paddingBottom: scaleW(48),
+        },
+        cardWrap: {
+          alignSelf: "center",
+          marginBottom: scaleW(52),
+          position: "relative",
+        },
+        completionBadge: {
+          position: "absolute",
+          right: scaleW(-8),
+          bottom: scaleW(-8),
+          width: scaleW(56),
+          height: scaleW(56),
+          zIndex: 1,
+        },
+        wellDoneHeading: {
+          fontSize: scaleW(22),
+          fontWeight: "700",
+          color: "#000",
+          textAlign: "center",
+          marginBottom: scaleW(28),
+        },
+        achievementTimeline: {
+          alignItems: "center",
+          gap: scaleW(24),
+          paddingBottom: scaleW(24),
+        },
+        achievementCard: {
+          backgroundColor: CARD_GRAY,
+          width: scaleW(240),
+          flexDirection: "row",
+        },
+        achievementIcon: {
+          width: scaleW(100),
+          height: scaleW(120),
+          borderTopRightRadius: "50%",
+          borderBottomRightRadius: "50%",
+          backgroundColor: "#FFF",
+          alignItems: "center",
+          justifyContent: "center",
+          marginRight: scaleW(14),
+        },
+        achievementIconImage: {
+          width: scaleW(50),
+          height: scaleW(50),
+        },
+        achievementText: {
+          flex: 1,
+          justifyContent: "space-between",
+          paddingHorizontal: scaleW(6),
+          paddingVertical: scaleW(16),
+        },
+        achievementTitle: {
+          fontSize: scaleW(15),
+          fontWeight: "600",
+          color: "#000",
+          marginBottom: 2,
+        },
+        achievementPoints: {
+          fontSize: scaleW(13),
+          color: "#000",
+          opacity: 0.7,
+        },
+        goHomeButton: {
+          backgroundColor: "#FFF",
+          paddingVertical: scaleW(14),
+          borderRadius: scaleW(24),
+          alignItems: "center",
+          marginHorizontal: scaleW(52),
+          marginTop: scaleW(32),
+          marginBottom: scaleW(64),
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.3,
+          shadowRadius: 2,
+          elevation: 2,
+        },
+        goHomeButtonText: {
+          fontSize: scaleW(17),
+          fontWeight: "600",
+          color: HUNTLY_GREEN,
+        },
       }),
     [scaleW, scaleW]
   );
@@ -625,32 +724,64 @@ export default function ActivityMissionScreen() {
           </ScrollView>
         </View>
 
-        {/* Page 3 */}
-        <View style={styles.page}>
-          <View style={styles.page3Container}>
-            <ThemedText
-              type="heading"
-              style={{ fontSize: scaleW(22), color: TEXT_SECONDARY, marginBottom: scaleW(16) }}
-            >
-              Step 3
-            </ThemedText>
-            <ThemedText
-              style={{ fontSize: scaleW(16), color: "#333", textAlign: "center" }}
-            >
-              You're ready to complete the activity. Great work!
-            </ThemedText>
-            <View style={styles.navRow}>
-              <Pressable style={styles.navButton} onPress={() => goToPage(1)}>
-                <ThemedText type="heading" style={styles.completeButtonText}>Back</ThemedText>
-              </Pressable>
-              <Pressable
-                style={styles.navButton}
-                onPress={() => router.back()}
-              >
-                <ThemedText type="heading" style={styles.completeButtonText}>Complete</ThemedText>
-              </Pressable>
+        {/* Page 3 - Well done / completion */}
+        <View style={[styles.page, styles.page3Outer]}>
+          <ScrollView
+            style={styles.page3Scroll}
+            contentContainerStyle={{ paddingBottom: scaleW(24) }}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.cardWrap}>
+              <MissionCard
+                card={COMPLETION_CARD}
+                tiltDeg={0}
+                marginTopOffset={0}
+                onStartPress={() => {}}
+              />
+              <Image
+                source={BADGE_ICON}
+                style={styles.completionBadge}
+                resizeMode="contain"
+              />
             </View>
-          </View>
+
+            <Text style={styles.wellDoneHeading}>Well done!</Text>
+
+            <View style={styles.achievementTimeline}>
+              <View style={styles.achievementCard}>
+                <View style={styles.achievementIcon}>
+                  <Image
+                    source={CELEBRATE_ICON}
+                    style={styles.achievementIconImage}
+                    resizeMode="contain"
+                  />
+                </View>
+                <View style={styles.achievementText}>
+                  <Text style={styles.achievementTitle}>Completed an activity</Text>
+                  <Text style={styles.achievementPoints}>+ 50 points</Text>
+                </View>
+              </View>
+
+              <View
+                style={styles.achievementCard}>
+                <View style={styles.achievementIcon}>
+                  <Image
+                    source={STAR_ICON}
+                    style={styles.achievementIconImage}
+                    resizeMode="contain"
+                  />
+                </View>
+                <View style={styles.achievementText}>
+                  <Text style={styles.achievementTitle}>Earned a badge</Text>
+                  <Text style={styles.achievementPoints}>+ 50 points</Text>
+                </View>
+              </View>
+            </View>
+
+            <Pressable style={styles.goHomeButton} onPress={() => router.back()}>
+              <ThemedText type="heading" style={styles.goHomeButtonText}>Go Home</ThemedText>
+            </Pressable>
+          </ScrollView>
         </View>
       </ScrollView>
     </View>

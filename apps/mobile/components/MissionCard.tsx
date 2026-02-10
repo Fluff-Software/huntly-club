@@ -42,7 +42,6 @@ export function MissionCard({
           backgroundColor: "#FFF",
           borderRadius: scaleW(24),
           padding: scaleW(12),
-          overflow: "hidden",
           borderWidth: 6,
           borderColor: HUNTLY_GREEN,
           shadowColor: "#000",

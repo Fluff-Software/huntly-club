@@ -267,7 +267,7 @@ export default function HomeScreen() {
 
   const clubCards = [
     { id: "1", image: CLUB_1_IMAGE, title: "String it up", author: "Racing Mouse" },
-    { id: "2", image: CLUB_2_IMAGE, title: "Into the maze", author: "Tal" },
+    { id: "2", image: CLUB_2_IMAGE, title: "Into the green", author: "Tall Giant" },
   ];
 
   const renderActivityContent = () => (

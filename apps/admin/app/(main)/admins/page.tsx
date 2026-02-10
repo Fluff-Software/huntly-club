@@ -51,7 +51,7 @@ export default async function AdminsPage() {
           No admins yet. Add one above or via SQL (see migration comment).
         </p>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+        <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white shadow-sm">
           <table className="min-w-full divide-y divide-stone-200">
             <thead>
               <tr>

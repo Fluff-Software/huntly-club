@@ -18,9 +18,9 @@ export default async function SeasonsPage() {
 
   return (
     <div>
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-semibold text-stone-900">Seasons</h1>
-        <Button href="/seasons/new" size="md">
+        <Button href="/seasons/new" size="md" className="sm:shrink-0">
           New season
         </Button>
       </div>
@@ -34,7 +34,7 @@ export default async function SeasonsPage() {
           {seasons.map((season) => (
             <li
               key={season.id}
-              className="flex items-center justify-between px-6 py-4 transition-colors hover:bg-stone-50"
+              className="flex flex-col gap-2 px-4 py-4 transition-colors hover:bg-stone-50 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:gap-3"
             >
               <Link
                 href={`/seasons/${season.id}/chapters`}

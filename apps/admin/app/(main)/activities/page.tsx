@@ -17,8 +17,8 @@ export default async function ActivitiesPage() {
 
   return (
     <div>
-      <div className="mb-8 flex items-center justify-between">
-        <div>
+      <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-2xl font-semibold text-stone-900">
             Activities
           </h1>
@@ -26,7 +26,7 @@ export default async function ActivitiesPage() {
             Missions can be assigned to chapters when editing a chapter.
           </p>
         </div>
-        <Button href="/activities/new" size="md">
+        <Button href="/activities/new" size="md" className="sm:shrink-0">
           New mission
         </Button>
       </div>
@@ -36,7 +36,7 @@ export default async function ActivitiesPage() {
           No activities yet. Create one to get started.
         </p>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+        <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white shadow-sm">
           <table className="min-w-full divide-y divide-stone-200">
             <thead>
               <tr>

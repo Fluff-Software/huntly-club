@@ -40,8 +40,8 @@ export default async function ChaptersListPage({
 
   return (
     <div>
-      <div className="mb-8 flex items-center justify-between">
-        <div>
+      <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <Link
             href="/seasons"
             className="text-sm font-medium text-stone-500 hover:text-stone-700 focus:outline-none focus:ring-2 focus:ring-huntly-sage"
@@ -52,7 +52,7 @@ export default async function ChaptersListPage({
             {season.name ?? `Season ${season.id}`} – Chapters
           </h1>
         </div>
-        <Button href={`/seasons/${seasonId}/chapters/new`} size="md">
+        <Button href={`/seasons/${seasonId}/chapters/new`} size="md" className="sm:shrink-0">
           New chapter
         </Button>
       </div>
@@ -66,13 +66,13 @@ export default async function ChaptersListPage({
           {chapters.map((ch) => (
             <li
               key={ch.id}
-              className="flex items-center justify-between px-6 py-4 transition-colors hover:bg-stone-50"
+              className="flex flex-col gap-2 px-4 py-4 transition-colors hover:bg-stone-50 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:gap-3"
             >
-              <div>
+              <div className="min-w-0">
                 <span className="font-medium text-stone-900">
                   Week {ch.week_number}: {ch.title}
                 </span>
-                <span className="ml-3 text-sm text-stone-500">
+                <span className="ml-0 block text-sm text-stone-500 sm:ml-3 sm:inline">
                   Unlocks {new Date(ch.unlock_date).toLocaleDateString("en-GB")}
                 </span>
               </div>

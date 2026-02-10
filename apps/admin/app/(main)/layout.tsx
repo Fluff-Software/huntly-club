@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Sidebar } from "@/components/Sidebar";
+import { AppShell } from "@/components/AppShell";
 import { createServerAuthClient } from "@/lib/supabase-server-auth";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
@@ -31,9 +31,8 @@ export default async function MainLayout({
   }
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <main className="flex-1 p-8">{children}</main>
-    </div>
+    <AppShell>
+      {children}
+    </AppShell>
   );
 }

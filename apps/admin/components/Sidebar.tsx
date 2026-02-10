@@ -10,6 +10,7 @@ const nav = [
   { href: "/seasons", label: "Seasons" },
   { href: "/activities", label: "Activities" },
   { href: "/admins", label: "Admins" },
+  { href: "/account", label: "Account" },
 ];
 
 const closeIcon = (

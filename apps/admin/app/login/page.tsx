@@ -26,7 +26,9 @@ export default function LoginPage() {
         setError(signInError.message || "Invalid email or password.");
         return;
       }
-      router.push("/dashboard");
+      // Always route through the MFA step; that page will quickly
+      // redirect to the dashboard if two-factor is not set up.
+      router.push("/login/mfa");
       router.refresh();
     } finally {
       setLoading(false);

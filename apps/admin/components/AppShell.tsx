@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import Link from "next/link";
 import { Sidebar } from "@/components/Sidebar";
@@ -40,9 +41,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </button>
         <Link
           href="/dashboard"
-          className="font-semibold tracking-tight text-stone-900 focus:outline-none focus:ring-2 focus:ring-huntly-sage focus:ring-offset-2"
+          className="flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-huntly-sage focus:ring-offset-2"
+          aria-label="Huntly dashboard"
         >
-          Huntly Admin
+          <div className="relative h-7 w-20">
+            <Image
+              src="/huntly-logo.png"
+              alt="Huntly World"
+              fill
+              sizes="80px"
+              className="object-contain"
+              priority
+            />
+          </div>
         </Link>
       </header>
 

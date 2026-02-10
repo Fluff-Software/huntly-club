@@ -48,8 +48,7 @@ export default function LoginMfaPage() {
         ) ?? factors.find((f) => f.factorType === "totp");
 
       if (!totpFactor) {
-        router.replace("/dashboard");
-        router.refresh();
+        router.replace("/account?requireMfa=1");
         return;
       }
 

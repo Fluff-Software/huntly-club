@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 import { Button } from "@/components/Button";
 
@@ -22,6 +22,7 @@ type TotpEnrollment = {
 
 export default function AccountPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [factor, setFactor] = useState<MfaFactor | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +31,6 @@ export default function AccountPage() {
   const [verificationCode, setVerificationCode] = useState("");
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [isDisabling, setIsDisabling] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -174,32 +174,8 @@ export default function AccountPage() {
     }
   }
 
-  async function handleDisable() {
-    if (!factor || isDisabling) return;
-
-    setError(null);
-    setIsDisabling(true);
-
-    try {
-      const supabase = createClient();
-
-      const { error: unenrolError } = await supabase.auth.mfa.unenroll({
-        factorId: factor.id,
-      });
-
-      if (unenrolError) {
-        console.error("Failed to disable MFA", unenrolError);
-        setError("Could not disable two-factor authentication. Please try again.");
-        return;
-      }
-
-      setFactor(null);
-    } finally {
-      setIsDisabling(false);
-    }
-  }
-
   const hasTotp = !!factor;
+  const requireMfa = searchParams?.get("requireMfa") === "1";
 
   return (
     <div className="px-4 py-6 sm:px-6 lg:px-8">
@@ -214,6 +190,15 @@ export default function AccountPage() {
         </div>
 
         <section className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
+          {requireMfa && !hasTotp && (
+            <div
+              className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+              role="alert"
+            >
+              Two-factor authentication is required for admin accounts. Set it up
+              below to continue using the admin area.
+            </div>
+          )}
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className="text-sm font-semibold text-stone-900">
@@ -355,20 +340,9 @@ export default function AccountPage() {
               )}
 
               {hasTotp && !enrolment && (
-                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-sm text-stone-600">
-                    Two-factor authentication is active for your admin account.
-                  </p>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    onClick={handleDisable}
-                    disabled={isDisabling}
-                  >
-                    {isDisabling ? "Disabling…" : "Disable two-factor"}
-                  </Button>
-                </div>
+                <p className="mt-4 text-sm text-stone-600">
+                  Two-factor authentication is active for your admin account.
+                </p>
               )}
             </>
           )}

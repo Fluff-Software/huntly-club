@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -73,9 +74,19 @@ export function Sidebar({ open = false, onClose, onNavigate }: SidebarProps) {
           <Link
             href="/dashboard"
             onClick={handleLinkClick}
-            className="text-lg font-semibold tracking-tight text-huntly-cream focus:outline-none focus:ring-2 focus:ring-huntly-sage focus:ring-offset-2 focus:ring-offset-huntly-forest"
+            className="flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-huntly-sage focus:ring-offset-2 focus:ring-offset-huntly-forest"
+            aria-label="Huntly dashboard"
           >
-            Huntly Admin
+            <div className="relative h-8 w-24">
+              <Image
+                src="/huntly-logo.png"
+                alt="Huntly World"
+                fill
+                sizes="96px"
+                className="object-contain"
+                priority
+              />
+            </div>
           </Link>
           {onClose && (
             <button

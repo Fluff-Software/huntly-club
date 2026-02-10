@@ -1,4 +1,4 @@
-\"use client\";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -41,7 +41,8 @@ export default function LoginMfaPage() {
         return;
       }
 
-      const factors = (data?.factors as MfaFactor[] | undefined) ?? [];
+      const factors =
+        (data?.all as unknown as MfaFactor[] | undefined) ?? [];
       const totpFactor =
         factors.find(
           (f) => f.factorType === "totp" && f.status === "verified",

@@ -61,7 +61,8 @@ export default function AccountPage() {
         return;
       }
 
-      const factors = (data?.factors as MfaFactor[] | undefined) ?? [];
+      const factors =
+        (data?.all as unknown as MfaFactor[] | undefined) ?? [];
       const totpFactor =
         factors.find(
           (f) => f.factorType === "totp" && f.status === "verified",
@@ -162,7 +163,8 @@ export default function AccountPage() {
         return;
       }
 
-      const factors = (data?.factors as MfaFactor[] | undefined) ?? [];
+      const factors =
+        (data?.all as unknown as MfaFactor[] | undefined) ?? [];
       const totpFactor =
         factors.find(
           (f) => f.factorType === "totp" && f.status === "verified",

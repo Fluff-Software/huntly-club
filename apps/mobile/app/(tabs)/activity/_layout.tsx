@@ -10,6 +10,13 @@ export default function ActivityLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="mission"
+        options={{
+          title: "Activity",
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

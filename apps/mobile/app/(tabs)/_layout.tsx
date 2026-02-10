@@ -131,7 +131,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="pack"
+        name="activity"
         options={{
           href: null,
         }}

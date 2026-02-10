@@ -22,8 +22,8 @@ const HOME_MODES: HomeMode[] = ["profile", "activity", "missions"];
 
 const BG_IMAGE = require("@/assets/images/bg.png");
 const BEAR_WAVE_IMAGE = require("@/assets/images/bear-wave.png");
-const LASER_FORTRESS_IMAGE = require("@/assets/images/laser-fortress.jpg");
-const WHISPERING_WIND_IMAGE = require("@/assets/images/whispering-wind.png");
+const CLUB_1_IMAGE = require("@/assets/images/club-1.png");
+const CLUB_2_IMAGE = require("@/assets/images/club-2.png");
 
 const CREAM = "#F4F0EB";
 const ORANGE_BANNER = "#EBCDBB";
@@ -266,8 +266,8 @@ export default function HomeScreen() {
   );
 
   const clubCards = [
-    { id: "1", image: WHISPERING_WIND_IMAGE, title: "String it up", author: "Racing Mouse" },
-    { id: "2", image: LASER_FORTRESS_IMAGE, title: "Into the maze", author: "Tal" },
+    { id: "1", image: CLUB_1_IMAGE, title: "String it up", author: "Racing Mouse" },
+    { id: "2", image: CLUB_2_IMAGE, title: "Into the maze", author: "Tal" },
   ];
 
   const renderActivityContent = () => (

@@ -96,7 +96,7 @@ export function MissionCard({
     if (onStartPress) {
       onStartPress();
     } else {
-      router.push("/pack" as Parameters<typeof router.push>[0]);
+      router.push("/(tabs)/activity/mission" as Parameters<typeof router.push>[0]);
     }
   };
 

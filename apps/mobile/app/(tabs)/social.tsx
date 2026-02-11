@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -6,7 +6,14 @@ import {
   RefreshControl,
   Image,
   StyleSheet,
+  Animated as RNAnimated,
 } from "react-native";
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import { BaseLayout } from "@/components/layout/BaseLayout";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import {
@@ -60,7 +67,7 @@ function mapActivitiesToAchievements(activities: TeamActivityLogEntry[]): Achiev
 }
 
 export default function SocialScreen() {
-  const { scaleW } = useLayoutScale();
+  const { scaleW, width } = useLayoutScale();
   const { currentPlayer } = usePlayer();
   const [teamActivities, setTeamActivities] = useState<TeamActivityLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,6 +75,41 @@ export default function SocialScreen() {
   const [error, setError] = useState<string | null>(null);
   const [teamInfo, setTeamInfo] = useState<TeamInfo | null>(null);
   const [allTeams, setAllTeams] = useState<TeamInfo[]>([]);
+
+  const bearSlideAnim = useRef(new RNAnimated.Value(400)).current;
+  const chartProgress = useSharedValue(0);
+
+  const barHeights = useMemo(
+    () => [scaleW(100), scaleW(160), scaleW(88)],
+    [scaleW]
+  );
+  const bar1Style = useAnimatedStyle(() => ({
+    height: chartProgress.value * barHeights[0],
+    backgroundColor: BAR_WHITE,
+  }));
+  const bar2Style = useAnimatedStyle(() => ({
+    height: chartProgress.value * barHeights[1],
+    backgroundColor: BAR_BLUE,
+  }));
+  const bar3Style = useAnimatedStyle(() => ({
+    height: chartProgress.value * barHeights[2],
+    backgroundColor: BAR_GREEN,
+  }));
+
+  useEffect(() => {
+    if (width === 0) return;
+    bearSlideAnim.setValue(-width);
+    RNAnimated.spring(bearSlideAnim, {
+      toValue: 0,
+      useNativeDriver: true,
+      tension: 45,
+      friction: 8,
+    }).start();
+  }, [width]);
+
+  useEffect(() => {
+    chartProgress.value = withSpring(1, { damping: 18, stiffness: 80 });
+  }, []);
 
   const fetchTeamActivities = useCallback(async () => {
     if (!currentPlayer?.team) {
@@ -161,6 +203,7 @@ export default function SocialScreen() {
         chartBarWrap: {
           alignItems: "center",
           justifyContent: "flex-end",
+          overflow: "hidden",
         },
         chartBar: {
           borderTopLeftRadius: scaleW(12),
@@ -344,14 +387,24 @@ export default function SocialScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        <View style={styles.header}>
+        <Animated.View
+          entering={FadeInDown.duration(600).delay(0).springify().damping(18)}
+          style={styles.header}
+        >
           <View style={styles.headerRow}>
             <View style={styles.headerBearWrap}>
-              <Image
-                source={BEAR_WAVE_IMAGE}
-                style={styles.headerBear}
-                resizeMode="contain"
-              />
+              <RNAnimated.View
+                style={[
+                  styles.headerBear,
+                  { transform: [{ translateX: bearSlideAnim }] },
+                ]}
+              >
+                <Image
+                  source={BEAR_WAVE_IMAGE}
+                  style={{ width: "100%", height: "100%" }}
+                  resizeMode="contain"
+                />
+              </RNAnimated.View>
             </View>
             <View style={styles.headerText}>
               <Text style={styles.headerTitle}>
@@ -359,40 +412,46 @@ export default function SocialScreen() {
               </Text>
             </View>
           </View>
-        </View>
+        </Animated.View>
 
-        <Text style={styles.sectionTitle}>This month</Text>
+        <Animated.View entering={FadeInDown.duration(500).delay(150).springify().damping(18)}>
+          <Text style={styles.sectionTitle}>This month</Text>
+        </Animated.View>
 
-        <View style={styles.chartRow}>
-          {chartBars.map((bar, index) => (
-            <View key={index} style={styles.chartBarWrap}>
-              <View
-                style={[
-                  styles.chartBar,
-                  { height: bar.height, backgroundColor: bar.color },
-                ]}
-              >
-                <View style={styles.chartFace}>
-                  <Image
-                    source={bar.face}
-                    style={{ width: "100%", height: "100%" }}
-                    resizeMode="contain"
-                  />
-                </View>
+        <Animated.View
+          entering={FadeInDown.duration(500).delay(280).springify().damping(18)}
+          style={styles.chartRow}
+        >
+          {chartBars.map((bar, index) => {
+            const barStyle = index === 0 ? bar1Style : index === 1 ? bar2Style : bar3Style;
+            return (
+              <View key={index} style={styles.chartBarWrap}>
+                <Animated.View style={[styles.chartBar, barStyle]}>
+                  <View style={styles.chartFace}>
+                    <Image
+                      source={bar.face}
+                      style={{ width: "100%", height: "100%" }}
+                      resizeMode="contain"
+                    />
+                  </View>
+                </Animated.View>
               </View>
-            </View>
-          ))}
-        </View>
+            );
+          })}
+        </Animated.View>
         <View style={styles.chartBaseline} />
         <Text style={styles.chartSubtitle}>
           Foxes are exploring brilliantly this month
         </Text>
 
-        <Text style={styles.achievementsTitle}>Recent achievements</Text>
+        <Animated.View entering={FadeInDown.duration(500).delay(380).springify().damping(18)}>
+          <Text style={styles.achievementsTitle}>Recent achievements</Text>
+        </Animated.View>
         <View style={styles.timeline}>
           {achievements.map((item, index) => (
-            <View
+            <Animated.View
               key={item.id}
+              entering={FadeInDown.duration(400).delay(450 + index * 60).springify().damping(18)}
               style={[
                 styles.achievementCard,
                 {
@@ -413,7 +472,7 @@ export default function SocialScreen() {
                 <Text style={styles.achievementTitle}>{item.title}</Text>
                 <Text style={styles.achievementPoints}>+ {item.points} points</Text>
               </View>
-            </View>
+            </Animated.View>
           ))}
         </View>
       </ScrollView>

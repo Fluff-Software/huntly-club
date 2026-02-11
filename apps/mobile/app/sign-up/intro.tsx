@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,13 +6,24 @@ import {
   Pressable,
   FlatList,
   ScrollView,
+  LayoutChangeEvent,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from "react-native";
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withDelay,
+} from "react-native-reanimated";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+
+const DEG = Math.PI / 180;
+const springBounce = { damping: 5, stiffness: 90 };
 
 const HUNTLY_GREEN = "#4F6F52";
 
@@ -31,6 +42,25 @@ export default function SignUpIntroScreen() {
   const { scaleW, width, height } = useLayoutScale();
   const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [secondCardHeight, setSecondCardHeight] = useState(0);
+  const hasAnimatedCards = useRef(false);
+
+  const card1Rotate = useSharedValue(7.5 * DEG);
+  const card2Rotate = useSharedValue(-4 * DEG);
+  const openCardsScale = useSharedValue(1);
+  const dashboardScale = useSharedValue(1);
+
+  const card1Style = useAnimatedStyle(() => ({ transform: [{ rotate: `${card1Rotate.value}rad` }] }));
+  const card2Style = useAnimatedStyle(() => ({ transform: [{ rotate: `${card2Rotate.value}rad` }] }));
+  const openCardsAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: openCardsScale.value }] }));
+  const dashboardAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: dashboardScale.value }] }));
+
+  useEffect(() => {
+    if (currentIndex !== 1 || hasAnimatedCards.current) return;
+    hasAnimatedCards.current = true;
+    card1Rotate.value = withDelay(0, withSpring(3 * DEG, springBounce));
+    card2Rotate.value = withDelay(150, withSpring(0, springBounce));
+  }, [currentIndex]);
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const index = Math.round(e.nativeEvent.contentOffset.x / width);
@@ -67,6 +97,7 @@ export default function SignUpIntroScreen() {
             }}
             showsVerticalScrollIndicator={true}
           >
+          <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
           <Text
             style={{
               color: "#1F2937",
@@ -153,28 +184,33 @@ export default function SignUpIntroScreen() {
             The three teams must work together (and compete!) to solve the
             mystery, uncover the clues, and protect the natural world.
           </Text>
-          <Pressable
-            onPress={goNext}
-            style={{
-              alignSelf: "center",
-              width: "100%",
-              paddingVertical: scaleW(16),
-              borderRadius: scaleW(50),
-              backgroundColor: HUNTLY_GREEN,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Text
+          <Animated.View entering={FadeInDown.duration(500).delay(280).springify().damping(18)} style={openCardsAnimatedStyle}>
+            <Pressable
+              onPress={goNext}
+              onPressIn={() => { openCardsScale.value = withSpring(0.96, { damping: 15, stiffness: 400 }); }}
+              onPressOut={() => { openCardsScale.value = withSpring(1, { damping: 15, stiffness: 400 }); }}
               style={{
-                color: "#FFFFFF",
-                fontSize: scaleW(16),
-                fontWeight: "600",
+                alignSelf: "center",
+                width: "100%",
+                paddingVertical: scaleW(16),
+                borderRadius: scaleW(50),
+                backgroundColor: HUNTLY_GREEN,
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
-              Open adventure cards
-            </Text>
-          </Pressable>
+              <Text
+                style={{
+                  color: "#FFFFFF",
+                  fontSize: scaleW(16),
+                  fontWeight: "600",
+                }}
+              >
+                Open adventure cards
+              </Text>
+            </Pressable>
+          </Animated.View>
+          </Animated.View>
           </ScrollView>
         </View>
       );
@@ -208,6 +244,7 @@ export default function SignUpIntroScreen() {
             style={{ width: "50%", height: "50%", marginTop: width * 1.6, alignSelf: "center" }}
           />
         </View>
+        <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
         <Text
           style={{
             color: "#1F2937",
@@ -220,27 +257,39 @@ export default function SignUpIntroScreen() {
           The Secret of the Whispering Wind
         </Text>
         <View style={{ marginBottom: scaleW(56) }}>
+          {/* First Card - same height as second card, rotates from 15deg to 3deg */}
+          <Animated.View
+            style={[
+              card1Style,
+              {
+                position: "absolute",
+                top: scaleW(5),
+                width: width * 0.9,
+                height: secondCardHeight || height * 0.44,
+                marginBottom: scaleW(24),
+              },
+            ]}
+          >
+            <View
+              style={{
+                flex: 1,
+                backgroundColor: "#6AE6AE",
+                borderRadius: scaleW(20),
+                padding: scaleW(15),
+                borderWidth: 4,
+                borderColor: "#FFF",
+                shadowColor: "#000",
+                shadowOpacity: 0.3,
+                shadowRadius: 4,
+                elevation: 3,
+                overflow: "hidden",
+              }}
+            />
+          </Animated.View>
+          {/* Second Card */}
+          <Animated.View style={card2Style}>
           <View
-            style={{
-              position: "absolute",
-              top: scaleW(5),
-              width: width * 0.9,
-              height: height * 0.44,
-              backgroundColor: "#6AE6AE",
-              borderRadius: scaleW(20),
-              padding: scaleW(15),
-              marginBottom: scaleW(24),
-              borderWidth: 4,
-              borderColor: "#FFF",
-              transform: [{ rotate: "3deg" }],
-              shadowColor: "#000",
-              shadowOpacity: 0.3,
-              shadowRadius: 4,
-              elevation: 3,
-              overflow: "hidden",
-            }}
-          />
-          <View
+            onLayout={(e: LayoutChangeEvent) => setSecondCardHeight(e.nativeEvent.layout.height)}
             style={{
               width: width * 0.9,
               backgroundColor: "#E6A46A",
@@ -374,30 +423,36 @@ export default function SignUpIntroScreen() {
               Set up a strong defence to help keep the gem safe.
             </Text>
           </View>
+          </Animated.View>
         </View>
-        <Pressable
-          onPress={goNext}
-          style={{
-            alignSelf: "center",
-            width: "100%",
-            maxWidth: scaleW(320),
-            paddingVertical: scaleW(16),
-            borderRadius: scaleW(50),
-            backgroundColor: HUNTLY_GREEN,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Text
+        </Animated.View>
+        <Animated.View entering={FadeInDown.duration(500).delay(380).springify().damping(18)} style={dashboardAnimatedStyle}>
+          <Pressable
+            onPress={goNext}
+            onPressIn={() => { dashboardScale.value = withSpring(0.96, { damping: 15, stiffness: 400 }); }}
+            onPressOut={() => { dashboardScale.value = withSpring(1, { damping: 15, stiffness: 400 }); }}
             style={{
-              color: "#FFFFFF",
-              fontSize: scaleW(16),
-              fontWeight: "600",
+              alignSelf: "center",
+              width: "100%",
+              maxWidth: scaleW(320),
+              paddingVertical: scaleW(16),
+              borderRadius: scaleW(50),
+              backgroundColor: HUNTLY_GREEN,
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
-            Dashboard
-          </Text>
-        </Pressable>
+            <Text
+              style={{
+                color: "#FFFFFF",
+                fontSize: scaleW(16),
+                fontWeight: "600",
+              }}
+            >
+              Dashboard
+            </Text>
+          </Pressable>
+        </Animated.View>
         </ScrollView>
       </View>
     );
@@ -406,7 +461,7 @@ export default function SignUpIntroScreen() {
   return (
     <View style={{ flex: 1 }}>
       <StatusBar style="dark" />
-      <Stack.Screen options={{ title: "Welcome", headerShown: false }} />
+      <Stack.Screen options={{ title: "Welcome", headerShown: false, gestureEnabled: false }} />
       <FlatList
         ref={flatListRef}
         data={INTRO_PAGES}

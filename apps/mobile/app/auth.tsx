@@ -7,6 +7,12 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import { Stack, useLocalSearchParams, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
@@ -32,6 +38,15 @@ export default function AuthScreen() {
   const params = useLocalSearchParams<{ mode?: string }>();
 
   const heroHeight = scaleW(350);
+  const getStartedScale = useSharedValue(1);
+  const loginScale = useSharedValue(1);
+
+  const getStartedAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: getStartedScale.value }],
+  }));
+  const loginAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: loginScale.value }],
+  }));
 
   useEffect(() => {
     if (params.mode === "signup") setMode(AuthScreenMode.SIGNUP);
@@ -78,16 +93,19 @@ export default function AuthScreen() {
           resizeMode="cover"
         />
       </View>
-      {/* Banner in front + Characters behind */}
+      {/* Characters + banner in front of bottom section */}
       <View
+        pointerEvents="box-none"
         style={{
           flex: 1,
           width,
           alignItems: "center",
           justifyContent: "center",
+          zIndex: 2,
         }}
       >
-        <View
+        <Animated.View
+          entering={FadeInDown.duration(600).delay(0).springify().damping(18)}
           style={{
             width: scaleW(350),
             height: scaleW(228),
@@ -165,7 +183,7 @@ export default function AuthScreen() {
               style={{ width: scaleW(300), height: scaleW(300) }}
             />
           </View>
-        </View>
+        </Animated.View>
       </View>
       {/* Bottom section: slogan + buttons on green */}
       <View
@@ -205,60 +223,84 @@ export default function AuthScreen() {
             alignItems: "center",
           }}
         >
-          <ThemedText
-            type="heading"
-            lightColor="#FFFFFF"
-            darkColor="#FFFFFF"
-            style={{
-              marginBottom: scaleW(80),
-              textAlign: "center",
-              fontWeight: "600",
-              fontSize: scaleW(26),
-            }}
-          >
-            Where curiosity grows.
-          </ThemedText>
-          <Pressable
-            onPress={() => router.push("/get-started")}
-            style={{
-              width: scaleW(240),
-              paddingVertical: scaleW(20),
-              borderRadius: 999,
-              backgroundColor: BUTTON_BG,
-              marginBottom: scaleW(40),
-              alignItems: "center",
-              justifyContent: "center",
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.5,
-              shadowRadius: 4,
-              elevation: 2,
-            }}
-          >
-            <ThemedText type="heading" style={{ color: HUNTLY_GREEN, fontSize: scaleW(16), fontWeight: "600" }}>
-              Get started
+          <Animated.View entering={FadeInDown.duration(500).delay(150).springify().damping(18)}>
+            <ThemedText
+              type="heading"
+              lightColor="#FFFFFF"
+              darkColor="#FFFFFF"
+              style={{
+                marginBottom: scaleW(80),
+                textAlign: "center",
+                fontWeight: "600",
+                fontSize: scaleW(26),
+              }}
+            >
+              Where curiosity grows.
             </ThemedText>
-          </Pressable>
-          <Pressable
-            onPress={() => setMode(AuthScreenMode.LOGIN)}
-            style={{
-              width: scaleW(240),
-              paddingVertical: scaleW(20),
-              borderRadius: 999,
-              backgroundColor: BUTTON_BG,
-              alignItems: "center",
-              justifyContent: "center",
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.5,
-              shadowRadius: 4,
-              elevation: 2,
-            }}
+          </Animated.View>
+          <Animated.View
+            entering={FadeInDown.duration(500).delay(280).springify().damping(18)}
+            style={getStartedAnimatedStyle}
           >
-            <ThemedText type="heading" style={{ color: HUNTLY_GREEN, fontSize: scaleW(16), fontWeight: "600" }}>
-              I already have an account
-            </ThemedText>
-          </Pressable>
+            <Pressable
+              onPress={() => router.push("/get-started")}
+              onPressIn={() => {
+                getStartedScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+              }}
+              onPressOut={() => {
+                getStartedScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+              }}
+              style={{
+                width: scaleW(240),
+                paddingVertical: scaleW(20),
+                borderRadius: 999,
+                backgroundColor: BUTTON_BG,
+                marginBottom: scaleW(40),
+                alignItems: "center",
+                justifyContent: "center",
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.5,
+                shadowRadius: 4,
+                elevation: 2,
+              }}
+            >
+              <ThemedText type="heading" style={{ color: HUNTLY_GREEN, fontSize: scaleW(16), fontWeight: "600" }}>
+                Get started
+              </ThemedText>
+            </Pressable>
+          </Animated.View>
+          <Animated.View
+            entering={FadeInDown.duration(500).delay(380).springify().damping(18)}
+            style={loginAnimatedStyle}
+          >
+            <Pressable
+              onPress={() => setMode(AuthScreenMode.LOGIN)}
+              onPressIn={() => {
+                loginScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+              }}
+              onPressOut={() => {
+                loginScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+              }}
+              style={{
+                width: scaleW(240),
+                paddingVertical: scaleW(20),
+                borderRadius: 999,
+                backgroundColor: BUTTON_BG,
+                alignItems: "center",
+                justifyContent: "center",
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.5,
+                shadowRadius: 4,
+                elevation: 2,
+              }}
+            >
+              <ThemedText type="heading" style={{ color: HUNTLY_GREEN, fontSize: scaleW(16), fontWeight: "600" }}>
+                I already have an account
+              </ThemedText>
+            </Pressable>
+          </Animated.View>
         </View>
       </View>
     </View>

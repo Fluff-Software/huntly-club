@@ -7,13 +7,12 @@ export const REFERENCE_HEIGHT = 844;
 
 export type LayoutScale = {
   scaleW: (n: number) => number;
-  scaleH: (n: number) => number;
   width: number;
   height: number;
 };
 
 /**
- * Returns scaleW, scaleH and window dimensions. Use for responsive layout
+ * Returns scaleW and window dimensions. Use for responsive layout
  * so designs based on REFERENCE_WIDTH x REFERENCE_HEIGHT scale to any screen.
  */
 export function useLayoutScale(): LayoutScale {
@@ -24,10 +23,5 @@ export function useLayoutScale(): LayoutScale {
     [width]
   );
 
-  const scaleH = useCallback(
-    (n: number) => Math.round((height / REFERENCE_HEIGHT) * n),
-    [height]
-  );
-
-  return { scaleW, scaleH, width, height };
+  return { scaleW, width, height };
 }

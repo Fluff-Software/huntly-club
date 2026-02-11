@@ -28,7 +28,7 @@ enum AuthScreenMode {
 
 export default function AuthScreen() {
   const [mode, setMode] = useState(AuthScreenMode.WELCOME);
-  const { scaleW, scaleH, width } = useLayoutScale();
+  const { scaleW, width } = useLayoutScale();
   const params = useLocalSearchParams<{ mode?: string }>();
 
   const heroHeight = scaleW(350);
@@ -90,7 +90,7 @@ export default function AuthScreen() {
         <View
           style={{
             width: scaleW(350),
-            height: scaleH(228),
+            height: scaleW(228),
             position: "relative",
             marginTop: scaleW(-100),
           }}
@@ -100,7 +100,7 @@ export default function AuthScreen() {
             style={{
               position: "absolute",
               left: scaleW(20),
-              top: scaleH(-60),
+              top: scaleW(-60),
               width: scaleW(130),
               height: scaleW(150),
               zIndex: 1,
@@ -133,7 +133,7 @@ export default function AuthScreen() {
             style={{
               position: "absolute",
               left: scaleW(169),
-              top: scaleH(-65),
+              top: scaleW(-65),
               width: scaleW(150),
               height: scaleW(150),
               zIndex: 1,
@@ -198,10 +198,10 @@ export default function AuthScreen() {
             position: "absolute",
             left: 0,
             right: 0,
-            top: scaleH(100),
+            top: scaleW(100),
             paddingHorizontal: scaleW(24),
-            paddingTop: scaleH(24),
-            paddingBottom: scaleH(40),
+            paddingTop: scaleW(24),
+            paddingBottom: scaleW(40),
             alignItems: "center",
           }}
         >
@@ -222,10 +222,10 @@ export default function AuthScreen() {
             onPress={() => router.push("/get-started")}
             style={{
               width: scaleW(240),
-              paddingVertical: scaleH(20),
+              paddingVertical: scaleW(20),
               borderRadius: 999,
               backgroundColor: BUTTON_BG,
-              marginBottom: scaleH(40),
+              marginBottom: scaleW(40),
               alignItems: "center",
               justifyContent: "center",
               shadowColor: "#000",
@@ -243,7 +243,7 @@ export default function AuthScreen() {
             onPress={() => setMode(AuthScreenMode.LOGIN)}
             style={{
               width: scaleW(240),
-              paddingVertical: scaleH(20),
+              paddingVertical: scaleW(20),
               borderRadius: 999,
               backgroundColor: BUTTON_BG,
               alignItems: "center",

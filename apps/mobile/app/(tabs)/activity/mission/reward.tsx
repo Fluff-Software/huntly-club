@@ -26,7 +26,7 @@ const COMPLETION_CARD = MISSION_CARDS[0];
 export default function RewardScreen() {
   const router = useRouter();
   const navigation = useNavigation();
-  const { scaleW, scaleH } = useLayoutScale();
+  const { scaleW } = useLayoutScale();
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", (e) => {
@@ -108,7 +108,7 @@ export default function RewardScreen() {
         },
         goHomeButton: {
           backgroundColor: "#FFF",
-          paddingVertical: scaleH(14),
+          paddingVertical: scaleW(14),
           borderRadius: scaleW(24),
           alignItems: "center",
           marginHorizontal: scaleW(52),
@@ -126,7 +126,7 @@ export default function RewardScreen() {
           color: HUNTLY_GREEN,
         },
       }),
-    [scaleW, scaleH]
+    [scaleW]
   );
 
   return (

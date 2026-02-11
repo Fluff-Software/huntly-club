@@ -21,7 +21,7 @@ export function StatCard({
   label,
   color,
 }: StatCardProps) {
-  const { scaleW, scaleH } = useLayoutScale();
+  const { scaleW } = useLayoutScale();
 
   const styles = useMemo(
     () =>
@@ -44,12 +44,12 @@ export function StatCard({
         },
         labelText: {
           fontSize: scaleW(16),
-          lineHeight: scaleH(18),
+          lineHeight: scaleW(18),
           fontWeight: "600",
           color: "#000",
         },
       }),
-    [scaleW, scaleH]
+    [scaleW]
   );
 
   return (

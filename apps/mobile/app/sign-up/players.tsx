@@ -25,7 +25,7 @@ const CREAM = "#F4F0EB";
 const LIGHT_GREEN = "#A8D5BA";
 
 export default function SignUpPlayersScreen() {
-  const { scaleW, scaleH } = useLayoutScale();
+  const { scaleW } = useLayoutScale();
   const { players, addPlayer, removePlayer, replacePlayer } = useSignUp();
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [name, setName] = useState("");
@@ -130,8 +130,8 @@ export default function SignUpPlayersScreen() {
           style={containerStyle}
           contentContainerStyle={{
             paddingHorizontal: scaleW(24),
-            paddingTop: scaleH(80),
-            paddingBottom: scaleH(40),
+            paddingTop: scaleW(80),
+            paddingBottom: scaleW(40),
           }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -156,8 +156,8 @@ export default function SignUpPlayersScreen() {
               fontSize: scaleW(17),
               opacity: 0.95,
               marginHorizontal: scaleW(20),
-              marginTop: scaleH(20),
-              marginBottom: scaleH(46),
+              marginTop: scaleW(20),
+              marginBottom: scaleW(46),
             }}
           >
             You can add more explorers anytime.
@@ -173,7 +173,7 @@ export default function SignUpPlayersScreen() {
                   flexDirection: "row",
                   backgroundColor: CREAM,
                   borderRadius: scaleW(16),
-                  marginBottom: scaleH(12),
+                  marginBottom: scaleW(12),
                   overflow: "hidden",
                 }}
               >
@@ -193,7 +193,7 @@ export default function SignUpPlayersScreen() {
                           flexDirection: "row",
                           alignItems: "flex-start",
                           justifyContent: "space-between",
-                          marginBottom: scaleH(4),
+                          marginBottom: scaleW(4),
                         }}
                       >
                         <View>
@@ -211,7 +211,7 @@ export default function SignUpPlayersScreen() {
                           <ThemedText
                             lightColor="#36454F"
                             darkColor="#36454F"
-                            style={{ fontSize: scaleW(12), marginTop: scaleH(4) }}
+                            style={{ fontSize: scaleW(12), marginTop: scaleW(4) }}
                           >
                             (Only visible to you)
                           </ThemedText>
@@ -234,7 +234,7 @@ export default function SignUpPlayersScreen() {
                         placeholderTextColor="#9CA3AF"
                         autoCapitalize="words"
                         style={{
-                          height: scaleH(48),
+                          height: scaleW(48),
                           borderWidth: 2,
                           borderColor: LIGHT_GREEN,
                           borderRadius: scaleW(12),
@@ -242,8 +242,8 @@ export default function SignUpPlayersScreen() {
                           fontSize: scaleW(16),
                           color: "#36454F",
                           backgroundColor: "#FFFFFF",
-                          marginTop: scaleH(8),
-                          marginBottom: scaleH(20),
+                          marginTop: scaleW(8),
+                          marginBottom: scaleW(20),
                         }}
                       />
                       <ThemedText
@@ -253,7 +253,7 @@ export default function SignUpPlayersScreen() {
                         style={{
                           fontWeight: "600",
                           fontSize: scaleW(16),
-                          marginBottom: scaleH(4),
+                          marginBottom: scaleW(4),
                         }}
                       >
                         Explorer Nickname
@@ -261,7 +261,7 @@ export default function SignUpPlayersScreen() {
                       <ThemedText
                         lightColor="#36454F"
                         darkColor="#36454F"
-                        style={{ fontSize: scaleW(12), marginBottom: scaleH(8) }}
+                        style={{ fontSize: scaleW(12), marginBottom: scaleW(8) }}
                       >
                         (This is how others see achievements.)
                       </ThemedText>
@@ -269,13 +269,13 @@ export default function SignUpPlayersScreen() {
                         style={{
                           flexDirection: "row",
                           alignItems: "center",
-                          marginBottom: scaleH(20),
+                          marginBottom: scaleW(20),
                         }}
                       >
                         <View
                           style={{
                             flex: 1,
-                            height: scaleH(48),
+                            height: scaleW(48),
                             backgroundColor: "#D9D8D4",
                             borderTopLeftRadius: scaleW(12),
                             borderBottomLeftRadius: scaleW(12),
@@ -298,7 +298,7 @@ export default function SignUpPlayersScreen() {
                             flexDirection: "row",
                             alignItems: "center",
                             gap: scaleW(6),
-                            height: scaleH(48),
+                            height: scaleW(48),
                             paddingHorizontal: scaleW(16),
                             backgroundColor: HUNTLY_GREEN,
                             borderRadius: scaleW(24),
@@ -325,7 +325,7 @@ export default function SignUpPlayersScreen() {
                         style={{
                           fontWeight: "600",
                           fontSize: scaleW(16),
-                          marginBottom: scaleH(12),
+                          marginBottom: scaleW(12),
                         }}
                       >
                         Colour
@@ -364,7 +364,7 @@ export default function SignUpPlayersScreen() {
                       style={{
                         flexDirection: "row",
                         alignItems: "center",
-                        paddingVertical: scaleH(16),
+                        paddingVertical: scaleW(16),
                         paddingHorizontal: scaleW(20),
                       }}
                     >
@@ -385,7 +385,7 @@ export default function SignUpPlayersScreen() {
                           darkColor="#374151"
                           style={{
                             fontSize: scaleW(14),
-                            marginTop: scaleH(2),
+                            marginTop: scaleW(2),
                           }}
                         >
                           {player.nickname}
@@ -410,7 +410,7 @@ export default function SignUpPlayersScreen() {
                 backgroundColor: CREAM,
                 borderRadius: scaleW(24),
                 padding: scaleW(24),
-                marginBottom: scaleH(24),
+                marginBottom: scaleW(24),
               }}
             >
               <View
@@ -418,7 +418,7 @@ export default function SignUpPlayersScreen() {
                   flexDirection: "row",
                   alignItems: "flex-start",
                   justifyContent: "space-between",
-                  marginBottom: scaleH(4),
+                  marginBottom: scaleW(4),
                 }}
               >
                 <View>
@@ -436,7 +436,7 @@ export default function SignUpPlayersScreen() {
                   <ThemedText
                     lightColor="#36454F"
                     darkColor="#36454F"
-                    style={{ fontSize: scaleW(12), marginTop: scaleH(4) }}
+                    style={{ fontSize: scaleW(12), marginTop: scaleW(4) }}
                   >
                     (Only visible to you)
                   </ThemedText>
@@ -461,7 +461,7 @@ export default function SignUpPlayersScreen() {
                 placeholderTextColor="#9CA3AF"
                 autoCapitalize="words"
                 style={{
-                  height: scaleH(48),
+                  height: scaleW(48),
                   borderWidth: 2,
                   borderColor: LIGHT_GREEN,
                   borderRadius: scaleW(12),
@@ -469,8 +469,8 @@ export default function SignUpPlayersScreen() {
                   fontSize: scaleW(16),
                   color: "#36454F",
                   backgroundColor: "#FFFFFF",
-                  marginTop: scaleH(8),
-                  marginBottom: scaleH(20),
+                  marginTop: scaleW(8),
+                  marginBottom: scaleW(20),
                 }}
               />
               <ThemedText
@@ -480,7 +480,7 @@ export default function SignUpPlayersScreen() {
                 style={{
                   fontWeight: "600",
                   fontSize: scaleW(16),
-                  marginBottom: scaleH(4),
+                  marginBottom: scaleW(4),
                 }}
               >
                 Explorer Nickname
@@ -488,7 +488,7 @@ export default function SignUpPlayersScreen() {
               <ThemedText
                 lightColor="#36454F"
                 darkColor="#36454F"
-                style={{ fontSize: scaleW(12), marginBottom: scaleH(8) }}
+                style={{ fontSize: scaleW(12), marginBottom: scaleW(8) }}
               >
                 (This is how others see achievements.)
               </ThemedText>
@@ -497,13 +497,13 @@ export default function SignUpPlayersScreen() {
                   flexDirection: "row",
                   alignItems: "center",
                   gap: scaleW(12),
-                  marginBottom: scaleH(20),
+                  marginBottom: scaleW(20),
                 }}
               >
                 <View
                   style={{
                     flex: 1,
-                    height: scaleH(48),
+                    height: scaleW(48),
                     backgroundColor: "#D9D8D4",
                     borderTopLeftRadius: scaleW(12),
                     borderBottomLeftRadius: scaleW(12),
@@ -526,7 +526,7 @@ export default function SignUpPlayersScreen() {
                     flexDirection: "row",
                     alignItems: "center",
                     gap: scaleW(6),
-                    height: scaleH(48),
+                    height: scaleW(48),
                     paddingHorizontal: scaleW(16),
                     backgroundColor: HUNTLY_GREEN,
                     borderRadius: scaleW(24),
@@ -553,7 +553,7 @@ export default function SignUpPlayersScreen() {
                 style={{
                   fontWeight: "600",
                   fontSize: scaleW(16),
-                  marginBottom: scaleH(12),
+                  marginBottom: scaleW(12),
                 }}
               >
                 Colour
@@ -594,7 +594,7 @@ export default function SignUpPlayersScreen() {
               alignSelf: "center",
               width: "100%",
               maxWidth: scaleW(240),
-              paddingVertical: scaleH(18),
+              paddingVertical: scaleW(18),
               borderRadius: scaleW(50),
               backgroundColor: canContinue ? CREAM : "#9CA3AF",
               alignItems: "center",
@@ -604,7 +604,7 @@ export default function SignUpPlayersScreen() {
               shadowOpacity: canContinue ? 0.3 : 0.1,
               shadowRadius: 4,
               elevation: 2,
-              marginBottom: scaleH(24),
+              marginBottom: scaleW(24),
             }}
           >
             <ThemedText
@@ -624,7 +624,7 @@ export default function SignUpPlayersScreen() {
               alignSelf: "center",
               width: "100%",
               maxWidth: scaleW(240),
-              paddingVertical: scaleH(18),
+              paddingVertical: scaleW(18),
               borderRadius: scaleW(50),
               backgroundColor: canContinue ? CREAM : "#9CA3AF",
               alignItems: "center",

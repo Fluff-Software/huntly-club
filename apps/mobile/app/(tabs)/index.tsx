@@ -29,7 +29,7 @@ const CREAM = "#F4F0EB";
 const ORANGE_BANNER = "#EBCDBB";
 
 export default function HomeScreen() {
-  const { scaleW, scaleH, width, height } = useLayoutScale();
+  const { scaleW, width, height } = useLayoutScale();
   const initialIndex = 1; // activity (Welcome back)
   const [currentIndex, setCurrentIndex] = useState<number>(initialIndex);
   const currentMode = HOME_MODES[currentIndex] ?? "activity";
@@ -152,7 +152,7 @@ export default function HomeScreen() {
           gap: scaleW(12),
         },
       }),
-    [scaleW, scaleW, width, height]
+    [scaleW, width, height]
   );
 
   const renderNavigationButtons = () => {

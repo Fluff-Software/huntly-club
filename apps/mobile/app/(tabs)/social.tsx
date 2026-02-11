@@ -60,7 +60,7 @@ function mapActivitiesToAchievements(activities: TeamActivityLogEntry[]): Achiev
 }
 
 export default function SocialScreen() {
-  const { scaleW, scaleH } = useLayoutScale();
+  const { scaleW } = useLayoutScale();
   const { currentPlayer } = usePlayer();
   const [teamActivities, setTeamActivities] = useState<TeamActivityLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,7 +110,7 @@ export default function SocialScreen() {
     () =>
       StyleSheet.create({
         page: { flex: 1, backgroundColor: PAGE_BG },
-        scrollContent: { paddingBottom: scaleH(100) },
+        scrollContent: { paddingBottom: scaleW(100) },
         header: {
           backgroundColor: HEADER_ORANGE,
           paddingHorizontal: scaleW(24),
@@ -135,7 +135,7 @@ export default function SocialScreen() {
         headerText: {
           flex: 1,
           marginLeft: scaleW(16),
-          paddingBottom: scaleH(8),
+          paddingBottom: scaleW(8),
         },
         headerTitle: {
           marginHorizontal: scaleW(12),
@@ -149,8 +149,8 @@ export default function SocialScreen() {
           fontWeight: "700",
           color: "#000",
           textAlign: "center",
-          marginTop: scaleH(32),
-          marginBottom: scaleH(24),
+          marginTop: scaleW(32),
+          marginBottom: scaleW(24),
         },
         chartRow: {
           flexDirection: "row",
@@ -188,21 +188,21 @@ export default function SocialScreen() {
           color: "#000",
           textAlign: "center",
           marginHorizontal: scaleW(64),
-          marginTop: scaleH(32),
-          marginBottom: scaleH(8),
+          marginTop: scaleW(32),
+          marginBottom: scaleW(8),
           opacity: 0.85,
         },
         achievementsTitle: {
           fontSize: scaleW(20),
           fontWeight: "700",
           color: "#000",
-          marginTop: scaleH(40),
-          marginBottom: scaleH(20),
+          marginTop: scaleW(40),
+          marginBottom: scaleW(20),
           marginLeft: scaleW(24),
         },
         timeline: {
           paddingHorizontal: scaleW(24),
-          paddingBottom: scaleH(24),
+          paddingBottom: scaleW(24),
           alignItems: "center",
           gap: scaleW(24),
         },
@@ -253,7 +253,7 @@ export default function SocialScreen() {
           fontWeight: "700",
           color: "#2D5A27",
           textAlign: "center",
-          marginBottom: scaleH(16),
+          marginBottom: scaleW(16),
         },
         emptyStateBody: {
           fontSize: scaleW(14),
@@ -270,10 +270,10 @@ export default function SocialScreen() {
           fontWeight: "600",
           color: "#dc2626",
           textAlign: "center",
-          marginBottom: scaleH(8),
+          marginBottom: scaleW(8),
         },
       }),
-    [scaleW, scaleH]
+    [scaleW]
   );
 
   if (!currentPlayer) {
@@ -329,9 +329,9 @@ export default function SocialScreen() {
   }
 
   const chartBars = [
-    { face: BEAR_FACE_IMAGE, color: BAR_WHITE, height: scaleH(100) },
-    { face: FOX_FACE_IMAGE, color: BAR_BLUE, height: scaleH(160) },
-    { face: OTTER_FACE_IMAGE, color: BAR_GREEN, height: scaleH(88) },
+    { face: BEAR_FACE_IMAGE, color: BAR_WHITE, height: scaleW(100) },
+    { face: FOX_FACE_IMAGE, color: BAR_BLUE, height: scaleW(160) },
+    { face: OTTER_FACE_IMAGE, color: BAR_GREEN, height: scaleW(88) },
   ];
 
   return (

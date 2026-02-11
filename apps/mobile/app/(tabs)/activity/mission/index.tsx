@@ -20,7 +20,7 @@ const CLUB_2 = require("@/assets/images/club-2.png");
 
 export default function InstructionScreen() {
   const router = useRouter();
-  const { scaleW, scaleH } = useLayoutScale();
+  const { scaleW } = useLayoutScale();
 
   const styles = useMemo(
     () =>
@@ -156,7 +156,7 @@ export default function InstructionScreen() {
           color: "#FFF",
         },
       }),
-    [scaleW, scaleH]
+    [scaleW]
   );
 
   return (

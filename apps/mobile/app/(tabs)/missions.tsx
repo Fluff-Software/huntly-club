@@ -17,7 +17,7 @@ const WHISPERING_WIND_IMAGE = require("@/assets/images/whispering-wind.png");
 const MISSIONS_ORANGE = "#D2684B";
 
 export default function MissionsScreen() {
-  const { scaleW, scaleH, width } = useLayoutScale();
+  const { scaleW, width } = useLayoutScale();
   const missionCardsScrollX = useRef(new Animated.Value(0)).current;
   const missionCardWidth = scaleW(270);
   const missionCardBorderWidth = 6;
@@ -69,7 +69,7 @@ export default function MissionsScreen() {
           gap: scaleW(12),
         },
       }),
-    [scaleW, scaleW, width]
+    [scaleW, width]
   );
 
   return (

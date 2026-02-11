@@ -13,7 +13,7 @@ const HUNTLY_GREEN = "#4F6F52";
 const CREAM = "#F4F0EB";
 
 export default function VerifyEmailScreen() {
-  const { scaleW, scaleH } = useLayoutScale();
+  const { scaleW } = useLayoutScale();
   const { parentEmail } = useSignUp();
   const { user } = useAuth();
   const [checking, setChecking] = useState(true);
@@ -105,7 +105,7 @@ export default function VerifyEmailScreen() {
                 borderRadius: scaleW(40),
                 alignItems: "center",
                 justifyContent: "center",
-                marginBottom: scaleH(24),
+                marginBottom: scaleW(24),
               }}
             >
               <ThemedText
@@ -125,7 +125,7 @@ export default function VerifyEmailScreen() {
                 textAlign: "center",
                 fontWeight: "600",
                 fontSize: scaleW(24),
-                marginBottom: scaleH(12),
+                marginBottom: scaleW(12),
               }}
             >
               Email Verified!
@@ -169,7 +169,7 @@ export default function VerifyEmailScreen() {
               borderRadius: scaleW(40),
               alignItems: "center",
               justifyContent: "center",
-              marginBottom: scaleH(24),
+              marginBottom: scaleW(24),
             }}
           >
             <ThemedText
@@ -189,7 +189,7 @@ export default function VerifyEmailScreen() {
               textAlign: "center",
               fontWeight: "600",
               fontSize: scaleW(24),
-              marginBottom: scaleH(12),
+              marginBottom: scaleW(12),
             }}
           >
             Check Your Email
@@ -202,8 +202,8 @@ export default function VerifyEmailScreen() {
               textAlign: "center",
               fontSize: scaleW(16),
               opacity: 0.95,
-              marginBottom: scaleH(32),
-              lineHeight: scaleH(24),
+              marginBottom: scaleW(32),
+              lineHeight: scaleW(24),
             }}
           >
             We've sent a confirmation link to{"\n"}
@@ -219,7 +219,7 @@ export default function VerifyEmailScreen() {
           </ThemedText>
 
           {checking && (
-            <View style={{ marginBottom: scaleH(24) }}>
+            <View style={{ marginBottom: scaleW(24) }}>
               <ActivityIndicator size="large" color={CREAM} />
               <ThemedText
                 lightColor="#FFFFFF"
@@ -228,7 +228,7 @@ export default function VerifyEmailScreen() {
                   textAlign: "center",
                   fontSize: scaleW(14),
                   opacity: 0.8,
-                  marginTop: scaleH(12),
+                  marginTop: scaleW(12),
                 }}
               >
                 Waiting for verification...
@@ -239,8 +239,8 @@ export default function VerifyEmailScreen() {
           <Pressable
             onPress={handleResendEmail}
             style={{
-              marginTop: scaleH(16),
-              paddingVertical: scaleH(12),
+              marginTop: scaleW(16),
+              paddingVertical: scaleW(12),
               paddingHorizontal: scaleW(24),
             }}
           >
@@ -264,7 +264,7 @@ export default function VerifyEmailScreen() {
               textAlign: "center",
               fontSize: scaleW(12),
               opacity: 0.7,
-              marginTop: scaleH(24),
+              marginTop: scaleW(24),
               fontStyle: "italic",
             }}
           >

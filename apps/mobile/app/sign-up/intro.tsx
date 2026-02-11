@@ -28,7 +28,7 @@ const INTRO_PAGES = [
 ];
 
 export default function SignUpIntroScreen() {
-  const { scaleW, scaleH, width, height } = useLayoutScale();
+  const { scaleW, width, height } = useLayoutScale();
   const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -62,8 +62,8 @@ export default function SignUpIntroScreen() {
             style={{ flex: 1 }}
             contentContainerStyle={{
               paddingHorizontal: scaleW(36),
-              paddingTop: scaleH(48),
-              paddingBottom: scaleH(48),
+              paddingTop: scaleW(48),
+              paddingBottom: scaleW(48),
             }}
             showsVerticalScrollIndicator={true}
           >
@@ -73,7 +73,7 @@ export default function SignUpIntroScreen() {
               textAlign: "center",
               fontWeight: "700",
               fontSize: scaleW(18),
-              marginBottom: scaleH(8),
+              marginBottom: scaleW(8),
             }}
           >
             This latest season is here!
@@ -83,7 +83,7 @@ export default function SignUpIntroScreen() {
               color: "#4B5563",
               textAlign: "center",
               fontSize: scaleW(16),
-              marginBottom: scaleH(24),
+              marginBottom: scaleW(24),
             }}
           >
             Your new season is ready to view
@@ -94,7 +94,7 @@ export default function SignUpIntroScreen() {
               textAlign: "center",
               fontWeight: "400",
               fontSize: scaleW(30),
-              marginBottom: scaleH(24),
+              marginBottom: scaleW(24),
             }}
           >
             The Secret of the Whispering Wind.
@@ -106,7 +106,7 @@ export default function SignUpIntroScreen() {
               height: scaleW(280),
               borderRadius: scaleW(140),
               overflow: "hidden",
-              marginBottom: scaleH(28),
+              marginBottom: scaleW(28),
             }}
           >
             <Image
@@ -120,8 +120,8 @@ export default function SignUpIntroScreen() {
               color: "#374151",
               alignSelf: "center",
               fontSize: scaleW(18),
-              lineHeight: scaleH(24),
-              marginBottom: scaleH(16),
+              lineHeight: scaleW(24),
+              marginBottom: scaleW(16),
               textAlign: "center",
             }}
           >
@@ -133,8 +133,8 @@ export default function SignUpIntroScreen() {
               color: "#374151",
               alignSelf: "center",
               fontSize: scaleW(18),
-              lineHeight: scaleH(24),
-              marginBottom: scaleH(16),
+              lineHeight: scaleW(24),
+              marginBottom: scaleW(16),
               textAlign: "center",
             }}
           >
@@ -145,8 +145,8 @@ export default function SignUpIntroScreen() {
               color: "#374151",
               alignSelf: "center",
               fontSize: scaleW(18),
-              lineHeight: scaleH(24),
-              marginBottom: scaleH(32),
+              lineHeight: scaleW(24),
+              marginBottom: scaleW(32),
               textAlign: "center",
             }}
           >
@@ -158,7 +158,7 @@ export default function SignUpIntroScreen() {
             style={{
               alignSelf: "center",
               width: "100%",
-              paddingVertical: scaleH(16),
+              paddingVertical: scaleW(16),
               borderRadius: scaleW(50),
               backgroundColor: HUNTLY_GREEN,
               alignItems: "center",
@@ -186,8 +186,8 @@ export default function SignUpIntroScreen() {
           style={{ flex: 1 }}
           contentContainerStyle={{
             paddingHorizontal: scaleW(24),
-            paddingTop: scaleH(24),
-            paddingBottom: scaleH(100),
+            paddingTop: scaleW(24),
+            paddingBottom: scaleW(100),
           }}
           showsVerticalScrollIndicator={true}
         >
@@ -197,7 +197,7 @@ export default function SignUpIntroScreen() {
             height: width * 2.5,
             borderRadius: "50%",
             overflow: "hidden",
-            marginBottom: scaleH(20),
+            marginBottom: scaleW(20),
             alignSelf: "center",
             marginTop: -width * 2.1,
           }}
@@ -214,22 +214,22 @@ export default function SignUpIntroScreen() {
             textAlign: "center",
             fontWeight: "400",
             fontSize: scaleW(30),
-            marginBottom: scaleH(24),
+            marginBottom: scaleW(24),
           }}
         >
           The Secret of the Whispering Wind
         </Text>
-        <View style={{ marginBottom: scaleH(56) }}>
+        <View style={{ marginBottom: scaleW(56) }}>
           <View
             style={{
               position: "absolute",
-              top: scaleH(5),
+              top: scaleW(5),
               width: width * 0.9,
               height: height * 0.44,
               backgroundColor: "#6AE6AE",
               borderRadius: scaleW(20),
               padding: scaleW(15),
-              marginBottom: scaleH(24),
+              marginBottom: scaleW(24),
               borderWidth: 4,
               borderColor: "#FFF",
               transform: [{ rotate: "3deg" }],
@@ -259,7 +259,7 @@ export default function SignUpIntroScreen() {
                 flexDirection: "row",
                 justifyContent: "space-between",
                 alignItems: "center",
-                marginBottom: scaleH(12),
+                marginBottom: scaleW(12),
               }}
             >
               <Text
@@ -275,7 +275,7 @@ export default function SignUpIntroScreen() {
                 style={{
                   backgroundColor: "#FFF",
                   paddingHorizontal: scaleW(12),
-                  paddingVertical: scaleH(6),
+                  paddingVertical: scaleW(6),
                   borderRadius: scaleW(12),
                   borderWidth: 1,
                   borderColor: "#E5E7EB",
@@ -294,10 +294,10 @@ export default function SignUpIntroScreen() {
             </View>
             <View
               style={{
-                height: scaleH(160),
+                height: scaleW(160),
                 borderRadius: scaleW(12),
                 overflow: "hidden",
-                marginBottom: scaleH(12),
+                marginBottom: scaleW(12),
               }}
             >
               <Image
@@ -310,7 +310,7 @@ export default function SignUpIntroScreen() {
               style={{
                 flexDirection: "row",
                 gap: scaleW(8),
-                marginBottom: scaleH(12),
+                marginBottom: scaleW(12),
                 justifyContent: "center",
               }}
             >
@@ -320,7 +320,7 @@ export default function SignUpIntroScreen() {
                   alignItems: "center",
                   gap: scaleW(6),
                   paddingHorizontal: scaleW(10),
-                  paddingVertical: scaleH(6),
+                  paddingVertical: scaleW(6),
                   borderRadius: scaleW(20),
                   backgroundColor: "#F5F0E8",
                   borderWidth: 1,
@@ -342,7 +342,7 @@ export default function SignUpIntroScreen() {
                   alignItems: "center",
                   gap: scaleW(6),
                   paddingHorizontal: scaleW(10),
-                  paddingVertical: scaleH(6),
+                  paddingVertical: scaleW(6),
                   borderRadius: scaleW(20),
                   backgroundColor: "#F5F0E8",
                   borderWidth: 1,
@@ -363,8 +363,8 @@ export default function SignUpIntroScreen() {
               style={{
                 color: "#5C4033",
                 fontSize: scaleW(14),
-                lineHeight: scaleH(20),
-                paddingVertical: scaleH(16),
+                lineHeight: scaleW(20),
+                paddingVertical: scaleW(16),
                 paddingHorizontal: scaleW(36),
                 backgroundColor: "#FFF",
                 borderRadius: scaleW(8),
@@ -381,7 +381,7 @@ export default function SignUpIntroScreen() {
             alignSelf: "center",
             width: "100%",
             maxWidth: scaleW(320),
-            paddingVertical: scaleH(16),
+            paddingVertical: scaleW(16),
             borderRadius: scaleW(50),
             backgroundColor: HUNTLY_GREEN,
             alignItems: "center",

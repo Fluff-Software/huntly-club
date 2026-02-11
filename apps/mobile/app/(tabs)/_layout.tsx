@@ -36,7 +36,7 @@ function TabIcon({
 
 export default function TabLayout() {
   const { currentPlayer } = usePlayer();
-  const { scaleW, scaleH } = useLayoutScale();
+  const { scaleW } = useLayoutScale();
   const insets = useSafeAreaInsets();
 
   const activeColor = "#FFFFFF";
@@ -44,10 +44,10 @@ export default function TabLayout() {
 
   const bottomInset =
     Platform.OS === "android" && insets.bottom === 0
-      ? scaleH(24)
+      ? scaleW(24)
       : insets.bottom;
-  const tabBarPaddingBottom = scaleH(16) + bottomInset;
-  const tabBarHeight = scaleH(72) + bottomInset;
+  const tabBarPaddingBottom = scaleW(16) + bottomInset;
+  const tabBarHeight = scaleW(72) + bottomInset;
 
   return (
     <Tabs
@@ -57,12 +57,12 @@ export default function TabLayout() {
         tabBarStyle: {
           borderTopWidth: 0,
           height: tabBarHeight,
-          paddingTop: scaleH(16),
+          paddingTop: scaleW(16),
           paddingBottom: tabBarPaddingBottom,
           paddingHorizontal: scaleW(8),
           elevation: 8,
           shadowColor: "#000",
-          shadowOffset: { width: 0, height: scaleH(-2) },
+          shadowOffset: { width: 0, height: scaleW(-2) },
           shadowOpacity: 0.12,
           shadowRadius: scaleW(4),
           backgroundColor: TAB_BAR_COLORS[route.name] ?? TAB_BAR_COLORS.index,
@@ -70,7 +70,7 @@ export default function TabLayout() {
         tabBarLabelStyle: {
           fontSize: scaleW(12),
           fontWeight: "600",
-          marginTop: scaleH(4),
+          marginTop: scaleW(4),
         },
         tabBarIconStyle: {
           marginTop: 0,

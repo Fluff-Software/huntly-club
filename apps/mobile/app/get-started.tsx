@@ -44,7 +44,7 @@ const INTRO_SLIDES = [
 ];
 
 export default function GetStartedScreen() {
-  const { scaleW, scaleH, width } = useLayoutScale();
+  const { scaleW, width } = useLayoutScale();
   const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -78,7 +78,7 @@ export default function GetStartedScreen() {
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "center",
-            paddingTop: scaleH(80),
+            paddingTop: scaleW(80),
           }}
         >
           {INTRO_SLIDES.map((_, i) => (
@@ -112,14 +112,14 @@ export default function GetStartedScreen() {
           type="heading"
           lightColor="#36454F"
           darkColor="#36454F"
-          style={{ textAlign: "center", marginTop: scaleH(40), fontWeight: 600, fontSize: scaleW(20) }}
+          style={{ textAlign: "center", marginTop: scaleW(40), fontWeight: 600, fontSize: scaleW(20) }}
         >
           {item.title}
         </ThemedText>
         <ThemedText
           lightColor="#36454F"
           darkColor="#36454F"
-          style={{ textAlign: "center", marginTop: scaleH(40), paddingHorizontal: scaleW(32), fontSize: scaleW(18) }}
+          style={{ textAlign: "center", marginTop: scaleW(40), paddingHorizontal: scaleW(32), fontSize: scaleW(18) }}
         >
           {item.body}
         </ThemedText>
@@ -127,19 +127,19 @@ export default function GetStartedScreen() {
           <ThemedText
             lightColor="#36454F"
             darkColor="#36454F"
-            style={{ textAlign: "center", marginTop: scaleH(16), paddingHorizontal: scaleW(32), fontSize: scaleW(18) }}
+            style={{ textAlign: "center", marginTop: scaleW(16), paddingHorizontal: scaleW(32), fontSize: scaleW(18) }}
           >
             {item.body2}
           </ThemedText>
         )}
 
         {/* Graphic */}
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", marginTop: scaleH(24) }}>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", marginTop: scaleW(24) }}>
           {item.graphic === "bear" && (
             <Image
               source={require("@/assets/images/bear-wave.png")}
               resizeMode="contain"
-              style={{ position: "absolute", bottom: scaleH(-125), right: scaleW(-80), width: scaleW(350), height: scaleH(350) }}
+              style={{ position: "absolute", bottom: scaleW(-125), right: scaleW(-80), width: scaleW(350), height: scaleW(350) }}
             />
           )}
           {item.graphic === "icons" && (
@@ -160,7 +160,7 @@ export default function GetStartedScreen() {
             <Image
               source={require("@/assets/images/get-started-icon-3.png")}
               resizeMode="contain"
-              style={{ position: "absolute", bottom: scaleH(-55), width: scaleW(330), height: scaleH(330) }}
+              style={{ position: "absolute", bottom: scaleW(-55), width: scaleW(330), height: scaleW(330) }}
             />
           )}
         </View>
@@ -171,8 +171,8 @@ export default function GetStartedScreen() {
             backgroundColor: "#FFFFFF",
             marginHorizontal: scaleW(-24),
             paddingHorizontal: scaleW(24),
-            paddingVertical: scaleH(60),
-            gap: scaleH(12),
+            paddingVertical: scaleW(60),
+            gap: scaleW(12),
           }}
         >
           {!isLast ? (
@@ -182,7 +182,7 @@ export default function GetStartedScreen() {
                   onPress={skip}
                   style={{
                     flex: 1,
-                    paddingVertical: scaleH(16),
+                    paddingVertical: scaleW(16),
                     borderRadius: scaleW(50),
                     backgroundColor: HUNTLY_GREEN,
                     alignItems: "center",
@@ -202,7 +202,7 @@ export default function GetStartedScreen() {
                   onPress={goNext}
                   style={{
                     flex: 1,
-                    paddingVertical: scaleH(16),
+                    paddingVertical: scaleW(16),
                     borderRadius: scaleW(50),
                     backgroundColor: HUNTLY_GREEN,
                     alignItems: "center",
@@ -225,7 +225,7 @@ export default function GetStartedScreen() {
               onPress={goNext}
               style={{
                 marginHorizontal: scaleW(40),
-                paddingVertical: scaleH(16),
+                paddingVertical: scaleW(16),
                 borderRadius: scaleW(50),
                 backgroundColor: HUNTLY_GREEN,
                 alignItems: "center",

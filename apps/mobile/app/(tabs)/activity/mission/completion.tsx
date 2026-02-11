@@ -23,7 +23,7 @@ const CAMERA_ICON = require("@/assets/images/camera.png");
 
 export default function CompletionScreen() {
   const router = useRouter();
-  const { scaleW, scaleH } = useLayoutScale();
+  const { scaleW } = useLayoutScale();
   const { profiles } = usePlayer();
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<number[]>([]);
   const [hardestText, setHardestText] = useState("");
@@ -181,7 +181,7 @@ export default function CompletionScreen() {
         },
         nextButtonText: { fontSize: scaleW(17), fontWeight: "600" },
       }),
-    [scaleW, scaleH]
+    [scaleW]
   );
 
   return (

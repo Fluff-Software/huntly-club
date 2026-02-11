@@ -54,7 +54,7 @@ interface CategoryAnalytics {
 export default function ParentsScreen() {
   const { user } = useAuth();
   const router = useRouter();
-  const { scaleW, scaleH } = useLayoutScale();
+  const { scaleW } = useLayoutScale();
   const [explorers, setExplorers] = useState<ExplorerStats[]>([]);
   const [categoryAnalytics, setCategoryAnalytics] = useState<
     CategoryAnalytics[]
@@ -244,35 +244,35 @@ export default function ParentsScreen() {
         scrollView: { flex: 1 },
         scrollContent: {
           paddingHorizontal: scaleW(30),
-          paddingTop: scaleH(16),
-          paddingBottom: scaleH(32),
+          paddingTop: scaleW(16),
+          paddingBottom: scaleW(32),
         },
         sectionTitle: {
           fontSize: scaleW(18),
           fontWeight: "600",
           color: COLORS.white,
-          marginBottom: scaleH(12),
+          marginBottom: scaleW(12),
         },
         sectionDesc: {
           fontSize: scaleW(14),
           color: COLORS.white,
-          marginBottom: scaleH(16),
+          marginBottom: scaleW(16),
         },
         progressGrid: {
           flexDirection: "row",
           flexWrap: "wrap",
           justifyContent: "center",
           gap: scaleW(24),
-          marginBottom: scaleH(24),
+          marginBottom: scaleW(24),
         },
         activityCard: {
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
           backgroundColor: COLORS.cardGray,
-          paddingVertical: scaleH(14),
+          paddingVertical: scaleW(14),
           paddingHorizontal: scaleW(16),
-          marginBottom: scaleH(10),
+          marginBottom: scaleW(10),
         },
         activityCardLeft: {
           flexDirection: "row",
@@ -281,7 +281,7 @@ export default function ParentsScreen() {
         },
         activityIconWrap: {
           width: scaleW(40),
-          height: scaleH(40),
+          height: scaleW(40),
           borderRadius: scaleW(20),
           backgroundColor: "rgba(0,0,0,0.06)",
           alignItems: "center",
@@ -310,25 +310,25 @@ export default function ParentsScreen() {
         resourceCard: {
           backgroundColor: COLORS.cardGray,
           padding: scaleW(16),
-          marginBottom: scaleH(12),
+          marginBottom: scaleW(12),
         },
         resourceTitle: {
           fontSize: scaleW(16),
           fontWeight: "600",
           color: COLORS.charcoal,
-          marginBottom: scaleH(6),
+          marginBottom: scaleW(6),
         },
         resourceDesc: {
           fontSize: scaleW(14),
           color: COLORS.charcoal,
-          marginBottom: scaleH(12),
+          marginBottom: scaleW(12),
         },
         resourceButton: {
           flexDirection: "row",
           alignSelf: "flex-end",
           alignItems: "center",
           backgroundColor: COLORS.cream,
-          paddingVertical: scaleH(10),
+          paddingVertical: scaleW(10),
           paddingHorizontal: scaleW(16),
           borderRadius: scaleW(24),
           gap: scaleW(6),
@@ -342,10 +342,10 @@ export default function ParentsScreen() {
           width: scaleW(240),
           backgroundColor: COLORS.cream,
           borderRadius: scaleW(48),
-          paddingVertical: scaleH(14),
+          paddingVertical: scaleW(14),
           paddingHorizontal: scaleW(24),
           alignItems: "center",
-          marginTop: scaleH(8),
+          marginTop: scaleW(8),
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.3,
@@ -364,8 +364,8 @@ export default function ParentsScreen() {
         },
         loadingSpinner: {
           width: scaleW(48),
-          height: scaleH(48),
-          marginBottom: scaleH(16),
+          height: scaleW(48),
+          marginBottom: scaleW(16),
         },
         loadingText: {
           fontSize: scaleW(16),
@@ -379,18 +379,18 @@ export default function ParentsScreen() {
         },
         emptyIcon: {
           width: scaleW(64),
-          height: scaleH(64),
+          height: scaleW(64),
           borderRadius: scaleW(32),
           backgroundColor: "rgba(255,255,255,0.2)",
           alignItems: "center",
           justifyContent: "center",
-          marginBottom: scaleH(16),
+          marginBottom: scaleW(16),
         },
         emptyTitle: {
           fontSize: scaleW(18),
           fontWeight: "700",
           color: COLORS.white,
-          marginBottom: scaleH(8),
+          marginBottom: scaleW(8),
           textAlign: "center",
         },
         emptyDesc: {
@@ -400,7 +400,7 @@ export default function ParentsScreen() {
           textAlign: "center",
         },
       }),
-    [scaleW, scaleH]
+    [scaleW]
   );
 
   if (loading && isAuthenticated) {
@@ -533,7 +533,7 @@ export default function ParentsScreen() {
         )}
 
         {/* Resources */}
-        <ThemedText type="heading" style={[styles.sectionTitle, { marginTop: scaleH(24) }]}>
+        <ThemedText type="heading" style={[styles.sectionTitle, { marginTop: scaleW(24) }]}>
           Resources
         </ThemedText>
         <View style={styles.resourceCard}>
@@ -562,7 +562,7 @@ export default function ParentsScreen() {
         </View>
 
         {/* Settings */}
-        <ThemedText type="heading" style={[styles.sectionTitle, { marginTop: scaleH(24) }]}>
+        <ThemedText type="heading" style={[styles.sectionTitle, { marginTop: scaleW(24) }]}>
           Settings
         </ThemedText>
         <ThemedText style={styles.sectionDesc}>

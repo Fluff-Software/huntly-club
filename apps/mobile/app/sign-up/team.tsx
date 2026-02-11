@@ -47,7 +47,7 @@ const HARDCODED_TEAMS = [
 ] as const;
 
 export default function SignUpTeamScreen() {
-  const { scaleW, scaleH } = useLayoutScale();
+  const { scaleW } = useLayoutScale();
   const {
     players,
     setSelectedTeamName,
@@ -123,7 +123,7 @@ export default function SignUpTeamScreen() {
           style={{ flex: 1 }}
           contentContainerStyle={{
             paddingHorizontal: scaleW(24),
-            paddingTop: scaleH(80),
+            paddingTop: scaleW(80),
           }}
           showsVerticalScrollIndicator={false}
         >
@@ -146,8 +146,8 @@ export default function SignUpTeamScreen() {
               textAlign: "center",
               fontSize: scaleW(16),
               opacity: 0.95,
-              marginTop: scaleH(8),
-              marginBottom: scaleH(32),
+              marginTop: scaleW(8),
+              marginBottom: scaleW(32),
             }}
           >
             You'll all explore together as one team.
@@ -165,7 +165,7 @@ export default function SignUpTeamScreen() {
                   backgroundColor: team.backgroundColor,
                   borderRadius: scaleW(20),
                   padding: scaleW(20),
-                  marginBottom: scaleH(16),
+                  marginBottom: scaleW(16),
                   flexDirection: "row",
                   alignItems: "center",
                   borderWidth: 3,
@@ -195,7 +195,7 @@ export default function SignUpTeamScreen() {
                         style={{
                           fontWeight: "600",
                           fontSize: scaleW(20),
-                          marginBottom: scaleH(20),
+                          marginBottom: scaleW(20),
                           textAlign: team.imageOnLeft ? "right" : "left",
                         }}
                       >
@@ -242,9 +242,9 @@ export default function SignUpTeamScreen() {
               alignSelf: "center",
               width: "100%",
               maxWidth: scaleW(240),
-              paddingVertical: scaleH(18),
+              paddingVertical: scaleW(18),
               borderRadius: scaleW(50),
-              marginTop: scaleH(20),
+              marginTop: scaleW(20),
               backgroundColor: selectedName && !creating ? CREAM : "#9CA3AF",
               alignItems: "center",
               justifyContent: "center",

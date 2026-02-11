@@ -22,8 +22,7 @@ const COLORS = {
 
 export default function SettingsScreen() {
   const { user, signOut } = useAuth();
-  const router = useRouter();
-  const { scaleW, scaleH } = useLayoutScale();
+  const { scaleW } = useLayoutScale();
   const [weeklyEmail, setWeeklyEmail] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(false);
 
@@ -54,29 +53,29 @@ export default function SettingsScreen() {
         scrollView: { flex: 1 },
         scrollContent: {
           paddingHorizontal: scaleW(24),
-          paddingTop: scaleH(24),
-          paddingBottom: scaleH(32),
+          paddingTop: scaleW(24),
+          paddingBottom: scaleW(32),
         },
         sectionTitle: {
           fontSize: scaleW(18),
           fontWeight: "600",
           color: COLORS.white,
-          marginBottom: scaleH(8),
+          marginBottom: scaleW(8),
         },
         email: {
           fontSize: scaleW(15),
           color: COLORS.white,
-          marginBottom: scaleH(20),
+          marginBottom: scaleW(20),
         },
         signOutButton: {
           width: scaleW(240),
           backgroundColor: COLORS.cream,
           borderRadius: scaleW(48),
-          paddingVertical: scaleH(16),
+          paddingVertical: scaleW(16),
           paddingHorizontal: scaleW(24),
           alignItems: "center",
           justifyContent: "center",
-          marginBottom: scaleH(48),
+          marginBottom: scaleW(48),
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.3,
@@ -92,13 +91,13 @@ export default function SettingsScreen() {
           fontSize: scaleW(18),
           fontWeight: "600",
           color: COLORS.white,
-          marginBottom: scaleH(16),
+          marginBottom: scaleW(16),
         },
         prefRow: {
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          paddingVertical: scaleH(14),
+          paddingVertical: scaleW(14),
         },
         prefLabel: {
           fontSize: scaleW(16),
@@ -107,7 +106,7 @@ export default function SettingsScreen() {
         },
         checkbox: {
           width: scaleW(24),
-          height: scaleH(24),
+          height: scaleW(24),
           borderRadius: scaleW(6),
           borderWidth: 2,
           borderColor: COLORS.white,
@@ -116,7 +115,7 @@ export default function SettingsScreen() {
           backgroundColor: COLORS.white,
         },
       }),
-    [scaleW, scaleH]
+    [scaleW]
   );
 
   return (

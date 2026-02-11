@@ -14,10 +14,9 @@ const WHISPERING_WIND_IMAGE = require("@/assets/images/whispering-wind.png");
 const STORY_BLUE = "#4B9CD2";
 const CREAM = "#F4F0EB";
 const DARK_GREEN = "#2D5A27";
-const OLIVE_GREEN = "#4F6F52";
 
 export default function StoryScreen() {
-  const { scaleW, scaleH, width } = useLayoutScale();
+  const { scaleW, width } = useLayoutScale();
 
   const styles = useMemo(
     () =>
@@ -25,7 +24,7 @@ export default function StoryScreen() {
         container: { flex: 1, backgroundColor: STORY_BLUE },
         scrollContent: {
           flexGrow: 1,
-          paddingTop: scaleH(24),
+          paddingTop: scaleW(24),
         },
         seasonContainer: {
           backgroundColor: STORY_BLUE,
@@ -41,7 +40,7 @@ export default function StoryScreen() {
           height: width * 2.5,
           borderRadius: (width * 2.5) / 2,
           overflow: "hidden",
-          marginBottom: scaleH(20),
+          marginBottom: scaleW(20),
           alignSelf: "center",
           marginTop: -width * 2.1,
         },
@@ -56,7 +55,7 @@ export default function StoryScreen() {
           fontWeight: "600",
           color: "#FFF",
           textAlign: "center",
-          marginBottom: scaleH(16),
+          marginBottom: scaleW(16),
           opacity: 0.95,
         },
         seasonTitle: {
@@ -65,17 +64,17 @@ export default function StoryScreen() {
           fontWeight: "600",
           color: "#FFF",
           textAlign: "center",
-          marginBottom: scaleH(16),
+          marginBottom: scaleW(16),
         },
         creamButton: {
           backgroundColor: CREAM,
           alignSelf: "center",
           borderRadius: scaleW(28),
-          paddingVertical: scaleH(14),
+          paddingVertical: scaleW(14),
           paddingHorizontal: scaleW(32),
           alignItems: "center",
           justifyContent: "center",
-          marginBottom: scaleH(40),
+          marginBottom: scaleW(40),
         },
         chapterContainer: {
           backgroundColor: "#438DBD",
@@ -86,29 +85,29 @@ export default function StoryScreen() {
           fontSize: scaleW(20),
           fontWeight: "600",
           color: "#FFF",
-          marginBottom: scaleH(4),
+          marginBottom: scaleW(4),
         },
         releaseDate: {
           fontSize: scaleW(13),
           color: "rgba(255,255,255,0.7)",
-          marginBottom: scaleH(16),
+          marginBottom: scaleW(16),
         },
         bodyText: {
           fontSize: scaleW(16),
           color: "#FFF",
           lineHeight: scaleW(24),
-          marginBottom: scaleH(12),
+          marginBottom: scaleW(12),
         },
         completeButton: {
           backgroundColor: "#7FAF8A",
           alignSelf: "flex-start",
           borderRadius: scaleW(28),
-          paddingVertical: scaleH(14),
+          paddingVertical: scaleW(14),
           paddingHorizontal: scaleW(24),
           alignItems: "center",
           justifyContent: "center",
-          marginTop: scaleH(24),
-          marginBottom: scaleH(48),
+          marginTop: scaleW(24),
+          marginBottom: scaleW(48),
           shadowColor: "#000",
           shadowOpacity: 0.3,
           shadowRadius: 2,
@@ -121,7 +120,7 @@ export default function StoryScreen() {
           color: "#FFF",
           textAlign: "center",
           opacity: 0.95,
-          marginBottom: scaleH(4),
+          marginBottom: scaleW(4),
         },
         nextDate: {
           fontSize: scaleW(22),
@@ -130,7 +129,7 @@ export default function StoryScreen() {
           textAlign: "center",
         },
       }),
-    [scaleW, scaleH, width]
+    [scaleW, width]
   );
 
   return (
@@ -179,7 +178,7 @@ export default function StoryScreen() {
           <ThemedText style={styles.bodyText}>
             Explorers are very good at noticing what others walk past.
           </ThemedText>
-          <ThemedText style={[styles.bodyText, { marginBottom: scaleH(4) }]}>
+          <ThemedText style={[styles.bodyText, { marginBottom: scaleW(4) }]}>
             This week, look for what's hidden. Or create something that only
             explorers would find.
           </ThemedText>

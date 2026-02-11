@@ -75,7 +75,7 @@ export default function ProfileScreen() {
   const { currentPlayer, profiles, setCurrentPlayer, refreshProfiles } =
     usePlayer();
   const router = useRouter();
-  const { scaleW, scaleH } = useLayoutScale();
+  const { scaleW } = useLayoutScale();
 
   useFocusEffect(
     React.useCallback(() => {
@@ -254,17 +254,17 @@ export default function ProfileScreen() {
         },
         scrollContent: {
           paddingHorizontal: scaleW(20),
-          paddingTop: scaleH(16),
-          paddingBottom: scaleH(32),
+          paddingTop: scaleW(16),
+          paddingBottom: scaleW(32),
         },
         section: {
-          marginBottom: scaleH(24),
+          marginBottom: scaleW(24),
         },
         sectionHeader: {
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          marginBottom: scaleH(12),
+          marginBottom: scaleW(12),
         },
         sectionTitle: {
           fontSize: scaleW(18),
@@ -288,15 +288,15 @@ export default function ProfileScreen() {
         cardTextSecondary: {
           fontSize: scaleW(14),
           color: COLORS.charcoal,
-          marginTop: scaleH(4),
+          marginTop: scaleW(4),
         },
         playerCard: {
           flexDirection: "row",
           backgroundColor: COLORS.cream,
           borderRadius: scaleW(20),
-          marginBottom: scaleH(12),
+          marginBottom: scaleW(12),
           overflow: "hidden",
-          minHeight: scaleH(64),
+          minHeight: scaleW(64),
         },
         playerAccent: {
           width: scaleW(20),
@@ -304,7 +304,7 @@ export default function ProfileScreen() {
         },
         playerCardContent: {
           flex: 1,
-          paddingVertical: scaleH(12),
+          paddingVertical: scaleW(12),
           paddingHorizontal: scaleW(16),
           justifyContent: "center",
         },
@@ -316,16 +316,16 @@ export default function ProfileScreen() {
         playerNickname: {
           fontSize: scaleW(14),
           color: COLORS.charcoal,
-          marginTop: scaleH(2),
+          marginTop: scaleW(2),
         },
         addExplorerRow: {
           flexDirection: "row",
           alignItems: "center",
-          marginTop: scaleH(8),
+          marginTop: scaleW(8),
         },
         addExplorerIcon: {
           width: scaleW(40),
-          height: scaleH(40),
+          height: scaleW(40),
           borderRadius: scaleW(20),
           backgroundColor: "rgba(255,255,255,0.25)",
           alignItems: "center",
@@ -348,7 +348,7 @@ export default function ProfileScreen() {
           flexDirection: "row",
           justifyContent: "space-around",
           width: "100%",
-          marginBottom: scaleH(12),
+          marginBottom: scaleW(12),
           paddingVertical: scaleW(20),
         },
         skillItem: {
@@ -356,13 +356,13 @@ export default function ProfileScreen() {
         },
         skillIcon: {
           width: scaleW(24),
-          height: scaleH(24),
+          height: scaleW(24),
         },
         skillLabel: {
           fontSize: scaleW(14),
           color: COLORS.black,
           fontWeight: "600",
-          marginTop: scaleH(6),
+          marginTop: scaleW(6),
         },
         skillsTitle: {
           fontSize: scaleW(18),
@@ -390,7 +390,7 @@ export default function ProfileScreen() {
           backgroundColor: COLORS.activityCard,
           borderRadius: scaleW(18),
           padding: scaleW(20),
-          marginBottom: scaleH(8),
+          marginBottom: scaleW(8),
         },
         activityCardContent: {
           flex: 1,
@@ -403,7 +403,7 @@ export default function ProfileScreen() {
         activityDate: {
           fontSize: scaleW(16),
           color: COLORS.charcoal,
-          marginTop: scaleH(2),
+          marginTop: scaleW(2),
         },
         activityArrow: {
           marginLeft: scaleW(8),
@@ -411,10 +411,10 @@ export default function ProfileScreen() {
         parentZoneButton: {
           backgroundColor: COLORS.cream,
           borderRadius: scaleW(40),
-          paddingVertical: scaleH(16),
+          paddingVertical: scaleW(16),
           alignItems: "center",
-          marginTop: scaleH(8),
-          marginBottom: scaleH(24),
+          marginTop: scaleW(8),
+          marginBottom: scaleW(24),
           marginHorizontal: scaleW(40),
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 2 },
@@ -442,10 +442,10 @@ export default function ProfileScreen() {
           fontSize: scaleW(20),
           fontWeight: "700",
           color: COLORS.charcoal,
-          marginBottom: scaleH(16),
+          marginBottom: scaleW(16),
         },
         input: {
-          height: scaleH(52),
+          height: scaleW(52),
           borderWidth: 2,
           borderColor: "#BEE6BE",
           borderRadius: scaleW(14),
@@ -453,22 +453,22 @@ export default function ProfileScreen() {
           backgroundColor: COLORS.cream,
           fontSize: scaleW(16),
           color: COLORS.charcoal,
-          marginBottom: scaleH(16),
+          marginBottom: scaleW(16),
         },
         inputLabel: {
           fontSize: scaleW(15),
           fontWeight: "600",
           color: COLORS.charcoal,
-          marginBottom: scaleH(8),
+          marginBottom: scaleW(8),
         },
         nicknameRow: {
           flexDirection: "row",
           alignItems: "center",
-          marginBottom: scaleH(16),
+          marginBottom: scaleW(16),
         },
         nicknameDisplay: {
           flex: 1,
-          height: scaleH(52),
+          height: scaleW(52),
           borderWidth: 2,
           borderColor: "#BEE6BE",
           borderRadius: scaleW(14),
@@ -482,7 +482,7 @@ export default function ProfileScreen() {
         },
         generateBtn: {
           marginLeft: scaleW(12),
-          paddingVertical: scaleH(14),
+          paddingVertical: scaleW(14),
           paddingHorizontal: scaleW(16),
           backgroundColor: "#4F6F52",
           borderRadius: scaleW(14),
@@ -493,14 +493,14 @@ export default function ProfileScreen() {
           color: COLORS.white,
         },
         colorPickerWrap: {
-          marginBottom: scaleH(16),
+          marginBottom: scaleW(16),
         },
         teamsScroll: {
-          marginBottom: scaleH(20),
+          marginBottom: scaleW(20),
         },
         teamOption: {
           width: scaleW(80),
-          height: scaleH(80),
+          height: scaleW(80),
           marginRight: scaleW(12),
           borderRadius: scaleW(14),
           overflow: "hidden",
@@ -525,7 +525,7 @@ export default function ProfileScreen() {
         },
         modalButton: {
           flex: 1,
-          height: scaleH(52),
+          height: scaleW(52),
           borderRadius: scaleW(14),
           alignItems: "center",
           justifyContent: "center",
@@ -551,14 +551,14 @@ export default function ProfileScreen() {
           backgroundColor: "#E8F5E9",
           borderRadius: scaleW(14),
           alignItems: "center",
-          marginBottom: scaleH(20),
+          marginBottom: scaleW(20),
         },
         noTeamsText: {
           fontSize: scaleW(15),
           color: COLORS.charcoal,
         },
         modalClose: {
-          marginTop: scaleH(12),
+          marginTop: scaleW(12),
           alignItems: "center",
         },
         modalCloseText: {
@@ -567,7 +567,7 @@ export default function ProfileScreen() {
           fontWeight: "600",
         },
       }),
-    [scaleW, scaleH]
+    [scaleW]
   );
 
   return (

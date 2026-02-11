@@ -26,7 +26,7 @@ export function MissionCard({
   marginTopOffset = 0,
   onStartPress,
 }: MissionCardProps) {
-  const { scaleW, scaleH } = useLayoutScale();
+  const { scaleW } = useLayoutScale();
 
   const styles = useMemo(
     () =>
@@ -52,24 +52,24 @@ export function MissionCard({
         },
         imageWrap: {
           width: "100%",
-          height: scaleH(160),
+          height: scaleW(160),
           borderRadius: scaleW(14),
           overflow: "hidden",
-          marginBottom: scaleH(12),
+          marginBottom: scaleW(12),
           backgroundColor: "#1a1a2e",
         },
         image: { width: "100%", height: "100%" },
         title: {
           fontSize: scaleW(18),
           fontWeight: "600",
-          marginBottom: scaleH(8),
+          marginBottom: scaleW(8),
           textAlign: "center",
           color: "#000",
         },
         description: {
           fontSize: scaleW(15),
           lineHeight: scaleW(20),
-          marginBottom: scaleH(16),
+          marginBottom: scaleW(16),
           marginHorizontal: scaleW(8),
           textAlign: "center",
           color: "#000",
@@ -77,7 +77,7 @@ export function MissionCard({
         startButton: {
           backgroundColor: HUNTLY_GREEN,
           borderRadius: scaleW(24),
-          paddingVertical: scaleH(12),
+          paddingVertical: scaleW(12),
           marginHorizontal: scaleW(24),
           alignItems: "center",
           justifyContent: "center",
@@ -88,7 +88,7 @@ export function MissionCard({
           elevation: 2,
         },
       }),
-    [scaleW, scaleH, tiltDeg, marginTopOffset]
+    [scaleW, tiltDeg, marginTopOffset]
   );
 
   const handleStart = () => {

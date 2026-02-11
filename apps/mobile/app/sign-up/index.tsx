@@ -28,7 +28,7 @@ const isValidEmail = (value: string): boolean =>
 const MIN_PASSWORD_LENGTH = 6;
 
 export default function SignUpParentEmailScreen() {
-  const { scaleW, scaleH } = useLayoutScale();
+  const { scaleW } = useLayoutScale();
   const { setParentEmail, setPassword } = useSignUp();
   const [email, setEmail] = useState("");
   const [passwordValue, setPasswordValue] = useState("");
@@ -118,8 +118,8 @@ export default function SignUpParentEmailScreen() {
           contentContainerStyle={{
             flexGrow: 1,
             paddingHorizontal: scaleW(24),
-            paddingTop: scaleH(80),
-            paddingBottom: scaleH(40),
+            paddingTop: scaleW(80),
+            paddingBottom: scaleW(40),
           }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -144,7 +144,7 @@ export default function SignUpParentEmailScreen() {
               fontSize: scaleW(18),
               opacity: 0.95,
               marginHorizontal: scaleW(20),
-              marginTop: scaleH(20),
+              marginTop: scaleW(20),
             }}
           >
             Add a parent email so progress isn't lost.
@@ -157,7 +157,7 @@ export default function SignUpParentEmailScreen() {
             style={{
               fontWeight: "600",
               fontSize: scaleW(16),
-              marginTop: scaleH(40),
+              marginTop: scaleW(40),
               textAlign: "center",
             }}
           >
@@ -176,13 +176,13 @@ export default function SignUpParentEmailScreen() {
             keyboardType="email-address"
             style={{
               width: "100%",
-              height: scaleH(56),
+              height: scaleW(56),
               backgroundColor: "#FFFFFF",
               borderRadius: scaleW(16),
               paddingHorizontal: scaleW(20),
               fontSize: scaleW(16),
               color: "#36454F",
-              marginTop: scaleH(12),
+              marginTop: scaleW(12),
             }}
           />
           {emailError !== null && (
@@ -191,7 +191,7 @@ export default function SignUpParentEmailScreen() {
               darkColor="#FEE2E2"
               style={{
                 fontSize: scaleW(14),
-                marginTop: scaleH(8),
+                marginTop: scaleW(8),
                 textAlign: "center",
               }}
             >
@@ -206,7 +206,7 @@ export default function SignUpParentEmailScreen() {
             style={{
               fontWeight: "600",
               fontSize: scaleW(16),
-              marginTop: scaleH(24),
+              marginTop: scaleW(24),
               textAlign: "center",
             }}
           >
@@ -222,13 +222,13 @@ export default function SignUpParentEmailScreen() {
             secureTextEntry
             style={{
               width: "100%",
-              height: scaleH(56),
+              height: scaleW(56),
               backgroundColor: "#FFFFFF",
               borderRadius: scaleW(16),
               paddingHorizontal: scaleW(20),
               fontSize: scaleW(16),
               color: "#36454F",
-              marginTop: scaleH(12),
+              marginTop: scaleW(12),
             }}
           />
 
@@ -239,7 +239,7 @@ export default function SignUpParentEmailScreen() {
             style={{
               fontWeight: "600",
               fontSize: scaleW(16),
-              marginTop: scaleH(24),
+              marginTop: scaleW(24),
               textAlign: "center",
             }}
           >
@@ -255,17 +255,17 @@ export default function SignUpParentEmailScreen() {
             secureTextEntry
             style={{
               width: "100%",
-              height: scaleH(56),
+              height: scaleW(56),
               backgroundColor: "#FFFFFF",
               borderRadius: scaleW(16),
               paddingHorizontal: scaleW(20),
               fontSize: scaleW(16),
               color: "#36454F",
-              marginTop: scaleH(12),
+              marginTop: scaleW(12),
             }}
           />
 
-          <Pressable onPress={openPrivacyPolicy} style={{ marginTop: scaleH(28) }}>
+          <Pressable onPress={openPrivacyPolicy} style={{ marginTop: scaleW(28) }}>
             <ThemedText
               lightColor="#FFFFFF"
               darkColor="#FFFFFF"
@@ -283,7 +283,7 @@ export default function SignUpParentEmailScreen() {
             </ThemedText>
           </Pressable>
 
-          <Pressable onPress={goToSignIn} style={{ marginTop: scaleH(24) }}>
+          <Pressable onPress={goToSignIn} style={{ marginTop: scaleW(24) }}>
             <ThemedText
               lightColor="#FFFFFF"
               darkColor="#FFFFFF"
@@ -301,7 +301,7 @@ export default function SignUpParentEmailScreen() {
             </ThemedText>
           </Pressable>
 
-          <View style={{ flex: 1, minHeight: scaleH(80) }} />
+          <View style={{ flex: 1, minHeight: scaleW(80) }} />
 
           {disabledReason !== null && !emailError && (
             <ThemedText
@@ -311,7 +311,7 @@ export default function SignUpParentEmailScreen() {
                 textAlign: "center",
                 fontSize: scaleW(14),
                 opacity: 0.9,
-                marginBottom: scaleH(12),
+                marginBottom: scaleW(12),
               }}
             >
               {disabledReason}
@@ -325,7 +325,7 @@ export default function SignUpParentEmailScreen() {
               alignSelf: "center",
               width: "100%",
               maxWidth: scaleW(220),
-              paddingVertical: scaleH(18),
+              paddingVertical: scaleW(18),
               borderRadius: scaleW(50),
               backgroundColor: isDisabled ? "#9CA3AF" : "#FFFFFF",
               alignItems: "center",

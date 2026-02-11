@@ -6,6 +6,12 @@ import {
   Pressable,
   Alert,
 } from "react-native";
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,6 +31,19 @@ export default function SettingsScreen() {
   const { scaleW } = useLayoutScale();
   const [weeklyEmail, setWeeklyEmail] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(false);
+
+  const signOutScale = useSharedValue(1);
+  const weeklyEmailScale = useSharedValue(1);
+  const pushScale = useSharedValue(1);
+  const signOutAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: signOutScale.value }],
+  }));
+  const weeklyEmailAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: weeklyEmailScale.value }],
+  }));
+  const pushAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pushScale.value }],
+  }));
 
   const handleSignOut = () => {
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [
@@ -125,47 +144,78 @@ export default function SettingsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <ThemedText type="heading" style={styles.sectionTitle}>Your account</ThemedText>
-        <ThemedText style={styles.email} numberOfLines={1}>
-          {user?.email ?? "parentemail@somewhere.com"}
-        </ThemedText>
-        <Pressable style={styles.signOutButton} onPress={handleSignOut}>
-          <ThemedText type="heading" style={styles.signOutText}>Sign Out</ThemedText>
-        </Pressable>
-
-        <ThemedText type="heading" style={styles.prefsTitle}>Your preferences</ThemedText>
-        <Pressable
-          style={styles.prefRow}
-          onPress={() => setWeeklyEmail((v) => !v)}
-        >
-          <ThemedText style={styles.prefLabel}>Receive weekly email</ThemedText>
-          <View style={styles.checkbox}>
-            {weeklyEmail ? (
-              <MaterialIcons
-                name="check"
-                size={scaleW(18)}
-                color={COLORS.darkGreen}
-              />
-            ) : null}
-          </View>
-        </Pressable>
-        <Pressable
-          style={styles.prefRow}
-          onPress={() => setPushNotifications((v) => !v)}
-        >
-          <ThemedText style={styles.prefLabel}>
-            Receive push notifications
+        <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
+          <ThemedText type="heading" style={styles.sectionTitle}>Your account</ThemedText>
+          <ThemedText style={styles.email} numberOfLines={1}>
+            {user?.email ?? "parentemail@somewhere.com"}
           </ThemedText>
-          <View style={styles.checkbox}>
-            {pushNotifications ? (
-              <MaterialIcons
-                name="check"
-                size={scaleW(18)}
-                color={COLORS.darkGreen}
-              />
-            ) : null}
-          </View>
-        </Pressable>
+          <Animated.View style={signOutAnimatedStyle}>
+            <Pressable
+              style={styles.signOutButton}
+              onPress={handleSignOut}
+              onPressIn={() => {
+                signOutScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+              }}
+              onPressOut={() => {
+                signOutScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+              }}
+            >
+              <ThemedText type="heading" style={styles.signOutText}>Sign Out</ThemedText>
+            </Pressable>
+          </Animated.View>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.duration(500).delay(150).springify().damping(18)}>
+          <ThemedText type="heading" style={styles.prefsTitle}>Your preferences</ThemedText>
+          <Animated.View style={weeklyEmailAnimatedStyle}>
+            <Pressable
+              style={styles.prefRow}
+              onPress={() => setWeeklyEmail((v) => !v)}
+              onPressIn={() => {
+                weeklyEmailScale.value = withSpring(0.98, { damping: 15, stiffness: 400 });
+              }}
+              onPressOut={() => {
+                weeklyEmailScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+              }}
+            >
+              <ThemedText style={styles.prefLabel}>Receive weekly email</ThemedText>
+              <View style={styles.checkbox}>
+                {weeklyEmail ? (
+                  <MaterialIcons
+                    name="check"
+                    size={scaleW(18)}
+                    color={COLORS.darkGreen}
+                  />
+                ) : null}
+              </View>
+            </Pressable>
+          </Animated.View>
+          <Animated.View style={pushAnimatedStyle}>
+            <Pressable
+              style={styles.prefRow}
+              onPress={() => setPushNotifications((v) => !v)}
+              onPressIn={() => {
+                pushScale.value = withSpring(0.98, { damping: 15, stiffness: 400 });
+              }}
+              onPressOut={() => {
+                pushScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+              }}
+            >
+              <ThemedText style={styles.prefLabel}>
+                Receive push notifications
+              </ThemedText>
+              <View style={styles.checkbox}>
+                {pushNotifications ? (
+                  <MaterialIcons
+                    name="check"
+                    size={scaleW(18)}
+                    color={COLORS.darkGreen}
+                  />
+                ) : null}
+              </View>
+            </Pressable>
+          </Animated.View>
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );

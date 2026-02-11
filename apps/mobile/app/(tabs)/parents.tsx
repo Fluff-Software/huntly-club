@@ -6,6 +6,12 @@ import {
   Pressable,
   ActivityIndicator,
 } from "react-native";
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
 import { StatCard } from "@/components/StatCard";
@@ -65,6 +71,19 @@ export default function ParentsScreen() {
   const [daysPlayed, setDaysPlayed] = useState(0);
   const [showPinModal, setShowPinModal] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  const resource1Scale = useSharedValue(1);
+  const resource2Scale = useSharedValue(1);
+  const settingsScale = useSharedValue(1);
+  const resource1AnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: resource1Scale.value }],
+  }));
+  const resource2AnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: resource2Scale.value }],
+  }));
+  const settingsAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: settingsScale.value }],
+  }));
 
   useEffect(() => {
     if (!user?.id) return;
@@ -487,93 +506,134 @@ export default function ParentsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Progress – summary stats */}
-        <ThemedText type="heading" style={styles.sectionTitle}>Progress</ThemedText>
-        <View style={styles.progressGrid}>
-          {summaryStats.map((stat, i) => (
-            <StatCard
-              key={i}
-              value={stat.value}
-              label={stat.label}
-              color={stat.color}
-            />
-          ))}
-        </View>
+        <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
+          <ThemedText type="heading" style={styles.sectionTitle}>Progress</ThemedText>
+          <View style={styles.progressGrid}>
+            {summaryStats.map((stat, i) => (
+              <StatCard
+                key={i}
+                value={stat.value}
+                label={stat.label}
+                color={stat.color}
+              />
+            ))}
+          </View>
+        </Animated.View>
 
         {/* Progress – by category */}
-        <ThemedText type="heading" style={styles.sectionTitle}>Progress</ThemedText>
-        {categoryAnalytics.length === 0 ? (
-          <View style={styles.activityCard}>
-            <ThemedText style={styles.activityCategoryName}>
-              No categories yet
-            </ThemedText>
-          </View>
-        ) : (
-          categoryAnalytics.slice(0, 6).map((cat) => (
-            <View key={cat.category} style={styles.activityCard}>
-              <View style={styles.activityCardLeft}>
-                <View style={styles.activityIconWrap}>
-                  <ThemedText style={styles.activityIconText}>
-                    {cat.icon}
-                  </ThemedText>
-                </View>
-                <ThemedText style={styles.activityCategoryName}>
-                  {cat.label}
-                </ThemedText>
-              </View>
-              <View style={styles.activityCountWrap}>
-                <ThemedText style={styles.activityCountNum}>
-                  {cat.totalActivities}
-                </ThemedText>
-                <ThemedText style={styles.activityCountLabel}>
-                  Activities Completed
-                </ThemedText>
-              </View>
+        <Animated.View entering={FadeInDown.duration(500).delay(150).springify().damping(18)}>
+          <ThemedText type="heading" style={styles.sectionTitle}>Progress</ThemedText>
+          {categoryAnalytics.length === 0 ? (
+            <View style={styles.activityCard}>
+              <ThemedText style={styles.activityCategoryName}>
+                No categories yet
+              </ThemedText>
             </View>
-          ))
-        )}
+          ) : (
+            categoryAnalytics.slice(0, 6).map((cat, i) => (
+              <Animated.View
+                key={cat.category}
+                entering={FadeInDown.duration(400).delay(200 + i * 50).springify().damping(18)}
+              >
+                <View style={styles.activityCard}>
+                  <View style={styles.activityCardLeft}>
+                    <View style={styles.activityIconWrap}>
+                      <ThemedText style={styles.activityIconText}>
+                        {cat.icon}
+                      </ThemedText>
+                    </View>
+                    <ThemedText style={styles.activityCategoryName}>
+                      {cat.label}
+                    </ThemedText>
+                  </View>
+                  <View style={styles.activityCountWrap}>
+                    <ThemedText style={styles.activityCountNum}>
+                      {cat.totalActivities}
+                    </ThemedText>
+                    <ThemedText style={styles.activityCountLabel}>
+                      Activities Completed
+                    </ThemedText>
+                  </View>
+                </View>
+              </Animated.View>
+            ))
+          )}
+        </Animated.View>
 
         {/* Resources */}
-        <ThemedText type="heading" style={[styles.sectionTitle, { marginTop: scaleW(24) }]}>
-          Resources
-        </ThemedText>
-        <View style={styles.resourceCard}>
-          <ThemedText type="heading" style={styles.resourceTitle}>Adventure Passes</ThemedText>
-          <ThemedText style={styles.resourceDesc}>
-            A printable adventurer pass for each of your explorers
+        <Animated.View entering={FadeInDown.duration(500).delay(280).springify().damping(18)}>
+          <ThemedText type="heading" style={[styles.sectionTitle, { marginTop: scaleW(24) }]}>
+            Resources
           </ThemedText>
-          <Pressable style={styles.resourceButton}>
-            <ThemedText type="heading" style={styles.resourceButtonText}>
-              Download & Print
+          <View style={styles.resourceCard}>
+            <ThemedText type="heading" style={styles.resourceTitle}>Adventure Passes</ThemedText>
+            <ThemedText style={styles.resourceDesc}>
+              A printable adventurer pass for each of your explorers
             </ThemedText>
-            <MaterialIcons name="print" size={scaleW(18)} color={COLORS.charcoal} />
-          </Pressable>
-        </View>
-        <View style={styles.resourceCard}>
-          <ThemedText type="heading" style={styles.resourceTitle}>Team Poster</ThemedText>
-          <ThemedText style={styles.resourceDesc}>
-            A poster featuring your team mascot.
-          </ThemedText>
-          <Pressable style={styles.resourceButton}>
-            <ThemedText type="heading" style={styles.resourceButtonText}>
-              Download & Print
+            <Animated.View style={resource1AnimatedStyle}>
+              <Pressable
+                style={styles.resourceButton}
+                onPressIn={() => {
+                  resource1Scale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+                }}
+                onPressOut={() => {
+                  resource1Scale.value = withSpring(1, { damping: 15, stiffness: 400 });
+                }}
+              >
+                <ThemedText type="heading" style={styles.resourceButtonText}>
+                  Download & Print
+                </ThemedText>
+                <MaterialIcons name="print" size={scaleW(18)} color={COLORS.charcoal} />
+              </Pressable>
+            </Animated.View>
+          </View>
+          <View style={styles.resourceCard}>
+            <ThemedText type="heading" style={styles.resourceTitle}>Team Poster</ThemedText>
+            <ThemedText style={styles.resourceDesc}>
+              A poster featuring your team mascot.
             </ThemedText>
-            <MaterialIcons name="print" size={scaleW(18)} color={COLORS.charcoal} />
-          </Pressable>
-        </View>
+            <Animated.View style={resource2AnimatedStyle}>
+              <Pressable
+                style={styles.resourceButton}
+                onPressIn={() => {
+                  resource2Scale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+                }}
+                onPressOut={() => {
+                  resource2Scale.value = withSpring(1, { damping: 15, stiffness: 400 });
+                }}
+              >
+                <ThemedText type="heading" style={styles.resourceButtonText}>
+                  Download & Print
+                </ThemedText>
+                <MaterialIcons name="print" size={scaleW(18)} color={COLORS.charcoal} />
+              </Pressable>
+            </Animated.View>
+          </View>
+        </Animated.View>
 
         {/* Settings */}
-        <ThemedText type="heading" style={[styles.sectionTitle, { marginTop: scaleW(24) }]}>
-          Settings
-        </ThemedText>
-        <ThemedText style={styles.sectionDesc}>
-          Access settings to control your account and preferences.
-        </ThemedText>
-        <Pressable
-          style={styles.settingsButton}
-          onPress={() => router.push("/(tabs)/settings")}
-        >
-          <ThemedText type="heading" style={styles.settingsButtonText}>Settings</ThemedText>
-        </Pressable>
+        <Animated.View entering={FadeInDown.duration(500).delay(480).springify().damping(18)}>
+          <ThemedText type="heading" style={[styles.sectionTitle, { marginTop: scaleW(24) }]}>
+            Settings
+          </ThemedText>
+          <ThemedText style={styles.sectionDesc}>
+            Access settings to control your account and preferences.
+          </ThemedText>
+          <Animated.View style={settingsAnimatedStyle}>
+            <Pressable
+              style={styles.settingsButton}
+              onPress={() => router.push("/(tabs)/settings")}
+              onPressIn={() => {
+                settingsScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+              }}
+              onPressOut={() => {
+                settingsScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+              }}
+            >
+              <ThemedText type="heading" style={styles.settingsButtonText}>Settings</ThemedText>
+            </Pressable>
+          </Animated.View>
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );

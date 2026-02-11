@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Pressable,
@@ -7,6 +7,13 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withDelay,
+} from "react-native-reanimated";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 
@@ -46,8 +53,10 @@ const HARDCODED_TEAMS = [
   },
 ] as const;
 
+const springBounce = { damping: 12, stiffness: 120 };
+
 export default function SignUpTeamScreen() {
-  const { scaleW } = useLayoutScale();
+  const { scaleW, width } = useLayoutScale();
   const {
     players,
     setSelectedTeamName,
@@ -56,6 +65,26 @@ export default function SignUpTeamScreen() {
   const { user } = useAuth();
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+
+  const card0Translate = useSharedValue(400);
+  const card1Translate = useSharedValue(-400);
+  const card2Translate = useSharedValue(400);
+  const enterScale = useSharedValue(1);
+
+  const card0Style = useAnimatedStyle(() => ({ transform: [{ translateX: card0Translate.value }] }));
+  const card1Style = useAnimatedStyle(() => ({ transform: [{ translateX: card1Translate.value }] }));
+  const card2Style = useAnimatedStyle(() => ({ transform: [{ translateX: card2Translate.value }] }));
+  const enterAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: enterScale.value }] }));
+
+  useEffect(() => {
+    if (width === 0) return;
+    card0Translate.value = width;
+    card1Translate.value = -width;
+    card2Translate.value = width;
+    card0Translate.value = withDelay(0, withSpring(0, springBounce));
+    card1Translate.value = withDelay(200, withSpring(0, springBounce));
+    card2Translate.value = withDelay(400, withSpring(0, springBounce));
+  }, [width]);
 
   const handleEnterHuntlyWorld = async () => {
     if (!selectedName) return;
@@ -124,42 +153,46 @@ export default function SignUpTeamScreen() {
           contentContainerStyle={{
             paddingHorizontal: scaleW(24),
             paddingTop: scaleW(80),
+            paddingBottom: scaleW(40),
           }}
           showsVerticalScrollIndicator={false}
         >
-          <ThemedText
-            type="heading"
-            lightColor="#FFFFFF"
-            darkColor="#FFFFFF"
-            style={{
-              textAlign: "center",
-              fontWeight: "600",
-              fontSize: scaleW(20),
-            }}
-          >
-            Choose your team
-          </ThemedText>
-          <ThemedText
-            lightColor="#FFFFFF"
-            darkColor="#FFFFFF"
-            style={{
-              textAlign: "center",
-              fontSize: scaleW(16),
-              opacity: 0.95,
-              marginTop: scaleW(8),
-              marginBottom: scaleW(32),
-            }}
-          >
-            You'll all explore together as one team.
-          </ThemedText>
+          <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
+            <ThemedText
+              type="heading"
+              lightColor="#FFFFFF"
+              darkColor="#FFFFFF"
+              style={{
+                textAlign: "center",
+                fontWeight: "600",
+                fontSize: scaleW(20),
+              }}
+            >
+              Choose your team
+            </ThemedText>
+            <ThemedText
+              lightColor="#FFFFFF"
+              darkColor="#FFFFFF"
+              style={{
+                textAlign: "center",
+                fontSize: scaleW(16),
+                opacity: 0.95,
+                marginTop: scaleW(8),
+                marginBottom: scaleW(32),
+              }}
+            >
+              You'll all explore together as one team.
+            </ThemedText>
+          </Animated.View>
 
-          {HARDCODED_TEAMS.map((team) => {
+          {HARDCODED_TEAMS.map((team, index) => {
             const isSelected = selectedName === team.name;
             const descriptionParts = team.description.split(team.leaderName);
+            const cardStyle = index === 0 ? card0Style : index === 1 ? card1Style : card2Style;
 
             return (
+              <Animated.View key={team.name} style={cardStyle}>
               <Pressable
-                key={team.name}
                 onPress={() => setSelectedName(team.name)}
                 style={{
                   backgroundColor: team.backgroundColor,
@@ -233,42 +266,49 @@ export default function SignUpTeamScreen() {
                   </View>
                 ) : null}
               </Pressable>
+              </Animated.View>
             );
           })}
-          <Pressable
-            onPress={handleEnterHuntlyWorld}
-            disabled={!selectedName || creating}
-            style={{
-              alignSelf: "center",
-              width: "100%",
-              maxWidth: scaleW(240),
-              paddingVertical: scaleW(18),
-              borderRadius: scaleW(50),
-              marginTop: scaleW(20),
-              backgroundColor: selectedName && !creating ? CREAM : "#9CA3AF",
-              alignItems: "center",
-              justifyContent: "center",
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.3,
-              shadowRadius: 4,
-              elevation: 2,
-              opacity: creating ? 0.8 : 1,
-            }}
-          >
-            {creating ? (
-              <ActivityIndicator size="small" color={HUNTLY_GREEN} />
-            ) : (
-              <ThemedText
-                type="heading"
-                lightColor={selectedName ? HUNTLY_GREEN : "#6B7280"}
-                darkColor={selectedName ? HUNTLY_GREEN : "#6B7280"}
-                style={{ fontSize: scaleW(18), fontWeight: "600" }}
+          <Animated.View entering={FadeInDown.duration(500).delay(380).springify().damping(18)}>
+            <Animated.View style={enterAnimatedStyle}>
+              <Pressable
+                onPress={handleEnterHuntlyWorld}
+                disabled={!selectedName || creating}
+                onPressIn={() => { enterScale.value = withSpring(0.96, { damping: 15, stiffness: 400 }); }}
+                onPressOut={() => { enterScale.value = withSpring(1, { damping: 15, stiffness: 400 }); }}
+                style={{
+                  alignSelf: "center",
+                  width: "100%",
+                  maxWidth: scaleW(240),
+                  paddingVertical: scaleW(18),
+                  borderRadius: scaleW(50),
+                  marginTop: scaleW(20),
+                  backgroundColor: selectedName && !creating ? CREAM : "#9CA3AF",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 4,
+                  elevation: 2,
+                  opacity: creating ? 0.8 : 1,
+                }}
               >
-                Enter Huntly World
-              </ThemedText>
-            )}
-          </Pressable>
+                {creating ? (
+                  <ActivityIndicator size="small" color={HUNTLY_GREEN} />
+                ) : (
+                  <ThemedText
+                    type="heading"
+                    lightColor={selectedName ? HUNTLY_GREEN : "#6B7280"}
+                    darkColor={selectedName ? HUNTLY_GREEN : "#6B7280"}
+                    style={{ fontSize: scaleW(18), fontWeight: "600" }}
+                  >
+                    Enter Huntly World
+                  </ThemedText>
+                )}
+              </Pressable>
+            </Animated.View>
+          </Animated.View>
         </ScrollView>
       </View>
     </>

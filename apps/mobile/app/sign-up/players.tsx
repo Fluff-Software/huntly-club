@@ -7,6 +7,12 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -115,6 +121,11 @@ export default function SignUpPlayersScreen() {
   const canAddPlayer = name.trim().length > 0;
   const showTrash = name.trim().length > 0 || editingIndex !== null;
 
+  const addAnotherScale = useSharedValue(1);
+  const continueScale = useSharedValue(1);
+  const addAnotherAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: addAnotherScale.value }] }));
+  const continueAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: continueScale.value }] }));
+
   const containerStyle = { flex: 1, backgroundColor: HUNTLY_GREEN };
   const Wrapper = Platform.OS === "ios" ? KeyboardAvoidingView : View;
 
@@ -136,33 +147,36 @@ export default function SignUpPlayersScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <ThemedText
-            type="heading"
-            lightColor="#FFFFFF"
-            darkColor="#FFFFFF"
-            style={{
-              textAlign: "center",
-              fontWeight: "600",
-              fontSize: scaleW(20),
-            }}
-          >
-            Who's playing today?
-          </ThemedText>
-          <ThemedText
-            lightColor="#FFFFFF"
-            darkColor="#FFFFFF"
-            style={{
-              textAlign: "center",
-              fontSize: scaleW(17),
-              opacity: 0.95,
-              marginHorizontal: scaleW(20),
-              marginTop: scaleW(20),
-              marginBottom: scaleW(46),
-            }}
-          >
-            You can add more explorers anytime.
-          </ThemedText>
+          <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
+            <ThemedText
+              type="heading"
+              lightColor="#FFFFFF"
+              darkColor="#FFFFFF"
+              style={{
+                textAlign: "center",
+                fontWeight: "600",
+                fontSize: scaleW(20),
+              }}
+            >
+              Who's playing today?
+            </ThemedText>
+            <ThemedText
+              lightColor="#FFFFFF"
+              darkColor="#FFFFFF"
+              style={{
+                textAlign: "center",
+                fontSize: scaleW(17),
+                opacity: 0.95,
+                marginHorizontal: scaleW(20),
+                marginTop: scaleW(20),
+                marginBottom: scaleW(46),
+              }}
+            >
+              You can add more explorers anytime.
+            </ThemedText>
+          </Animated.View>
 
+          <Animated.View entering={FadeInDown.duration(500).delay(150).springify().damping(18)}>
           {/* Player cards: compact or expanded in place */}
           {players.map((player, index) => {
             const isExpanded = editingIndex === index;
@@ -402,10 +416,12 @@ export default function SignUpPlayersScreen() {
               </View>
             );
           })}
+          </Animated.View>
 
           {/* Add-new form card: only when not editing any player */}
           {editingIndex === null && (
-            <View
+            <Animated.View
+              entering={FadeInDown.duration(500).delay(280).springify().damping(18)}
               style={{
                 backgroundColor: CREAM,
                 borderRadius: scaleW(24),
@@ -584,67 +600,77 @@ export default function SignUpPlayersScreen() {
                   );
                 })}
               </View>
-            </View>
+            </Animated.View>
           )}
 
-          <Pressable
-            onPress={handleAddAnotherPlayer}
-            disabled={!canAddPlayer}
-            style={{
-              alignSelf: "center",
-              width: "100%",
-              maxWidth: scaleW(240),
-              paddingVertical: scaleW(18),
-              borderRadius: scaleW(50),
-              backgroundColor: canContinue ? CREAM : "#9CA3AF",
-              alignItems: "center",
-              justifyContent: "center",
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: canContinue ? 0.3 : 0.1,
-              shadowRadius: 4,
-              elevation: 2,
-              marginBottom: scaleW(24),
-            }}
-          >
-            <ThemedText
-              type="heading"
-              lightColor={canContinue ? HUNTLY_GREEN : "#FFFFFF"}
-              darkColor={canContinue ? HUNTLY_GREEN : "#FFFFFF"}
-              style={{ fontSize: scaleW(16), fontWeight: "600" }}
-            >
-              Add another player
-            </ThemedText>
-          </Pressable>
+          <Animated.View entering={FadeInDown.duration(500).delay(380).springify().damping(18)}>
+            <Animated.View style={addAnotherAnimatedStyle}>
+              <Pressable
+                onPress={handleAddAnotherPlayer}
+                disabled={!canAddPlayer}
+                onPressIn={() => { addAnotherScale.value = withSpring(0.96, { damping: 15, stiffness: 400 }); }}
+                onPressOut={() => { addAnotherScale.value = withSpring(1, { damping: 15, stiffness: 400 }); }}
+                style={{
+                  alignSelf: "center",
+                  width: "100%",
+                  maxWidth: scaleW(240),
+                  paddingVertical: scaleW(18),
+                  borderRadius: scaleW(50),
+                  backgroundColor: canContinue ? CREAM : "#9CA3AF",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: canContinue ? 0.3 : 0.1,
+                  shadowRadius: 4,
+                  elevation: 2,
+                  marginBottom: scaleW(24),
+                }}
+              >
+                <ThemedText
+                  type="heading"
+                  lightColor={canContinue ? HUNTLY_GREEN : "#FFFFFF"}
+                  darkColor={canContinue ? HUNTLY_GREEN : "#FFFFFF"}
+                  style={{ fontSize: scaleW(16), fontWeight: "600" }}
+                >
+                  Add another player
+                </ThemedText>
+              </Pressable>
+            </Animated.View>
 
-          <Pressable
-            onPress={handleContinue}
-            disabled={!canContinue}
-            style={{
-              alignSelf: "center",
-              width: "100%",
-              maxWidth: scaleW(240),
-              paddingVertical: scaleW(18),
-              borderRadius: scaleW(50),
-              backgroundColor: canContinue ? CREAM : "#9CA3AF",
-              alignItems: "center",
-              justifyContent: "center",
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: canContinue ? 0.3 : 0.1,
-              shadowRadius: 4,
-              elevation: 2,
-            }}
-          >
-            <ThemedText
-              type="heading"
-              lightColor={canContinue ? HUNTLY_GREEN : "#FFFFFF"}
-              darkColor={canContinue ? HUNTLY_GREEN : "#FFFFFF"}
-              style={{ fontSize: scaleW(16), fontWeight: "600" }}
-            >
-              Continue
-            </ThemedText>
-          </Pressable>
+            <Animated.View style={continueAnimatedStyle}>
+              <Pressable
+                onPress={handleContinue}
+                disabled={!canContinue}
+                onPressIn={() => { continueScale.value = withSpring(0.96, { damping: 15, stiffness: 400 }); }}
+                onPressOut={() => { continueScale.value = withSpring(1, { damping: 15, stiffness: 400 }); }}
+                style={{
+                  alignSelf: "center",
+                  width: "100%",
+                  maxWidth: scaleW(240),
+                  paddingVertical: scaleW(18),
+                  borderRadius: scaleW(50),
+                  backgroundColor: canContinue ? CREAM : "#9CA3AF",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: canContinue ? 0.3 : 0.1,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }}
+              >
+                <ThemedText
+                  type="heading"
+                  lightColor={canContinue ? HUNTLY_GREEN : "#FFFFFF"}
+                  darkColor={canContinue ? HUNTLY_GREEN : "#FFFFFF"}
+                  style={{ fontSize: scaleW(16), fontWeight: "600" }}
+                >
+                  Continue
+                </ThemedText>
+              </Pressable>
+            </Animated.View>
+          </Animated.View>
         </ScrollView>
       </Wrapper>
     </>

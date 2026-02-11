@@ -10,6 +10,12 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import { router } from "expo-router";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -57,6 +63,13 @@ export default function SignUpParentEmailScreen() {
   })();
 
   const isDisabled = !canContinue || checkingEmail || creatingAccount;
+
+  const continueScale = useSharedValue(1);
+  const privacyScale = useSharedValue(1);
+  const signInScale = useSharedValue(1);
+  const continueAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: continueScale.value }] }));
+  const privacyAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: privacyScale.value }] }));
+  const signInAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: signInScale.value }] }));
 
   const handleContinue = async () => {
     setEmailError(null);
@@ -124,32 +137,35 @@ export default function SignUpParentEmailScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <ThemedText
-            type="heading"
-            lightColor="#FFFFFF"
-            darkColor="#FFFFFF"
-            style={{
-              textAlign: "center",
-              fontWeight: "600",
-              fontSize: scaleW(20),
-            }}
-          >
-            Let's save your adventures
-          </ThemedText>
-          <ThemedText
-            lightColor="#FFFFFF"
-            darkColor="#FFFFFF"
-            style={{
-              textAlign: "center",
-              fontSize: scaleW(18),
-              opacity: 0.95,
-              marginHorizontal: scaleW(20),
-              marginTop: scaleW(20),
-            }}
-          >
-            Add a parent email so progress isn't lost.
-          </ThemedText>
+          <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
+            <ThemedText
+              type="heading"
+              lightColor="#FFFFFF"
+              darkColor="#FFFFFF"
+              style={{
+                textAlign: "center",
+                fontWeight: "600",
+                fontSize: scaleW(20),
+              }}
+            >
+              Let's save your adventures
+            </ThemedText>
+            <ThemedText
+              lightColor="#FFFFFF"
+              darkColor="#FFFFFF"
+              style={{
+                textAlign: "center",
+                fontSize: scaleW(18),
+                opacity: 0.95,
+                marginHorizontal: scaleW(20),
+                marginTop: scaleW(20),
+              }}
+            >
+              Add a parent email so progress isn't lost.
+            </ThemedText>
+          </Animated.View>
 
+          <Animated.View entering={FadeInDown.duration(500).delay(150).springify().damping(18)}>
           <ThemedText
             type="subtitle"
             lightColor="#FFFFFF"
@@ -264,45 +280,63 @@ export default function SignUpParentEmailScreen() {
               marginTop: scaleW(12),
             }}
           />
+          </Animated.View>
 
-          <Pressable onPress={openPrivacyPolicy} style={{ marginTop: scaleW(28) }}>
-            <ThemedText
-              lightColor="#FFFFFF"
-              darkColor="#FFFFFF"
-              style={{
-                fontSize: scaleW(14),
-                textAlign: "center",
-                opacity: 0.95,
-                marginHorizontal: scaleW(40)
-              }}
-            >
-              By continuing, you agree to our{" "}
-              <Text style={{ color: "#FFFFFF", textDecorationLine: "underline", fontWeight: "600" }}>
-                Privacy Policy.
-              </Text>
-            </ThemedText>
-          </Pressable>
+          <Animated.View entering={FadeInDown.duration(500).delay(280).springify().damping(18)}>
+            <Animated.View style={privacyAnimatedStyle}>
+              <Pressable
+                onPress={openPrivacyPolicy}
+                onPressIn={() => { privacyScale.value = withSpring(0.96, { damping: 15, stiffness: 400 }); }}
+                onPressOut={() => { privacyScale.value = withSpring(1, { damping: 15, stiffness: 400 }); }}
+                style={{ marginTop: scaleW(28) }}
+              >
+                <ThemedText
+                  lightColor="#FFFFFF"
+                  darkColor="#FFFFFF"
+                  style={{
+                    fontSize: scaleW(14),
+                    textAlign: "center",
+                    opacity: 0.95,
+                    marginHorizontal: scaleW(40)
+                  }}
+                >
+                  By continuing, you agree to our{" "}
+                  <Text style={{ color: "#FFFFFF", textDecorationLine: "underline", fontWeight: "600" }}>
+                    Privacy Policy.
+                  </Text>
+                </ThemedText>
+              </Pressable>
+            </Animated.View>
 
-          <Pressable onPress={goToSignIn} style={{ marginTop: scaleW(24) }}>
-            <ThemedText
-              lightColor="#FFFFFF"
-              darkColor="#FFFFFF"
-              style={{
-                fontSize: scaleW(14),
-                textAlign: "center",
-                opacity: 0.95,
-                marginHorizontal: scaleW(40),
-              }}
-            >
-              Already have an account?{" "}
-              <Text style={{ color: "#FFFFFF", textDecorationLine: "underline", fontWeight: "600" }}>
-                Sign In
-              </Text>
-            </ThemedText>
-          </Pressable>
+            <Animated.View style={signInAnimatedStyle}>
+              <Pressable
+                onPress={goToSignIn}
+                onPressIn={() => { signInScale.value = withSpring(0.96, { damping: 15, stiffness: 400 }); }}
+                onPressOut={() => { signInScale.value = withSpring(1, { damping: 15, stiffness: 400 }); }}
+                style={{ marginTop: scaleW(24) }}
+              >
+                <ThemedText
+                  lightColor="#FFFFFF"
+                  darkColor="#FFFFFF"
+                  style={{
+                    fontSize: scaleW(14),
+                    textAlign: "center",
+                    opacity: 0.95,
+                    marginHorizontal: scaleW(40),
+                  }}
+                >
+                  Already have an account?{" "}
+                  <Text style={{ color: "#FFFFFF", textDecorationLine: "underline", fontWeight: "600" }}>
+                    Sign In
+                  </Text>
+                </ThemedText>
+              </Pressable>
+            </Animated.View>
+          </Animated.View>
 
           <View style={{ flex: 1, minHeight: scaleW(80) }} />
 
+          <Animated.View entering={FadeInDown.duration(500).delay(380).springify().damping(18)}>
           {disabledReason !== null && !emailError && (
             <ThemedText
               lightColor="#FFFFFF"
@@ -318,39 +352,44 @@ export default function SignUpParentEmailScreen() {
             </ThemedText>
           )}
 
-          <Pressable
-            onPress={handleContinue}
-            disabled={isDisabled}
-            style={{
-              alignSelf: "center",
-              width: "100%",
-              maxWidth: scaleW(220),
-              paddingVertical: scaleW(18),
-              borderRadius: scaleW(50),
-              backgroundColor: isDisabled ? "#9CA3AF" : "#FFFFFF",
-              alignItems: "center",
-              justifyContent: "center",
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: isDisabled ? 0.1 : 0.3,
-              shadowRadius: 4,
-              elevation: 2,
-              opacity: isDisabled ? 0.8 : 1,
-            }}
-          >
-            {checkingEmail || creatingAccount ? (
-              <ActivityIndicator size="small" color={HUNTLY_GREEN} />
-            ) : (
-              <ThemedText
-                type="heading"
-                lightColor={isDisabled ? "#6B7280" : HUNTLY_GREEN}
-                darkColor={isDisabled ? "#6B7280" : HUNTLY_GREEN}
-                style={{ fontSize: scaleW(18), fontWeight: "600" }}
-              >
-                Continue
-              </ThemedText>
-            )}
-          </Pressable>
+          <Animated.View style={continueAnimatedStyle}>
+            <Pressable
+              onPress={handleContinue}
+              disabled={isDisabled}
+              onPressIn={() => { continueScale.value = withSpring(0.96, { damping: 15, stiffness: 400 }); }}
+              onPressOut={() => { continueScale.value = withSpring(1, { damping: 15, stiffness: 400 }); }}
+              style={{
+                alignSelf: "center",
+                width: "100%",
+                maxWidth: scaleW(220),
+                paddingVertical: scaleW(18),
+                borderRadius: scaleW(50),
+                backgroundColor: isDisabled ? "#9CA3AF" : "#FFFFFF",
+                alignItems: "center",
+                justifyContent: "center",
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: isDisabled ? 0.1 : 0.3,
+                shadowRadius: 4,
+                elevation: 2,
+                opacity: isDisabled ? 0.8 : 1,
+              }}
+            >
+              {checkingEmail || creatingAccount ? (
+                <ActivityIndicator size="small" color={HUNTLY_GREEN} />
+              ) : (
+                <ThemedText
+                  type="heading"
+                  lightColor={isDisabled ? "#6B7280" : HUNTLY_GREEN}
+                  darkColor={isDisabled ? "#6B7280" : HUNTLY_GREEN}
+                  style={{ fontSize: scaleW(18), fontWeight: "600" }}
+                >
+                  Continue
+                </ThemedText>
+              )}
+            </Pressable>
+          </Animated.View>
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
     </>

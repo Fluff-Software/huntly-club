@@ -22,23 +22,40 @@ import { MissionCard } from "@/components/MissionCard";
 import { StatCard } from "@/components/StatCard";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { MISSION_CARDS } from "@/constants/missionCards";
+import { usePlayer } from "@/contexts/PlayerContext";
+import { getTeamById } from "@/services/profileService";
+import { getTeamCardConfig } from "@/utils/teamUtils";
 
 type HomeMode = "profile" | "activity" | "missions";
 const HOME_MODES: HomeMode[] = ["profile", "activity", "missions"];
 
 const BG_IMAGE = require("@/assets/images/bg.png");
-const BEAR_WAVE_IMAGE = require("@/assets/images/bear-wave.png");
 const CLUB_1_IMAGE = require("@/assets/images/club-1.png");
 const CLUB_2_IMAGE = require("@/assets/images/club-2.png");
 
 const CREAM = "#F4F0EB";
-const ORANGE_BANNER = "#EBCDBB";
 
 export default function HomeScreen() {
   const { scaleW, width, height } = useLayoutScale();
+  const { currentPlayer } = usePlayer();
+  const [teamName, setTeamName] = useState<string | null>(null);
   const initialIndex = 1; // activity (Welcome back)
   const [currentIndex, setCurrentIndex] = useState<number>(initialIndex);
   const currentMode = HOME_MODES[currentIndex] ?? "activity";
+
+  useEffect(() => {
+    if (!currentPlayer?.team) {
+      setTeamName(null);
+      return;
+    }
+    let cancelled = false;
+    getTeamById(currentPlayer.team).then((team) => {
+      if (!cancelled && team) setTeamName(team.name);
+    });
+    return () => { cancelled = true; };
+  }, [currentPlayer?.team]);
+
+  const teamCardConfig = teamName ? getTeamCardConfig(teamName) : null;
 
   const pagerRef = useRef<ScrollView>(null);
   const pagerX = useRef(new Animated.Value(width * initialIndex)).current;
@@ -77,11 +94,11 @@ export default function HomeScreen() {
   const bearCardStyle = useAnimatedStyle(() => ({ transform: [{ translateX: bearCardTranslateX.value }] }));
 
   useEffect(() => {
-    if (width > 0) {
+    if (width > 0 && teamName) {
       bearCardTranslateX.value = width;
       bearCardTranslateX.value = withDelay(100, withSpring(0, springLessBouncy));
     }
-  }, [width]);
+  }, [width, teamName]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -419,25 +436,27 @@ export default function HomeScreen() {
           Welcome back, explorer!
         </ThemedText>
 
-        <AnimatedReanimated.View style={bearCardStyle}>
-          <View style={[styles.bearsCard, { backgroundColor: ORANGE_BANNER, borderWidth: 4, borderColor: "#FFF" }]}>
-            <View className="flex-row items-center flex-1 overflow-hidden p-4">
-              <View className="flex-1">
-                <ThemedText type="heading" style={{ color: "#CE4008", fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(16) }}>Bears</ThemedText>
-                <ThemedText type="body" style={{ color: "#CE4008", fontSize: scaleW(18), width: scaleW(170), lineHeight: scaleW(20) }}>
-                  We're doing great helping test the wind clues this week!
-                </ThemedText>
-              </View>
-              <View style={{ width: scaleW(120) }}>
-                <Image
-                  source={BEAR_WAVE_IMAGE}
-                  resizeMode="contain"
-                  style={[styles.bearImage]}
-                />
+        {teamCardConfig && (
+          <AnimatedReanimated.View style={bearCardStyle}>
+            <View style={[styles.bearsCard, { backgroundColor: teamCardConfig.backgroundColor, borderWidth: 4, borderColor: "#FFF" }]}>
+              <View className="flex-row items-center flex-1 overflow-hidden p-4">
+                <View className="flex-1">
+                  <ThemedText type="heading" style={{ color: "#000", fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(16) }}>{teamCardConfig.title}</ThemedText>
+                  <ThemedText type="body" style={{ color: "#000", fontSize: scaleW(18), width: scaleW(170), lineHeight: scaleW(20) }}>
+                    We're doing great helping test the wind clues this week!
+                  </ThemedText>
+                </View>
+                <View style={{ width: scaleW(120) }}>
+                  <Image
+                    source={teamCardConfig.waveImage}
+                    resizeMode="contain"
+                    style={[styles.bearImage]}
+                  />
+                </View>
               </View>
             </View>
-          </View>
-        </AnimatedReanimated.View>
+          </AnimatedReanimated.View>
+        )}
 
         <View
           style={{

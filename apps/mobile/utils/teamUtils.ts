@@ -2,6 +2,41 @@ import { ImageSourcePropType } from "react-native";
 
 export type TeamName = "foxes" | "bears" | "otters";
 
+/** Config for the home screen team card (wave mascot + background) */
+export type TeamCardConfig = {
+  title: string;
+  backgroundColor: string;
+  waveImage: ImageSourcePropType;
+};
+
+const TEAM_CARD_CONFIG: Record<string, TeamCardConfig> = {
+  bears: {
+    title: "Bears",
+    backgroundColor: "#EBCDBB",
+    waveImage: require("@/assets/images/bear-wave.png"),
+  },
+  foxes: {
+    title: "Foxes",
+    backgroundColor: "#BBDCEB",
+    waveImage: require("@/assets/images/fox-wave.png"),
+  },
+  otters: {
+    title: "Otters",
+    backgroundColor: "#EBEBBB",
+    waveImage: require("@/assets/images/otter-wave.png"),
+  },
+};
+
+/**
+ * Get the config for the home screen team card (background color + wave image)
+ * @param teamName - The name of the team (e.g. "Bears", "Foxes", "Otters")
+ * @returns Config with title, backgroundColor, waveImage; defaults to Bears if unknown
+ */
+export function getTeamCardConfig(teamName: string | null | undefined): TeamCardConfig {
+  const key = teamName?.toLowerCase();
+  return TEAM_CARD_CONFIG[key ?? ""] ?? TEAM_CARD_CONFIG.bears;
+}
+
 /**
  * Get the image source for a team based on its name
  * @param teamName - The name of the team

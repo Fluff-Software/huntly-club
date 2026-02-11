@@ -256,7 +256,6 @@ export default function HomeScreen() {
       return (
         <View className="flex-row items-center justify-between px-6 pt-4">
           <ThemedText type="body" className="text-white font-jua opacity-90">
-            Home
           </ThemedText>
           {wrapNavPressable(() => switchMode("activity"), (
             <>

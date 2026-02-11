@@ -312,6 +312,11 @@ export default function ProfileScreen() {
           marginBottom: scaleW(12),
           overflow: "hidden",
           minHeight: scaleW(64),
+          borderWidth: 3,
+          borderColor: "#FFF",
+        },
+        playerCardSelected: {
+          borderColor: "#333",
         },
         playerAccent: {
           width: scaleW(20),
@@ -633,7 +638,10 @@ export default function ProfileScreen() {
                 entering={FadeInDown.duration(400).delay(80 + index * 60).springify().damping(18)}
               >
                 <Pressable
-                  style={styles.playerCard}
+                  style={[
+                    styles.playerCard,
+                    currentPlayer?.id === profile.id && styles.playerCardSelected,
+                  ]}
                   onPress={() => handleSelectPlayer(profile)}
                 >
                   <View

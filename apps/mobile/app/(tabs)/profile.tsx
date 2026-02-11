@@ -10,6 +10,12 @@ import {
   Modal,
   ActivityIndicator,
 } from "react-native";
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
@@ -76,6 +82,15 @@ export default function ProfileScreen() {
     usePlayer();
   const router = useRouter();
   const { scaleW } = useLayoutScale();
+
+  const editScale = useSharedValue(1);
+  const parentZoneScale = useSharedValue(1);
+  const editAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: editScale.value }],
+  }));
+  const parentZoneAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: parentZoneScale.value }],
+  }));
 
   useFocusEffect(
     React.useCallback(() => {
@@ -578,20 +593,31 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Your players */}
-        <View style={styles.section}>
+        <Animated.View
+          entering={FadeInDown.duration(500).delay(0).springify().damping(18)}
+          style={styles.section}
+        >
           <View style={styles.sectionHeader}>
             <ThemedText type="heading" style={styles.sectionTitle}>Your players</ThemedText>
-            <Pressable
-              onPress={() => profiles.length > 0 && setIsEditing(true)}
-              style={styles.editIconWrap}
-              hitSlop={12}
-            >
-              <MaterialIcons
-                name="edit"
-                size={22}
-                color={COLORS.white}
-              />
-            </Pressable>
+            <Animated.View style={editAnimatedStyle}>
+              <Pressable
+                onPress={() => profiles.length > 0 && setIsEditing(true)}
+                onPressIn={() => {
+                  editScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+                }}
+                onPressOut={() => {
+                  editScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+                }}
+                style={styles.editIconWrap}
+                hitSlop={12}
+              >
+                <MaterialIcons
+                  name="edit"
+                  size={22}
+                  color={COLORS.white}
+                />
+              </Pressable>
+            </Animated.View>
           </View>
           {profiles.length === 0 ? (
             <View style={styles.cardCream}>
@@ -602,30 +628,37 @@ export default function ProfileScreen() {
             </View>
           ) : (
             profiles.map((profile, index) => (
-              <Pressable
+              <Animated.View
                 key={profile.id}
-                style={styles.playerCard}
-                onPress={() => handleSelectPlayer(profile)}
+                entering={FadeInDown.duration(400).delay(80 + index * 60).springify().damping(18)}
               >
-                <View
-                  style={[
-                    styles.playerAccent,
-                    { backgroundColor: PLAYER_ACCENTS[index % PLAYER_ACCENTS.length] },
-                  ]}
-                />
-                <View style={styles.playerCardContent}>
-                  <ThemedText type="heading" style={styles.playerName}>{profile.name}</ThemedText>
-                  <ThemedText style={styles.playerNickname}>
-                    {profile.nickname || "Explorer"}
-                  </ThemedText>
-                </View>
-              </Pressable>
+                <Pressable
+                  style={styles.playerCard}
+                  onPress={() => handleSelectPlayer(profile)}
+                >
+                  <View
+                    style={[
+                      styles.playerAccent,
+                      { backgroundColor: PLAYER_ACCENTS[index % PLAYER_ACCENTS.length] },
+                    ]}
+                  />
+                  <View style={styles.playerCardContent}>
+                    <ThemedText type="heading" style={styles.playerName}>{profile.name}</ThemedText>
+                    <ThemedText style={styles.playerNickname}>
+                      {profile.nickname || "Explorer"}
+                    </ThemedText>
+                  </View>
+                </Pressable>
+              </Animated.View>
             ))
           )}
-        </View>
+        </Animated.View>
 
         {/* Your progress */}
-        <View style={styles.section}>
+        <Animated.View
+          entering={FadeInDown.duration(500).delay(150).springify().damping(18)}
+          style={styles.section}
+        >
           <ThemedText type="heading" style={styles.sectionTitle}>Your progress</ThemedText>
           <View style={styles.progressRow}>
             <StatCard
@@ -639,10 +672,13 @@ export default function ProfileScreen() {
               color="green"
             />
           </View>
-        </View>
+        </Animated.View>
 
         {/* Top Skills */}
-        <View style={styles.section}>
+        <Animated.View
+          entering={FadeInDown.duration(500).delay(280).springify().damping(18)}
+          style={styles.section}
+        >
           <View style={styles.skillsCard}>
             <View style={styles.skillsRow}>
               <View style={styles.skillItem}>
@@ -672,10 +708,13 @@ export default function ProfileScreen() {
             </View>
             <ThemedText type="heading" style={styles.skillsTitle}>Top Skills</ThemedText>
           </View>
-        </View>
+        </Animated.View>
 
         {/* Your badges */}
-        <View style={styles.section}>
+        <Animated.View
+          entering={FadeInDown.duration(500).delay(380).springify().damping(18)}
+          style={styles.section}
+        >
           <ThemedText type="heading" style={styles.sectionTitle}>Your badges</ThemedText>
           <View style={styles.badgesWrap}>
             {(userBadges.length > 0
@@ -694,10 +733,13 @@ export default function ProfileScreen() {
               </View>
             ))}
           </View>
-        </View>
+        </Animated.View>
 
         {/* Recent activities */}
-        <View style={styles.section}>
+        <Animated.View
+          entering={FadeInDown.duration(500).delay(480).springify().damping(18)}
+          style={styles.section}
+        >
           <ThemedText type="heading" style={styles.sectionTitle}>Recent activities</ThemedText>
           {recentActivities.length === 0 ? (
             <View style={styles.activityCard}>
@@ -731,15 +773,26 @@ export default function ProfileScreen() {
               </Pressable>
             ))
           )}
-        </View>
+        </Animated.View>
 
         {/* Parent Zone */}
-        <Pressable
-          style={styles.parentZoneButton}
-          onPress={() => router.push("/(tabs)/parents")}
+        <Animated.View
+          entering={FadeInDown.duration(500).delay(580).springify().damping(18)}
+          style={parentZoneAnimatedStyle}
         >
-          <ThemedText type="heading" style={styles.parentZoneText}>Parent Zone</ThemedText>
-        </Pressable>
+          <Pressable
+            style={styles.parentZoneButton}
+            onPress={() => router.push("/(tabs)/parents")}
+            onPressIn={() => {
+              parentZoneScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+            }}
+            onPressOut={() => {
+              parentZoneScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+            }}
+          >
+            <ThemedText type="heading" style={styles.parentZoneText}>Parent Zone</ThemedText>
+          </Pressable>
+        </Animated.View>
       </ScrollView>
 
       {/* Edit modal */}

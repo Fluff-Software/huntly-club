@@ -7,6 +7,14 @@ import {
   Text,
   StyleSheet,
 } from "react-native";
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withSequence,
+  withDelay,
+} from "react-native-reanimated";
 import { useRouter, useNavigation } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
@@ -28,12 +36,28 @@ export default function RewardScreen() {
   const navigation = useNavigation();
   const { scaleW } = useLayoutScale();
 
+  const celebrateScale = useSharedValue(0.85);
+  const goHomeScale = useSharedValue(1);
+  const cardCelebrateStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: celebrateScale.value }],
+  }));
+  const goHomeAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: goHomeScale.value }],
+  }));
+
   useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", (e) => {
       e.preventDefault();
     });
     return unsubscribe;
   }, [navigation]);
+
+  useEffect(() => {
+    celebrateScale.value = withSequence(
+      withDelay(200, withSpring(1.12, { damping: 10, stiffness: 180 })),
+      withSpring(1, { damping: 14, stiffness: 120 })
+    );
+  }, []);
 
   const styles = useMemo(
     () =>
@@ -136,7 +160,10 @@ export default function RewardScreen() {
         contentContainerStyle={{ paddingBottom: scaleW(24) }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.cardWrap}>
+        <Animated.View
+          entering={FadeInDown.duration(500).delay(0).springify().damping(18)}
+          style={[styles.cardWrap, cardCelebrateStyle]}
+        >
           <MissionCard
             card={COMPLETION_CARD}
             tiltDeg={0}
@@ -148,11 +175,16 @@ export default function RewardScreen() {
             style={styles.completionBadge}
             resizeMode="contain"
           />
-        </View>
+        </Animated.View>
 
-        <Text style={styles.wellDoneHeading}>Well done!</Text>
+        <Animated.View entering={FadeInDown.duration(500).delay(200).springify().damping(18)}>
+          <Text style={styles.wellDoneHeading}>Well done!</Text>
+        </Animated.View>
 
-        <View style={styles.achievementTimeline}>
+        <Animated.View
+          entering={FadeInDown.duration(500).delay(350).springify().damping(18)}
+          style={styles.achievementTimeline}
+        >
           <View style={styles.achievementCard}>
             <View style={styles.achievementIcon}>
               <Image
@@ -167,26 +199,42 @@ export default function RewardScreen() {
             </View>
           </View>
 
-          <View style={styles.achievementCard}>
-            <View style={styles.achievementIcon}>
-              <Image
-                source={STAR_ICON}
-                style={styles.achievementIconImage}
-                resizeMode="contain"
-              />
+          <Animated.View entering={FadeInDown.duration(400).delay(450).springify().damping(18)}>
+            <View style={styles.achievementCard}>
+              <View style={styles.achievementIcon}>
+                <Image
+                  source={STAR_ICON}
+                  style={styles.achievementIconImage}
+                  resizeMode="contain"
+                />
+              </View>
+              <View style={styles.achievementText}>
+                <Text style={styles.achievementTitle}>Earned a badge</Text>
+                <Text style={styles.achievementPoints}>+ 50 points</Text>
+              </View>
             </View>
-            <View style={styles.achievementText}>
-              <Text style={styles.achievementTitle}>Earned a badge</Text>
-              <Text style={styles.achievementPoints}>+ 50 points</Text>
-            </View>
-          </View>
-        </View>
+          </Animated.View>
+        </Animated.View>
 
-        <Pressable style={styles.goHomeButton} onPress={() => router.replace("/(tabs)")}>
-          <ThemedText type="heading" style={styles.goHomeButtonText}>
-            Go Home
-          </ThemedText>
-        </Pressable>
+        <Animated.View
+          entering={FadeInDown.duration(500).delay(550).springify().damping(18)}
+          style={goHomeAnimatedStyle}
+        >
+          <Pressable
+            style={styles.goHomeButton}
+            onPress={() => router.replace("/(tabs)")}
+            onPressIn={() => {
+              goHomeScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+            }}
+            onPressOut={() => {
+              goHomeScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+            }}
+          >
+            <ThemedText type="heading" style={styles.goHomeButtonText}>
+              Go Home
+            </ThemedText>
+          </Pressable>
+        </Animated.View>
       </ScrollView>
     </View>
   );

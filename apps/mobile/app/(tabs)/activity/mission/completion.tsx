@@ -7,6 +7,12 @@ import {
   TextInput,
   StyleSheet,
 } from "react-native";
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
@@ -27,6 +33,21 @@ export default function CompletionScreen() {
   const { profiles } = usePlayer();
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<number[]>([]);
   const [hardestText, setHardestText] = useState("");
+
+  const cameraScale = useSharedValue(1);
+  const galleryScale = useSharedValue(1);
+  const nextScale = useSharedValue(1);
+  const cameraAnimatedStyle = useAnimatedStyle(() => ({
+    flex: 1,
+    transform: [{ scale: cameraScale.value }],
+  }));
+  const galleryAnimatedStyle = useAnimatedStyle(() => ({
+    flex: 1,
+    transform: [{ scale: galleryScale.value }],
+  }));
+  const nextAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: nextScale.value }],
+  }));
 
   const togglePlayerSelection = (id: number) => {
     setSelectedPlayerIds((prev) =>
@@ -191,94 +212,138 @@ export default function CompletionScreen() {
         contentContainerStyle={{ paddingBottom: scaleW(24) }}
         showsVerticalScrollIndicator={false}
       >
-        <ThemedText type="heading" style={styles.title}>
-          Build a laser fortress
-        </ThemedText>
-        <ThemedText type="heading" style={styles.subtitle}>
-          Add your photo of this activity
-        </ThemedText>
-
-        <View style={styles.photoUploadBox}>
-          <View style={styles.photoUploadRow}>
-            <Pressable style={styles.photoOption}>
-              <Image
-                source={CAMERA_ICON}
-                style={styles.photoOptionIcon}
-                resizeMode="contain"
-              />
-              <ThemedText style={styles.photoOptionLabel}>Take a photo</ThemedText>
-            </Pressable>
-            <View style={styles.photoOptionDivider} />
-            <Pressable style={styles.photoOption}>
-              <Image
-                source={GALLERY_ICON}
-                style={styles.photoOptionIcon}
-                resizeMode="contain"
-              />
-              <ThemedText style={styles.photoOptionLabel}>Pick an image</ThemedText>
-            </Pressable>
-          </View>
-        </View>
-
-        <ThemedText type="heading" style={styles.hardestHeading}>
-          What did you find the hardest?
-        </ThemedText>
-        <TextInput
-          style={styles.hardestInput}
-          placeholder="Write a few words..."
-          placeholderTextColor="#9E9E9E"
-          value={hardestText}
-          onChangeText={setHardestText}
-          multiline
-        />
-
-        <ThemedText type="heading" style={styles.whoHeading}>
-          Who did this activity?
-        </ThemedText>
-        <View style={styles.playerCardContainer}>
-          {displayProfiles.map((profile) => {
-            const isSelected = selectedPlayerIds.includes(profile.id);
-            return (
-              <Pressable
-                key={profile.id}
-                style={styles.playerCard}
-                onPress={() => togglePlayerSelection(profile.id)}
-              >
-                <View
-                  style={[styles.playerCardBar, { backgroundColor: profile.colour }]}
-                />
-                <View style={styles.playerCardContent}>
-                  <View style={styles.playerCardNames}>
-                    <ThemedText type="heading" style={styles.playerCardName}>
-                      {profile.name}
-                    </ThemedText>
-                    <ThemedText style={styles.playerCardNickname}>
-                      {profile.nickname}
-                    </ThemedText>
-                  </View>
-                  <View
-                    style={[styles.checkbox, isSelected && styles.checkboxChecked]}
-                  >
-                    {isSelected && (
-                      <ThemedText style={{ color: "#FFF", fontSize: scaleW(14) }}>
-                        ✓
-                      </ThemedText>
-                    )}
-                  </View>
-                </View>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        <Pressable
-          style={styles.nextButton}
-          onPress={() => router.push("/(tabs)/activity/mission/reward")}
-        >
-          <ThemedText type="heading" style={styles.nextButtonText}>
-            Next
+        <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
+          <ThemedText type="heading" style={styles.title}>
+            Build a laser fortress
           </ThemedText>
-        </Pressable>
+          <ThemedText type="heading" style={styles.subtitle}>
+            Add your photo of this activity
+          </ThemedText>
+        </Animated.View>
+
+        <Animated.View
+          entering={FadeInDown.duration(500).delay(150).springify().damping(18)}
+          style={styles.photoUploadBox}
+        >
+          <View style={styles.photoUploadRow}>
+            <Animated.View style={cameraAnimatedStyle}>
+              <Pressable
+                style={styles.photoOption}
+                onPressIn={() => {
+                  cameraScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+                }}
+                onPressOut={() => {
+                  cameraScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+                }}
+              >
+                <Image
+                  source={CAMERA_ICON}
+                  style={styles.photoOptionIcon}
+                  resizeMode="contain"
+                />
+                <ThemedText style={styles.photoOptionLabel}>Take a photo</ThemedText>
+              </Pressable>
+            </Animated.View>
+            <View style={styles.photoOptionDivider} />
+            <Animated.View style={galleryAnimatedStyle}>
+              <Pressable
+                style={styles.photoOption}
+                onPressIn={() => {
+                  galleryScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+                }}
+                onPressOut={() => {
+                  galleryScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+                }}
+              >
+                <Image
+                  source={GALLERY_ICON}
+                  style={styles.photoOptionIcon}
+                  resizeMode="contain"
+                />
+                <ThemedText style={styles.photoOptionLabel}>Pick an image</ThemedText>
+              </Pressable>
+            </Animated.View>
+          </View>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.duration(500).delay(280).springify().damping(18)}>
+          <ThemedText type="heading" style={styles.hardestHeading}>
+            What did you find the hardest?
+          </ThemedText>
+          <TextInput
+            style={styles.hardestInput}
+            placeholder="Write a few words..."
+            placeholderTextColor="#9E9E9E"
+            value={hardestText}
+            onChangeText={setHardestText}
+            multiline
+          />
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.duration(500).delay(380).springify().damping(18)}>
+          <ThemedText type="heading" style={styles.whoHeading}>
+            Who did this activity?
+          </ThemedText>
+          <View style={styles.playerCardContainer}>
+            {displayProfiles.map((profile, index) => {
+              const isSelected = selectedPlayerIds.includes(profile.id);
+              return (
+                <Animated.View
+                  key={profile.id}
+                  entering={FadeInDown.duration(400).delay(420 + index * 50).springify().damping(18)}
+                >
+                  <Pressable
+                    style={styles.playerCard}
+                    onPress={() => togglePlayerSelection(profile.id)}
+                  >
+                    <View
+                      style={[styles.playerCardBar, { backgroundColor: profile.colour }]}
+                    />
+                    <View style={styles.playerCardContent}>
+                      <View style={styles.playerCardNames}>
+                        <ThemedText type="heading" style={styles.playerCardName}>
+                          {profile.name}
+                        </ThemedText>
+                        <ThemedText style={styles.playerCardNickname}>
+                          {profile.nickname}
+                        </ThemedText>
+                      </View>
+                      <View
+                        style={[styles.checkbox, isSelected && styles.checkboxChecked]}
+                      >
+                        {isSelected && (
+                          <ThemedText style={{ color: "#FFF", fontSize: scaleW(14) }}>
+                            ✓
+                          </ThemedText>
+                        )}
+                      </View>
+                    </View>
+                  </Pressable>
+                </Animated.View>
+              );
+            })}
+          </View>
+        </Animated.View>
+
+        <Animated.View
+          entering={FadeInDown.duration(500).delay(580).springify().damping(18)}
+          style={nextAnimatedStyle}
+        >
+          <Pressable
+            style={styles.nextButton}
+            onPress={() => router.push("/(tabs)/activity/mission/reward")}
+            onPressIn={() => {
+              nextScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+            }}
+            onPressOut={() => {
+              nextScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+            }}
+          >
+            <ThemedText type="heading" style={styles.nextButtonText}>
+              Next
+            </ThemedText>
+          </Pressable>
+        </Animated.View>
       </ScrollView>
     </View>
   );

@@ -1,5 +1,11 @@
 import React, { useMemo } from "react";
 import { View, ScrollView, Image, Pressable, StyleSheet } from "react-native";
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
@@ -21,6 +27,11 @@ const CLUB_2 = require("@/assets/images/club-2.png");
 export default function InstructionScreen() {
   const router = useRouter();
   const { scaleW } = useLayoutScale();
+
+  const completeScale = useSharedValue(1);
+  const completeAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: completeScale.value }],
+  }));
 
   const styles = useMemo(
     () =>
@@ -166,7 +177,10 @@ export default function InstructionScreen() {
         contentContainerStyle={{ paddingBottom: scaleW(40) }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.titleContainer}>
+        <Animated.View
+          entering={FadeInDown.duration(500).delay(0).springify().damping(18)}
+          style={styles.titleContainer}
+        >
           <ThemedText type="heading" style={styles.titleText}>
             Build a laser fortress
           </ThemedText>
@@ -190,29 +204,35 @@ export default function InstructionScreen() {
               Set up a strong defence to help keep the gem safe.
             </ThemedText>
           </View>
-        </View>
+        </Animated.View>
 
-        <View style={styles.section}>
+        <Animated.View
+          entering={FadeInDown.duration(500).delay(150).springify().damping(18)}
+          style={styles.section}
+        >
           <ThemedText type="heading" style={styles.sectionTitle}>
             What to do
           </ThemedText>
-          <View style={styles.taskRow}>
+          <Animated.View entering={FadeInDown.duration(400).delay(200).springify().damping(18)} style={styles.taskRow}>
             <ThemedText style={styles.taskText}>
               1. Ad deserunt duis exercitation non nostrud Lorem incididunt eu
               mollit reprehenderit dolore
             </ThemedText>
             <Image source={ACTIVITY_1} style={styles.taskImage} resizeMode="cover" />
-          </View>
-          <View style={styles.taskRow}>
+          </Animated.View>
+          <Animated.View entering={FadeInDown.duration(400).delay(280).springify().damping(18)} style={styles.taskRow}>
             <ThemedText style={styles.taskText}>
               2. Ad deserunt duis exercitation non nostrud Lorem incididunt eu
               mollit reprehenderit dolore
             </ThemedText>
             <Image source={ACTIVITY_2} style={styles.taskImage} resizeMode="cover" />
-          </View>
-        </View>
+          </Animated.View>
+        </Animated.View>
 
-        <View style={styles.section}>
+        <Animated.View
+          entering={FadeInDown.duration(500).delay(380).springify().damping(18)}
+          style={styles.section}
+        >
           <ThemedText type="heading" style={styles.sectionTitle}>
             Hints
           </ThemedText>
@@ -237,9 +257,12 @@ export default function InstructionScreen() {
               dolor fugiat ad ad.
             </ThemedText>
           </View>
-        </View>
+        </Animated.View>
 
-        <View style={styles.section}>
+        <Animated.View
+          entering={FadeInDown.duration(500).delay(480).springify().damping(18)}
+          style={styles.section}
+        >
           <View>
             <ThemedText type="heading" style={styles.sectionTitle}>
               Your team
@@ -256,16 +279,27 @@ export default function InstructionScreen() {
               <Image source={CLUB_2} style={styles.polaroidImage} resizeMode="cover" />
             </View>
           </View>
-        </View>
+        </Animated.View>
 
-        <Pressable
-          style={styles.completeButton}
-          onPress={() => router.push("/(tabs)/activity/mission/completion")}
+        <Animated.View
+          entering={FadeInDown.duration(500).delay(580).springify().damping(18)}
+          style={completeAnimatedStyle}
         >
-          <ThemedText type="heading" style={styles.completeButtonText}>
-            Complete
-          </ThemedText>
-        </Pressable>
+          <Pressable
+            style={styles.completeButton}
+            onPress={() => router.push("/(tabs)/activity/mission/completion")}
+            onPressIn={() => {
+              completeScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+            }}
+            onPressOut={() => {
+              completeScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+            }}
+          >
+            <ThemedText type="heading" style={styles.completeButtonText}>
+              Complete
+            </ThemedText>
+          </Pressable>
+        </Animated.View>
       </ScrollView>
     </View>
   );

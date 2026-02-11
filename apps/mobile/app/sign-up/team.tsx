@@ -20,6 +20,7 @@ import { StatusBar } from "expo-status-bar";
 import { ThemedText } from "@/components/ThemedText";
 import { useSignUp } from "@/contexts/SignUpContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePlayer } from "@/contexts/PlayerContext";
 import { getTeams, createProfile } from "@/services/profileService";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 
@@ -63,6 +64,7 @@ export default function SignUpTeamScreen() {
     clearSignUpData,
   } = useSignUp();
   const { user } = useAuth();
+  const { refreshProfiles } = usePlayer();
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
@@ -113,7 +115,6 @@ export default function SignUpTeamScreen() {
         return;
       }
 
-      let created = 0;
       for (const player of players) {
         await createProfile({
           user_id: user.id,
@@ -122,8 +123,8 @@ export default function SignUpTeamScreen() {
           team: teamId,
           nickname: player.nickname,
         });
-        created += 1;
       }
+      await refreshProfiles();
       clearSignUpData();
       Alert.alert(
         "Welcome to Huntly Club!",

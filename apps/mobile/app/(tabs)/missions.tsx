@@ -3,10 +3,11 @@ import {
   View,
   ScrollView,
   Image,
-  Animated,
+  Animated as RNAnimated,
   StyleSheet,
   Platform,
 } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { MissionCard } from "@/components/MissionCard";
@@ -18,7 +19,7 @@ const MISSIONS_ORANGE = "#D2684B";
 
 export default function MissionsScreen() {
   const { scaleW, width } = useLayoutScale();
-  const missionCardsScrollX = useRef(new Animated.Value(0)).current;
+  const missionCardsScrollX = useRef(new RNAnimated.Value(0)).current;
   const missionCardWidth = scaleW(270);
   const missionCardBorderWidth = 6;
   const missionCardMargin = scaleW(12);
@@ -79,24 +80,33 @@ export default function MissionsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.imageCircleWrap}>
+        <Animated.View
+          entering={FadeInDown.duration(600).delay(0).springify().damping(18)}
+          style={styles.imageCircleWrap}
+        >
           <Image
             source={WHISPERING_WIND_IMAGE}
             resizeMode="contain"
             style={styles.imageCircleImage}
           />
-        </View>
-        <ThemedText type="heading" style={styles.title}>Missions</ThemedText>
-        <Animated.ScrollView
+        </Animated.View>
+        <Animated.View entering={FadeInDown.duration(500).delay(150).springify().damping(18)}>
+          <ThemedText type="heading" style={styles.title}>Missions</ThemedText>
+        </Animated.View>
+        <Animated.View
+          entering={FadeInDown.duration(500).delay(280).springify().damping(18)}
+          style={styles.cardsScroll}
+        >
+        <RNAnimated.ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.cardsContent}
-          style={styles.cardsScroll}
+          style={{ overflow: "visible" }}
           nestedScrollEnabled={Platform.OS === "android"}
           removeClippedSubviews={false}
           overScrollMode="never"
           scrollEventThrottle={16}
-          onScroll={Animated.event(
+          onScroll={RNAnimated.event(
             [{ nativeEvent: { contentOffset: { x: missionCardsScrollX } } }],
             { useNativeDriver: true }
           )}
@@ -113,7 +123,7 @@ export default function MissionsScreen() {
               extrapolate: "clamp",
             });
             return (
-              <Animated.View
+              <RNAnimated.View
                 key={card.id}
                 style={{
                   transform: [{ rotate: rotation }],
@@ -123,10 +133,11 @@ export default function MissionsScreen() {
                   card={card}
                   tiltDeg={0}
                 />
-              </Animated.View>
+              </RNAnimated.View>
             );
           })}
-        </Animated.ScrollView>
+        </RNAnimated.ScrollView>
+        </Animated.View>
       </ScrollView>
     </View>
   );

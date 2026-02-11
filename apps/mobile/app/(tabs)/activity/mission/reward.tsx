@@ -153,12 +153,7 @@ export default function RewardScreen() {
         <Text style={styles.wellDoneHeading}>Well done!</Text>
 
         <View style={styles.achievementTimeline}>
-          <View
-            style={[
-              styles.achievementCard,
-              { transform: [{ rotate: "-2deg" }], marginLeft: scaleW(20) },
-            ]}
-          >
+          <View style={styles.achievementCard}>
             <View style={styles.achievementIcon}>
               <Image
                 source={CELEBRATE_ICON}
@@ -172,12 +167,7 @@ export default function RewardScreen() {
             </View>
           </View>
 
-          <View
-            style={[
-              styles.achievementCard,
-              { transform: [{ rotate: "2deg" }], marginRight: scaleW(20) },
-            ]}
-          >
+          <View style={styles.achievementCard}>
             <View style={styles.achievementIcon}>
               <Image
                 source={STAR_ICON}

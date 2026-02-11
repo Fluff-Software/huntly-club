@@ -38,6 +38,26 @@ export default function HomeScreen() {
   const pagerX = useRef(new Animated.Value(width * initialIndex)).current;
   const backgroundTranslateX = Animated.multiply(pagerX, -1);
 
+  const clubCardsScrollX = useRef(new Animated.Value(0)).current;
+  const cardWidth = scaleW(250);
+  const cardBorderWidth = 2;
+  const cardMargin = scaleW(12);
+  const cardGap = scaleW(12);
+  const cardStep = cardWidth + cardMargin + cardGap;
+  const cardsPaddingLeft = (width - scaleW(48) - cardWidth) / 2;
+  const getCenterScrollX = (index: number) =>
+    cardsPaddingLeft + index * cardStep + cardWidth / 2 + cardBorderWidth - width / 2;
+
+  const missionCardsScrollX = useRef(new Animated.Value(0)).current;
+  const missionCardWidth = scaleW(270);
+  const missionCardBorderWidth = 6;
+  const missionCardMargin = scaleW(12);
+  const missionCardGap = scaleW(12);
+  const missionCardStep = missionCardWidth + missionCardMargin + missionCardGap;
+  const missionCardsPaddingLeft = Math.max(0, (width - scaleW(48) - scaleW(280)) / 2);
+  const getMissionCenterScrollX = (index: number) =>
+    missionCardsPaddingLeft + index * missionCardStep + missionCardWidth / 2 + missionCardBorderWidth - width / 2;
+
   useEffect(() => {
     const timer = setTimeout(() => {
       pagerRef.current?.scrollTo({ x: width * initialIndex, animated: false });
@@ -69,7 +89,7 @@ export default function HomeScreen() {
           flex: 1,
           backgroundColor: "rgba(0, 0, 0, 0.1)",
         },
-        contentContainer: { paddingBottom: scaleH(40) },
+        contentContainer: { paddingBottom: scaleW(40) },
         pager: { flex: 1 },
         pagerContent: { width: width * HOME_MODES.length },
         pagerPage: { width, flex: 1 },
@@ -78,7 +98,7 @@ export default function HomeScreen() {
           width: scaleW(220),
           alignSelf: "center",
           borderRadius: scaleW(50),
-          paddingVertical: scaleH(16),
+          paddingVertical: scaleW(16),
           paddingHorizontal: scaleW(24),
           alignItems: "center",
           justifyContent: "center",
@@ -90,7 +110,7 @@ export default function HomeScreen() {
         },
         bearsCard: {
           borderRadius: scaleW(15),
-          marginBottom: scaleH(20),
+          marginBottom: scaleW(20),
           shadowColor: "#000",
           shadowOpacity: 0.3,
           shadowRadius: 2,
@@ -132,7 +152,7 @@ export default function HomeScreen() {
           gap: scaleW(12),
         },
       }),
-    [scaleW, scaleH, width, height]
+    [scaleW, scaleW, width, height]
   );
 
   const renderNavigationButtons = () => {
@@ -204,8 +224,8 @@ export default function HomeScreen() {
     >
       <View style={{
         paddingHorizontal: scaleW(24),
-        paddingTop: scaleH(120),
-        paddingBottom: scaleH(24),
+        paddingTop: scaleW(120),
+        paddingBottom: scaleW(24),
       }}>
         <ThemedText
           lightColor="#FFFFFF"
@@ -218,8 +238,8 @@ export default function HomeScreen() {
               fontSize: scaleW(24),
               fontWeight: "600",
               textAlign: "center",
-              marginTop: scaleH(48),
-              marginBottom: scaleH(24),
+              marginTop: scaleW(48),
+              marginBottom: scaleW(24),
               textShadowColor: "#000",
               textShadowRadius: 3,
               textShadowOffset: { width: 0, height: 0 },
@@ -268,6 +288,7 @@ export default function HomeScreen() {
   const clubCards = [
     { id: "1", image: CLUB_1_IMAGE, title: "String it up", author: "Racing Mouse" },
     { id: "2", image: CLUB_2_IMAGE, title: "Into the green", author: "Tall Giant" },
+    { id: "3", image: CLUB_1_IMAGE, title: "String it up", author: "Racing Mouse" },
   ];
 
   const renderActivityContent = () => (
@@ -279,8 +300,8 @@ export default function HomeScreen() {
     >
       <View style={{
         paddingHorizontal: scaleW(24),
-        paddingTop: scaleH(160),
-        paddingBottom: scaleH(24),
+        paddingTop: scaleW(160),
+        paddingBottom: scaleW(24),
       }}>
         <ThemedText
           lightColor="#FFFFFF"
@@ -293,8 +314,8 @@ export default function HomeScreen() {
               fontSize: scaleW(24),
               fontWeight: "600",
               textAlign: "center",
-              marginTop: scaleH(48),
-              marginBottom: scaleH(24),
+              marginTop: scaleW(48),
+              marginBottom: scaleW(24),
               textShadowColor: "#000",
               textShadowRadius: 3,
               textShadowOffset: { width: 0, height: 0 },
@@ -341,7 +362,7 @@ export default function HomeScreen() {
           <ThemedText type="heading" style={{ color: "#000", fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(32), textAlign: "center" }}>
             From around the club
           </ThemedText>
-          <ScrollView
+          <Animated.ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.horizontalCardsContainer}
@@ -349,51 +370,69 @@ export default function HomeScreen() {
             nestedScrollEnabled={Platform.OS === "android"}
             removeClippedSubviews={false}
             overScrollMode="never"
+            scrollEventThrottle={16}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { x: clubCardsScrollX } } }],
+              { useNativeDriver: true }
+            )}
           >
-            {clubCards.map((card, index) => (
-              <Pressable
-                key={card.id}
-                style={[
-                  styles.clubCard,
-                  {
-                    transform: [{ rotate: index % 2 === 0 ? "-2deg" : "2deg" }],
-                    marginTop: index % 2 === 0 ? scaleW(-5) : scaleW(5),
-                  },
-                ]}
-              >
-                <View style={styles.clubCardImageWrap}>
-                  <Image source={card.image} style={styles.clubCardImage} resizeMode="cover" />
-                  <ThemedText type="heading" style={{
-                    position: "absolute",
-                    bottom: scaleW(40),
-                    left: scaleW(10),
-                    fontSize: scaleW(18),
-                    textAlign: "center",
-                    fontWeight: "600",
-                    backgroundColor: "#FFF",
-                    borderRadius: scaleW(20),
-                    paddingHorizontal: scaleW(5),
-                  }}>
-                    {card.title}
-                  </ThemedText>
-                  <ThemedText type="heading" style={{
-                    position: "absolute",
-                    bottom: scaleW(10),
-                    left: scaleW(10),
-                    fontSize: scaleW(16),
-                    textAlign: "center",
-                    fontWeight: "600",
-                    backgroundColor: "tomato",
-                    color: "#FFF",
-                    borderRadius: scaleW(20),
-                    paddingHorizontal: scaleW(5),
-                  }}>
-                    by {card.author}
-                  </ThemedText>
-                </View>
-              </Pressable>
-            ))}
-          </ScrollView>
+            {clubCards.map((card, index) => {
+              const centerScrollX = index === 0 ? 0 : getCenterScrollX(index);
+              const rotation = clubCardsScrollX.interpolate({
+                inputRange: [
+                  centerScrollX - 120,
+                  centerScrollX,
+                  centerScrollX + 120,
+                ],
+                outputRange: ["-4deg", "0deg", "4deg"],
+                extrapolate: "clamp",
+              });
+              return (
+                <Animated.View
+                  key={card.id}
+                  style={[
+                    styles.clubCard,
+                    {
+                      transform: [{ rotate: rotation }],
+                    },
+                  ]}
+                >
+                  <Pressable style={{ flex: 1 }}>
+                    <View style={styles.clubCardImageWrap}>
+                      <Image source={card.image} style={styles.clubCardImage} resizeMode="cover" />
+                      <ThemedText type="heading" style={{
+                        position: "absolute",
+                        bottom: scaleW(40),
+                        left: scaleW(10),
+                        fontSize: scaleW(18),
+                        textAlign: "center",
+                        fontWeight: "600",
+                        backgroundColor: "#FFF",
+                        borderRadius: scaleW(20),
+                        paddingHorizontal: scaleW(5),
+                      }}>
+                        {card.title}
+                      </ThemedText>
+                      <ThemedText type="heading" style={{
+                        position: "absolute",
+                        bottom: scaleW(10),
+                        left: scaleW(10),
+                        fontSize: scaleW(16),
+                        textAlign: "center",
+                        fontWeight: "600",
+                        backgroundColor: "tomato",
+                        color: "#FFF",
+                        borderRadius: scaleW(20),
+                        paddingHorizontal: scaleW(5),
+                      }}>
+                        by {card.author}
+                      </ThemedText>
+                    </View>
+                  </Pressable>
+                </Animated.View>
+              );
+            })}
+          </Animated.ScrollView>
         </View>
       </View>
     </ScrollView>
@@ -406,7 +445,7 @@ export default function HomeScreen() {
       showsVerticalScrollIndicator={false}
       nestedScrollEnabled
     >
-      <View style={{ paddingHorizontal: scaleW(24), paddingTop: scaleH(8) }}>
+      <View style={{ paddingHorizontal: scaleW(24), paddingTop: scaleW(8) }}>
         <ThemedText
           lightColor="#FFFFFF"
           darkColor="#FFFFFF"
@@ -417,8 +456,8 @@ export default function HomeScreen() {
               fontSize: scaleW(24),
               fontWeight: "600",
               textAlign: "center",
-              marginTop: scaleH(48),
-              marginBottom: scaleH(24),
+              marginTop: scaleW(48),
+              marginBottom: scaleW(24),
               textShadowColor: "#000",
               textShadowRadius: 3,
               textShadowOffset: { width: 0, height: 0 },
@@ -428,24 +467,43 @@ export default function HomeScreen() {
         </ThemedText>
 
         <View collapsable={Platform.OS !== "android"}>
-          <ScrollView
+          <Animated.ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.horizontalMissionCardsContainer}
-            style={{ overflow: "visible", marginBottom: scaleH(24) }}
+            style={{ overflow: "visible", marginBottom: scaleW(24) }}
             nestedScrollEnabled={Platform.OS === "android"}
             removeClippedSubviews={false}
             overScrollMode="never"
+            scrollEventThrottle={16}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { x: missionCardsScrollX } } }],
+              { useNativeDriver: true }
+            )}
           >
-          {MISSION_CARDS.map((card, index) => (
-            <MissionCard
-              key={card.id}
-              card={card}
-              tiltDeg={index % 2 === 0 ? -0.5 : 0.5}
-              marginTopOffset={index % 2 === 0 ? scaleW(-2) : scaleW(2)}
-            />
-            ))}
-          </ScrollView>
+            {MISSION_CARDS.map((card, index) => {
+              const centerScrollX = index === 0 ? 0 : getMissionCenterScrollX(index);
+              const rotation = missionCardsScrollX.interpolate({
+                inputRange: [
+                  centerScrollX - 120,
+                  centerScrollX,
+                  centerScrollX + 120,
+                ],
+                outputRange: ["-2deg", "0deg", "2deg"],
+                extrapolate: "clamp",
+              });
+              return (
+                <Animated.View
+                  key={card.id}
+                  style={{
+                    transform: [{ rotate: rotation }],
+                  }}
+                >
+                  <MissionCard card={card} tiltDeg={0} />
+                </Animated.View>
+              );
+            })}
+          </Animated.ScrollView>
         </View>
 
         <Pressable

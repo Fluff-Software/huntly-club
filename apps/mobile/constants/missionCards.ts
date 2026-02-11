@@ -24,4 +24,11 @@ export const MISSION_CARDS: MissionCardData[] = [
     description:
       "Create a laser maze using string, wool or tape. Rules are up to you: time limit, penalties, silent mode.",
   },
+  {
+    id: "3",
+    image: LASER_FORTRESS_IMAGE,
+    title: "Build a Laser Maze",
+    description:
+      "Create a laser maze using string, wool or tape. Rules are up to you: time limit, penalties, silent mode.",
+  },
 ];

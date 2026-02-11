@@ -1,8 +1,9 @@
-import React, { useMemo } from "react";
+import React, { useRef, useMemo } from "react";
 import {
   View,
   ScrollView,
   Image,
+  Animated,
   StyleSheet,
   Platform,
 } from "react-native";
@@ -17,6 +18,15 @@ const MISSIONS_ORANGE = "#D2684B";
 
 export default function MissionsScreen() {
   const { scaleW, scaleH, width } = useLayoutScale();
+  const missionCardsScrollX = useRef(new Animated.Value(0)).current;
+  const missionCardWidth = scaleW(270);
+  const missionCardBorderWidth = 6;
+  const missionCardMargin = scaleW(12);
+  const missionCardGap = scaleW(12);
+  const missionCardStep = missionCardWidth + missionCardMargin + missionCardGap;
+  const missionCardsPaddingLeft = Math.max(0, (width - scaleW(280)) / 2);
+  const getMissionCenterScrollX = (index: number) =>
+    missionCardsPaddingLeft + index * missionCardStep + missionCardWidth / 2 + missionCardBorderWidth - width / 2;
 
   const styles = useMemo(
     () =>
@@ -25,14 +35,14 @@ export default function MissionsScreen() {
         scrollContent: {
           flexGrow: 1,
           backgroundColor: MISSIONS_ORANGE,
-          paddingTop: scaleH(24),
+          paddingTop: scaleW(24),
         },
         imageCircleWrap: {
           width: width * 2.5,
           height: width * 2.5,
           borderRadius: (width * 2.5) / 2,
           overflow: "hidden" as const,
-          marginBottom: scaleH(20),
+          marginBottom: scaleW(20),
           alignSelf: "center" as const,
           marginTop: -width * 2.1,
         },
@@ -48,8 +58,8 @@ export default function MissionsScreen() {
           fontWeight: "600",
           color: "#FFF",
           textAlign: "center" as const,
-          marginTop: scaleH(8),
-          marginBottom: scaleH(24),
+          marginTop: scaleW(8),
+          marginBottom: scaleW(24),
         },
         cardsScroll: { overflow: "visible" as const },
         cardsContent: {
@@ -59,7 +69,7 @@ export default function MissionsScreen() {
           gap: scaleW(12),
         },
       }),
-    [scaleW, scaleH, width]
+    [scaleW, scaleW, width]
   );
 
   return (
@@ -77,7 +87,7 @@ export default function MissionsScreen() {
           />
         </View>
         <ThemedText type="heading" style={styles.title}>Missions</ThemedText>
-        <ScrollView
+        <Animated.ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.cardsContent}
@@ -85,16 +95,38 @@ export default function MissionsScreen() {
           nestedScrollEnabled={Platform.OS === "android"}
           removeClippedSubviews={false}
           overScrollMode="never"
+          scrollEventThrottle={16}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { x: missionCardsScrollX } } }],
+            { useNativeDriver: true }
+          )}
         >
-          {MISSION_CARDS.map((card, index) => (
-            <MissionCard
-              key={card.id}
-              card={card}
-              tiltDeg={index % 2 === 0 ? -0.5 : 0.5}
-              marginTopOffset={index % 2 === 0 ? scaleW(-2) : scaleW(2)}
-            />
-          ))}
-        </ScrollView>
+          {MISSION_CARDS.map((card, index) => {
+            const centerScrollX = index === 0 ? 0 : getMissionCenterScrollX(index);
+            const rotation = missionCardsScrollX.interpolate({
+              inputRange: [
+                centerScrollX - 120,
+                centerScrollX,
+                centerScrollX + 120,
+              ],
+              outputRange: ["-2deg", "0deg", "2deg"],
+              extrapolate: "clamp",
+            });
+            return (
+              <Animated.View
+                key={card.id}
+                style={{
+                  transform: [{ rotate: rotation }],
+                }}
+              >
+                <MissionCard
+                  card={card}
+                  tiltDeg={0}
+                />
+              </Animated.View>
+            );
+          })}
+        </Animated.ScrollView>
       </ScrollView>
     </View>
   );

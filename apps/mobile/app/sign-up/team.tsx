@@ -53,7 +53,7 @@ const HARDCODED_TEAMS = [
   },
 ] as const;
 
-const springBounce = { damping: 12, stiffness: 120 };
+const springBounce = { damping: 15, stiffness: 120 };
 
 export default function SignUpTeamScreen() {
   const { scaleW, width } = useLayoutScale();

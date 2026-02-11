@@ -9,6 +9,12 @@ import {
   StyleSheet,
   Platform,
 } from "react-native";
+import AnimatedReanimated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withDelay,
+} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
@@ -58,12 +64,89 @@ export default function HomeScreen() {
   const getMissionCenterScrollX = (index: number) =>
     missionCardsPaddingLeft + index * missionCardStep + missionCardWidth / 2 + missionCardBorderWidth - width / 2;
 
+  const springLessBouncy = { damping: 15, stiffness: 120 };
+  const buttonSpring = { damping: 15, stiffness: 400 };
+  const profileButtonScale = useSharedValue(1);
+  const missionsButtonScale = useSharedValue(1);
+  const navScale = useSharedValue(1);
+  const bearCardTranslateX = useSharedValue(200);
+
+  const profileButtonStyle = useAnimatedStyle(() => ({ transform: [{ scale: profileButtonScale.value }] }));
+  const missionsButtonStyle = useAnimatedStyle(() => ({ transform: [{ scale: missionsButtonScale.value }] }));
+  const navButtonStyle = useAnimatedStyle(() => ({ transform: [{ scale: navScale.value }] }));
+  const bearCardStyle = useAnimatedStyle(() => ({ transform: [{ translateX: bearCardTranslateX.value }] }));
+
+  useEffect(() => {
+    if (width > 0) {
+      bearCardTranslateX.value = width;
+      bearCardTranslateX.value = withDelay(100, withSpring(0, springLessBouncy));
+    }
+  }, [width]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       pagerRef.current?.scrollTo({ x: width * initialIndex, animated: false });
     }, 0);
     return () => clearTimeout(timer);
   }, [width, initialIndex]);
+
+  const pageAnimatedStyles = useMemo(() => {
+    if (width <= 0) return [];
+    const w = width;
+    const inactiveOpacity = 0;
+    const inactiveOffset = 36;
+    const fadeEdge = w * 0.25;
+    return [
+      {
+        opacity: pagerX.interpolate({
+          inputRange: [0, fadeEdge, w],
+          outputRange: [1, 0.6, inactiveOpacity],
+          extrapolate: "clamp",
+        }),
+        transform: [
+          {
+            translateY: pagerX.interpolate({
+              inputRange: [0, w],
+              outputRange: [0, inactiveOffset],
+              extrapolate: "clamp",
+            }),
+          },
+        ],
+      },
+      {
+        opacity: pagerX.interpolate({
+          inputRange: [0, w - fadeEdge, w, w + fadeEdge, w * 2],
+          outputRange: [inactiveOpacity, 0.6, 1, 0.6, inactiveOpacity],
+          extrapolate: "clamp",
+        }),
+        transform: [
+          {
+            translateY: pagerX.interpolate({
+              inputRange: [0, w, w * 2],
+              outputRange: [inactiveOffset, 0, inactiveOffset],
+              extrapolate: "clamp",
+            }),
+          },
+        ],
+      },
+      {
+        opacity: pagerX.interpolate({
+          inputRange: [w, w * 2 - fadeEdge, w * 2],
+          outputRange: [inactiveOpacity, 0.6, 1],
+          extrapolate: "clamp",
+        }),
+        transform: [
+          {
+            translateY: pagerX.interpolate({
+              inputRange: [w, w * 2],
+              outputRange: [inactiveOffset, 0],
+              extrapolate: "clamp",
+            }),
+          },
+        ],
+      },
+    ] as const;
+  }, [width, pagerX]);
 
   const switchMode = (mode: HomeMode) => {
     const nextIndex = HOME_MODES.indexOf(mode);
@@ -155,6 +238,19 @@ export default function HomeScreen() {
     [scaleW, width, height]
   );
 
+  const wrapNavPressable = (onPress: () => void, children: React.ReactNode) => (
+    <AnimatedReanimated.View style={navButtonStyle}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={() => { navScale.value = withSpring(0.96, buttonSpring); }}
+        onPressOut={() => { navScale.value = withSpring(1, buttonSpring); }}
+        className="bg-white/90 rounded-full px-4 py-2 flex-row items-center"
+      >
+        {children}
+      </Pressable>
+    </AnimatedReanimated.View>
+  );
+
   const renderNavigationButtons = () => {
     if (currentMode === "profile") {
       return (
@@ -162,53 +258,49 @@ export default function HomeScreen() {
           <ThemedText type="body" className="text-white font-jua opacity-90">
             Home
           </ThemedText>
-          <Pressable
-            onPress={() => switchMode("activity")}
-            className="bg-white/90 rounded-full px-4 py-2 flex-row items-center"
-          >
-            <ThemedText type="body" className="text-huntly-forest font-jua">
-              Activity
-            </ThemedText>
-            <ThemedText className="text-huntly-forest ml-2 font-jua">→</ThemedText>
-          </Pressable>
+          {wrapNavPressable(() => switchMode("activity"), (
+            <>
+              <ThemedText type="body" className="text-huntly-forest font-jua">
+                Activity
+              </ThemedText>
+              <ThemedText className="text-huntly-forest ml-2 font-jua">→</ThemedText>
+            </>
+          ))}
         </View>
       );
     } else if (currentMode === "activity") {
       return (
         <View className="flex-row items-center justify-between px-6 pt-4">
-          <Pressable
-            onPress={() => switchMode("profile")}
-            className="bg-white/90 rounded-full px-4 py-2 flex-row items-center"
-          >
-            <ThemedText className="text-huntly-forest mr-2 font-jua">←</ThemedText>
-            <ThemedText type="body" className="text-huntly-forest font-jua">
-              Profile
-            </ThemedText>
-          </Pressable>
+          {wrapNavPressable(() => switchMode("profile"), (
+            <>
+              <ThemedText className="text-huntly-forest mr-2 font-jua">←</ThemedText>
+              <ThemedText type="body" className="text-huntly-forest font-jua">
+                Profile
+              </ThemedText>
+            </>
+          ))}
 
-          <Pressable
-            onPress={() => switchMode("missions")}
-            className="bg-white/90 rounded-full px-4 py-2 flex-row items-center"
-          >
-            <ThemedText type="body" className="text-huntly-forest font-jua">
-              Missions
-            </ThemedText>
-            <ThemedText className="text-huntly-forest ml-2 font-jua">→</ThemedText>
-          </Pressable>
+          {wrapNavPressable(() => switchMode("missions"), (
+            <>
+              <ThemedText type="body" className="text-huntly-forest font-jua">
+                Missions
+              </ThemedText>
+              <ThemedText className="text-huntly-forest ml-2 font-jua">→</ThemedText>
+            </>
+          ))}
         </View>
       );
     } else {
       return (
         <View className="flex-row items-center justify-between px-6 pt-4">
-          <Pressable
-            onPress={() => switchMode("activity")}
-            className="bg-white/90 rounded-full px-4 py-2 flex-row items-center"
-          >
-            <ThemedText className="text-huntly-forest mr-2 font-jua">←</ThemedText>
-            <ThemedText type="body" className="text-huntly-forest font-jua">
-              Activity
-            </ThemedText>
-          </Pressable>
+          {wrapNavPressable(() => switchMode("activity"), (
+            <>
+              <ThemedText className="text-huntly-forest mr-2 font-jua">←</ThemedText>
+              <ThemedText type="body" className="text-huntly-forest font-jua">
+                Activity
+              </ThemedText>
+            </>
+          ))}
           <View style={{ width: scaleW(60) }} />
         </View>
       );
@@ -266,21 +358,25 @@ export default function HomeScreen() {
           />
         </View>
 
-        <Pressable
-          onPress={() => router.push("/(tabs)/profile")}
-          style={[styles.creamButton]}
-        >
-          <ThemedText
-            type="heading"
-            style={{
-              textAlign: "center",
-              fontSize: scaleW(16),
-              fontWeight: "600",
-            }}
+        <AnimatedReanimated.View style={profileButtonStyle}>
+          <Pressable
+            onPress={() => router.push("/(tabs)/profile")}
+            onPressIn={() => { profileButtonScale.value = withSpring(0.96, buttonSpring); }}
+            onPressOut={() => { profileButtonScale.value = withSpring(1, buttonSpring); }}
+            style={[styles.creamButton]}
           >
-            Your profile
-          </ThemedText>
-        </Pressable>
+            <ThemedText
+              type="heading"
+              style={{
+                textAlign: "center",
+                fontSize: scaleW(16),
+                fontWeight: "600",
+              }}
+            >
+              Your profile
+            </ThemedText>
+          </Pressable>
+        </AnimatedReanimated.View>
       </View>
     </ScrollView>
   );
@@ -324,23 +420,25 @@ export default function HomeScreen() {
           Welcome back, explorer!
         </ThemedText>
 
-        <View style={[styles.bearsCard, { backgroundColor: ORANGE_BANNER, borderWidth: 4, borderColor: "#FFF" }]}>
-          <View className="flex-row items-center flex-1 overflow-hidden p-4">
-            <View className="flex-1">
-              <ThemedText type="heading" style={{ color: "#CE4008", fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(16) }}>Bears</ThemedText>
-              <ThemedText type="body" style={{ color: "#CE4008", fontSize: scaleW(18), width: scaleW(170), lineHeight: scaleW(20) }}>
-                We're doing great helping test the wind clues this week!
-              </ThemedText>
-            </View>
-            <View style={{ width: scaleW(120) }}>
-              <Image
-                source={BEAR_WAVE_IMAGE}
-                resizeMode="contain"
-                style={[styles.bearImage]}
-              />
+        <AnimatedReanimated.View style={bearCardStyle}>
+          <View style={[styles.bearsCard, { backgroundColor: ORANGE_BANNER, borderWidth: 4, borderColor: "#FFF" }]}>
+            <View className="flex-row items-center flex-1 overflow-hidden p-4">
+              <View className="flex-1">
+                <ThemedText type="heading" style={{ color: "#CE4008", fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(16) }}>Bears</ThemedText>
+                <ThemedText type="body" style={{ color: "#CE4008", fontSize: scaleW(18), width: scaleW(170), lineHeight: scaleW(20) }}>
+                  We're doing great helping test the wind clues this week!
+                </ThemedText>
+              </View>
+              <View style={{ width: scaleW(120) }}>
+                <Image
+                  source={BEAR_WAVE_IMAGE}
+                  resizeMode="contain"
+                  style={[styles.bearImage]}
+                />
+              </View>
             </View>
           </View>
-        </View>
+        </AnimatedReanimated.View>
 
         <View
           style={{
@@ -506,14 +604,18 @@ export default function HomeScreen() {
           </Animated.ScrollView>
         </View>
 
-        <Pressable
-          onPress={() => router.push("/(tabs)/missions")}
-          style={styles.creamButton}
-        >
-          <ThemedText type="defaultSemiBold" className="text-huntly-forest text-center font-jua">
-            See all missions
-          </ThemedText>
-        </Pressable>
+        <AnimatedReanimated.View style={missionsButtonStyle}>
+          <Pressable
+            onPress={() => router.push("/(tabs)/missions")}
+            onPressIn={() => { missionsButtonScale.value = withSpring(0.96, buttonSpring); }}
+            onPressOut={() => { missionsButtonScale.value = withSpring(1, buttonSpring); }}
+            style={styles.creamButton}
+          >
+            <ThemedText type="defaultSemiBold" className="text-huntly-forest text-center font-jua">
+              See all missions
+            </ThemedText>
+          </Pressable>
+        </AnimatedReanimated.View>
       </View>
     </ScrollView>
   );
@@ -564,9 +666,15 @@ export default function HomeScreen() {
           style={styles.pager}
           contentContainerStyle={styles.pagerContent}
         >
-          <View style={styles.pagerPage}>{renderProfileContent()}</View>
-          <View style={styles.pagerPage}>{renderActivityContent()}</View>
-          <View style={styles.pagerPage}>{renderMissionsContent()}</View>
+          <Animated.View style={[styles.pagerPage, pageAnimatedStyles[0] ?? {}]}>
+            {renderProfileContent()}
+          </Animated.View>
+          <Animated.View style={[styles.pagerPage, pageAnimatedStyles[1] ?? {}]}>
+            {renderActivityContent()}
+          </Animated.View>
+          <Animated.View style={[styles.pagerPage, pageAnimatedStyles[2] ?? {}]}>
+            {renderMissionsContent()}
+          </Animated.View>
         </Animated.ScrollView>
       </SafeAreaView>
     </View>

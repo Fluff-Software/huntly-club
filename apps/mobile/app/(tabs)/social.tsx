@@ -24,6 +24,9 @@ import {
   TeamInfo,
 } from "@/services/teamActivityService";
 import { usePlayer } from "@/contexts/PlayerContext";
+import Svg, { Polyline } from "react-native-svg";
+
+const POLYLINE_COLOR = "#838383";
 
 const BEAR_WAVE_IMAGE = require("@/assets/images/bear-wave.png");
 const BEAR_FACE_IMAGE = require("@/assets/images/bear-face.png");
@@ -75,6 +78,8 @@ export default function SocialScreen() {
   const [error, setError] = useState<string | null>(null);
   const [teamInfo, setTeamInfo] = useState<TeamInfo | null>(null);
   const [allTeams, setAllTeams] = useState<TeamInfo[]>([]);
+  const [timelineLayout, setTimelineLayout] = useState<{ width: number; height: number } | null>(null);
+  const [cardCenters, setCardCenters] = useState<Array<{ x: number; y: number }>>([]);
 
   const bearSlideAnim = useRef(new RNAnimated.Value(400)).current;
   const chartProgress = useSharedValue(0);
@@ -148,11 +153,14 @@ export default function SocialScreen() {
     return fromApi.length > 0 ? fromApi : PLACEHOLDER_ACHIEVEMENTS;
   }, [teamActivities]);
 
+  useEffect(() => {
+    setCardCenters([]);
+  }, [achievements.length]);
+
   const styles = useMemo(
     () =>
       StyleSheet.create({
         page: { flex: 1, backgroundColor: PAGE_BG },
-        scrollContent: { paddingBottom: scaleW(100) },
         header: {
           backgroundColor: HEADER_ORANGE,
           paddingHorizontal: scaleW(24),
@@ -245,7 +253,7 @@ export default function SocialScreen() {
         },
         timeline: {
           paddingHorizontal: scaleW(24),
-          paddingBottom: scaleW(24),
+          paddingBottom: scaleW(64),
           alignItems: "center",
           gap: scaleW(24),
         },
@@ -381,7 +389,6 @@ export default function SocialScreen() {
     <View style={styles.page}>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -447,17 +454,73 @@ export default function SocialScreen() {
         <Animated.View entering={FadeInDown.duration(500).delay(380).springify().damping(18)}>
           <Text style={styles.achievementsTitle}>Recent achievements</Text>
         </Animated.View>
-        <View style={styles.timeline}>
+        <View
+          style={[styles.timeline, { position: "relative" }]}
+          onLayout={(e) => setTimelineLayout(e.nativeEvent.layout)}
+        >
+          {timelineLayout &&
+            achievements.length >= 2 &&
+            cardCenters.length === achievements.length &&
+            cardCenters.every(Boolean) && (
+            <Animated.View
+              entering={FadeInDown.duration(400).delay(450).springify().damping(18)}
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                zIndex: 0,
+                width: timelineLayout.width,
+                height: timelineLayout.height,
+              }}
+            >
+              <Svg
+                style={{ width: "100%", height: "100%" }}
+                width={timelineLayout.width}
+                height={timelineLayout.height}
+              >
+                <Polyline
+                  points={(() => {
+                    const ordered = achievements
+                      .map((_, i) => cardCenters[i])
+                      .filter((c): c is { x: number; y: number } => c != null);
+                    if (ordered.length < 2) return "";
+                    const extend = scaleW(24);
+                    const first = ordered[0];
+                    const last = ordered[ordered.length - 1];
+                    const bottomMiddleX = timelineLayout.width / 2;
+                    const bottomMiddleY = timelineLayout.height;
+                    const above = `${first.x},${Math.max(0, first.y - extend)}`;
+                    const below = `${last.x},${last.y + extend}`;
+                    const middle = ordered.map((c) => `${c.x},${c.y}`).join(" ");
+                    return `${above} ${middle} ${below} ${bottomMiddleX},${bottomMiddleY}`;
+                  })()}
+                  stroke={POLYLINE_COLOR}
+                  strokeWidth={4}
+                  fill="none"
+                  strokeDasharray="4 4"
+                />
+              </Svg>
+            </Animated.View>
+          )}
           {achievements.map((item, index) => (
             <Animated.View
               key={item.id}
               entering={FadeInDown.duration(400).delay(450 + index * 60).springify().damping(18)}
+              onLayout={(e) => {
+                const { x, y, width, height } = e.nativeEvent.layout;
+                setCardCenters((prev) => {
+                  const next = [...prev];
+                  next[index] = { x: x + width / 2, y: y + height / 2 };
+                  return next;
+                });
+              }}
               style={[
                 styles.achievementCard,
                 {
                   transform: [{ rotate: index % 2 === 0 ? "-2deg" : "2deg" }],
                   marginLeft: index % 2 === 0 ? scaleW(20) : 0,
                   marginRight: index % 2 === 1 ? scaleW(20) : 0,
+                  zIndex: 1,
                 },
               ]}
             >

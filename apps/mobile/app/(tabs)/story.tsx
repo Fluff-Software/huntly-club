@@ -6,6 +6,12 @@ import {
   Pressable,
   StyleSheet,
 } from "react-native";
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 
@@ -17,6 +23,15 @@ const DARK_GREEN = "#2D5A27";
 
 export default function StoryScreen() {
   const { scaleW, width } = useLayoutScale();
+  const creamButtonScale = useSharedValue(1);
+  const completeButtonScale = useSharedValue(1);
+
+  const creamButtonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: creamButtonScale.value }],
+  }));
+  const completeButtonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: completeButtonScale.value }],
+  }));
 
   const styles = useMemo(
     () =>
@@ -140,64 +155,101 @@ export default function StoryScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.seasonContainer}>
-          <View style={styles.imageCircleWrap}>
+          <Animated.View
+            entering={FadeInDown.duration(600).delay(0).springify().damping(18)}
+            style={styles.imageCircleWrap}
+          >
             <Image
               source={WHISPERING_WIND_IMAGE}
               resizeMode="contain"
               style={styles.imageCircleImage}
             />
-          </View>
-          <ThemedText type="heading" style={styles.seasonLabel}>Season 1</ThemedText>
-          <ThemedText type="heading" style={styles.seasonTitle}>The Great Awakening</ThemedText>
+          </Animated.View>
+          <Animated.View entering={FadeInDown.duration(500).delay(150).springify().damping(18)}>
+            <ThemedText type="heading" style={styles.seasonLabel}>Season 1</ThemedText>
+            <ThemedText type="heading" style={styles.seasonTitle}>The Great Awakening</ThemedText>
+          </Animated.View>
 
-          <Pressable style={styles.creamButton}>
-            <ThemedText
-              type="heading"
-              style={{
-                fontSize: scaleW(16),
-                fontWeight: "600",
-                color: DARK_GREEN,
+          <Animated.View
+            entering={FadeInDown.duration(500).delay(280).springify().damping(18)}
+            style={creamButtonAnimatedStyle}
+          >
+            <Pressable
+              onPressIn={() => {
+                creamButtonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
               }}
+              onPressOut={() => {
+                creamButtonScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+              }}
+              style={styles.creamButton}
             >
-              See the season story
-            </ThemedText>
-          </Pressable>
+              <ThemedText
+                type="heading"
+                style={{
+                  fontSize: scaleW(16),
+                  fontWeight: "600",
+                  color: DARK_GREEN,
+                }}
+              >
+                See the season story
+              </ThemedText>
+            </Pressable>
+          </Animated.View>
         </View>
 
         <View style={styles.chapterContainer}>
-          <ThemedText type="heading" style={styles.chapterTitle}>
-            Chapter 4: Hidden Worlds
-          </ThemedText>
-          <ThemedText style={styles.releaseDate}>Released 14/02/25</ThemedText>
-          <ThemedText style={styles.bodyText}>
-            Not everything is obvious.
-          </ThemedText>
-          <ThemedText style={styles.bodyText}>
-            Some paths are quiet. Some worlds are small. Some things only appear when you look differently.
-          </ThemedText>
-          <ThemedText style={styles.bodyText}>
-            Explorers are very good at noticing what others walk past.
-          </ThemedText>
-          <ThemedText style={[styles.bodyText, { marginBottom: scaleW(4) }]}>
-            This week, look for what's hidden. Or create something that only
-            explorers would find.
-          </ThemedText>
-
-          <Pressable style={styles.completeButton}>
-            <ThemedText
-              type="heading"
-              style={{
-                fontSize: scaleW(15),
-                fontWeight: "600",
-                color: "#FFF",
-              }}
-            >
-              1 / 2 missions complete →
+          <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
+            <ThemedText type="heading" style={styles.chapterTitle}>
+              Chapter 4: Hidden Worlds
             </ThemedText>
-          </Pressable>
+            <ThemedText style={styles.releaseDate}>Released 14/02/25</ThemedText>
+          </Animated.View>
+          <Animated.View entering={FadeInDown.duration(500).delay(100).springify().damping(18)}>
+            <ThemedText style={styles.bodyText}>
+              Not everything is obvious.
+            </ThemedText>
+            <ThemedText style={styles.bodyText}>
+              Some paths are quiet. Some worlds are small. Some things only appear when you look differently.
+            </ThemedText>
+            <ThemedText style={styles.bodyText}>
+              Explorers are very good at noticing what others walk past.
+            </ThemedText>
+            <ThemedText style={[styles.bodyText, { marginBottom: scaleW(4) }]}>
+              This week, look for what's hidden. Or create something that only
+              explorers would find.
+            </ThemedText>
+          </Animated.View>
 
-          <ThemedText type="heading" style={styles.nextLabel}>Next chapter coming on</ThemedText>
-          <ThemedText type="heading" style={styles.nextDate}>21/02/25</ThemedText>
+          <Animated.View
+            entering={FadeInDown.duration(500).delay(200).springify().damping(18)}
+            style={completeButtonAnimatedStyle}
+          >
+            <Pressable
+              onPressIn={() => {
+                completeButtonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+              }}
+              onPressOut={() => {
+                completeButtonScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+              }}
+              style={styles.completeButton}
+            >
+              <ThemedText
+                type="heading"
+                style={{
+                  fontSize: scaleW(15),
+                  fontWeight: "600",
+                  color: "#FFF",
+                }}
+              >
+                1 / 2 missions complete →
+              </ThemedText>
+            </Pressable>
+          </Animated.View>
+
+          <Animated.View entering={FadeInDown.duration(500).delay(280).springify().damping(18)}>
+            <ThemedText type="heading" style={styles.nextLabel}>Next chapter coming on</ThemedText>
+            <ThemedText type="heading" style={styles.nextDate}>21/02/25</ThemedText>
+          </Animated.View>
         </View>
       </ScrollView>
     </View>

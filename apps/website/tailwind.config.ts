@@ -24,8 +24,8 @@ const config: Config = {
         },
       },
       fontFamily: {
-        display: ["system-ui", "ui-rounded", "SF Pro Rounded", "sans-serif"],
-        body: ["system-ui", "SF Pro Text", "sans-serif"],
+        sans: ["var(--font-nunito)", "system-ui", "sans-serif"],
+        display: ["var(--font-nunito)", "system-ui", "sans-serif"],
       },
       boxShadow: {
         soft: "0 18px 45px rgba(0,0,0,0.08)",

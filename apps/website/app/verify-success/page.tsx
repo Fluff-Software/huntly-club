@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Email verified · Huntly Club",
+  title: "Email verified · Huntly World",
 };
 
 export default function VerifySuccessPage() {
@@ -9,10 +9,10 @@ export default function VerifySuccessPage() {
         <h1 className="mb-3 font-display text-2xl font-semibold text-huntly-forest">
           Email verified
         </h1>
-        <p className="text-sm leading-relaxed text-[var(--color-text-muted)]">
+        <p className="text-sm leading-relaxed text-huntly-slate">
           Success! Your email has been verified.
           <br />
-          Please return to the Huntly app to continue your adventure.
+          Please return to the app to continue your adventure.
         </p>
       </div>
     </div>

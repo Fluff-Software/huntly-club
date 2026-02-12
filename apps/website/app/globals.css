@@ -23,15 +23,15 @@ body {
 }
 
 .nav-link {
-  @apply text-sm font-medium text-[var(--color-text-muted)] transition-colors hover:text-huntly-moss;
+  @apply text-sm font-semibold text-huntly-slate transition-colors hover:text-huntly-moss;
 }
 
 .btn-primary {
-  @apply inline-flex items-center justify-center rounded-full bg-huntly-moss px-5 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:bg-[#435f46] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-huntly-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-background)];
+  @apply inline-flex cursor-pointer items-center justify-center rounded-full bg-huntly-moss px-5 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:bg-[#435f46] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-huntly-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-background)];
 }
 
 .btn-ghost {
-  @apply inline-flex items-center justify-center rounded-full border border-[var(--color-border-subtle)] bg-white px-5 py-2.5 text-sm font-semibold text-[var(--color-text-main)] shadow-sm transition hover:border-huntly-moss/40 hover:bg-huntly-parchment;
+  @apply inline-flex cursor-pointer items-center justify-center rounded-full border border-[var(--color-border-subtle)] bg-white px-5 py-2.5 text-sm font-semibold text-[var(--color-text-main)] shadow-sm transition hover:border-huntly-moss/40 hover:bg-huntly-parchment focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-huntly-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-background)];
 }
 
 .card {

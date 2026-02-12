@@ -15,6 +15,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Stack, useLocalSearchParams, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -86,11 +87,24 @@ export default function AuthScreen() {
     <View className="flex-1 relative">
       <StatusBar style="light" />
       <Stack.Screen options={{ title: "Authentication", headerShown: false }} />
-      <View className="absolute top-0 left-0 right-0 items-center" style={{ width }}>
+      <View className="absolute top-0 left-0 right-0 items-center overflow-hidden" style={{ width, height: heroHeight }}>
         <Image
           source={require("@/assets/images/huntly-world-background.png")}
           style={{ width, height: heroHeight }}
           resizeMode="cover"
+        />
+        <BlurView
+          intensity={10}
+          tint="dark"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width,
+            height: heroHeight,
+          }}
         />
       </View>
       {/* Characters + banner in front of bottom section */}
@@ -113,76 +127,24 @@ export default function AuthScreen() {
             marginTop: scaleW(-100),
           }}
         >
-          {/* Characters behind - inline with banner */}
+          {/* Logo - centered in 350-wide container */}
           <View
             style={{
               position: "absolute",
-              left: scaleW(20),
-              top: scaleW(-60),
-              width: scaleW(130),
-              height: scaleW(150),
-              zIndex: 1,
-              transform: [{ rotate: "-10deg" }],
-            }}
-          >
-            <Image
-              source={require("@/assets/images/bear-wave.png")}
-              resizeMode="contain"
-              style={{ width: scaleW(150), height: scaleW(150) }}
-            />
-          </View>
-          <View
-            style={{
-              position: "absolute",
-              left: scaleW(85),
-              top: scaleW(-82),
-              width: scaleW(170),
-              height: scaleW(170),
-              zIndex: 2,
-            }}
-          >
-            <Image
-              source={require("@/assets/images/fox.png")}
-              resizeMode="contain"
-              style={{ width: scaleW(170), height: scaleW(170) }}
-            />
-          </View>
-          <View
-            style={{
-              position: "absolute",
-              left: scaleW(169),
-              top: scaleW(-65),
-              width: scaleW(150),
-              height: scaleW(150),
-              zIndex: 1,
-              transform: [{ rotate: "10deg" }],
-            }}
-          >
-            <Image
-              source={require("@/assets/images/otter.png")}
-              resizeMode="contain"
-              style={{ width: scaleW(150), height: scaleW(150) }}
-            />
-          </View>
-          {/* Banner in front - big, on top */}
-          <View
-            style={{
-              position: "absolute",
-              left: 0,
-              top: 0,
+          
+              top: scaleW(-160),
               width: scaleW(350),
-              height: scaleW(175),
-              zIndex: 2,
-              alignItems: "center",
-              justifyContent: "center",
+              height: scaleW(350),
+              zIndex: 1,
             }}
           >
             <Image
-              source={require("@/assets/images/huntly-world-banner.png")}
+              source={require("@/assets/images/logo.png")}
               resizeMode="contain"
-              style={{ width: scaleW(300), height: scaleW(300) }}
+              style={{ width: "100%", height: "100%" }}
             />
           </View>
+         
         </Animated.View>
       </View>
       {/* Bottom section: slogan + buttons on green */}
@@ -216,7 +178,7 @@ export default function AuthScreen() {
             position: "absolute",
             left: 0,
             right: 0,
-            top: scaleW(100),
+            top: scaleW(130),
             paddingHorizontal: scaleW(24),
             paddingTop: scaleW(24),
             paddingBottom: scaleW(40),
@@ -229,7 +191,7 @@ export default function AuthScreen() {
               lightColor="#FFFFFF"
               darkColor="#FFFFFF"
               style={{
-                marginBottom: scaleW(80),
+                marginBottom: scaleW(60),
                 textAlign: "center",
                 fontWeight: "600",
                 fontSize: scaleW(26),

@@ -72,7 +72,7 @@ export default function AuthScreen() {
             keyboardShouldPersistTaps="handled"
           >
             {mode === AuthScreenMode.LOGIN ? (
-              <LoginForm onCreateAccount={() => router.replace("/sign-up")} />
+              <LoginForm onCreateAccount={() => router.replace("/get-started")} />
             ) : (
               <SignUpForm onLoginInstead={() => setMode(AuthScreenMode.LOGIN)} />
             )}

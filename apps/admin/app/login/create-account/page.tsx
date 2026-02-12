@@ -39,13 +39,14 @@ export default function CreateAccountPage() {
 
       if (signUpError) {
         setError(signUpError.message || "Failed to create account.");
+        setLoading(false);
         return;
       }
 
       // Account created successfully - redirect to pending access page
       router.push("/login/pending-access");
-      router.refresh();
-    } finally {
+    } catch (err) {
+      setError("An unexpected error occurred. Please try again.");
       setLoading(false);
     }
   }

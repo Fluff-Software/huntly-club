@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "npm run start -w @huntly-club/mobile",
     "dev:admin": "npm run dev -w @huntly-club/admin",
+    "dev:website": "npm run dev -w @huntly-club/website",
     "dev:mobile": "npm run start -w @huntly-club/mobile",
     "start": "npm run start -w @huntly-club/mobile",
     "android": "npm run android -w @huntly-club/mobile",

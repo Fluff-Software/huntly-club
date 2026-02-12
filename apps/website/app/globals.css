@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-background: #F6F5F1;
+  --color-surface: #FFFFFF;
+  --color-border-subtle: #D9D8D4;
+  --color-text-main: #2F3336;
+  --color-text-muted: #5F6468;
+}
+
+body {
+  @apply min-h-screen bg-[var(--color-background)] text-[var(--color-text-main)] antialiased;
+}
+
+.page-shell {
+  @apply flex min-h-screen flex-col;
+}
+
+.page-main {
+  @apply flex-1;
+}
+
+.nav-link {
+  @apply text-sm font-semibold text-huntly-slate transition-colors hover:text-huntly-moss;
+}
+
+.btn-primary {
+  @apply inline-flex cursor-pointer items-center justify-center rounded-full bg-huntly-moss px-5 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:bg-[#435f46] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-huntly-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-background)];
+}
+
+.btn-ghost {
+  @apply inline-flex cursor-pointer items-center justify-center rounded-full border border-[var(--color-border-subtle)] bg-white px-5 py-2.5 text-sm font-semibold text-[var(--color-text-main)] shadow-sm transition hover:border-huntly-moss/40 hover:bg-huntly-parchment focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-huntly-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-background)];
+}
+
+.card {
+  @apply rounded-2xl border border-[var(--color-border-subtle)] bg-white/90 p-6 shadow-soft backdrop-blur;
+}
+
+.section {
+  @apply mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8;
+}
+

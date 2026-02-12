@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect, useState } from "react";
 import {
   View,
   ScrollView,
@@ -14,8 +14,11 @@ import Animated, {
 } from "react-native-reanimated";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { supabase } from "@/services/supabase";
 
 const WHISPERING_WIND_IMAGE = require("@/assets/images/whispering-wind.png");
+
+type FirstSeason = { name: string | null; hero_image: string | null } | null;
 
 const STORY_BLUE = "#4B9CD2";
 const CREAM = "#F4F0EB";
@@ -25,6 +28,19 @@ export default function StoryScreen() {
   const { scaleW, width } = useLayoutScale();
   const creamButtonScale = useSharedValue(1);
   const completeButtonScale = useSharedValue(1);
+  const [firstSeason, setFirstSeason] = useState<FirstSeason>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("seasons")
+        .select("name, hero_image")
+        .order("id", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      setFirstSeason(data ?? null);
+    })();
+  }, []);
 
   const creamButtonAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: creamButtonScale.value }],
@@ -160,14 +176,20 @@ export default function StoryScreen() {
             style={styles.imageCircleWrap}
           >
             <Image
-              source={WHISPERING_WIND_IMAGE}
+              source={
+                firstSeason?.hero_image
+                  ? { uri: firstSeason.hero_image }
+                  : WHISPERING_WIND_IMAGE
+              }
               resizeMode="contain"
               style={styles.imageCircleImage}
             />
           </Animated.View>
           <Animated.View entering={FadeInDown.duration(500).delay(150).springify().damping(18)}>
             <ThemedText type="heading" style={styles.seasonLabel}>Season 1</ThemedText>
-            <ThemedText type="heading" style={styles.seasonTitle}>The Great Awakening</ThemedText>
+            <ThemedText type="heading" style={styles.seasonTitle}>
+              {firstSeason?.name ?? "The Great Awakening"}
+            </ThemedText>
           </Animated.View>
 
           <Animated.View

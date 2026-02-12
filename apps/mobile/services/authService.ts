@@ -1,7 +1,5 @@
 import { supabase } from './supabase';
 import { User as SupabaseUser, Session as SupabaseSession } from '@supabase/supabase-js';
-import Constants from 'expo-constants';
-import * as Linking from 'expo-linking';
 
 /** Check if an email is already registered (via Edge Function). Returns true if available to use. */
 export const checkEmailAvailable = async (email: string): Promise<{ available: boolean; error?: string }> => {
@@ -46,23 +44,38 @@ export const signIn = async (email: string, password: string) => {
   return data;
 };
 
-export const signUp = async (email: string, password: string) => {
-  // Get the URL prefix for the app
-  const redirectUrl = Linking.createURL('auth/confirm');
-  
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: redirectUrl,
-    },
-  });
+export const signUp = async (email: string, password: string, metadata?: Record<string, unknown>) => {
+  const { data, error } = await supabase.functions.invoke<{ status?: string; error?: string }>(
+    'signup-with-email',
+    {
+      body: { email: email.trim().toLowerCase(), password, metadata },
+    }
+  );
 
   if (error) {
     throw error;
   }
+  if (data?.error) {
+    throw new Error(data.error);
+  }
 
-  return data;
+  // No session until user confirms email; return shape expected by AuthContext
+  return { user: null, session: null };
+};
+
+/** Resend verification or recovery email via custom Mailjet-backed edge function. */
+export const resendVerificationEmail = async (email: string, type: 'signup' | 'recovery' = 'signup') => {
+  const { data, error } = await supabase.functions.invoke<{ status?: string; error?: string }>(
+    'resend-auth-email',
+    { body: { email: email.trim().toLowerCase(), type } }
+  );
+
+  if (error) {
+    throw error;
+  }
+  if (data?.error) {
+    throw new Error(data.error);
+  }
 };
 
 export const signOut = async () => {

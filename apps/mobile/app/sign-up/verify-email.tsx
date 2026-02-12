@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, ActivityIndicator, Pressable } from "react-native";
+import { View, ActivityIndicator, Pressable, Alert } from "react-native";
 import { router } from "expo-router";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -7,6 +7,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { useSignUp } from "@/contexts/SignUpContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/services/supabase";
+import { resendVerificationEmail } from "@/services/authService";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 
 const HUNTLY_GREEN = "#4F6F52";
@@ -70,16 +71,13 @@ export default function VerifyEmailScreen() {
 
   const handleResendEmail = async () => {
     if (!parentEmail) return;
-    
+
     try {
-      await supabase.auth.resend({
-        type: 'signup',
-        email: parentEmail,
-      });
-      // Show a brief success message (could use Alert or toast)
-      console.log("Verification email resent");
+      await resendVerificationEmail(parentEmail, "signup");
+      Alert.alert("Email sent", "Check your inbox for a new verification link.");
     } catch (error) {
-      console.error("Error resending email:", error);
+      const message = error instanceof Error ? error.message : "Failed to resend email.";
+      Alert.alert("Error", message);
     }
   };
 

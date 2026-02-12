@@ -60,7 +60,15 @@ You can keep your local `.env` for local dev only. Hosted Supabase is updated by
 2. **Authentication → URL configuration**: add `huntlyclub://auth/confirm` to **Redirect URLs**.
 3. (Optional) Seed data once via the dashboard SQL editor or a one-off script.
 
-### 2. GitHub Actions (migrations + functions)
+### 2. Auth emails (Mailjet)
+
+Sign-up verification and password-reset emails are sent via **Mailjet** (not Supabase’s built-in emails). The mobile app calls Edge Functions that use the Supabase Admin API to create users / generate links, then send the email through Mailjet.
+
+- **Edge functions**: `signup-with-email` (POST `{ email, password, metadata? }`), `resend-auth-email` (POST `{ email, type: 'signup' | 'recovery' }`).
+- **Secrets**: Configure Mailjet and redirect URLs as Supabase function secrets. See [supabase/EDGE_FUNCTION_SECRETS.md](supabase/EDGE_FUNCTION_SECRETS.md) for the list and `supabase secrets set` commands.
+- **Redirect URLs**: Ensure `huntlyclub://auth/confirm` (and, if you add a reset-password screen, `huntlyclub://auth/reset-password`) are in **Authentication → URL configuration** in the Supabase dashboard.
+
+### 3. GitHub Actions (migrations + functions)
 
 The workflow `.github/workflows/supabase-deploy.yml` runs on push to `main` when `supabase/migrations` or `supabase/functions` change (or via **Actions → Supabase (migrations + functions) → Run workflow**). It links the project, runs `supabase db push`, and deploys all edge functions.
 
@@ -77,7 +85,7 @@ Add these **GitHub repository secrets** (Settings → Secrets and variables → 
 
 After that you do not need to run migrations or deploy functions locally for the hosted project, and you do not need hosted URL/keys in your local `.env`.
 
-### 3. EAS builds for devices (internal install)
+### 4. EAS builds for devices (internal install)
 
 1. Set EAS secrets so the built app talks to the hosted backend (EAS does not use your local `.env`):
    ```bash

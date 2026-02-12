@@ -1,10 +1,11 @@
-import React, { useMemo, useEffect, useState } from "react";
+import React, { useMemo, useEffect, useState, useCallback } from "react";
 import {
   View,
   ScrollView,
   Image,
   Pressable,
   StyleSheet,
+  ActivityIndicator,
 } from "react-native";
 import Animated, {
   FadeInDown,
@@ -15,32 +16,97 @@ import Animated, {
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { supabase } from "@/services/supabase";
+import { useRouter } from "expo-router";
 
 const WHISPERING_WIND_IMAGE = require("@/assets/images/whispering-wind.png");
 
 type FirstSeason = { name: string | null; hero_image: string | null } | null;
+
+type LatestChapter = {
+  week_number: number;
+  title: string | null;
+  body: string | null;
+  unlock_date: string;
+} | null;
+
+function formatReleaseDate(isoDate: string): string {
+  const d = new Date(isoDate);
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yy = String(d.getFullYear()).slice(-2);
+  return `${dd}/${mm}/${yy}`;
+}
 
 const STORY_BLUE = "#4B9CD2";
 const CREAM = "#F4F0EB";
 const DARK_GREEN = "#2D5A27";
 
 export default function StoryScreen() {
+  const router = useRouter();
   const { scaleW, width } = useLayoutScale();
   const creamButtonScale = useSharedValue(1);
   const completeButtonScale = useSharedValue(1);
   const [firstSeason, setFirstSeason] = useState<FirstSeason>(null);
+  const [latestChapter, setLatestChapter] = useState<LatestChapter>(null);
+  const [nextChapterDate, setNextChapterDate] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadData = useCallback(async () => {
+    setError(null);
+    setLoading(true);
+
+    const { data: seasonData, error: seasonError } = await supabase
+      .from("seasons")
+      .select("name, hero_image")
+      .order("id", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (seasonError) {
+      setLoading(false);
+      setError(seasonError.message ?? "Failed to load season");
+      return;
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: chapterData, error: chapterError } = await supabase
+      .from("chapters")
+      .select("week_number, title, body, unlock_date")
+      .lte("unlock_date", today)
+      .order("unlock_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (chapterError) {
+      setLoading(false);
+      setError(chapterError.message ?? "Failed to load chapter");
+      return;
+    }
+
+    const { data: nextData, error: nextError } = await supabase
+      .from("chapters")
+      .select("unlock_date")
+      .gt("unlock_date", today)
+      .order("unlock_date", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (nextError) {
+      setLoading(false);
+      setError(nextError.message ?? "Failed to load next chapter date");
+      return;
+    }
+
+    setFirstSeason(seasonData ?? null);
+    setLatestChapter(chapterData ?? null);
+    setNextChapterDate(nextData?.unlock_date ?? null);
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from("seasons")
-        .select("name, hero_image")
-        .order("id", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      setFirstSeason(data ?? null);
-    })();
-  }, []);
+    loadData();
+  }, [loadData]);
 
   const creamButtonAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: creamButtonScale.value }],
@@ -159,9 +225,76 @@ export default function StoryScreen() {
           color: "#FFF",
           textAlign: "center",
         },
+        loadingContainer: {
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          padding: scaleW(24),
+        },
+        loadingText: {
+          fontSize: scaleW(16),
+          color: "#FFF",
+          marginTop: scaleW(16),
+          opacity: 0.9,
+        },
+        errorContainer: {
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          padding: scaleW(24),
+        },
+        errorText: {
+          fontSize: scaleW(16),
+          color: "#FFF",
+          textAlign: "center",
+          marginBottom: scaleW(24),
+          opacity: 0.95,
+        },
+        retryButton: {
+          backgroundColor: CREAM,
+          borderRadius: scaleW(28),
+          paddingVertical: scaleW(14),
+          paddingHorizontal: scaleW(32),
+        },
+        retryButtonText: {
+          fontSize: scaleW(16),
+          fontWeight: "600",
+          color: DARK_GREEN,
+        },
       }),
     [scaleW, width]
   );
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#FFF" />
+        <ThemedText style={styles.loadingText}>Loading story…</ThemedText>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, styles.errorContainer]}>
+        <ThemedText style={styles.errorText}>{error}</ThemedText>
+        <Pressable
+          onPress={loadData}
+          style={styles.retryButton}
+          onPressIn={() => {
+            creamButtonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+          }}
+          onPressOut={() => {
+            creamButtonScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+          }}
+        >
+          <ThemedText type="heading" style={styles.retryButtonText}>
+            Retry
+          </ThemedText>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -170,109 +303,128 @@ export default function StoryScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.seasonContainer}>
-          <Animated.View
-            entering={FadeInDown.duration(600).delay(0).springify().damping(18)}
-            style={styles.imageCircleWrap}
-          >
-            <Image
-              source={
-                firstSeason?.hero_image
-                  ? { uri: firstSeason.hero_image }
-                  : WHISPERING_WIND_IMAGE
-              }
-              resizeMode="contain"
-              style={styles.imageCircleImage}
-            />
-          </Animated.View>
-          <Animated.View entering={FadeInDown.duration(500).delay(150).springify().damping(18)}>
-            <ThemedText type="heading" style={styles.seasonLabel}>Season 1</ThemedText>
-            <ThemedText type="heading" style={styles.seasonTitle}>
-              {firstSeason?.name ?? "The Great Awakening"}
-            </ThemedText>
-          </Animated.View>
-
-          <Animated.View
-            entering={FadeInDown.duration(500).delay(280).springify().damping(18)}
-            style={creamButtonAnimatedStyle}
-          >
-            <Pressable
-              onPressIn={() => {
-                creamButtonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-              }}
-              onPressOut={() => {
-                creamButtonScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-              }}
-              style={styles.creamButton}
+        {firstSeason && (
+          <View style={styles.seasonContainer}>
+            <Animated.View
+              entering={FadeInDown.duration(600).delay(0).springify().damping(18)}
+              style={styles.imageCircleWrap}
             >
-              <ThemedText
-                type="heading"
-                style={{
-                  fontSize: scaleW(16),
-                  fontWeight: "600",
-                  color: DARK_GREEN,
-                }}
-              >
-                See the season story
-              </ThemedText>
-            </Pressable>
-          </Animated.View>
-        </View>
+              <Image
+                source={
+                  firstSeason.hero_image
+                    ? { uri: firstSeason.hero_image }
+                    : WHISPERING_WIND_IMAGE
+                }
+                resizeMode="contain"
+                style={styles.imageCircleImage}
+              />
+            </Animated.View>
+            <Animated.View entering={FadeInDown.duration(500).delay(150).springify().damping(18)}>
+              <ThemedText type="heading" style={styles.seasonLabel}>Season 1</ThemedText>
+              {firstSeason.name != null && firstSeason.name !== "" && (
+                <ThemedText type="heading" style={styles.seasonTitle}>
+                  {firstSeason.name}
+                </ThemedText>
+              )}
+            </Animated.View>
 
-        <View style={styles.chapterContainer}>
-          <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
-            <ThemedText type="heading" style={styles.chapterTitle}>
-              Chapter 4: Hidden Worlds
-            </ThemedText>
-            <ThemedText style={styles.releaseDate}>Released 14/02/25</ThemedText>
-          </Animated.View>
-          <Animated.View entering={FadeInDown.duration(500).delay(100).springify().damping(18)}>
-            <ThemedText style={styles.bodyText}>
-              Not everything is obvious.
-            </ThemedText>
-            <ThemedText style={styles.bodyText}>
-              Some paths are quiet. Some worlds are small. Some things only appear when you look differently.
-            </ThemedText>
-            <ThemedText style={styles.bodyText}>
-              Explorers are very good at noticing what others walk past.
-            </ThemedText>
-            <ThemedText style={[styles.bodyText, { marginBottom: scaleW(4) }]}>
-              This week, look for what's hidden. Or create something that only
-              explorers would find.
-            </ThemedText>
-          </Animated.View>
-
-          <Animated.View
-            entering={FadeInDown.duration(500).delay(200).springify().damping(18)}
-            style={completeButtonAnimatedStyle}
-          >
-            <Pressable
-              onPressIn={() => {
-                completeButtonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-              }}
-              onPressOut={() => {
-                completeButtonScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-              }}
-              style={styles.completeButton}
+            <Animated.View
+              entering={FadeInDown.duration(500).delay(280).springify().damping(18)}
+              style={creamButtonAnimatedStyle}
             >
-              <ThemedText
-                type="heading"
-                style={{
-                  fontSize: scaleW(15),
-                  fontWeight: "600",
-                  color: "#FFF",
+              <Pressable
+                onPressIn={() => {
+                  creamButtonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
                 }}
+                onPressOut={() => {
+                  creamButtonScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+                }}
+                style={styles.creamButton}
               >
-                1 / 2 missions complete →
-              </ThemedText>
-            </Pressable>
-          </Animated.View>
+                <ThemedText
+                  type="heading"
+                  style={{
+                    fontSize: scaleW(16),
+                    fontWeight: "600",
+                    color: DARK_GREEN,
+                  }}
+                >
+                  See the season story
+                </ThemedText>
+              </Pressable>
+            </Animated.View>
+          </View>
+        )}
 
-          <Animated.View entering={FadeInDown.duration(500).delay(280).springify().damping(18)}>
-            <ThemedText type="heading" style={styles.nextLabel}>Next chapter coming on</ThemedText>
-            <ThemedText type="heading" style={styles.nextDate}>21/02/25</ThemedText>
-          </Animated.View>
-        </View>
+        {latestChapter && (
+          <View style={styles.chapterContainer}>
+            <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
+              <ThemedText type="heading" style={styles.chapterTitle}>
+                Chapter {latestChapter.week_number}: {latestChapter.title ?? ""}
+              </ThemedText>
+              <ThemedText style={styles.releaseDate}>
+                Released {formatReleaseDate(latestChapter.unlock_date)}
+              </ThemedText>
+            </Animated.View>
+            <Animated.View entering={FadeInDown.duration(500).delay(100).springify().damping(18)}>
+              {(latestChapter.body
+                ? latestChapter.body.split(/\n\n+/).filter(Boolean)
+                : []
+              ).map((paragraph, i, arr) => (
+                <ThemedText
+                  key={i}
+                  style={[styles.bodyText, i === arr.length - 1 && { marginBottom: scaleW(4) }]}
+                >
+                  {paragraph.trim()}
+                </ThemedText>
+              ))}
+            </Animated.View>
+
+            <Animated.View
+              entering={FadeInDown.duration(500).delay(200).springify().damping(18)}
+              style={completeButtonAnimatedStyle}
+            >
+              <Pressable
+                onPress={() => router.push("/(tabs)/missions")}
+                onPressIn={() => {
+                  completeButtonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+                }}
+                onPressOut={() => {
+                  completeButtonScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+                }}
+                style={styles.completeButton}
+              >
+                <ThemedText
+                  type="heading"
+                  style={{
+                    fontSize: scaleW(15),
+                    fontWeight: "600",
+                    color: "#FFF",
+                  }}
+                >
+                  1 / 2 missions complete →
+                </ThemedText>
+              </Pressable>
+            </Animated.View>
+
+            {nextChapterDate && (
+              <Animated.View entering={FadeInDown.duration(500).delay(280).springify().damping(18)}>
+                <ThemedText type="heading" style={styles.nextLabel}>Next chapter coming on</ThemedText>
+                <ThemedText type="heading" style={styles.nextDate}>
+                  {formatReleaseDate(nextChapterDate)}
+                </ThemedText>
+              </Animated.View>
+            )}
+          </View>
+        )}
+
+        {!firstSeason && !latestChapter && (
+          <View style={[styles.chapterContainer, styles.loadingContainer]}>
+            <ThemedText style={styles.errorText}>
+              No story content available yet.
+            </ThemedText>
+          </View>
+        )}
       </ScrollView>
     </View>
   );

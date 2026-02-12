@@ -33,12 +33,14 @@ export function MissionCard({
       StyleSheet.create({
         outer: {
           width: scaleW(270),
+          height: scaleW(370),
           marginRight: scaleW(12),
           transform: [{ rotate: `${tiltDeg}deg` }],
           marginTop: marginTopOffset,
         },
         inner: {
           width: "100%",
+          height: "100%",
           backgroundColor: "#FFF",
           borderRadius: scaleW(24),
           padding: scaleW(12),
@@ -49,6 +51,7 @@ export function MissionCard({
           shadowRadius: 2,
           shadowOffset: { width: 0, height: 2 },
           elevation: 2,
+          overflow: "hidden",
         },
         imageWrap: {
           width: "100%",
@@ -73,6 +76,7 @@ export function MissionCard({
           marginHorizontal: scaleW(8),
           textAlign: "center",
           color: "#000",
+          flexShrink: 1,
         },
         startButton: {
           backgroundColor: HUNTLY_GREEN,
@@ -110,7 +114,9 @@ export function MissionCard({
           />
         </View>
         <ThemedText type="heading" style={styles.title}>{card.title}</ThemedText>
-        <ThemedText style={styles.description}>{card.description}</ThemedText>
+        <ThemedText style={styles.description} numberOfLines={4} ellipsizeMode="tail">
+          {card.description}
+        </ThemedText>
         <Pressable style={styles.startButton} onPress={handleStart}>
           <ThemedText
             type="heading"

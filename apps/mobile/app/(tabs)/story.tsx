@@ -15,19 +15,9 @@ import Animated, {
 } from "react-native-reanimated";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
-import { supabase } from "@/services/supabase";
+import { useFirstSeason } from "@/hooks/useFirstSeason";
+import { useCurrentChapter } from "@/hooks/useCurrentChapter";
 import { useRouter } from "expo-router";
-
-const WHISPERING_WIND_IMAGE = require("@/assets/images/whispering-wind.png");
-
-type FirstSeason = { name: string | null; hero_image: string | null } | null;
-
-type LatestChapter = {
-  week_number: number;
-  title: string | null;
-  body: string | null;
-  unlock_date: string;
-} | null;
 
 function formatReleaseDate(isoDate: string): string {
   const d = new Date(isoDate);
@@ -44,69 +34,18 @@ const DARK_GREEN = "#2D5A27";
 export default function StoryScreen() {
   const router = useRouter();
   const { scaleW, width } = useLayoutScale();
+  const { firstSeason, heroImageSource, loading: seasonLoading, error: seasonError, refetch: refetchSeason } = useFirstSeason();
+  const { currentChapter, nextChapterDate, loading: chapterLoading, error: chapterError, refetch: refetchChapter } = useCurrentChapter();
   const creamButtonScale = useSharedValue(1);
   const completeButtonScale = useSharedValue(1);
-  const [firstSeason, setFirstSeason] = useState<FirstSeason>(null);
-  const [latestChapter, setLatestChapter] = useState<LatestChapter>(null);
-  const [nextChapterDate, setNextChapterDate] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
-    setError(null);
-    setLoading(true);
+  const loading = seasonLoading || chapterLoading;
+  const error = seasonError ?? chapterError;
 
-    const { data: seasonData, error: seasonError } = await supabase
-      .from("seasons")
-      .select("name, hero_image")
-      .order("id", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    if (seasonError) {
-      setLoading(false);
-      setError(seasonError.message ?? "Failed to load season");
-      return;
-    }
-
-    const today = new Date().toISOString().slice(0, 10);
-    const { data: chapterData, error: chapterError } = await supabase
-      .from("chapters")
-      .select("week_number, title, body, unlock_date")
-      .lte("unlock_date", today)
-      .order("unlock_date", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (chapterError) {
-      setLoading(false);
-      setError(chapterError.message ?? "Failed to load chapter");
-      return;
-    }
-
-    const { data: nextData, error: nextError } = await supabase
-      .from("chapters")
-      .select("unlock_date")
-      .gt("unlock_date", today)
-      .order("unlock_date", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    if (nextError) {
-      setLoading(false);
-      setError(nextError.message ?? "Failed to load next chapter date");
-      return;
-    }
-
-    setFirstSeason(seasonData ?? null);
-    setLatestChapter(chapterData ?? null);
-    setNextChapterDate(nextData?.unlock_date ?? null);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const handleRetry = useCallback(() => {
+    refetchSeason();
+    refetchChapter();
+  }, [refetchSeason, refetchChapter]);
 
   const creamButtonAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: creamButtonScale.value }],
@@ -279,7 +218,7 @@ export default function StoryScreen() {
       <View style={[styles.container, styles.errorContainer]}>
         <ThemedText style={styles.errorText}>{error}</ThemedText>
         <Pressable
-          onPress={loadData}
+          onPress={handleRetry}
           style={styles.retryButton}
           onPressIn={() => {
             creamButtonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
@@ -310,11 +249,7 @@ export default function StoryScreen() {
               style={styles.imageCircleWrap}
             >
               <Image
-                source={
-                  firstSeason.hero_image
-                    ? { uri: firstSeason.hero_image }
-                    : WHISPERING_WIND_IMAGE
-                }
+                source={heroImageSource}
                 resizeMode="contain"
                 style={styles.imageCircleImage}
               />
@@ -356,19 +291,19 @@ export default function StoryScreen() {
           </View>
         )}
 
-        {latestChapter && (
+        {currentChapter && (
           <View style={styles.chapterContainer}>
             <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
               <ThemedText type="heading" style={styles.chapterTitle}>
-                Chapter {latestChapter.week_number}: {latestChapter.title ?? ""}
+                Chapter {currentChapter.week_number}: {currentChapter.title ?? ""}
               </ThemedText>
               <ThemedText style={styles.releaseDate}>
-                Released {formatReleaseDate(latestChapter.unlock_date)}
+                Released {formatReleaseDate(currentChapter.unlock_date)}
               </ThemedText>
             </Animated.View>
             <Animated.View entering={FadeInDown.duration(500).delay(100).springify().damping(18)}>
-              {(latestChapter.body
-                ? latestChapter.body.split(/\n\n+/).filter(Boolean)
+              {(currentChapter.body
+                ? currentChapter.body.split(/\n\n+/).filter(Boolean)
                 : []
               ).map((paragraph, i, arr) => (
                 <ThemedText
@@ -418,7 +353,7 @@ export default function StoryScreen() {
           </View>
         )}
 
-        {!firstSeason && !latestChapter && (
+        {!firstSeason && !currentChapter && (
           <View style={[styles.chapterContainer, styles.loadingContainer]}>
             <ThemedText style={styles.errorText}>
               No story content available yet.

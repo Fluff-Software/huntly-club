@@ -21,7 +21,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { MissionCard } from "@/components/MissionCard";
 import { StatCard } from "@/components/StatCard";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
-import { MISSION_CARDS } from "@/constants/missionCards";
+import { useCurrentChapterActivities } from "@/hooks/useCurrentChapterActivities";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { getTeamById } from "@/services/profileService";
 import { getTeamCardConfig } from "@/utils/teamUtils";
@@ -38,6 +38,7 @@ const CREAM = "#F4F0EB";
 export default function HomeScreen() {
   const { scaleW, width, height } = useLayoutScale();
   const { currentPlayer } = usePlayer();
+  const { activities: missionCards } = useCurrentChapterActivities();
   const [teamName, setTeamName] = useState<string | null>(null);
   const initialIndex = 1; // activity (Welcome back)
   const [currentIndex, setCurrentIndex] = useState<number>(initialIndex);
@@ -597,7 +598,7 @@ export default function HomeScreen() {
               { useNativeDriver: true }
             )}
           >
-            {MISSION_CARDS.map((card, index) => {
+            {missionCards.map((card, index) => {
               const centerScrollX = index === 0 ? 0 : getMissionCenterScrollX(index);
               const rotation = missionCardsScrollX.interpolate({
                 inputRange: [

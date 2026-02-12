@@ -647,7 +647,7 @@ export default function ProfileScreen() {
                   <View
                     style={[
                       styles.playerAccent,
-                      { backgroundColor: PLAYER_ACCENTS[index % PLAYER_ACCENTS.length] },
+                      { backgroundColor: profile.colour || PLAYER_ACCENTS[index % PLAYER_ACCENTS.length] },
                     ]}
                   />
                   <View style={styles.playerCardContent}>

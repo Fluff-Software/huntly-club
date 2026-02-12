@@ -56,12 +56,12 @@ export default function CompletionScreen() {
   };
 
   const displayProfiles = useMemo(() => {
-    const colours = [CARD_BAR_BLUE, CARD_BAR_GREEN];
+    const fallbackColours = [CARD_BAR_BLUE, CARD_BAR_GREEN];
     return profiles.map((p, i) => ({
       id: p.id,
       name: p.name ?? "Player",
       nickname: p.nickname ?? "",
-      colour: colours[i % colours.length],
+      colour: p.colour || fallbackColours[i % fallbackColours.length],
     }));
   }, [profiles]);
 
@@ -152,11 +152,14 @@ export default function CompletionScreen() {
           flexDirection: "row",
           backgroundColor: "#FFF",
           borderRadius: scaleW(12),
-          borderWidth: 1,
-          borderColor: "#D0D0D0",
           overflow: "hidden",
+          borderWidth: 3,
+          borderColor: "#FFF",
         },
-        playerCardBar: { width: scaleW(6), alignSelf: "stretch" },
+        playerCardBar: {
+          width: scaleW(20),
+          borderRadius: scaleW(2),
+        },
         playerCardContent: {
           flex: 1,
           flexDirection: "row",

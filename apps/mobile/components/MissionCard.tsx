@@ -99,7 +99,10 @@ export function MissionCard({
     if (onStartPress) {
       onStartPress();
     } else {
-      router.push("/(tabs)/activity/mission" as Parameters<typeof router.push>[0]);
+      router.push({
+        pathname: "/(tabs)/activity/mission",
+        params: { id: card.id },
+      } as Parameters<typeof router.push>[0]);
     }
   };
 

@@ -1,14 +1,17 @@
-import React, { useMemo } from "react";
-import { View, ScrollView, Image, Pressable, StyleSheet } from "react-native";
+import React, { useMemo, useEffect, useState, useCallback } from "react";
+import { View, ScrollView, Image, Pressable, StyleSheet, ActivityIndicator } from "react-native";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { getActivityById, getActivityImageSource } from "@/services/packService";
+import type { Activity } from "@/types/activity";
+import { getCategoryLabel, getCategoryIcon, getCategoryColor } from "@/utils/categoryUtils";
 
 const TEXT_SECONDARY = "#2F3336";
 const LIGHT_GREEN = "#7FAF8A";
@@ -16,28 +19,63 @@ const LIGHT_BG = "#f8f8f8";
 const CREAM = "#F6F5F1";
 const HUNTLY_GREEN = "#4F6F52";
 
-const LASER_FORTRESS = require("@/assets/images/laser-fortress.jpg");
-const PLANTING = require("@/assets/images/planting.png");
-const BUILDING = require("@/assets/images/building.png");
-const ACTIVITY_1 = require("@/assets/images/activity-1.png");
-const ACTIVITY_2 = require("@/assets/images/activity-2.png");
 const CLUB_1 = require("@/assets/images/club-1.png");
 const CLUB_2 = require("@/assets/images/club-2.png");
 
+function splitBlocks(text: string | null): string[] {
+  if (!text || !text.trim()) return [];
+  return text.split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
+}
+
+function splitBullets(text: string | null): string[] {
+  if (!text || !text.trim()) return [];
+  return text.split(/\n/).map((s) => s.trim()).filter(Boolean);
+}
+
 export default function InstructionScreen() {
   const router = useRouter();
+  const { id } = useLocalSearchParams<{ id?: string }>();
   const { scaleW } = useLayoutScale();
+  const [activity, setActivity] = useState<Activity | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const completeScale = useSharedValue(1);
   const completeAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: completeScale.value }],
   }));
 
+  const loadActivity = useCallback(async () => {
+    if (!id) {
+      setError("No activity selected");
+      setLoading(false);
+      return;
+    }
+    setError(null);
+    setLoading(true);
+    try {
+      const data = await getActivityById(Number(id));
+      setActivity(data ?? null);
+      if (!data) setError("Activity not found");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load activity");
+      setActivity(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    loadActivity();
+  }, [loadActivity]);
+
   const styles = useMemo(
     () =>
       StyleSheet.create({
         container: { flex: 1 },
         pageInner: { flex: 1, backgroundColor: LIGHT_BG },
+        loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", padding: scaleW(24) },
+        errorText: { fontSize: scaleW(16), color: TEXT_SECONDARY, textAlign: "center" },
         titleContainer: {
           backgroundColor: LIGHT_GREEN,
           paddingTop: scaleW(60),
@@ -58,9 +96,11 @@ export default function InstructionScreen() {
           width: "100%",
           height: scaleW(220),
           borderRadius: scaleW(20),
+          backgroundColor: "#1a1a2e",
         },
         tagsRow: {
           flexDirection: "row",
+          flexWrap: "wrap",
           justifyContent: "center",
           alignItems: "center",
           gap: scaleW(12),
@@ -76,7 +116,6 @@ export default function InstructionScreen() {
           borderRadius: scaleW(20),
           gap: scaleW(6),
         },
-        tagIcon: { width: scaleW(14), height: scaleW(14) },
         tagText: { fontSize: scaleW(12), color: "#000" },
         descriptionBox: {
           backgroundColor: CREAM,
@@ -106,20 +145,10 @@ export default function InstructionScreen() {
           lineHeight: scaleW(20),
           marginRight: scaleW(8),
         },
-        taskRow: {
-          alignItems: "flex-start",
-          gap: scaleW(16),
-        },
         taskText: {
-          flex: 1,
           fontSize: scaleW(16),
           color: TEXT_SECONDARY,
           lineHeight: scaleW(20),
-        },
-        taskImage: {
-          width: "100%",
-          height: scaleW(115),
-          borderRadius: scaleW(10),
         },
         hintItem: {
           flexDirection: "row",
@@ -170,6 +199,29 @@ export default function InstructionScreen() {
     [scaleW]
   );
 
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color={HUNTLY_GREEN} />
+        <ThemedText style={[styles.errorText, { marginTop: scaleW(16) }]}>Loading activity…</ThemedText>
+      </View>
+    );
+  }
+
+  if (error || !activity) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ThemedText style={styles.errorText}>{error ?? "Activity not found"}</ThemedText>
+      </View>
+    );
+  }
+
+  const imageSource = getActivityImageSource(activity.image);
+  const categories = activity.categories && Array.isArray(activity.categories) ? activity.categories : [];
+  const hintLines = splitBullets(activity.hints);
+  const tipsBlocks = splitBlocks(activity.tips);
+  const triviaBlocks = splitBlocks(activity.trivia);
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -182,85 +234,97 @@ export default function InstructionScreen() {
           style={styles.titleContainer}
         >
           <ThemedText type="heading" style={styles.titleText}>
-            Build a laser fortress
+            {activity.title}
           </ThemedText>
           <Image
-            source={LASER_FORTRESS}
+            source={imageSource as { uri: string } | number}
             style={styles.mainImage}
             resizeMode="cover"
           />
-          <View style={styles.tagsRow}>
-            <View style={styles.tag}>
-              <Image source={PLANTING} style={styles.tagIcon} resizeMode="contain" />
-              <ThemedText style={styles.tagText}>Nature</ThemedText>
+          {categories.length > 0 && (
+            <View style={styles.tagsRow}>
+              {categories.slice(0, 5).map((cat) => (
+                <View
+                  key={cat}
+                  style={[styles.tag, { backgroundColor: `${getCategoryColor(cat)}20`, borderWidth: 1, borderColor: `${getCategoryColor(cat)}40` }]}
+                >
+                  <ThemedText style={[styles.tagText, { color: getCategoryColor(cat) }]}>
+                    {getCategoryIcon(cat)} {getCategoryLabel(cat)}
+                  </ThemedText>
+                </View>
+              ))}
             </View>
-            <View style={styles.tag}>
-              <Image source={BUILDING} style={styles.tagIcon} resizeMode="contain" />
-              <ThemedText style={styles.tagText}>Building</ThemedText>
+          )}
+          {(activity.description != null && activity.description !== "") && (
+            <View style={styles.descriptionBox}>
+              <ThemedText style={styles.descriptionText}>{activity.description}</ThemedText>
             </View>
-          </View>
-          <View style={styles.descriptionBox}>
-            <ThemedText style={styles.descriptionText}>
-              Set up a strong defence to help keep the gem safe.
-            </ThemedText>
-          </View>
+          )}
         </Animated.View>
 
-        <Animated.View
-          entering={FadeInDown.duration(500).delay(150).springify().damping(18)}
-          style={styles.section}
-        >
-          <ThemedText type="heading" style={styles.sectionTitle}>
-            What to do
-          </ThemedText>
-          <Animated.View entering={FadeInDown.duration(400).delay(200).springify().damping(18)} style={styles.taskRow}>
-            <ThemedText style={styles.taskText}>
-              1. Ad deserunt duis exercitation non nostrud Lorem incididunt eu
-              mollit reprehenderit dolore
+        {(activity.long_description != null && activity.long_description.trim() !== "") && (
+          <Animated.View
+            entering={FadeInDown.duration(500).delay(150).springify().damping(18)}
+            style={styles.section}
+          >
+            <ThemedText type="heading" style={styles.sectionTitle}>
+              What to do
             </ThemedText>
-            <Image source={ACTIVITY_1} style={styles.taskImage} resizeMode="cover" />
+            <ThemedText style={styles.taskText}>{activity.long_description.trim()}</ThemedText>
           </Animated.View>
-          <Animated.View entering={FadeInDown.duration(400).delay(280).springify().damping(18)} style={styles.taskRow}>
-            <ThemedText style={styles.taskText}>
-              2. Ad deserunt duis exercitation non nostrud Lorem incididunt eu
-              mollit reprehenderit dolore
+        )}
+
+        {tipsBlocks.length > 0 && (
+          <Animated.View
+            entering={FadeInDown.duration(500).delay(280).springify().damping(18)}
+            style={styles.section}
+          >
+            <ThemedText type="heading" style={styles.sectionTitle}>
+              Tips
             </ThemedText>
-            <Image source={ACTIVITY_2} style={styles.taskImage} resizeMode="cover" />
+            {tipsBlocks.map((block, i) => (
+              <ThemedText key={i} style={[styles.taskText, { marginBottom: scaleW(8) }]}>
+                {block}
+              </ThemedText>
+            ))}
           </Animated.View>
-        </Animated.View>
+        )}
+
+        {hintLines.length > 0 && (
+          <Animated.View
+            entering={FadeInDown.duration(500).delay(380).springify().damping(18)}
+            style={styles.section}
+          >
+            <ThemedText type="heading" style={styles.sectionTitle}>
+              Hints
+            </ThemedText>
+            {hintLines.map((line, i) => (
+              <View key={i} style={styles.hintItem}>
+                <ThemedText style={styles.bullet}>•</ThemedText>
+                <ThemedText style={styles.hintText}>{line}</ThemedText>
+              </View>
+            ))}
+          </Animated.View>
+        )}
+
+        {triviaBlocks.length > 0 && (
+          <Animated.View
+            entering={FadeInDown.duration(500).delay(480).springify().damping(18)}
+            style={styles.section}
+          >
+            <ThemedText type="heading" style={styles.sectionTitle}>
+              Trivia
+            </ThemedText>
+            {triviaBlocks.map((block, i) => (
+              <ThemedText key={i} style={[styles.taskText, { marginBottom: scaleW(8) }]}>
+                {block}
+              </ThemedText>
+            ))}
+          </Animated.View>
+        )}
 
         <Animated.View
-          entering={FadeInDown.duration(500).delay(380).springify().damping(18)}
-          style={styles.section}
-        >
-          <ThemedText type="heading" style={styles.sectionTitle}>
-            Hints
-          </ThemedText>
-          <View style={styles.hintItem}>
-            <ThemedText style={styles.bullet}>•</ThemedText>
-            <ThemedText style={styles.hintText}>
-              Hint 1: Cilum quis magna elit magra esse laboris elit cillum
-              locorum dolor fugiat od od.
-            </ThemedText>
-          </View>
-          <View style={styles.hintItem}>
-            <ThemedText style={styles.bullet}>•</ThemedText>
-            <ThemedText style={styles.hintText}>
-              Cillum quis magna elit magna esse laboris elit cillum laborum
-              dolor fugiat ad ad.
-            </ThemedText>
-          </View>
-          <View style={styles.hintItem}>
-            <ThemedText style={styles.bullet}>•</ThemedText>
-            <ThemedText style={styles.hintText}>
-              Cillurn quis magna elit magna esse laboris elit cillum laborum
-              dolor fugiat ad ad.
-            </ThemedText>
-          </View>
-        </Animated.View>
-
-        <Animated.View
-          entering={FadeInDown.duration(500).delay(480).springify().damping(18)}
+          entering={FadeInDown.duration(500).delay(580).springify().damping(18)}
           style={styles.section}
         >
           <View>
@@ -287,7 +351,7 @@ export default function InstructionScreen() {
         >
           <Pressable
             style={styles.completeButton}
-            onPress={() => router.push("/(tabs)/activity/mission/completion")}
+            onPress={() => router.push({ pathname: "/(tabs)/activity/mission/completion", params: { id: String(activity.id) } } as Parameters<typeof router.push>[0])}
             onPressIn={() => {
               completeScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
             }}

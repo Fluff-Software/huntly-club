@@ -52,10 +52,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       "expo-splash-screen",
       {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
+          "image": "./assets/images/logo.png",
+          "imageWidth": 240,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#4F6F52"
         }
       ]
     ],
@@ -75,8 +75,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   owner: process.env.EXPO_PUBLIC_OWNER,
   splash: {
-    image: "./assets/images/splash-icon.png",
+    image: "./assets/images/logo.png",
     resizeMode: "contain",
-    backgroundColor: "#ffffff"
+    backgroundColor: "#4F6F52"
   },
 });

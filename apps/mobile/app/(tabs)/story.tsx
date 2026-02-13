@@ -18,6 +18,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useFirstSeason } from "@/hooks/useFirstSeason";
 import { useCurrentChapter } from "@/hooks/useCurrentChapter";
+import { useAllChapters } from "@/hooks/useAllChapters";
 import { useRouter } from "expo-router";
 
 function formatReleaseDate(isoDate: string): string {
@@ -36,17 +37,19 @@ export default function StoryScreen() {
   const router = useRouter();
   const { scaleW, width } = useLayoutScale();
   const { firstSeason, heroImageSource, loading: seasonLoading, error: seasonError, refetch: refetchSeason } = useFirstSeason();
-  const { currentChapter, nextChapterDate, loading: chapterLoading, error: chapterError, refetch: refetchChapter } = useCurrentChapter();
+  const { nextChapterDate, loading: currentChapterLoading, error: chapterError, refetch: refetchChapter } = useCurrentChapter();
+  const { chapters, loading: chaptersLoading, error: chaptersError, refetch: refetchChapters } = useAllChapters();
   const creamButtonScale = useSharedValue(1);
   const completeButtonScale = useSharedValue(1);
 
-  const loading = seasonLoading || chapterLoading;
-  const error = seasonError ?? chapterError;
+  const loading = seasonLoading || currentChapterLoading || chaptersLoading;
+  const error = seasonError ?? chapterError ?? chaptersError;
 
   const handleRetry = useCallback(() => {
     refetchSeason();
     refetchChapter();
-  }, [refetchSeason, refetchChapter]);
+    refetchChapters();
+  }, [refetchSeason, refetchChapter, refetchChapters]);
 
   const creamButtonAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: creamButtonScale.value }],
@@ -295,19 +298,19 @@ export default function StoryScreen() {
           </View>
         )}
 
-        {currentChapter && (
-          <View style={styles.chapterContainer}>
-            <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
+        {chapters.length > 0 && chapters.map((chapter, index) => (
+          <View key={chapter.id} style={styles.chapterContainer}>
+            <Animated.View entering={FadeInDown.duration(500).delay(index * 50).springify().damping(18)}>
               <ThemedText type="heading" style={styles.chapterTitle}>
-                Chapter {currentChapter.week_number}: {currentChapter.title ?? ""}
+                Chapter {chapter.week_number}: {chapter.title ?? ""}
               </ThemedText>
               <ThemedText style={styles.releaseDate}>
-                Released {formatReleaseDate(currentChapter.unlock_date)}
+                Released {formatReleaseDate(chapter.unlock_date)}
               </ThemedText>
             </Animated.View>
-            <Animated.View entering={FadeInDown.duration(500).delay(100).springify().damping(18)}>
-              {(currentChapter.body
-                ? currentChapter.body.split(/\n\n+/).filter(Boolean)
+            <Animated.View entering={FadeInDown.duration(500).delay(100 + index * 50).springify().damping(18)}>
+              {(chapter.body
+                ? chapter.body.split(/\n\n+/).filter(Boolean)
                 : []
               ).map((paragraph, i, arr) => (
                 <ThemedText
@@ -318,46 +321,49 @@ export default function StoryScreen() {
                 </ThemedText>
               ))}
             </Animated.View>
-
-            <Animated.View
-              entering={FadeInDown.duration(500).delay(200).springify().damping(18)}
-              style={completeButtonAnimatedStyle}
-            >
-              <Pressable
-                onPress={() => router.push("/(tabs)/missions")}
-                onPressIn={() => {
-                  completeButtonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-                }}
-                onPressOut={() => {
-                  completeButtonScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-                }}
-                style={styles.completeButton}
+            {index === 0 && (
+              <Animated.View
+                entering={FadeInDown.duration(500).delay(200).springify().damping(18)}
+                style={completeButtonAnimatedStyle}
               >
-                <ThemedText
-                  type="heading"
-                  style={{
-                    fontSize: scaleW(15),
-                    fontWeight: "600",
-                    color: "#FFF",
+                <Pressable
+                  onPress={() => router.push("/(tabs)/missions")}
+                  onPressIn={() => {
+                    completeButtonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
                   }}
+                  onPressOut={() => {
+                    completeButtonScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+                  }}
+                  style={styles.completeButton}
                 >
-                  1 / 2 missions complete →
-                </ThemedText>
-              </Pressable>
-            </Animated.View>
-
-            {nextChapterDate && (
-              <Animated.View entering={FadeInDown.duration(500).delay(280).springify().damping(18)}>
-                <ThemedText type="heading" style={styles.nextLabel}>Next chapter coming on</ThemedText>
-                <ThemedText type="heading" style={styles.nextDate}>
-                  {formatReleaseDate(nextChapterDate)}
-                </ThemedText>
+                  <ThemedText
+                    type="heading"
+                    style={{
+                      fontSize: scaleW(15),
+                      fontWeight: "600",
+                      color: "#FFF",
+                    }}
+                  >
+                    1 / 2 missions complete →
+                  </ThemedText>
+                </Pressable>
               </Animated.View>
             )}
           </View>
+        ))}
+
+        {nextChapterDate && chapters.length > 0 && (
+          <View style={styles.chapterContainer}>
+            <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
+              <ThemedText type="heading" style={styles.nextLabel}>Next chapter coming on</ThemedText>
+              <ThemedText type="heading" style={styles.nextDate}>
+                {formatReleaseDate(nextChapterDate)}
+              </ThemedText>
+            </Animated.View>
+          </View>
         )}
 
-        {!firstSeason && !currentChapter && (
+        {!firstSeason && chapters.length === 0 && (
           <View style={[styles.chapterContainer, styles.loadingContainer]}>
             <ThemedText style={styles.errorText}>
               No story content available yet.

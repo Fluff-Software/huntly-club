@@ -5,6 +5,7 @@ import {
   Image,
   Pressable,
   TextInput,
+  Text,
   StyleSheet,
   Alert,
   Modal,
@@ -15,17 +16,22 @@ import {
   BackHandler,
 } from "react-native";
 import Animated, {
+  Easing,
   FadeInDown,
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withTiming,
 } from "react-native-reanimated";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { getActivityById } from "@/services/packService";
+import type { Activity } from "@/types/activity";
 
 const TEXT_SECONDARY = "#2F3336";
 const LIGHT_GREEN = "#7FAF8A";
@@ -36,13 +42,83 @@ const CARD_BAR_GREEN = "#98D8A8";
 const GALLERY_ICON = require("@/assets/images/gallery.png");
 const CAMERA_ICON = require("@/assets/images/camera.png");
 
+const EXPAND_DURATION = 500;
+const TIMING_EASING = Easing.out(Easing.cubic);
+
+function ExpandableSection({
+  isSelected,
+  children,
+}: {
+  isSelected: boolean;
+  children: React.ReactNode;
+}) {
+  const height = useSharedValue(0);
+  const [measuredHeight, setMeasuredHeight] = useState(0);
+  const [showContent, setShowContent] = useState(false);
+
+  useEffect(() => {
+    if (isSelected) {
+      setShowContent(true);
+      if (measuredHeight > 0) {
+        height.value = withTiming(measuredHeight, {
+          duration: EXPAND_DURATION,
+          easing: TIMING_EASING,
+        });
+      }
+    } else {
+      height.value = withTiming(
+        0,
+        { duration: EXPAND_DURATION, easing: TIMING_EASING },
+        (finished) => {
+          if (finished) {
+            runOnJS(setShowContent)(false);
+          }
+        }
+      );
+    }
+  }, [isSelected, measuredHeight, height]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    height: height.value,
+    overflow: "hidden" as const,
+  }));
+
+  return (
+    <Animated.View style={animatedStyle}>
+      {showContent ? (
+        <View onLayout={(e) => setMeasuredHeight(e.nativeEvent.layout.height)}>
+          {children}
+        </View>
+      ) : (
+        <View
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: 0,
+            opacity: 0,
+            zIndex: -1,
+          }}
+          onLayout={(e) => setMeasuredHeight(e.nativeEvent.layout.height)}
+          pointerEvents="none"
+        >
+          {children}
+        </View>
+      )}
+    </Animated.View>
+  );
+}
+
 export default function CompletionScreen() {
   const router = useRouter();
+  const { id } = useLocalSearchParams<{ id?: string }>();
   const { scaleW } = useLayoutScale();
   const { profiles } = usePlayer();
+  const [activity, setActivity] = useState<Activity | null>(null);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<number[]>([]);
-  const [hardestText, setHardestText] = useState("");
-  const [photoUris, setPhotoUris] = useState<string[]>([]);
+  const [playerPhotos, setPlayerPhotos] = useState<Record<number, string[]>>({});
+  const [playerHardest, setPlayerHardest] = useState<Record<number, string>>({});
+  const [galleryPlayerId, setGalleryPlayerId] = useState<number | null>(null);
   const [galleryModalVisible, setGalleryModalVisible] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
@@ -50,9 +126,27 @@ export default function CompletionScreen() {
     number | null
   >(null);
 
+  const getPlayerPhotos = (playerId: number) => playerPhotos[playerId] ?? [];
+  const getPlayerHardest = (playerId: number) => playerHardest[playerId] ?? "";
+
+  useEffect(() => {
+    if (!id) return;
+    let isMounted = true;
+    getActivityById(Number(id))
+      .then((data) => {
+        if (isMounted && data) setActivity(data);
+      })
+      .catch(() => {
+        if (isMounted) setActivity(null);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
   const cameraScale = useSharedValue(1);
   const galleryScale = useSharedValue(1);
-  const nextScale = useSharedValue(1);
+  const completeScale = useSharedValue(1);
   const cameraAnimatedStyle = useAnimatedStyle(() => ({
     flex: 1,
     transform: [{ scale: cameraScale.value }],
@@ -61,8 +155,8 @@ export default function CompletionScreen() {
     flex: 1,
     transform: [{ scale: galleryScale.value }],
   }));
-  const nextAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: nextScale.value }],
+  const completeAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: completeScale.value }],
   }));
 
   const togglePlayerSelection = (id: number) => {
@@ -71,7 +165,7 @@ export default function CompletionScreen() {
     );
   };
 
-  const takePhoto = async () => {
+  const takePhoto = async (playerId: number) => {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== "granted") {
@@ -86,7 +180,10 @@ export default function CompletionScreen() {
         quality: 0.8,
       });
       if (!result.canceled && result.assets[0]) {
-        setPhotoUris((prev) => [...prev, result.assets[0].uri]);
+        setPlayerPhotos((prev) => ({
+          ...prev,
+          [playerId]: [...(prev[playerId] ?? []), result.assets[0].uri],
+        }));
       }
     } catch (error) {
       console.error("Camera error:", error);
@@ -94,7 +191,7 @@ export default function CompletionScreen() {
     }
   };
 
-  const pickImage = async () => {
+  const pickImage = async (playerId: number) => {
     try {
       const { status } =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -111,10 +208,13 @@ export default function CompletionScreen() {
         quality: 0.8,
       });
       if (!result.canceled && result.assets.length > 0) {
-        setPhotoUris((prev) => [
+        setPlayerPhotos((prev) => ({
           ...prev,
-          ...result.assets.map((asset) => asset.uri),
-        ]);
+          [playerId]: [
+            ...(prev[playerId] ?? []),
+            ...result.assets.map((asset) => asset.uri),
+          ],
+        }));
       }
     } catch (error) {
       console.error("Image picker error:", error);
@@ -122,7 +222,8 @@ export default function CompletionScreen() {
     }
   };
 
-  const openGalleryModal = () => {
+  const openGalleryModal = (playerId: number) => {
+    setGalleryPlayerId(playerId);
     setSelectMode(false);
     setSelectedIndices([]);
     setFullScreenPhotoIndex(null);
@@ -131,6 +232,7 @@ export default function CompletionScreen() {
 
   const closeGalleryModal = () => {
     setGalleryModalVisible(false);
+    setGalleryPlayerId(null);
     setSelectMode(false);
     setSelectedIndices([]);
     setFullScreenPhotoIndex(null);
@@ -142,19 +244,33 @@ export default function CompletionScreen() {
     );
   };
 
+  const modalPhotoUris = galleryPlayerId != null ? getPlayerPhotos(galleryPlayerId) : [];
+
   const deletePhotoAtIndex = (index: number) => {
-    setPhotoUris((prev) => prev.filter((_, i) => i !== index));
+    if (galleryPlayerId == null) return;
+    setPlayerPhotos((prev) => ({
+      ...prev,
+      [galleryPlayerId]: (prev[galleryPlayerId] ?? []).filter((_, i) => i !== index),
+    }));
     setFullScreenPhotoIndex(null);
-    if (photoUris.length <= 1) closeGalleryModal();
+    if (modalPhotoUris.length === 1) closeGalleryModal();
   };
 
   const deleteSelectedPhotos = () => {
-    setPhotoUris((prev) =>
-      prev.filter((_, i) => !selectedIndices.includes(i))
-    );
+    if (galleryPlayerId == null) return;
+    setPlayerPhotos((prev) => ({
+      ...prev,
+      [galleryPlayerId]: (prev[galleryPlayerId] ?? []).filter(
+        (_, i) => !selectedIndices.includes(i)
+      ),
+    }));
     setSelectedIndices([]);
     setSelectMode(false);
-    if (selectedIndices.length === photoUris.length) closeGalleryModal();
+    if (selectedIndices.length === modalPhotoUris.length) closeGalleryModal();
+  };
+
+  const setPlayerHardestText = (playerId: number, text: string) => {
+    setPlayerHardest((prev) => ({ ...prev, [playerId]: text }));
   };
 
   useEffect(() => {
@@ -244,12 +360,20 @@ export default function CompletionScreen() {
           marginBottom: scaleW(32),
         },
         photoUploadRow: { flexDirection: "row" },
-        photoOption: {
+        photoOptionCell: {
           flex: 1,
           alignItems: "center",
           justifyContent: "center",
-          paddingVertical: photoUris.length > 0 ? scaleW(24) : scaleW(72),
+          paddingVertical: scaleW(72),
           paddingHorizontal: scaleW(16),
+        },
+        photoOptionTouchable: {
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        photoOptionContent: {
+          alignItems: "center",
+          justifyContent: "center",
         },
         photoOptionDivider: {
           borderStyle: "dashed",
@@ -263,8 +387,11 @@ export default function CompletionScreen() {
         },
         photoOptionLabel: {
           fontSize: scaleW(14),
-          fontWeight: "500",
-          color: TEXT_SECONDARY,
+          fontWeight: "600",
+          color: "#1a1a1a",
+          marginTop: scaleW(8),
+          textAlign: "center" as const,
+          minHeight: scaleW(20),
         },
         hardestHeading: {
           fontSize: scaleW(16),
@@ -292,6 +419,13 @@ export default function CompletionScreen() {
           color: TEXT_SECONDARY,
           textAlign: "center",
           marginBottom: scaleW(16),
+        },
+        playerSectionHeading: {
+          fontSize: scaleW(16),
+          fontWeight: "600",
+          color: TEXT_SECONDARY,
+          marginBottom: scaleW(12),
+          marginTop: scaleW(24),
         },
         playerCardContainer: { gap: scaleW(12), marginBottom: scaleW(24) },
         playerCard: {
@@ -335,7 +469,7 @@ export default function CompletionScreen() {
           justifyContent: "center",
         },
         checkboxChecked: { backgroundColor: TEXT_SECONDARY },
-        nextButton: {
+        completeButton: {
           backgroundColor: CREAM,
           paddingVertical: scaleW(16),
           borderRadius: scaleW(32),
@@ -349,7 +483,10 @@ export default function CompletionScreen() {
           shadowRadius: 2,
           elevation: 2,
         },
-        nextButtonText: { fontSize: scaleW(17), fontWeight: "600" },
+        completeButtonDisabled: {
+          opacity: 0.5,
+        },
+        completeButtonText: { fontSize: scaleW(17), fontWeight: "600" },
         // Gallery modal
         modalOverlay: {
           flex: 1,
@@ -478,11 +615,36 @@ export default function CompletionScreen() {
           backgroundColor: "rgba(198,40,40,0.9)",
         },
         fullScreenBtnText: { fontSize: scaleW(16), fontWeight: "600", color: "#FFF" },
+        fullScreenPageIndicator: {
+          position: "absolute" as const,
+          bottom: scaleW(24),
+          left: 0,
+          right: 0,
+          flexDirection: "row" as const,
+          justifyContent: "center",
+          alignItems: "center",
+          gap: scaleW(8),
+        },
+        fullScreenPageDot: {
+          width: scaleW(8),
+          height: scaleW(8),
+          borderRadius: scaleW(4),
+          backgroundColor: "rgba(255,255,255,0.5)",
+        },
+        fullScreenPageDotActive: {
+          backgroundColor: "#FFF",
+          width: scaleW(10),
+          height: scaleW(10),
+          borderRadius: scaleW(5),
+        },
       }),
-    [scaleW, photoUris.length]
+    [scaleW]
   );
 
-  const { width: screenWidth } = Dimensions.get("window");
+  const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
+  const fullScreenViewerPadding = scaleW(16) * 2;
+  const fullScreenViewerWidth = screenWidth - fullScreenViewerPadding;
+  const fullScreenViewerHeight = screenHeight - fullScreenViewerPadding;
   const galleryNumColumns = 3;
   const galleryGap = scaleW(8);
   const galleryListHorizontalPadding = scaleW(12) * 2;
@@ -503,172 +665,191 @@ export default function CompletionScreen() {
       >
         <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
           <ThemedText type="heading" style={styles.title}>
-            Build a laser fortress
-          </ThemedText>
-          <ThemedText type="heading" style={styles.subtitle}>
-            Add your photo of this activity
+            {activity?.title ?? "Activity"}
           </ThemedText>
         </Animated.View>
 
-        {photoUris.length > 0 ? (
-          <TouchableOpacity
-            onPress={openGalleryModal}
-            activeOpacity={0.9}
-          >
-            <Animated.View
-              entering={FadeInDown.duration(300).springify().damping(18)}
-              style={styles.photoStackContainer}
-            >
-              <View style={styles.photoStackInner}>
-                {photoUris.map((uri, index) => {
-                  const isLatest = index === photoUris.length - 1;
-                  const rotation = isLatest ? 0 : index % 2 === 0 ? -4 : 3;
-                  return (
-                    <View
-                      key={`${uri}-${index}`}
-                      style={[
-                        styles.photoStackCard,
-                        {
-                          zIndex: index,
-                          transform: [{ rotate: `${rotation}deg` }],
-                        },
-                      ]}
-                    >
-                      <Image
-                        source={{ uri }}
-                        style={styles.photoImage}
-                        resizeMode="cover"
-                      />
-                    </View>
-                  );
-                })}
-              </View>
-            </Animated.View>
-          </TouchableOpacity>
-        ) : null}
-
-        <Animated.View
-          entering={FadeInDown.duration(500).delay(150).springify().damping(18)}
-          style={styles.photoUploadBox}
-        >
-          <View style={styles.photoUploadRow}>
-            <Animated.View style={cameraAnimatedStyle}>
-              <Pressable
-                style={styles.photoOption}
-                onPress={takePhoto}
-                onPressIn={() => {
-                  cameraScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-                }}
-                onPressOut={() => {
-                  cameraScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-                }}
-              >
-                <Image
-                  source={CAMERA_ICON}
-                  style={styles.photoOptionIcon}
-                  resizeMode="contain"
-                />
-                <ThemedText style={styles.photoOptionLabel}>Take a photo</ThemedText>
-              </Pressable>
-            </Animated.View>
-            <View style={styles.photoOptionDivider} />
-            <Animated.View style={galleryAnimatedStyle}>
-              <Pressable
-                style={styles.photoOption}
-                onPress={pickImage}
-                onPressIn={() => {
-                  galleryScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-                }}
-                onPressOut={() => {
-                  galleryScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-                }}
-              >
-                <Image
-                  source={GALLERY_ICON}
-                  style={styles.photoOptionIcon}
-                  resizeMode="contain"
-                />
-                <ThemedText style={styles.photoOptionLabel}>Pick an image</ThemedText>
-              </Pressable>
-            </Animated.View>
-          </View>
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.duration(500).delay(280).springify().damping(18)}>
-          <ThemedText type="heading" style={styles.hardestHeading}>
-            What did you find the hardest?
-          </ThemedText>
-          <TextInput
-            style={styles.hardestInput}
-            placeholder="Write a few words..."
-            placeholderTextColor="#9E9E9E"
-            value={hardestText}
-            onChangeText={setHardestText}
-            multiline
-          />
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.duration(500).delay(380).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(100).springify().damping(18)}>
           <ThemedText type="heading" style={styles.whoHeading}>
             Who did this activity?
           </ThemedText>
-          <View style={styles.playerCardContainer}>
-            {displayProfiles.map((profile, index) => {
-              const isSelected = selectedPlayerIds.includes(profile.id);
-              return (
-                <Animated.View
-                  key={profile.id}
-                  entering={FadeInDown.duration(400).delay(420 + index * 50).springify().damping(18)}
+        </Animated.View>
+
+        {displayProfiles.map((profile, profileIndex) => {
+          const isSelected = selectedPlayerIds.includes(profile.id);
+          const uris = getPlayerPhotos(profile.id);
+          const hasPhotos = uris.length > 0;
+          return (
+            <Animated.View
+              key={profile.id}
+              entering={FadeInDown.duration(400).delay(150 + profileIndex * 80).springify().damping(18)}
+            >
+              <View style={styles.playerCardContainer}>
+                <Pressable
+                  style={styles.playerCard}
+                  onPress={() => togglePlayerSelection(profile.id)}
                 >
-                  <Pressable
-                    style={styles.playerCard}
-                    onPress={() => togglePlayerSelection(profile.id)}
-                  >
+                  <View
+                    style={[styles.playerCardBar, { backgroundColor: profile.colour }]}
+                  />
+                  <View style={styles.playerCardContent}>
+                    <View style={styles.playerCardNames}>
+                      <ThemedText type="heading" style={styles.playerCardName}>
+                        {profile.name}
+                      </ThemedText>
+                      <ThemedText style={styles.playerCardNickname}>
+                        {profile.nickname}
+                      </ThemedText>
+                    </View>
                     <View
-                      style={[styles.playerCardBar, { backgroundColor: profile.colour }]}
-                    />
-                    <View style={styles.playerCardContent}>
-                      <View style={styles.playerCardNames}>
-                        <ThemedText type="heading" style={styles.playerCardName}>
-                          {profile.name}
+                      style={[styles.checkbox, isSelected && styles.checkboxChecked]}
+                    >
+                      {isSelected && (
+                        <ThemedText style={{ color: "#FFF", fontSize: scaleW(14) }}>
+                          ✓
                         </ThemedText>
-                        <ThemedText style={styles.playerCardNickname}>
-                          {profile.nickname}
-                        </ThemedText>
-                      </View>
-                      <View
-                        style={[styles.checkbox, isSelected && styles.checkboxChecked]}
-                      >
-                        {isSelected && (
-                          <ThemedText style={{ color: "#FFF", fontSize: scaleW(14) }}>
-                            ✓
-                          </ThemedText>
-                        )}
+                      )}
+                    </View>
+                  </View>
+                </Pressable>
+              </View>
+              <ExpandableSection isSelected={isSelected}>
+                <ThemedText type="heading" style={styles.subtitle}>
+                  Add your photo of this activity
+                </ThemedText>
+                {hasPhotos ? (
+                  <TouchableOpacity
+                    onPress={() => openGalleryModal(profile.id)}
+                    activeOpacity={0.9}
+                  >
+                    <View style={styles.photoStackContainer}>
+                      <View style={styles.photoStackInner}>
+                        {uris.map((uri, index) => {
+                          const isLatest = index === uris.length - 1;
+                          const rotation = isLatest ? 0 : index % 2 === 0 ? -4 : 3;
+                          return (
+                            <View
+                              key={`${uri}-${index}`}
+                              style={[
+                                styles.photoStackCard,
+                                {
+                                  zIndex: index,
+                                  transform: [{ rotate: `${rotation}deg` }],
+                                },
+                              ]}
+                            >
+                              <Image
+                                source={{ uri }}
+                                style={styles.photoImage}
+                              />
+                            </View>
+                          );
+                        })}
                       </View>
                     </View>
-                  </Pressable>
-                </Animated.View>
-              );
-            })}
-          </View>
-        </Animated.View>
+                  </TouchableOpacity>
+                ) : null}
+                <View style={styles.photoUploadBox}>
+                  <View style={styles.photoUploadRow}>
+                    <Animated.View
+                      style={[
+                        styles.photoOptionCell,
+                        cameraAnimatedStyle,
+                        hasPhotos && { paddingVertical: scaleW(24) },
+                      ]}
+                    >
+                      <Pressable
+                        style={styles.photoOptionTouchable}
+                        onPress={() => takePhoto(profile.id)}
+                        onPressIn={() => {
+                          cameraScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+                        }}
+                        onPressOut={() => {
+                          cameraScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+                        }}
+                      >
+                        <View style={styles.photoOptionContent}>
+                          <Image
+                            source={CAMERA_ICON}
+                            style={styles.photoOptionIcon}
+                            resizeMode="contain"
+                          />
+                          <Text style={styles.photoOptionLabel} numberOfLines={1}>
+                            Take a photo
+                          </Text>
+                        </View>
+                      </Pressable>
+                    </Animated.View>
+                    <View style={styles.photoOptionDivider} />
+                    <Animated.View
+                      style={[
+                        styles.photoOptionCell,
+                        galleryAnimatedStyle,
+                        hasPhotos && { paddingVertical: scaleW(24) },
+                      ]}
+                    >
+                      <Pressable
+                        style={styles.photoOptionTouchable}
+                        onPress={() => pickImage(profile.id)}
+                        onPressIn={() => {
+                          galleryScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+                        }}
+                        onPressOut={() => {
+                          galleryScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+                        }}
+                      >
+                        <View style={styles.photoOptionContent}>
+                          <Image
+                            source={GALLERY_ICON}
+                            style={styles.photoOptionIcon}
+                            resizeMode="contain"
+                          />
+                          <Text style={styles.photoOptionLabel} numberOfLines={1}>
+                            Pick a photo
+                          </Text>
+                        </View>
+                      </Pressable>
+                    </Animated.View>
+                  </View>
+                </View>
+                <ThemedText type="heading" style={styles.hardestHeading}>
+                  What did you find the hardest?
+                </ThemedText>
+                <TextInput
+                  style={styles.hardestInput}
+                  placeholder="Write a few words..."
+                  placeholderTextColor="#9E9E9E"
+                  value={getPlayerHardest(profile.id)}
+                  onChangeText={(text) => setPlayerHardestText(profile.id, text)}
+                  multiline
+                />
+              </ExpandableSection>
+            </Animated.View>
+          );
+        })}
 
         <Animated.View
           entering={FadeInDown.duration(500).delay(580).springify().damping(18)}
-          style={nextAnimatedStyle}
+          style={completeAnimatedStyle}
         >
           <Pressable
-            style={styles.nextButton}
+            style={[
+              styles.completeButton,
+              selectedPlayerIds.length === 0 && styles.completeButtonDisabled,
+            ]}
+            disabled={selectedPlayerIds.length === 0}
             onPress={() => router.push("/(tabs)/activity/mission/reward")}
             onPressIn={() => {
-              nextScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+              if (selectedPlayerIds.length > 0) {
+                completeScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+              }
             }}
             onPressOut={() => {
-              nextScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+              completeScale.value = withSpring(1, { damping: 15, stiffness: 400 });
             }}
           >
-            <ThemedText type="heading" style={styles.nextButtonText}>
-              Next
+            <ThemedText type="heading" style={styles.completeButtonText}>
+              Complete
             </ThemedText>
           </Pressable>
         </Animated.View>
@@ -694,14 +875,44 @@ export default function CompletionScreen() {
               ]}
               pointerEvents="box-none"
             >
-              <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-                <Image
-                  source={{ uri: photoUris[fullScreenPhotoIndex] }}
-                  style={StyleSheet.absoluteFillObject}
-                  resizeMode="contain"
-                />
-              </View>
-              <View style={styles.fullScreenToolbar} pointerEvents="box-none">
+              <FlatList
+                data={modalPhotoUris}
+                horizontal
+                pagingEnabled
+                decelerationRate="fast"
+                showsHorizontalScrollIndicator={false}
+                initialScrollIndex={Math.min(
+                  fullScreenPhotoIndex,
+                  modalPhotoUris.length - 1
+                )}
+                getItemLayout={(_, index) => ({
+                  length: fullScreenViewerWidth,
+                  offset: fullScreenViewerWidth * index,
+                  index,
+                })}
+                onMomentumScrollEnd={(e) => {
+                  const index = Math.round(
+                    e.nativeEvent.contentOffset.x / fullScreenViewerWidth
+                  );
+                  setFullScreenPhotoIndex(Math.min(index, modalPhotoUris.length - 1));
+                }}
+                keyExtractor={(uri, i) => `fullscreen-${uri}-${i}`}
+                renderItem={({ item: uri }) => (
+                  <View
+                    style={{
+                      width: fullScreenViewerWidth,
+                      height: fullScreenViewerHeight,
+                    }}
+                  >
+                    <Image
+                      source={{ uri }}
+                      style={StyleSheet.absoluteFillObject}
+                      resizeMode="contain"
+                    />
+                  </View>
+                )}
+              />
+                <View style={styles.fullScreenToolbar} pointerEvents="box-none">
                 <TouchableOpacity
                   style={styles.fullScreenBackBtn}
                   onPress={() => setFullScreenPhotoIndex(null)}
@@ -717,6 +928,19 @@ export default function CompletionScreen() {
                   <ThemedText style={styles.fullScreenBtnText}>Delete</ThemedText>
                 </TouchableOpacity>
               </View>
+              {modalPhotoUris.length > 1 && (
+                <View style={styles.fullScreenPageIndicator} pointerEvents="none">
+                  {modalPhotoUris.map((_, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.fullScreenPageDot,
+                        i === fullScreenPhotoIndex && styles.fullScreenPageDotActive,
+                      ]}
+                    />
+                  ))}
+                </View>
+              )}
             </View>
           ) : (
             <View
@@ -780,7 +1004,7 @@ export default function CompletionScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <FlatList
-                data={photoUris}
+                data={modalPhotoUris}
                 numColumns={galleryNumColumns}
                 keyExtractor={(uri, i) => `${uri}-${i}`}
                 contentContainerStyle={styles.galleryList}
@@ -852,29 +1076,79 @@ export default function CompletionScreen() {
           <View style={styles.modalOverlay}>
             {fullScreenPhotoIndex !== null ? (
               <View style={styles.fullScreenWrap} pointerEvents="box-none">
-                <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-                  <Image
-                    source={{ uri: photoUris[fullScreenPhotoIndex] }}
-                    style={StyleSheet.absoluteFillObject}
-                    resizeMode="contain"
-                  />
-                </View>
+                <FlatList
+                  data={modalPhotoUris}
+                  horizontal
+                  pagingEnabled
+                  decelerationRate="fast"
+                  showsHorizontalScrollIndicator={false}
+                  initialScrollIndex={Math.min(
+                    fullScreenPhotoIndex,
+                    modalPhotoUris.length - 1
+                  )}
+                  getItemLayout={(_, index) => ({
+                    length: fullScreenViewerWidth,
+                    offset: fullScreenViewerWidth * index,
+                    index,
+                  })}
+                  onMomentumScrollEnd={(e) => {
+                    const index = Math.round(
+                      e.nativeEvent.contentOffset.x / fullScreenViewerWidth
+                    );
+                    setFullScreenPhotoIndex(
+                      Math.min(index, modalPhotoUris.length - 1)
+                    );
+                  }}
+                  keyExtractor={(uri, i) => `fullscreen-${uri}-${i}`}
+                  renderItem={({ item: uri }) => (
+                    <View
+                      style={{
+                        width: fullScreenViewerWidth,
+                        height: fullScreenViewerHeight,
+                      }}
+                    >
+                      <Image
+                        source={{ uri }}
+                        style={StyleSheet.absoluteFillObject}
+                        resizeMode="contain"
+                      />
+                    </View>
+                  )}
+                />
                 <View style={styles.fullScreenToolbar} pointerEvents="box-none">
                   <TouchableOpacity
                     style={styles.fullScreenBackBtn}
                     onPress={() => setFullScreenPhotoIndex(null)}
                     activeOpacity={0.7}
                   >
-                    <ThemedText style={styles.fullScreenBtnText}>Back</ThemedText>
+                    <ThemedText style={styles.fullScreenBtnText}>
+                      Back
+                    </ThemedText>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.fullScreenDeleteBtn}
                     onPress={() => deletePhotoAtIndex(fullScreenPhotoIndex)}
                     activeOpacity={0.7}
                   >
-                    <ThemedText style={styles.fullScreenBtnText}>Delete</ThemedText>
+                    <ThemedText style={styles.fullScreenBtnText}>
+                      Delete
+                    </ThemedText>
                   </TouchableOpacity>
                 </View>
+                {modalPhotoUris.length > 1 && (
+                  <View style={styles.fullScreenPageIndicator} pointerEvents="none">
+                    {modalPhotoUris.map((_, i) => (
+                      <View
+                        key={i}
+                        style={[
+                          styles.fullScreenPageDot,
+                          i === fullScreenPhotoIndex &&
+                            styles.fullScreenPageDotActive,
+                        ]}
+                      />
+                    ))}
+                  </View>
+                )}
               </View>
             ) : (
               <View style={styles.modalContent} pointerEvents="box-none">
@@ -932,7 +1206,7 @@ export default function CompletionScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <FlatList
-                    data={photoUris}
+                    data={modalPhotoUris}
                     numColumns={galleryNumColumns}
                     keyExtractor={(uri, i) => `${uri}-${i}`}
                     contentContainerStyle={styles.galleryList}

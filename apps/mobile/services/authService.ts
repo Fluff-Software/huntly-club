@@ -1,5 +1,20 @@
 import { supabase } from './supabase';
-import { User as SupabaseUser, Session as SupabaseSession } from '@supabase/supabase-js';
+import { User as SupabaseUser, Session as SupabaseSession, FunctionsHttpError } from '@supabase/supabase-js';
+
+/** Get the real error message from an Edge Function invoke error (so we don't just show "non-2xx status code"). */
+async function getInvokeErrorMessage(error: unknown): Promise<string> {
+  if (error instanceof FunctionsHttpError && error.context) {
+    try {
+      const body = await error.context.json();
+      if (body && typeof (body as { error?: string }).error === 'string') {
+        return (body as { error: string }).error;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return error instanceof Error ? error.message : 'Something went wrong';
+}
 
 /** Check if an email is already registered (via Edge Function). Returns true if available to use. */
 export const checkEmailAvailable = async (email: string): Promise<{ available: boolean; error?: string }> => {
@@ -12,7 +27,8 @@ export const checkEmailAvailable = async (email: string): Promise<{ available: b
       body: { email: trimmed },
     });
     if (error) {
-      return { available: true, error: error.message };
+      const message = await getInvokeErrorMessage(error);
+      return { available: true, error: message };
     }
     const taken = data?.taken ?? false;
     return { available: !taken };
@@ -53,7 +69,8 @@ export const signUp = async (email: string, password: string, metadata?: Record<
   );
 
   if (error) {
-    throw error;
+    const message = await getInvokeErrorMessage(error);
+    throw new Error(message);
   }
   if (data?.error) {
     throw new Error(data.error);
@@ -71,7 +88,8 @@ export const resendVerificationEmail = async (email: string, type: 'signup' | 'r
   );
 
   if (error) {
-    throw error;
+    const message = await getInvokeErrorMessage(error);
+    throw new Error(message);
   }
   if (data?.error) {
     throw new Error(data.error);

@@ -305,3 +305,13 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/health/deno.json"
 entrypoint = "./functions/health/index.ts"
+
+# Auth-related functions: skip JWT verification at gateway so anon key is accepted (project may reject Legacy JWT after signing key migration).
+[functions.check-email]
+verify_jwt = false
+
+[functions.signup-with-email]
+verify_jwt = false
+
+[functions.resend-auth-email]
+verify_jwt = false

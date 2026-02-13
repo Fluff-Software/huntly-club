@@ -30,6 +30,35 @@ async function isEmailTaken(admin: ReturnType<typeof createClient>, email: strin
   }
 }
 
+/** Create user via GoTrue REST API (admin.createUser is not available in Deno Edge Functions). */
+async function createUserViaApi(
+  supabaseUrl: string,
+  serviceRoleKey: string,
+  params: { email: string; password: string; user_metadata?: Record<string, unknown> }
+): Promise<{ error?: string }> {
+  const url = `${supabaseUrl.replace(/\/$/, "")}/auth/v1/admin/users`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+    },
+    body: JSON.stringify({
+      email: params.email,
+      password: params.password,
+      email_confirm: false,
+      user_metadata: params.user_metadata ?? {},
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const msg = (err as { msg?: string })?.msg ?? (err as { message?: string })?.message ?? res.statusText;
+    return { error: msg };
+  }
+  return {};
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -63,16 +92,15 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "An account with this email already exists." }, 409);
     }
 
-    const { data: createData, error: createError } = await admin.auth.admin.createUser({
+    const createResult = await createUserViaApi(supabaseUrl, serviceRoleKey, {
       email,
       password,
-      email_confirm: false,
       user_metadata: body.metadata ?? {},
     });
 
-    if (createError) {
-      console.error("createUser error:", createError.message);
-      const msg = createError.message.toLowerCase().includes("already")
+    if (createResult.error) {
+      console.error("createUser error:", createResult.error);
+      const msg = createResult.error.toLowerCase().includes("already")
         ? "An account with this email already exists."
         : "Could not create account. Please try again.";
       return jsonResponse({ error: msg }, 400);

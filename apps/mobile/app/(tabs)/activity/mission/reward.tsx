@@ -160,6 +160,8 @@ export default function RewardScreen() {
         style={styles.scroll}
         contentContainerStyle={{ paddingBottom: scaleW(24) }}
         showsVerticalScrollIndicator={false}
+        bounces={false}
+        overScrollMode="never"
       >
         <Animated.View
           entering={FadeInDown.duration(500).delay(0).springify().damping(18)}

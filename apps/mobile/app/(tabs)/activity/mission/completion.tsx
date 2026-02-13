@@ -29,6 +29,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { ThemedText } from "@/components/ThemedText";
+import { BackHeader } from "@/components/BackHeader";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { getActivityById } from "@/services/packService";
@@ -659,10 +660,15 @@ export default function CompletionScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+      <View style={{ paddingHorizontal: scaleW(20), paddingBottom: scaleW(8), backgroundColor: LIGHT_GREEN }}>
+        <BackHeader backToLabel="Missions" variant="light" />
+      </View>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={{ paddingBottom: scaleW(24) }}
         showsVerticalScrollIndicator={false}
+        bounces={false}
+        overScrollMode="never"
       >
         <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
           <ThemedText type="heading" style={styles.title}>

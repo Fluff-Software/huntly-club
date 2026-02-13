@@ -242,6 +242,8 @@ export default function StoryScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        bounces={false}
+        overScrollMode="never"
       >
         {firstSeason && (
           <View style={styles.seasonContainer}>

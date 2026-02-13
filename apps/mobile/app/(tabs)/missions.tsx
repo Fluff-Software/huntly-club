@@ -2,7 +2,6 @@ import React, { useRef, useMemo } from "react";
 import {
   View,
   ScrollView,
-  Image,
   Animated as RNAnimated,
   StyleSheet,
   Platform,
@@ -12,8 +11,8 @@ import {
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
+import { BackHeader } from "@/components/BackHeader";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
-import { useFirstSeason } from "@/hooks/useFirstSeason";
 import { useCurrentChapterActivities } from "@/hooks/useCurrentChapterActivities";
 import { MissionCard } from "@/components/MissionCard";
 
@@ -21,7 +20,6 @@ const MISSIONS_ORANGE = "#D2684B";
 
 export default function MissionsScreen() {
   const { scaleW, width } = useLayoutScale();
-  const { heroImageSource } = useFirstSeason();
   const { activityCards, loading, error, refetch } = useCurrentChapterActivities();
   const missionCardsScrollX = useRef(new RNAnimated.Value(0)).current;
   const missionCardWidth = scaleW(270);
@@ -38,37 +36,22 @@ export default function MissionsScreen() {
         scrollContent: {
           flexGrow: 1,
           backgroundColor: MISSIONS_ORANGE,
-          paddingTop: scaleW(24),
-        },
-        imageCircleWrap: {
-          width: width * 2.5,
-          height: width * 2.5,
-          borderRadius: (width * 2.5) / 2,
-          overflow: "hidden" as const,
-          marginBottom: scaleW(20),
-          alignSelf: "center" as const,
-          marginTop: -width * 2.1,
-        },
-        imageCircleImage: {
-          width: "50%",
-          height: "50%",
-          marginTop: width * 1.6,
-          alignSelf: "center" as const,
+          justifyContent: "center" as const,
+          paddingVertical: scaleW(12),
         },
         title: {
-          fontSize: scaleW(28),
-          lineHeight: scaleW(36),
+          fontSize: scaleW(24),
+          lineHeight: scaleW(32),
           fontWeight: "600",
           color: "#FFF",
           textAlign: "center" as const,
-          marginTop: scaleW(8),
-          marginBottom: scaleW(24),
+          marginBottom: scaleW(12),
         },
         cardsScroll: { overflow: "visible" as const },
         cardsContent: {
           paddingLeft: missionCardsPaddingHorizontal,
           paddingRight: missionCardsPaddingHorizontal,
-          paddingBottom: scaleW(8),
+          paddingBottom: scaleW(4),
         },
         loadingContainer: {
           paddingVertical: scaleW(48),
@@ -93,22 +76,17 @@ export default function MissionsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+      <View style={{ paddingHorizontal: scaleW(20), paddingBottom: scaleW(4), backgroundColor: MISSIONS_ORANGE }}>
+        <BackHeader backToLabel="Clubhouse" variant="dark" />
+      </View>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        bounces={false}
+        overScrollMode="never"
       >
-        <Animated.View
-          entering={FadeInDown.duration(600).delay(0).springify().damping(18)}
-          style={styles.imageCircleWrap}
-        >
-          <Image
-            source={heroImageSource}
-            resizeMode="contain"
-            style={styles.imageCircleImage}
-          />
-        </Animated.View>
-        <Animated.View entering={FadeInDown.duration(500).delay(150).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
           <ThemedText type="heading" style={styles.title}>Missions</ThemedText>
         </Animated.View>
         <Animated.View

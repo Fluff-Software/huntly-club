@@ -9,6 +9,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
+import { BackHeader } from "@/components/BackHeader";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { getActivityById, getActivityImageSource } from "@/services/packService";
 import type { Activity } from "@/types/activity";
@@ -80,7 +81,7 @@ export default function InstructionScreen() {
         errorText: { fontSize: scaleW(16), color: TEXT_SECONDARY, textAlign: "center" },
         titleContainer: {
           backgroundColor: LIGHT_GREEN,
-          paddingTop: scaleW(60),
+          paddingTop: scaleW(20),
           paddingBottom: scaleW(16),
           paddingHorizontal: scaleW(16),
           marginBottom: scaleW(40),
@@ -105,20 +106,26 @@ export default function InstructionScreen() {
           flexWrap: "wrap",
           justifyContent: "center",
           alignItems: "center",
+          alignSelf: "stretch",
           gap: scaleW(12),
           marginTop: scaleW(16),
           marginBottom: scaleW(12),
+          paddingHorizontal: scaleW(4),
         },
         tag: {
           flexDirection: "row",
           alignItems: "center",
-          backgroundColor: CREAM,
           paddingVertical: scaleW(2),
           paddingHorizontal: scaleW(6),
           borderRadius: scaleW(20),
           gap: scaleW(6),
         },
-        tagText: { fontSize: scaleW(12), color: "#000" },
+        tagNeutral: {
+          backgroundColor: "#FFF",
+          borderWidth: 1,
+          borderColor: "#E5E7EB",
+        },
+        tagText: { fontSize: scaleW(12), color: "#374151" },
         descriptionBox: {
           backgroundColor: CREAM,
           paddingVertical: scaleW(14),
@@ -228,10 +235,15 @@ export default function InstructionScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+      <View style={{ paddingHorizontal: scaleW(20), paddingBottom: scaleW(4), backgroundColor: LIGHT_GREEN }}>
+        <BackHeader backToLabel="Missions" variant="light" />
+      </View>
       <ScrollView
         style={styles.pageInner}
-        contentContainerStyle={{ paddingBottom: scaleW(40) }}
+        contentContainerStyle={{ paddingBottom: scaleW(100) }}
         showsVerticalScrollIndicator={false}
+        bounces={false}
+        overScrollMode="never"
       >
         <Animated.View
           entering={FadeInDown.duration(500).delay(0).springify().damping(18)}
@@ -248,11 +260,8 @@ export default function InstructionScreen() {
           {categories.length > 0 && (
             <View style={styles.tagsRow}>
               {categories.slice(0, 5).map((cat) => (
-                <View
-                  key={cat}
-                  style={[styles.tag, { backgroundColor: `${getCategoryColor(cat)}20`, borderWidth: 1, borderColor: `${getCategoryColor(cat)}40` }]}
-                >
-                  <ThemedText style={[styles.tagText, { color: getCategoryColor(cat) }]}>
+                <View key={cat} style={[styles.tag, styles.tagNeutral]}>
+                  <ThemedText style={styles.tagText}>
                     {getCategoryIcon(cat)} {getCategoryLabel(cat)}
                   </ThemedText>
                 </View>

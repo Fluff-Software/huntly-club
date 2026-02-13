@@ -326,6 +326,8 @@ export default function HomeScreen() {
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
       nestedScrollEnabled
+      bounces={false}
+      overScrollMode="never"
     >
       <View style={{
         paddingHorizontal: scaleW(24),
@@ -406,10 +408,12 @@ export default function HomeScreen() {
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
       nestedScrollEnabled
+      bounces={false}
+      overScrollMode="never"
     >
       <View style={{
         paddingHorizontal: scaleW(24),
-        paddingTop: scaleW(160),
+        paddingTop: scaleW(24),
         paddingBottom: scaleW(24),
       }}>
         <ThemedText
@@ -423,7 +427,7 @@ export default function HomeScreen() {
               fontSize: scaleW(24),
               fontWeight: "600",
               textAlign: "center",
-              marginTop: scaleW(48),
+              marginTop: scaleW(16),
               marginBottom: scaleW(24),
               textShadowColor: "#000",
               textShadowRadius: 3,
@@ -560,6 +564,8 @@ export default function HomeScreen() {
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
       nestedScrollEnabled
+      bounces={false}
+      overScrollMode="never"
     >
       <View style={{ paddingHorizontal: scaleW(24), paddingTop: scaleW(8) }}>
         <ThemedText

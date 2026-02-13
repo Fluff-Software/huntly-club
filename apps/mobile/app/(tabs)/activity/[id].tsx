@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { BaseLayout } from "@/components/layout/BaseLayout";
+import { BackHeader } from "@/components/BackHeader";
 import { Button } from "@/components/ui/Button";
 import { CategoryTags } from "@/components/CategoryTags";
 import { getActivityById, getActivityImageSource } from "@/services/packService";
@@ -232,7 +233,10 @@ export default function ActivityDetailScreen() {
 
   return (
     <BaseLayout>
-      <ScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}>
+      <View style={{ backgroundColor: "#FFF8DC", paddingHorizontal: 20, paddingBottom: 8 }}>
+        <BackHeader backToLabel="Missions" variant="light" />
+      </View>
+      <ScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false} bounces={false} overScrollMode="never">
         <View className="mb-6">
           <ThemedText type="title" className="text-huntly-forest mb-3">
             {activity.title}

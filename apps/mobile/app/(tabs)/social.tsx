@@ -391,6 +391,8 @@ export default function SocialScreen() {
       <ScrollView
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
+        bounces={false}
+        overScrollMode="never"
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }

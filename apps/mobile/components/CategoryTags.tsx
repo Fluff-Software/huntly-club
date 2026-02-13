@@ -1,7 +1,7 @@
 import React from "react";
 import { View } from "react-native";
 import { ThemedText } from "./ThemedText";
-import { getCategoryIcon, getCategoryColor } from "@/utils/categoryUtils";
+import { getCategoryIcon } from "@/utils/categoryUtils";
 
 interface CategoryTagsProps {
   categories: string[];
@@ -53,26 +53,20 @@ export const CategoryTags: React.FC<CategoryTagsProps> = ({
       {displayCategories.map((category, index) => (
         <View
           key={category}
-          className={`rounded-full ${sizeClasses.container}`}
-          style={{
-            backgroundColor: `${getCategoryColor(category)}20`,
-            borderWidth: 1,
-            borderColor: `${getCategoryColor(category)}40`,
-          }}
+          className={`rounded-full ${sizeClasses.container} bg-white border border-gray-200`}
         >
           <View className="flex-row items-center">
             {showIcons && (
               <ThemedText
                 className={`${sizeClasses.icon} mr-1`}
-                style={{ color: getCategoryColor(category) }}
+                style={{ color: "#6B7280" }}
               >
                 {getCategoryIcon(category)}
               </ThemedText>
             )}
             <ThemedText
               type="caption"
-              className={`${sizeClasses.text} font-medium`}
-              style={{ color: getCategoryColor(category) }}
+              className={`${sizeClasses.text} font-medium text-gray-700`}
             >
               {category}
             </ThemedText>

@@ -520,6 +520,8 @@ export default function ParentsScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        bounces={false}
+        overScrollMode="never"
       >
         {/* Progress – summary stats */}
         <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>

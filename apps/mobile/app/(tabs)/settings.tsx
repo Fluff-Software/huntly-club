@@ -178,6 +178,8 @@ export default function SettingsScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        bounces={false}
+        overScrollMode="never"
       >
         <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
           <ThemedText type="heading" style={styles.sectionTitle}>Your account</ThemedText>

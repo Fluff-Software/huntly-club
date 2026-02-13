@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Animated as RNAnimated,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
@@ -359,11 +360,11 @@ export default function SocialScreen() {
 
   if (loading && !refreshing) {
     return (
-      <View style={[styles.page, { justifyContent: "center", alignItems: "center" }]}>
+      <SafeAreaView style={[styles.page, { justifyContent: "center", alignItems: "center" }]} edges={["top", "left", "right"]}>
         <Text style={styles.loadingText}>
           Loading...
         </Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -386,7 +387,7 @@ export default function SocialScreen() {
   ];
 
   return (
-    <View style={styles.page}>
+    <SafeAreaView style={styles.page} edges={["top", "left", "right"]}>
       <ScrollView
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
@@ -539,6 +540,6 @@ export default function SocialScreen() {
           ))}
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }

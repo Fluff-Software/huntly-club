@@ -8,6 +8,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import AnimatedReanimated, {
   FadeInDown,
   useAnimatedStyle,
@@ -339,7 +340,7 @@ export default function GetStartedScreen() {
   };
 
   return (
-    <>
+    <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
       <StatusBar style="dark" />
       <Stack.Screen options={{ headerShown: false }} />
       <FlatList
@@ -354,6 +355,6 @@ export default function GetStartedScreen() {
         onScroll={onScroll}
         scrollEventThrottle={16}
       />
-    </>
+    </SafeAreaView>
   );
 }

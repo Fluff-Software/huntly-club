@@ -65,22 +65,20 @@ export default function HomeScreen() {
   const clubCardsScrollX = useRef(new Animated.Value(0)).current;
   const cardWidth = scaleW(250);
   const cardBorderWidth = 2;
-  const cardMargin = scaleW(12);
   const cardGap = scaleW(12);
-  const cardStep = cardWidth + cardMargin + cardGap;
-  const cardsPaddingLeft = (width - scaleW(48) - cardWidth) / 2;
-  const getCenterScrollX = (index: number) =>
-    cardsPaddingLeft + index * cardStep + cardWidth / 2 + cardBorderWidth - width / 2;
+  const clubCardStep = cardWidth + cardGap;
+  const clubViewportWidth = width - scaleW(48);
+  const clubCardsPaddingHorizontal = Math.max(0, Math.round((clubViewportWidth - cardWidth) / 2));
+  const getCenterScrollX = (index: number) => index * clubCardStep;
 
   const missionCardsScrollX = useRef(new Animated.Value(0)).current;
   const missionCardWidth = scaleW(270);
   const missionCardBorderWidth = 6;
-  const missionCardMargin = scaleW(12);
   const missionCardGap = scaleW(12);
-  const missionCardStep = missionCardWidth + missionCardMargin + missionCardGap;
-  const missionCardsPaddingLeft = Math.max(0, (width - scaleW(48) - scaleW(280)) / 2);
-  const getMissionCenterScrollX = (index: number) =>
-    missionCardsPaddingLeft + index * missionCardStep + missionCardWidth / 2 + missionCardBorderWidth - width / 2;
+  const missionCardStep = missionCardWidth + missionCardGap;
+  const missionViewportWidth = width - scaleW(48);
+  const missionCardsPaddingHorizontal = Math.max(0, Math.round((missionViewportWidth - missionCardWidth) / 2));
+  const getMissionCenterScrollX = (index: number) => index * missionCardStep;
 
   const springLessBouncy = { damping: 15, stiffness: 120 };
   const buttonSpring = { damping: 15, stiffness: 400 };
@@ -225,10 +223,9 @@ export default function HomeScreen() {
           bottom: scaleW(-95),
         },
         horizontalCardsContainer: {
-          paddingLeft: (width - scaleW(48) - scaleW(250)) / 2,
-          paddingRight: scaleW(16),
+          paddingLeft: clubCardsPaddingHorizontal,
+          paddingRight: clubCardsPaddingHorizontal,
           paddingBottom: scaleW(8),
-          gap: scaleW(12),
         },
         clubCard: { width: scaleW(250), marginRight: scaleW(12) },
         clubCardImageWrap: {
@@ -247,13 +244,12 @@ export default function HomeScreen() {
         },
         clubCardImage: { width: "100%", height: "100%" },
         horizontalMissionCardsContainer: {
-          paddingLeft: Math.max(0, (width - scaleW(48) - scaleW(280)) / 2),
-          paddingRight: scaleW(16),
+          paddingLeft: missionCardsPaddingHorizontal,
+          paddingRight: missionCardsPaddingHorizontal,
           paddingBottom: scaleW(8),
-          gap: scaleW(12),
         },
       }),
-    [scaleW, width, height]
+    [scaleW, width, height, clubCardsPaddingHorizontal, missionCardsPaddingHorizontal]
   );
 
   const wrapNavPressable = (onPress: () => void, children: React.ReactNode) => (
@@ -492,6 +488,9 @@ export default function HomeScreen() {
               [{ nativeEvent: { contentOffset: { x: clubCardsScrollX } } }],
               { useNativeDriver: true }
             )}
+            snapToInterval={clubCardStep}
+            snapToAlignment="start"
+            decelerationRate="fast"
           >
             {clubCards.map((card, index) => {
               const centerScrollX = index === 0 ? 0 : getCenterScrollX(index);
@@ -597,6 +596,9 @@ export default function HomeScreen() {
               [{ nativeEvent: { contentOffset: { x: missionCardsScrollX } } }],
               { useNativeDriver: true }
             )}
+            snapToInterval={missionCardStep}
+            snapToAlignment="start"
+            decelerationRate="fast"
           >
             {missionCards.map((card, index) => {
               const centerScrollX = index === 0 ? 0 : getMissionCenterScrollX(index);
@@ -658,7 +660,7 @@ export default function HomeScreen() {
         </ImageBackground>
       </Animated.View>
 
-      <SafeAreaView edges={["top"]} className="flex-1">
+      <SafeAreaView edges={["top", "left", "right"]} className="flex-1">
         {renderNavigationButtons()}
         <Animated.ScrollView
           ref={pagerRef}

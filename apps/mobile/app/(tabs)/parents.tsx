@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
 import { StatCard } from "@/components/StatCard";
 import { ParentPinModal } from "@/components/ParentPinModal";
+import { BackHeader } from "@/components/BackHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
@@ -260,10 +261,13 @@ export default function ParentsScreen() {
           flex: 1,
           backgroundColor: COLORS.darkGreen,
         },
+        headerBar: {
+          backgroundColor: COLORS.darkGreen,
+        },
         scrollView: { flex: 1 },
         scrollContent: {
           paddingHorizontal: scaleW(30),
-          paddingTop: scaleW(16),
+          paddingTop: scaleW(8),
           paddingBottom: scaleW(32),
         },
         sectionTitle: {
@@ -425,7 +429,9 @@ export default function ParentsScreen() {
   if (loading && isAuthenticated) {
     return (
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-        <View style={styles.loadingWrap}>
+        <View style={[styles.scrollContent, { flex: 1 }]}>
+          <BackHeader backToLabel="Your profile" />
+          <View style={styles.loadingWrap}>
           <ActivityIndicator
             size="large"
             color={COLORS.white}
@@ -435,6 +441,7 @@ export default function ParentsScreen() {
             Loading explorer insights...
           </ThemedText>
         </View>
+        </View>
       </SafeAreaView>
     );
   }
@@ -442,7 +449,9 @@ export default function ParentsScreen() {
   if (!user) {
     return (
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-        <View style={styles.emptyWrap}>
+        <View style={[styles.scrollContent, { flex: 1 }]}>
+          <BackHeader backToLabel="Your profile" />
+          <View style={styles.emptyWrap}>
           <View style={styles.emptyIcon}>
             <ThemedText style={{ fontSize: scaleW(28) }}>🔒</ThemedText>
           </View>
@@ -450,6 +459,7 @@ export default function ParentsScreen() {
           <ThemedText style={styles.emptyDesc}>
             Please sign in to view explorer insights
           </ThemedText>
+        </View>
         </View>
       </SafeAreaView>
     );
@@ -478,7 +488,9 @@ export default function ParentsScreen() {
   if (explorers.length === 0) {
     return (
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-        <View style={styles.emptyWrap}>
+        <View style={[styles.scrollContent, { flex: 1 }]}>
+          <BackHeader backToLabel="Your profile" />
+          <View style={styles.emptyWrap}>
           <View style={styles.emptyIcon}>
             <ThemedText style={{ fontSize: scaleW(28) }}>👥</ThemedText>
           </View>
@@ -486,6 +498,7 @@ export default function ParentsScreen() {
           <ThemedText style={styles.emptyDesc}>
             Create some explorers to see their progress and insights
           </ThemedText>
+        </View>
         </View>
       </SafeAreaView>
     );
@@ -500,6 +513,9 @@ export default function ParentsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+      <View style={[styles.headerBar, { paddingHorizontal: scaleW(30), paddingBottom: scaleW(8) }]}>
+        <BackHeader backToLabel="Your profile" />
+      </View>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}

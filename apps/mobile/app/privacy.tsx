@@ -1,45 +1,74 @@
 import React from "react";
-import { ScrollView } from "react-native";
-import { Stack, router } from "expo-router";
+import { ScrollView, StyleSheet, View } from "react-native";
+import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/ThemedText";
-import { Button } from "@/components/ui/Button";
+import { BackHeader } from "@/components/BackHeader";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { PRIVACY_POLICY_SECTIONS } from "@/constants/privacyPolicy";
+
+const COLORS = {
+  darkGreen: "#4F6F52",
+  white: "#FFFFFF",
+  slate: "#5a6b5d",
+};
 
 export default function PrivacyScreen() {
   const { scaleW } = useLayoutScale();
 
   return (
-    <>
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <StatusBar style="dark" />
       <Stack.Screen
         options={{
           title: "Privacy Policy",
-          headerBackTitle: "Back",
-          headerShadowVisible: false,
+          headerShown: false,
         }}
       />
+      <View style={[styles.header, { paddingHorizontal: scaleW(24), paddingBottom: scaleW(12) }]}>
+        <BackHeader backToLabel="Back" variant="light" />
+      </View>
       <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{
-          padding: scaleW(24),
-          paddingBottom: scaleW(40),
-        }}
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.content,
+          {
+            padding: scaleW(24),
+            paddingBottom: scaleW(40),
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
       >
-        <ThemedText type="title" style={{ marginBottom: scaleW(16) }}>
+        <ThemedText type="title" style={[styles.title, { marginBottom: scaleW(12) }]}>
           Privacy Policy
         </ThemedText>
-        <ThemedText type="body" style={{ marginBottom: scaleW(12) }}>
-          Huntly Club respects your privacy. This page is a placeholder for your full privacy policy.
+        <ThemedText type="body" style={[styles.intro, { marginBottom: scaleW(24) }]}>
+          Huntly World respects your privacy. This policy explains how we collect, use and protect your information when you use our app.
         </ThemedText>
-        <ThemedText type="body" style={{ marginBottom: scaleW(24) }}>
-          Add your privacy policy content here.
-        </ThemedText>
-        <Button variant="primary" size="large" onPress={() => router.back()}>
-          Back
-        </Button>
+        {PRIVACY_POLICY_SECTIONS.map((section) => (
+          <View key={section.title} style={{ marginBottom: scaleW(20) }}>
+            <ThemedText type="subtitle" style={styles.sectionTitle}>
+              {section.title}
+            </ThemedText>
+            <ThemedText type="body" style={styles.sectionBody}>
+              {section.body}
+            </ThemedText>
+          </View>
+        ))}
       </ScrollView>
-    </>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: COLORS.white },
+  header: { backgroundColor: COLORS.white },
+  scroll: { flex: 1, backgroundColor: COLORS.white },
+  content: {},
+  title: { color: COLORS.darkGreen },
+  intro: { color: COLORS.slate },
+  sectionTitle: { color: COLORS.darkGreen, marginBottom: 6 },
+  sectionBody: { color: COLORS.slate },
+});

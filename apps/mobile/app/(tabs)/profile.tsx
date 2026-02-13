@@ -40,6 +40,7 @@ import {
   type RecentCompletedActivity,
 } from "@/services/activityProgressService";
 import { MaterialIcons } from "@expo/vector-icons";
+import { BackHeader } from "@/components/BackHeader";
 
 // Design colors from reference
 const COLORS = {
@@ -264,12 +265,15 @@ export default function ProfileScreen() {
           flex: 1,
           backgroundColor: COLORS.darkGreen,
         },
+        headerBar: {
+          backgroundColor: COLORS.darkGreen,
+        },
         scrollView: {
           flex: 1,
         },
         scrollContent: {
           paddingHorizontal: scaleW(20),
-          paddingTop: scaleW(16),
+          paddingTop: scaleW(8),
           paddingBottom: scaleW(32),
         },
         section: {
@@ -592,6 +596,9 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+      <View style={[styles.headerBar, { paddingHorizontal: scaleW(20), paddingBottom: scaleW(8) }]}>
+        <BackHeader backToLabel="Clubhouse" />
+      </View>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}

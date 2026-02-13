@@ -10,6 +10,7 @@ import {
   Pressable,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useFirstSeason } from "@/hooks/useFirstSeason";
@@ -21,16 +22,14 @@ const MISSIONS_ORANGE = "#D2684B";
 export default function MissionsScreen() {
   const { scaleW, width } = useLayoutScale();
   const { heroImageSource } = useFirstSeason();
-  const { activities, loading, error, refetch } = useCurrentChapterActivities();
+  const { activityCards, loading, error, refetch } = useCurrentChapterActivities();
   const missionCardsScrollX = useRef(new RNAnimated.Value(0)).current;
   const missionCardWidth = scaleW(270);
   const missionCardBorderWidth = 6;
-  const missionCardMargin = scaleW(12);
   const missionCardGap = scaleW(12);
-  const missionCardStep = missionCardWidth + missionCardMargin + missionCardGap;
-  const missionCardsPaddingLeft = Math.max(0, (width - scaleW(280)) / 2);
-  const getMissionCenterScrollX = (index: number) =>
-    missionCardsPaddingLeft + index * missionCardStep + missionCardWidth / 2 + missionCardBorderWidth - width / 2;
+  const missionCardStep = missionCardWidth + missionCardGap;
+  const missionCardsPaddingHorizontal = Math.max(0, Math.round((width - missionCardWidth) / 2));
+  const getMissionCenterScrollX = (index: number) => index * missionCardStep;
 
   const styles = useMemo(
     () =>
@@ -67,10 +66,9 @@ export default function MissionsScreen() {
         },
         cardsScroll: { overflow: "visible" as const },
         cardsContent: {
-          paddingLeft: Math.max(0, (width - scaleW(280)) / 2),
-          paddingRight: scaleW(16),
+          paddingLeft: missionCardsPaddingHorizontal,
+          paddingRight: missionCardsPaddingHorizontal,
           paddingBottom: scaleW(8),
-          gap: scaleW(12),
         },
         loadingContainer: {
           paddingVertical: scaleW(48),
@@ -90,11 +88,11 @@ export default function MissionsScreen() {
         },
         emptyText: { fontSize: scaleW(16), color: "#FFF", textAlign: "center" as const, opacity: 0.9 },
       }),
-    [scaleW, width]
+    [scaleW, width, missionCardsPaddingHorizontal]
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={styles.scrollContent}
@@ -130,6 +128,9 @@ export default function MissionsScreen() {
             [{ nativeEvent: { contentOffset: { x: missionCardsScrollX } } }],
             { useNativeDriver: true }
           )}
+          snapToInterval={missionCardStep}
+          snapToAlignment="start"
+          decelerationRate="fast"
         >
           {loading && (
             <View style={styles.loadingContainer}>
@@ -147,12 +148,12 @@ export default function MissionsScreen() {
               </Pressable>
             </View>
           )}
-          {!loading && !error && activities.length === 0 && (
+          {!loading && !error && activityCards.length === 0 && (
             <View style={styles.loadingContainer}>
               <ThemedText style={styles.emptyText}>No missions for this chapter yet.</ThemedText>
             </View>
           )}
-          {!loading && !error && activities.map((card, index) => {
+          {!loading && !error && activityCards.map((card, index) => {
             const centerScrollX = index === 0 ? 0 : getMissionCenterScrollX(index);
             const rotation = missionCardsScrollX.interpolate({
               inputRange: [
@@ -172,6 +173,7 @@ export default function MissionsScreen() {
               >
                 <MissionCard
                   card={card}
+                  xp={card.xp}
                   tiltDeg={0}
                 />
               </RNAnimated.View>
@@ -180,6 +182,6 @@ export default function MissionsScreen() {
         </RNAnimated.ScrollView>
         </Animated.View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }

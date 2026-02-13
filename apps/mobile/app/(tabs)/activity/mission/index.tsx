@@ -42,9 +42,9 @@ export default function InstructionScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const completeScale = useSharedValue(1);
-  const completeAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: completeScale.value }],
+  const nextScale = useSharedValue(1);
+  const nextAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: nextScale.value }],
   }));
 
   const loadActivity = useCallback(async () => {
@@ -184,7 +184,7 @@ export default function InstructionScreen() {
           borderWidth: 2,
           borderColor: "#FFF",
         },
-        completeButton: {
+        nextButton: {
           alignSelf: "center",
           backgroundColor: HUNTLY_GREEN,
           paddingVertical: scaleW(14),
@@ -193,7 +193,7 @@ export default function InstructionScreen() {
           marginTop: scaleW(24),
           marginBottom: scaleW(32),
         },
-        completeButtonText: {
+        nextButtonText: {
           textAlign: "center",
           fontSize: scaleW(16),
           fontWeight: "700",
@@ -354,20 +354,20 @@ export default function InstructionScreen() {
 
         <Animated.View
           entering={FadeInDown.duration(500).delay(580).springify().damping(18)}
-          style={completeAnimatedStyle}
+          style={nextAnimatedStyle}
         >
           <Pressable
-            style={styles.completeButton}
+            style={styles.nextButton}
             onPress={() => router.push({ pathname: "/(tabs)/activity/mission/completion", params: { id: String(activity.id) } } as Parameters<typeof router.push>[0])}
             onPressIn={() => {
-              completeScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+              nextScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
             }}
             onPressOut={() => {
-              completeScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+              nextScale.value = withSpring(1, { damping: 15, stiffness: 400 });
             }}
           >
-            <ThemedText type="heading" style={styles.completeButtonText}>
-              Complete
+            <ThemedText type="heading" style={styles.nextButtonText}>
+              Next
             </ThemedText>
           </Pressable>
         </Animated.View>

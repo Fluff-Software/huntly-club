@@ -27,9 +27,10 @@ function splitBlocks(text: string | null): string[] {
   return text.split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
 }
 
-function splitBullets(text: string | null): string[] {
+/** Splits hint/tip text by newlines into lines; strips optional leading "• " so we can render one bullet per line. */
+function splitBulletLines(text: string | null): string[] {
   if (!text || !text.trim()) return [];
-  return text.split(/\n/).map((s) => s.trim()).filter(Boolean);
+  return text.split("\\n")
 }
 
 export default function InstructionScreen() {
@@ -150,10 +151,12 @@ export default function InstructionScreen() {
           color: TEXT_SECONDARY,
           lineHeight: scaleW(20),
         },
+        bulletListContainer: {
+          gap: scaleW(6),
+        },
         hintItem: {
           flexDirection: "row",
           alignItems: "flex-start",
-          marginBottom: scaleW(8),
           gap: scaleW(8),
         },
         bullet: { fontSize: scaleW(14), color: TEXT_SECONDARY, marginTop: 2 },
@@ -218,8 +221,8 @@ export default function InstructionScreen() {
 
   const imageSource = getActivityImageSource(activity.image);
   const categories = activity.categories && Array.isArray(activity.categories) ? activity.categories : [];
-  const hintLines = splitBullets(activity.hints);
-  const tipsBlocks = splitBlocks(activity.tips);
+  const hintLines = splitBulletLines(activity.hints);
+  const tipLines = splitBulletLines(activity.tips);
   const triviaBlocks = splitBlocks(activity.trivia);
 
   return (
@@ -274,7 +277,7 @@ export default function InstructionScreen() {
           </Animated.View>
         )}
 
-        {tipsBlocks.length > 0 && (
+        {tipLines.length > 0 && (
           <Animated.View
             entering={FadeInDown.duration(500).delay(280).springify().damping(18)}
             style={styles.section}
@@ -282,11 +285,13 @@ export default function InstructionScreen() {
             <ThemedText type="heading" style={styles.sectionTitle}>
               Tips
             </ThemedText>
-            {tipsBlocks.map((block, i) => (
-              <ThemedText key={i} style={[styles.taskText, { marginBottom: scaleW(8) }]}>
-                {block}
-              </ThemedText>
-            ))}
+            <View style={styles.bulletListContainer}>
+              {tipLines.map((line, i) => (
+                <View key={i} style={styles.hintItem}>
+                  <ThemedText style={styles.hintText}>{line}</ThemedText>
+                </View>
+              ))}
+            </View>
           </Animated.View>
         )}
 
@@ -298,12 +303,13 @@ export default function InstructionScreen() {
             <ThemedText type="heading" style={styles.sectionTitle}>
               Hints
             </ThemedText>
-            {hintLines.map((line, i) => (
-              <View key={i} style={styles.hintItem}>
-                <ThemedText style={styles.bullet}>•</ThemedText>
-                <ThemedText style={styles.hintText}>{line}</ThemedText>
-              </View>
-            ))}
+            <View style={styles.bulletListContainer}>
+              {hintLines.map((line, i) => (
+                <View key={i} style={styles.hintItem}>
+                  <ThemedText style={styles.hintText}>{line}</ThemedText>
+                </View>
+              ))}
+            </View>
           </Animated.View>
         )}
 

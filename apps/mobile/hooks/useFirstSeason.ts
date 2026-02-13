@@ -4,7 +4,7 @@ import { supabase } from "@/services/supabase";
 
 const DEFAULT_SEASON_HERO_IMAGE = require("@/assets/images/whispering-wind.png");
 
-export type FirstSeason = { name: string | null; hero_image: string | null } | null;
+export type FirstSeason = { name: string | null; hero_image: string | null; story: string | null } | null;
 
 export function useFirstSeason(): {
   firstSeason: FirstSeason;
@@ -22,7 +22,7 @@ export function useFirstSeason(): {
     setLoading(true);
     const { data, error: err } = await supabase
       .from("seasons")
-      .select("name, hero_image")
+      .select("name, hero_image, story")
       .order("id", { ascending: true })
       .limit(1)
       .maybeSingle();

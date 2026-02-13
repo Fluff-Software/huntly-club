@@ -268,6 +268,7 @@ export default function StoryScreen() {
               style={creamButtonAnimatedStyle}
             >
               <Pressable
+                onPress={() => router.push("/sign-up/intro")}
                 onPressIn={() => {
                   creamButtonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
                 }}

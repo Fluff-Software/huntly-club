@@ -6,11 +6,23 @@ import { useCurrentChapter } from "@/hooks/useCurrentChapter";
 
 const DEFAULT_MISSION_IMAGE = require("@/assets/images/laser-fortress.jpg");
 
-type ActivityRow = { id: number; image: string | null; title: string; description: string | null };
+export type ChapterActivityCard = MissionCardData & {
+  xp: number | null;
+  categories: string[];
+};
 
-function toMissionCardData(
+type ActivityRow = {
+  id: number;
+  image: string | null;
+  title: string;
+  description: string | null;
+  xp: number | null;
+  categories?: string[] | null;
+};
+
+function toChapterActivityCard(
   row: { order: number; activities: ActivityRow | ActivityRow[] | null }
-): MissionCardData | null {
+): ChapterActivityCard | null {
   const raw = row.activities;
   const a = Array.isArray(raw) ? raw[0] : raw;
   if (!a) return null;
@@ -20,17 +32,24 @@ function toMissionCardData(
     image,
     title: a.title,
     description: a.description ?? "",
+    xp: a.xp ?? null,
+    categories: Array.isArray(a.categories) ? a.categories : [],
   };
+}
+
+function toMissionCardData(card: ChapterActivityCard): MissionCardData {
+  return { id: card.id, image: card.image, title: card.title, description: card.description };
 }
 
 export function useCurrentChapterActivities(): {
   activities: MissionCardData[];
+  activityCards: ChapterActivityCard[];
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
 } {
   const { currentChapter, loading: chapterLoading, error: chapterError, refetch: refetchChapter } = useCurrentChapter();
-  const [activities, setActivities] = useState<MissionCardData[]>([]);
+  const [activityCards, setActivityCards] = useState<ChapterActivityCard[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(true);
   const [activitiesError, setActivitiesError] = useState<string | null>(null);
 
@@ -40,25 +59,24 @@ export function useCurrentChapterActivities(): {
 
     const { data: rows, error: activitiesError } = await supabase
       .from("chapter_activities")
-      .select("order, activities(id, image, title, description)")
+      .select("order, activities(id, image, title, description, xp, categories)")
       .eq("chapter_id", chapterId)
       .order("order", { ascending: true });
 
     if (activitiesError) {
       setActivitiesError(activitiesError.message ?? "Failed to load activities");
-      setActivities([]);
+      setActivityCards([]);
     } else {
       const cards = (rows ?? [])
-        .map(toMissionCardData)
-        .filter((c): c is MissionCardData => c != null);
-      setActivities(cards);
+        .map(toChapterActivityCard)
+        .filter((c): c is ChapterActivityCard => c != null);
+      setActivityCards(cards);
     }
     setActivitiesLoading(false);
   }, []);
 
   useEffect(() => {
     if (!currentChapter) {
-      setActivities([]);
       setActivitiesLoading(false);
       setActivitiesError(null);
       return;
@@ -77,7 +95,8 @@ export function useCurrentChapterActivities(): {
   }, [refetchChapter, fetchActivities, currentChapter?.id]);
 
   return {
-    activities: currentChapter ? activities : [],
+    activities: currentChapter ? activityCards.map(toMissionCardData) : [],
+    activityCards: currentChapter ? activityCards : [],
     loading,
     error,
     refetch,

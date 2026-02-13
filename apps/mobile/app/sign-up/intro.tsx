@@ -21,6 +21,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useFirstSeason } from "@/hooks/useFirstSeason";
@@ -53,6 +54,7 @@ const DESCRIPTION_ELLIPSE_LINES = 3;
 
 export default function SignUpIntroScreen() {
   const { scaleW, width, height } = useLayoutScale();
+  const insets = useSafeAreaInsets();
   const { firstSeason, heroImageSource, loading: seasonLoading, error: seasonError, refetch: refetchSeason } = useFirstSeason();
   const { activityCards, loading: activitiesLoading, error: activitiesError, refetch: refetchActivities } = useCurrentChapterActivities();
   const flatListRef = useRef<FlatList>(null);
@@ -110,109 +112,130 @@ export default function SignUpIntroScreen() {
   }) => {
     if (item.type === "whispering-wind") {
       if (!firstSeason) return null;
+      const topInset = Math.max(insets.top, scaleW(20));
+      const bottomInset = Math.max(insets.bottom, scaleW(20));
       return (
-        <View style={{ width, flex: 1, backgroundColor: "#FFFFFF" }}>
+        <View style={{ width, flex: 1, backgroundColor: "#FFFFFF", paddingTop: topInset }}>
           <ScrollView
             style={{ flex: 1 }}
             contentContainerStyle={{
-              paddingHorizontal: scaleW(36),
-              paddingTop: scaleW(48),
-              paddingBottom: scaleW(48),
+              flexGrow: 1,
+              paddingHorizontal: scaleW(28),
+              paddingTop: scaleW(20),
+              paddingBottom: scaleW(20),
             }}
-            showsVerticalScrollIndicator={true}
+            showsVerticalScrollIndicator={false}
           >
-          <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
-          <Text
-            style={{
-              color: "#1F2937",
-              textAlign: "center",
-              fontWeight: "700",
-              fontSize: scaleW(18),
-              marginBottom: scaleW(8),
-            }}
-          >
-            This latest season is here!
-          </Text>
-          <Text
-            style={{
-              color: "#4B5563",
-              textAlign: "center",
-              fontSize: scaleW(16),
-              marginBottom: scaleW(24),
-            }}
-          >
-            Your new season is ready to view
-          </Text>
-          <Text
-            style={{
-              color: "#1F2937",
-              textAlign: "center",
-              fontWeight: "400",
-              fontSize: scaleW(30),
-              marginBottom: scaleW(24),
-            }}
-          >
-            {firstSeason.name}
-          </Text>
-          <View
-            style={{
-              alignSelf: "center",
-              width: scaleW(280),
-              height: scaleW(280),
-              borderRadius: scaleW(140),
-              overflow: "hidden",
-              marginBottom: scaleW(28),
-            }}
-          >
-            <Image
-              source={heroImageSource}
-              resizeMode="cover"
-              style={{ width: "100%", height: "100%" }}
-            />
-          </View>
-          {storyToParagraphs(firstSeason.story).map((paragraph, i, arr) => (
-            <Text
-              key={i}
-              style={{
-                color: "#374151",
-                alignSelf: "center",
-                fontSize: scaleW(18),
-                lineHeight: scaleW(24),
-                marginBottom: i === arr.length - 1 ? scaleW(32) : scaleW(16),
-                textAlign: "center",
-              }}
-            >
-              {paragraph}
-            </Text>
-          ))}
-          <Animated.View entering={FadeInDown.duration(500).delay(280).springify().damping(18)} style={openCardsAnimatedStyle}>
-            <Pressable
-              onPress={goNext}
-              onPressIn={() => { openCardsScale.value = withSpring(0.96, { damping: 15, stiffness: 400 }); }}
-              onPressOut={() => { openCardsScale.value = withSpring(1, { damping: 15, stiffness: 400 }); }}
-              style={{
-                alignSelf: "center",
-                width: "100%",
-                paddingVertical: scaleW(16),
-                borderRadius: scaleW(50),
-                backgroundColor: HUNTLY_GREEN,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
+            <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
               <Text
                 style={{
-                  color: "#FFFFFF",
-                  fontSize: scaleW(16),
-                  fontWeight: "600",
+                  color: "#1F2937",
+                  textAlign: "center",
+                  fontWeight: "700",
+                  fontSize: scaleW(17),
+                  marginBottom: scaleW(6),
+                  letterSpacing: 0.2,
                 }}
               >
-                Open adventure cards
+                This latest season is here!
               </Text>
-            </Pressable>
-          </Animated.View>
-          </Animated.View>
+              <Text
+                style={{
+                  color: "#6B7280",
+                  textAlign: "center",
+                  fontSize: scaleW(15),
+                  marginBottom: scaleW(16),
+                }}
+              >
+                Your new season is ready to view
+              </Text>
+              <Text
+                style={{
+                  color: "#1F2937",
+                  textAlign: "center",
+                  fontWeight: "600",
+                  fontSize: scaleW(28),
+                  marginBottom: scaleW(20),
+                }}
+              >
+                {firstSeason.name}
+              </Text>
+              <View
+                style={{
+                  alignSelf: "center",
+                  width: scaleW(200),
+                  height: scaleW(200),
+                  borderRadius: scaleW(100),
+                  overflow: "hidden",
+                  marginBottom: scaleW(20),
+                  backgroundColor: "#F3F4F6",
+                }}
+              >
+                <Image
+                  source={heroImageSource}
+                  resizeMode="cover"
+                  style={{ width: "100%", height: "100%" }}
+                />
+              </View>
+              <View style={{ maxWidth: scaleW(320), alignSelf: "center" }}>
+                {storyToParagraphs(firstSeason.story).map((paragraph, i, arr) => (
+                  <Text
+                    key={i}
+                    style={{
+                      color: "#4B5563",
+                      textAlign: "center",
+                      fontSize: scaleW(15),
+                      lineHeight: scaleW(22),
+                      marginBottom: i === arr.length - 1 ? 0 : scaleW(12),
+                    }}
+                  >
+                    {paragraph}
+                  </Text>
+                ))}
+              </View>
+            </Animated.View>
           </ScrollView>
+          <View
+            style={{
+              paddingHorizontal: scaleW(28),
+              paddingTop: scaleW(20),
+              paddingBottom: bottomInset,
+              backgroundColor: "#FFFFFF",
+              borderTopWidth: StyleSheet.hairlineWidth,
+              borderTopColor: "#E5E7EB",
+            }}
+          >
+            <Animated.View entering={FadeInDown.duration(500).delay(280).springify().damping(18)} style={openCardsAnimatedStyle}>
+              <Pressable
+                onPress={goNext}
+                onPressIn={() => { openCardsScale.value = withSpring(0.96, { damping: 15, stiffness: 400 }); }}
+                onPressOut={() => { openCardsScale.value = withSpring(1, { damping: 15, stiffness: 400 }); }}
+                style={{
+                  width: "100%",
+                  paddingVertical: scaleW(16),
+                  borderRadius: scaleW(28),
+                  backgroundColor: HUNTLY_GREEN,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.08,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }}
+              >
+                <Text
+                  style={{
+                    color: "#FFFFFF",
+                    fontSize: scaleW(16),
+                    fontWeight: "600",
+                  }}
+                >
+                  Open adventure cards
+                </Text>
+              </Pressable>
+            </Animated.View>
+          </View>
         </View>
       );
     }

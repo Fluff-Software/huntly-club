@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
@@ -53,7 +54,7 @@ export default function ConfirmScreen() {
   }, [router, params]);
 
   return (
-    <ThemedView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <Stack.Screen options={{ title: 'Email Confirmation', headerShown: false }} />
       
       {!error ? (
@@ -68,7 +69,7 @@ export default function ConfirmScreen() {
       <ThemedText style={styles.redirectText}>
         {error ? 'Redirecting to login...' : 'Redirecting to set up your explorers...'}
       </ThemedText>
-    </ThemedView>
+    </SafeAreaView>
   );
 }
 

@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
@@ -56,7 +57,7 @@ export default function AuthScreen() {
 
   if (mode !== AuthScreenMode.WELCOME) {
     return (
-      <View className="flex-1" style={{ backgroundColor: HUNTLY_GREEN }}>
+      <SafeAreaView className="flex-1" style={{ backgroundColor: HUNTLY_GREEN }} edges={["top", "left", "right"]}>
         <StatusBar style="light" />
         <Stack.Screen options={{ title: "Authentication", headerShown: false }} />
         <KeyboardAvoidingView
@@ -79,12 +80,12 @@ export default function AuthScreen() {
             )}
           </ScrollView>
         </KeyboardAvoidingView>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View className="flex-1 relative">
+    <SafeAreaView className="flex-1 relative" edges={["top", "left", "right"]}>
       <StatusBar style="light" />
       <Stack.Screen options={{ title: "Authentication", headerShown: false }} />
       <View className="absolute top-0 left-0 right-0 items-center overflow-hidden" style={{ width, height: heroHeight }}>
@@ -265,6 +266,6 @@ export default function AuthScreen() {
           </Animated.View>
         </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }

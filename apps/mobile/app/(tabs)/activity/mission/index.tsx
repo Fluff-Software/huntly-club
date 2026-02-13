@@ -1,5 +1,6 @@
 import React, { useMemo, useEffect, useState, useCallback } from "react";
 import { View, ScrollView, Image, Pressable, StyleSheet, ActivityIndicator } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
@@ -204,18 +205,18 @@ export default function InstructionScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.loadingContainer]}>
+      <SafeAreaView style={[styles.container, styles.loadingContainer]} edges={["top", "left", "right"]}>
         <ActivityIndicator size="large" color={HUNTLY_GREEN} />
         <ThemedText style={[styles.errorText, { marginTop: scaleW(16) }]}>Loading activity…</ThemedText>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (error || !activity) {
     return (
-      <View style={[styles.container, styles.loadingContainer]}>
+      <SafeAreaView style={[styles.container, styles.loadingContainer]} edges={["top", "left", "right"]}>
         <ThemedText style={styles.errorText}>{error ?? "Activity not found"}</ThemedText>
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -226,7 +227,7 @@ export default function InstructionScreen() {
   const triviaBlocks = splitBlocks(activity.trivia);
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <ScrollView
         style={styles.pageInner}
         contentContainerStyle={{ paddingBottom: scaleW(40) }}
@@ -371,6 +372,6 @@ export default function InstructionScreen() {
           </Pressable>
         </Animated.View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }

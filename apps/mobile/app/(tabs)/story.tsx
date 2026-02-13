@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
@@ -206,16 +207,16 @@ export default function StoryScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.loadingContainer]}>
+      <SafeAreaView style={[styles.container, styles.loadingContainer]} edges={["top", "left", "right"]}>
         <ActivityIndicator size="large" color="#FFF" />
         <ThemedText style={styles.loadingText}>Loading story…</ThemedText>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <View style={[styles.container, styles.errorContainer]}>
+      <SafeAreaView style={[styles.container, styles.errorContainer]} edges={["top", "left", "right"]}>
         <ThemedText style={styles.errorText}>{error}</ThemedText>
         <Pressable
           onPress={handleRetry}
@@ -231,12 +232,12 @@ export default function StoryScreen() {
             Retry
           </ThemedText>
         </Pressable>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={styles.scrollContent}
@@ -362,6 +363,6 @@ export default function StoryScreen() {
           </View>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }

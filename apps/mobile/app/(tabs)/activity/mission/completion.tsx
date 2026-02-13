@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   BackHandler,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
@@ -495,7 +496,7 @@ export default function CompletionScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={{ paddingBottom: scaleW(24) }}
@@ -992,6 +993,6 @@ export default function CompletionScreen() {
           </View>
         </Modal>
       )}
-    </View>
+    </SafeAreaView>
   );
 }

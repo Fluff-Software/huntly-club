@@ -15,6 +15,7 @@ const HUNTLY_GREEN = "#7FAF8A";
 
 type MissionCardProps = {
   card: MissionCardData;
+  xp?: number | null;
   tiltDeg?: number;
   marginTopOffset?: number;
   onStartPress?: () => void;
@@ -22,6 +23,7 @@ type MissionCardProps = {
 
 export function MissionCard({
   card,
+  xp,
   tiltDeg = 0,
   marginTopOffset = 0,
   onStartPress,
@@ -62,12 +64,32 @@ export function MissionCard({
           backgroundColor: "#1a1a2e",
         },
         image: { width: "100%", height: "100%" },
+        titleRow: {
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: scaleW(8),
+          gap: scaleW(8),
+        },
         title: {
           fontSize: scaleW(18),
           fontWeight: "600",
-          marginBottom: scaleW(8),
           textAlign: "center",
           color: "#000",
+          flex: 1,
+        },
+        pointsBadge: {
+          backgroundColor: "#F5F0E8",
+          paddingHorizontal: scaleW(10),
+          paddingVertical: scaleW(6),
+          borderRadius: scaleW(12),
+          borderWidth: 1,
+          borderColor: "#E5E7EB",
+        },
+        pointsText: {
+          fontSize: scaleW(13),
+          fontWeight: "600",
+          color: "#374151",
         },
         description: {
           fontSize: scaleW(15),
@@ -116,7 +138,16 @@ export function MissionCard({
             resizeMode="cover"
           />
         </View>
-        <ThemedText type="heading" style={styles.title}>{card.title}</ThemedText>
+        <View style={styles.titleRow}>
+          <ThemedText type="heading" style={styles.title} numberOfLines={1} ellipsizeMode="tail">
+            {card.title}
+          </ThemedText>
+          {xp != null && (
+            <View style={styles.pointsBadge}>
+              <ThemedText style={styles.pointsText}>{xp} Points</ThemedText>
+            </View>
+          )}
+        </View>
         <ThemedText style={styles.description} numberOfLines={4} ellipsizeMode="tail">
           {card.description}
         </ThemedText>

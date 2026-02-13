@@ -30,7 +30,7 @@ endef
 
 # ---- Targets ----
 
-.PHONY: dev supabase-up expo stop down logs status reset restart test ios android web lint format
+.PHONY: dev supabase-up expo stop down logs status reset restart seed test ios android web lint format
 
 help:
 	@echo "dev: start Supabase (if needed), wait for it, then start Expo"
@@ -42,6 +42,7 @@ help:
 	@echo "status: check Supabase status"
 	@echo "reset: reset Supabase database (drops all data and re-runs migrations)"
 	@echo "restart: restart Supabase containers (preserves data)"
+	@echo "seed: load dummy data into packs, activities, one season, chapters; leaves teams as-is; excludes profiles, badges, admins"
 	@echo "test: run your tests"
 	@echo "lint: run your linting"
 	@echo "format: run your formatting"
@@ -91,6 +92,12 @@ reset:
 	echo "▶ Resetting Supabase database (this will drop all data and re-run migrations)…"
 	supabase db reset
 	echo "✓ Supabase database reset complete."
+
+seed: supabase-up
+	$(call need,supabase)
+	echo "▶ Loading seed data (packs, activities, one season, chapters)…"
+	docker exec -i supabase_db_huntly-club psql -U postgres -d postgres < supabase/seed/initial_data.sql
+	echo "✓ Seed data loaded."
 
 restart: down supabase-up
 	echo "✓ Supabase restarted."

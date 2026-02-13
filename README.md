@@ -50,6 +50,8 @@ The core flow that we use to affect changes to the database and the associated t
    docker exec -i supabase_db_huntly-club psql -U postgres -d postgres < supabase/seed/initial_data.sql
    ```
 
+   Or run `make seed` (starts Supabase if needed, then loads the same seed file).
+
 ## Hosted Supabase and EAS device builds
 
 You can keep your local `.env` for local dev only. Hosted Supabase is updated by GitHub Actions (using GitHub secrets); the installed app gets the hosted URL/keys from EAS secrets at build time.

@@ -30,8 +30,6 @@ export function ParentPinModal({
   const [error, setError] = useState("");
 
   const generateMathQuestion = () => {
-    const num1 = Math.floor(Math.random() * 20) + 1; // 1-20
-    const num2 = Math.floor(Math.random() * 20) + 1; // 1-20
     const operators = ["+", "-", "×"];
     const operator = operators[Math.floor(Math.random() * operators.length)];
 
@@ -39,21 +37,38 @@ export function ParentPinModal({
     let questionText: string;
 
     switch (operator) {
-      case "+":
-        result = num1 + num2;
-        questionText = `${num1} + ${num2}`;
+      case "+": {
+        // Addition: numbers 1–20, sum 2–40 — easy for adults
+        const a = Math.floor(Math.random() * 20) + 1;
+        const b = Math.floor(Math.random() * 20) + 1;
+        result = a + b;
+        questionText = `${a} + ${b}`;
         break;
-      case "-":
-        result = num1 - num2;
-        questionText = `${num1} - ${num2}`;
+      }
+      case "-": {
+        // Subtraction: larger − smaller so result is never negative (0–19)
+        const a = Math.floor(Math.random() * 20) + 1;
+        const b = Math.floor(Math.random() * 20) + 1;
+        const larger = Math.max(a, b);
+        const smaller = Math.min(a, b);
+        result = larger - smaller;
+        questionText = `${larger} - ${smaller}`;
         break;
-      case "×":
-        result = num1 * num2;
-        questionText = `${num1} × ${num2}`;
+      }
+      case "×": {
+        // Multiplication: 2–10 × 2–10 so result 4–100 — not too large
+        const a = Math.floor(Math.random() * 9) + 2;
+        const b = Math.floor(Math.random() * 9) + 2;
+        result = a * b;
+        questionText = `${a} × ${b}`;
         break;
-      default:
-        result = num1 + num2;
-        questionText = `${num1} + ${num2}`;
+      }
+      default: {
+        const a = Math.floor(Math.random() * 20) + 1;
+        const b = Math.floor(Math.random() * 20) + 1;
+        result = a + b;
+        questionText = `${a} + ${b}`;
+      }
     }
 
     setQuestion(questionText);

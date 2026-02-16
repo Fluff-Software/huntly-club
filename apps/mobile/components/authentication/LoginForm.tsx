@@ -53,11 +53,11 @@ export function LoginForm({ onCreateAccount }: LoginFormProps) {
         />
         <ThemedText
           type="title"
-          className="text-huntly-forest text-center mb-2"
+          className="text-white text-center mb-2"
         >
           Welcome to Huntly Club!
         </ThemedText>
-        <ThemedText type="body" className="text-huntly-charcoal text-center">
+        <ThemedText type="body" className="text-white text-center">
           Ready for your next adventure?
         </ThemedText>
       </View>

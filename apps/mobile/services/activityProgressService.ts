@@ -386,14 +386,14 @@ export interface ClubPhotoCardItem {
 /**
  * Returns up to `count` random approved photos from the club (any activity).
  * Each item includes activity title and profile nickname for display.
- * status 1 = approved.
+ * status 1 = approved. Nicknames come from profile_public (id + nickname only).
  */
 export const getRandomClubPhotos = async (
   count: number
 ): Promise<ClubPhotoCardItem[]> => {
   const { data, error } = await supabase
     .from("user_activity_photos")
-    .select("photo_id, photo_url, activities(title), profiles(nickname)")
+    .select("photo_id, photo_url, profile_id, activities(title)")
     .eq("status", 1)
     .not("activity_id", "is", null);
 
@@ -405,14 +405,26 @@ export const getRandomClubPhotos = async (
   const list = data ?? [];
   if (list.length === 0) return [];
 
+  const profileIds = [...new Set((list as { profile_id?: number }[]).map((r) => r.profile_id).filter((id): id is number => id != null))];
+  const nicknamesByProfileId: Record<number, string> = {};
+  if (profileIds.length > 0) {
+    const { data: profilesData } = await supabase
+      .from("profile_public")
+      .select("id, nickname")
+      .in("id", profileIds);
+    for (const p of profilesData ?? []) {
+      nicknamesByProfileId[p.id] = p.nickname ?? "";
+    }
+  }
+
   const shuffled = [...list].sort(() => Math.random() - 0.5);
   const taken = shuffled.slice(0, count);
 
   return taken.map((row: Record<string, unknown>) => {
     const activity = row.activities;
-    const profile = row.profiles;
     const title = Array.isArray(activity) ? activity[0]?.title : (activity as { title?: string } | null)?.title;
-    const nickname = Array.isArray(profile) ? profile[0]?.nickname : (profile as { nickname?: string | null } | null)?.nickname;
+    const profileId = row.profile_id as number | undefined;
+    const nickname = profileId != null ? nicknamesByProfileId[profileId] ?? "" : "";
     return {
       id: String(row.photo_id ?? Math.random()),
       photo_url: String(row.photo_url ?? ""),

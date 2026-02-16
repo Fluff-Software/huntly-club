@@ -5,11 +5,22 @@ import { revalidatePath } from "next/cache";
 
 export type ChapterFormState = { error?: string };
 
-function getBodyParts(formData: FormData): string[] {
-  const raw = formData.getAll("body_parts");
-  return raw
-    .map((v) => (typeof v === "string" ? v.trim() : ""))
-    .filter(Boolean);
+function getBodySlides(formData: FormData): { type: string; value: string }[] {
+  const raw = formData.get("body_slides");
+  if (typeof raw !== "string" || !raw.trim()) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (p): p is { type: string; value: string } =>
+        p != null &&
+        typeof p === "object" &&
+        typeof (p as { type: unknown }).type === "string" &&
+        typeof (p as { value: unknown }).value === "string"
+    );
+  } catch {
+    return [];
+  }
 }
 
 export async function createChapter(
@@ -20,7 +31,7 @@ export async function createChapter(
   const weekNumber = parseInt(String(formData.get("week_number")), 10);
   const title = (formData.get("title") as string)?.trim();
   const image = (formData.get("image") as string)?.trim() || null;
-  const bodyParts = getBodyParts(formData);
+  const bodySlides = getBodySlides(formData);
   const unlockDate = formData.get("unlock_date") as string;
 
   if (!title || !unlockDate) return { error: "Title and unlock date are required" };
@@ -33,7 +44,7 @@ export async function createChapter(
       week_number: weekNumber,
       title,
       image: image || null,
-      body_parts: bodyParts,
+      body_slides: bodySlides,
       unlock_date: unlockDate,
     });
 
@@ -57,7 +68,7 @@ export async function updateChapter(
   const weekNumber = parseInt(String(formData.get("week_number")), 10);
   const title = (formData.get("title") as string)?.trim();
   const image = (formData.get("image") as string)?.trim() || null;
-  const bodyParts = getBodyParts(formData);
+  const bodySlides = getBodySlides(formData);
   const unlockDate = formData.get("unlock_date") as string;
 
   if (!title || !unlockDate) return { error: "Title and unlock date are required" };
@@ -71,7 +82,7 @@ export async function updateChapter(
         week_number: weekNumber,
         title,
         image: image || null,
-        body_parts: bodyParts,
+        body_slides: bodySlides,
         unlock_date: unlockDate,
       })
       .eq("id", chapterId);

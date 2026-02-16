@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/services/supabase";
 
+export type StorySlide = { type: "text"; value: string } | { type: "image"; value: string };
+
 export type Chapter = {
   id: number;
   week_number: number;
   title: string | null;
   body: string | null;
   body_parts: string[] | null;
+  body_slides: StorySlide[] | null;
   unlock_date: string;
 };
 
@@ -27,7 +30,7 @@ export function useAllChapters(): {
 
     const { data, error: chapterError } = await supabase
       .from("chapters")
-      .select("id, week_number, title, body, body_parts, unlock_date")
+      .select("id, week_number, title, body, body_parts, body_slides, unlock_date")
       .lte("unlock_date", today)
       .order("unlock_date", { ascending: false });
 

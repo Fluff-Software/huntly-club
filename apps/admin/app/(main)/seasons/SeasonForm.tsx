@@ -3,15 +3,12 @@
 import { useActionState } from "react";
 import { Button } from "@/components/Button";
 import { ImageUploadField } from "@/components/ImageUploadField";
-import { TextPartsField } from "@/components/TextPartsField";
 
 type SeasonFormProps = {
   action: (formData: FormData) => Promise<{ error?: string }>;
   initial?: {
     name: string | null;
     hero_image: string | null;
-    story: string | null;
-    story_parts: string[];
   };
 };
 
@@ -53,13 +50,6 @@ export function SeasonForm({ action, initial }: SeasonFormProps) {
         prefix="heroes"
         defaultValue={initial?.hero_image}
         help="Upload to Supabase Storage or paste a URL."
-      />
-
-      <TextPartsField
-        name="story_parts"
-        label="Story parts (one per slide)"
-        initialParts={initial?.story_parts ?? []}
-        help="Each part appears as one slide in the app. Add parts in order."
       />
 
       <Button type="submit" size="lg">

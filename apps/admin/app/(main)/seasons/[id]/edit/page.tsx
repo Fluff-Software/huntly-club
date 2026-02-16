@@ -39,8 +39,6 @@ export default async function EditSeasonPage({
         initial={{
           name: season.name,
           hero_image: season.hero_image,
-          story: season.story,
-          story_parts: season.story_parts ?? [],
         }}
       />
       <p className="mt-4">

@@ -39,7 +39,6 @@ export default function StoryScreen() {
   const { firstSeason, heroImageSource, loading: seasonLoading, error: seasonError, refetch: refetchSeason } = useFirstSeason();
   const { nextChapterDate, loading: currentChapterLoading, error: chapterError, refetch: refetchChapter } = useCurrentChapter();
   const { chapters, loading: chaptersLoading, error: chaptersError, refetch: refetchChapters } = useAllChapters();
-  const creamButtonScale = useSharedValue(1);
   const completeButtonScale = useSharedValue(1);
 
   const loading = seasonLoading || currentChapterLoading || chaptersLoading;
@@ -51,9 +50,6 @@ export default function StoryScreen() {
     refetchChapters();
   }, [refetchSeason, refetchChapter, refetchChapters]);
 
-  const creamButtonAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: creamButtonScale.value }],
-  }));
   const completeButtonAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: completeButtonScale.value }],
   }));
@@ -105,16 +101,6 @@ export default function StoryScreen() {
           color: "#FFF",
           textAlign: "center",
           marginBottom: scaleW(16),
-        },
-        creamButton: {
-          backgroundColor: CREAM,
-          alignSelf: "center",
-          borderRadius: scaleW(28),
-          paddingVertical: scaleW(14),
-          paddingHorizontal: scaleW(32),
-          alignItems: "center",
-          justifyContent: "center",
-          marginBottom: scaleW(40),
         },
         chapterContainer: {
           backgroundColor: "#438DBD",
@@ -235,10 +221,10 @@ export default function StoryScreen() {
           onPress={handleRetry}
           style={styles.retryButton}
           onPressIn={() => {
-            creamButtonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+            completeButtonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
           }}
           onPressOut={() => {
-            creamButtonScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+            completeButtonScale.value = withSpring(1, { damping: 15, stiffness: 400 });
           }}
         >
           <ThemedText type="heading" style={styles.retryButtonText}>
@@ -277,35 +263,6 @@ export default function StoryScreen() {
                   {firstSeason.name}
                 </ThemedText>
               )}
-            </Animated.View>
-
-            <Animated.View
-              entering={FadeInDown.duration(500).delay(280).springify().damping(18)}
-              style={creamButtonAnimatedStyle}
-            >
-              <Pressable
-                onPress={() =>
-                  router.push({ pathname: "/(tabs)/story/slides", params: { source: "season" } })
-                }
-                onPressIn={() => {
-                  creamButtonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-                }}
-                onPressOut={() => {
-                  creamButtonScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-                }}
-                style={styles.creamButton}
-              >
-                <ThemedText
-                  type="heading"
-                  style={{
-                    fontSize: scaleW(16),
-                    fontWeight: "600",
-                    color: DARK_GREEN,
-                  }}
-                >
-                  See the season story
-                </ThemedText>
-              </Pressable>
             </Animated.View>
           </View>
         )}

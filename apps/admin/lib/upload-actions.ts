@@ -54,3 +54,10 @@ export async function uploadActivityImage(
 ): Promise<{ url?: string; error?: string }> {
   return uploadImage(formData, "activity-images", "activities");
 }
+
+export async function uploadSlideImage(
+  formData: FormData
+): Promise<{ url?: string; error?: string }> {
+  const prefix = (formData.get("prefix") as string) || "temp";
+  return uploadImage(formData, "story-slides", prefix);
+}

@@ -46,15 +46,26 @@ export default async function ChaptersListPage({
             href="/seasons"
             className="text-sm font-medium text-stone-500 hover:text-stone-700 focus:outline-none focus:ring-2 focus:ring-huntly-sage"
           >
-            Seasons
+            ← Seasons
           </Link>
           <h1 className="mt-1 text-2xl font-semibold text-stone-900">
             {season.name ?? `Season ${season.id}`} – Chapters
           </h1>
+          <Link
+            href={`/seasons/${seasonId}/edit`}
+            className="mt-1 inline-flex text-sm font-medium text-huntly-forest hover:underline focus:outline-none focus:ring-2 focus:ring-huntly-sage focus:ring-offset-2 rounded"
+          >
+            Edit season (name, image)
+          </Link>
         </div>
-        <Button href={`/seasons/${seasonId}/chapters/new`} size="md" className="sm:shrink-0">
-          New chapter
-        </Button>
+        <div className="flex items-center gap-2 sm:shrink-0">
+          <Button href={`/seasons/${seasonId}/edit`} variant="ghost" size="md">
+            Edit season
+          </Button>
+          <Button href={`/seasons/${seasonId}/chapters/new`} size="md">
+            New chapter
+          </Button>
+        </div>
       </div>
 
       {chapters.length === 0 ? (

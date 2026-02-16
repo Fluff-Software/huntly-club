@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { Button } from "@/components/Button";
 import { ImageUploadField } from "@/components/ImageUploadField";
-import { TextPartsField } from "@/components/TextPartsField";
+import { SlidePartsField, type SlidePart } from "@/components/SlidePartsField";
 
 type ChapterFormProps = {
   action: (formData: FormData) => Promise<{ error?: string }>;
@@ -13,11 +13,13 @@ type ChapterFormProps = {
     image: string | null;
     body: string | null;
     body_parts: string[];
+    body_slides: SlidePart[];
     unlock_date: string;
   };
+  chapterId?: number | null;
 };
 
-export function ChapterForm({ action, initial }: ChapterFormProps) {
+export function ChapterForm({ action, initial, chapterId }: ChapterFormProps) {
   const [state, formAction] = useActionState(
     async (_: { error?: string }, formData: FormData) => action(formData),
     { error: undefined }
@@ -86,11 +88,12 @@ export function ChapterForm({ action, initial }: ChapterFormProps) {
         help="Upload to Supabase Storage or paste a URL."
       />
 
-      <TextPartsField
-        name="body_parts"
-        label="Chapter parts (one per slide)"
-        initialParts={initial?.body_parts ?? []}
-        help="Each part appears as one slide in the app. Add parts in order."
+      <SlidePartsField
+        name="body_slides"
+        label="Chapter slides"
+        initialSlides={initial?.body_slides ?? []}
+        help="Each slide can be text or an image. Order is preserved in the app."
+        uploadPrefix={chapterId != null ? `chapter-${chapterId}` : null}
       />
 
       <Button type="submit" size="lg">

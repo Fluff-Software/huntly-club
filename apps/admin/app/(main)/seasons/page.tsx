@@ -36,18 +36,23 @@ export default async function SeasonsPage() {
               key={season.id}
               className="flex flex-col gap-2 px-4 py-4 transition-colors hover:bg-stone-50 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:gap-3"
             >
-              <Link
-                href={`/seasons/${season.id}/chapters`}
-                className="font-medium text-stone-900 focus:outline-none focus:ring-2 focus:ring-huntly-sage focus:ring-offset-2"
-              >
-                {season.name ?? `Season ${season.id}`}
-              </Link>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col gap-1 min-w-0">
+                <Link
+                  href={`/seasons/${season.id}/edit`}
+                  className="font-medium text-stone-900 hover:text-huntly-forest focus:outline-none focus:ring-2 focus:ring-huntly-sage focus:ring-offset-2 rounded"
+                >
+                  {season.name ?? `Season ${season.id}`}
+                </Link>
                 <span className="text-sm text-stone-500">
                   {new Date(season.created_at).toLocaleDateString("en-GB")}
                 </span>
+              </div>
+              <div className="flex items-center gap-2 sm:shrink-0">
                 <Button href={`/seasons/${season.id}/edit`} variant="secondary" size="sm">
-                  Edit
+                  Edit season
+                </Button>
+                <Button href={`/seasons/${season.id}/chapters`} variant="ghost" size="sm">
+                  Chapters
                 </Button>
               </div>
             </li>

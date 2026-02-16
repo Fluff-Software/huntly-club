@@ -84,8 +84,12 @@ export default async function EditChapterPage({
           image: chapter.image,
           body: chapter.body,
           body_parts: chapter.body_parts ?? [],
+          body_slides:
+            (chapter.body_slides?.length && chapter.body_slides) ||
+            (chapter.body_parts ?? []).map((v: string) => ({ type: "text" as const, value: v })),
           unlock_date: chapter.unlock_date,
         }}
+        chapterId={chapterIdNum}
       />
 
       <section className="mt-12 border-t border-stone-200 pt-12">

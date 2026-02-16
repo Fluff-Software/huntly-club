@@ -352,6 +352,7 @@ export default function CompletionScreen() {
         uploaded.map(({ profileId, photoUrl }) => ({
           profile_id: profileId,
           user_activity_id: userActivityIdByProfile[profileId],
+          activity_id: activity.id,
           photo_url: photoUrl,
         }))
       );

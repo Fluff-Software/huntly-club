@@ -317,6 +317,7 @@ export const ensureProgressRows = async (
 export interface UserActivityPhotoInsert {
   profile_id: number;
   user_activity_id: number;
+  activity_id: number;
   photo_url: string;
 }
 
@@ -332,6 +333,7 @@ export const insertUserActivityPhotos = async (
     rows.map((r) => ({
       profile_id: r.profile_id,
       user_activity_id: r.user_activity_id,
+      activity_id: r.activity_id,
       photo_url: r.photo_url,
       status: 0,
     }))

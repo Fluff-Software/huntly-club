@@ -19,6 +19,7 @@ import Animated, {
 import { router } from "expo-router";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useSignUp } from "@/contexts/SignUpContext";
@@ -123,15 +124,16 @@ export default function SignUpParentEmailScreen() {
     <>
       <StatusBar style="light" />
       <Stack.Screen options={{ title: "Sign up", headerShown: false }} />
+      <SafeAreaView style={{ flex: 1, backgroundColor: HUNTLY_GREEN }} edges={["top", "left", "right"]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1, backgroundColor: HUNTLY_GREEN }}
+        style={{ flex: 1 }}
       >
         <ScrollView
           contentContainerStyle={{
             flexGrow: 1,
             paddingHorizontal: scaleW(24),
-            paddingTop: scaleW(80),
+            paddingTop: scaleW(24),
             paddingBottom: scaleW(40),
           }}
           keyboardShouldPersistTaps="handled"
@@ -392,6 +394,7 @@ export default function SignUpParentEmailScreen() {
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
+      </SafeAreaView>
     </>
   );
 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { View, ActivityIndicator, Pressable, Alert, AppState, AppStateStatus } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -105,7 +106,8 @@ export default function VerifyEmailScreen() {
       <>
         <StatusBar style="light" />
         <Stack.Screen options={{ title: "Email Verified", headerShown: false }} />
-        <View style={{ flex: 1, backgroundColor: HUNTLY_GREEN }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: HUNTLY_GREEN }} edges={["top", "left", "right"]}>
+        <View style={{ flex: 1 }}>
           <View
             style={{
               flex: 1,
@@ -114,26 +116,6 @@ export default function VerifyEmailScreen() {
               paddingHorizontal: scaleW(24),
             }}
           >
-            <View
-              style={{
-                width: scaleW(80),
-                height: scaleW(80),
-                backgroundColor: "#A8D5BA",
-                borderRadius: scaleW(40),
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: scaleW(24),
-              }}
-            >
-              <ThemedText
-                lightColor="#FFFFFF"
-                darkColor="#FFFFFF"
-                style={{ fontSize: scaleW(40) }}
-              >
-                ✅
-              </ThemedText>
-            </View>
-
             <ThemedText
               type="heading"
               lightColor="#FFFFFF"
@@ -161,6 +143,7 @@ export default function VerifyEmailScreen() {
             </ThemedText>
           </View>
         </View>
+        </SafeAreaView>
       </>
     );
   }
@@ -169,7 +152,8 @@ export default function VerifyEmailScreen() {
     <>
       <StatusBar style="light" />
       <Stack.Screen options={{ title: "Verify Email", headerShown: false }} />
-      <View style={{ flex: 1, backgroundColor: HUNTLY_GREEN }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: HUNTLY_GREEN }} edges={["top", "left", "right"]}>
+      <View style={{ flex: 1 }}>
         <View
           style={{
             flex: 1,
@@ -178,26 +162,6 @@ export default function VerifyEmailScreen() {
             paddingHorizontal: scaleW(24),
           }}
         >
-          <View
-            style={{
-              width: scaleW(80),
-              height: scaleW(80),
-              backgroundColor: "#A8D5BA",
-              borderRadius: scaleW(40),
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: scaleW(24),
-            }}
-          >
-            <ThemedText
-              lightColor="#FFFFFF"
-              darkColor="#FFFFFF"
-              style={{ fontSize: scaleW(40) }}
-            >
-              📧
-            </ThemedText>
-          </View>
-
           <ThemedText
             type="heading"
             lightColor="#FFFFFF"
@@ -351,6 +315,7 @@ export default function VerifyEmailScreen() {
           </Pressable>
         </View>
       </View>
+      </SafeAreaView>
     </>
   );
 }

@@ -138,7 +138,7 @@ export default function GetStartedScreen() {
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "center",
-            paddingTop: scaleW(80),
+            paddingTop: scaleW(24),
           }}
         >
           {INTRO_SLIDES.map((_, i) => (

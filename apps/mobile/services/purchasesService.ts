@@ -176,10 +176,15 @@ export const updatePurchasesUserId = async (userId: string): Promise<boolean> =>
 
 /**
  * Reset to anonymous user (e.g. on logout).
+ * No-op if the current RevenueCat user is already anonymous (e.g. app launch with no session).
  */
 export const resetPurchasesUser = async (): Promise<boolean> => {
   if (!isIAPSupported() || !isConfigured) return true;
   try {
+    const anonymous = await Purchases.isAnonymous();
+    if (anonymous) {
+      return true;
+    }
     await Purchases.logOut();
     return true;
   } catch (e) {

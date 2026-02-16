@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useRouter, useSegments } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { usePurchases } from "@/contexts/PurchasesContext";
 import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { ThemedView } from "@/components/ThemedView";
 import { getProfiles } from "@/services/profileService";
@@ -15,6 +16,7 @@ type AuthGuardProps = {
 export function AuthGuard({ children }: AuthGuardProps) {
   const { user, session, loading } = useAuth();
   const { currentPlayer } = usePlayer();
+  const { subscriptionInfo, isLoading: purchasesLoading } = usePurchases();
   const segments = useSegments();
   const router = useRouter();
   const signUpContext = useSignUpOptional();
@@ -90,7 +92,20 @@ export function AuthGuard({ children }: AuthGuardProps) {
         })
         .finally(() => setCheckingProfiles(false));
     }
-  }, [user, session, loading, segments, checkingProfiles, currentPlayer]);
+
+    // Require active subscription for signed-in users to access the app
+    const inSubscriptionRequired = segments[0] === "subscription-required";
+    if (
+      user &&
+      !inUnauthFlow &&
+      !inSubscriptionRequired &&
+      !purchasesLoading &&
+      !subscriptionInfo.isSubscribed
+    ) {
+      router.replace("/subscription-required");
+      return;
+    }
+  }, [user, session, loading, segments, checkingProfiles, currentPlayer, subscriptionInfo.isSubscribed, purchasesLoading]);
 
   const showOverlay = loading || checkingProfiles;
 

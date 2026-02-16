@@ -16,6 +16,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useSignUp } from "@/contexts/SignUpContext";
@@ -148,12 +149,13 @@ export default function SignUpTeamScreen() {
     <>
       <StatusBar style="light" />
       <Stack.Screen options={{ title: "Choose your team", headerShown: false }} />
-      <View style={{ flex: 1, backgroundColor: HUNTLY_GREEN }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: HUNTLY_GREEN }} edges={["top", "left", "right"]}>
+      <View style={{ flex: 1 }}>
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{
             paddingHorizontal: scaleW(24),
-            paddingTop: scaleW(80),
+            paddingTop: scaleW(24),
             paddingBottom: scaleW(40),
           }}
           showsVerticalScrollIndicator={false}
@@ -312,6 +314,7 @@ export default function SignUpTeamScreen() {
           </Animated.View>
         </ScrollView>
       </View>
+      </SafeAreaView>
     </>
   );
 }

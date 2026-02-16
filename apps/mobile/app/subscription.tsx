@@ -8,6 +8,7 @@ import {
   View,
   ScrollView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
 import { type PurchasesPackage } from "@/services/purchasesService";
 import { ThemedView } from "@/components/ThemedView";
@@ -22,7 +23,6 @@ export default function SubscriptionScreen() {
     subscriptionInfo,
     isLoading,
     purchasePackage,
-    restorePurchases,
     presentPaywall,
     presentCustomerCenter,
   } = usePurchases();
@@ -49,35 +49,12 @@ export default function SubscriptionScreen() {
     }
   };
 
-  const handleRestore = async () => {
-    try {
-      const customerInfo = await restorePurchases();
-      if (
-        customerInfo &&
-        customerInfo.entitlements.active &&
-        Object.keys(customerInfo.entitlements.active).length > 0
-      ) {
-        Alert.alert("Success", "Your purchases have been restored!");
-      } else {
-        Alert.alert(
-          "No Purchases",
-          "No previous purchases were found to restore."
-        );
-      }
-    } catch (error) {
-      console.error("Restore error:", error);
-      Alert.alert(
-        "Restore Failed",
-        "There was an error restoring your purchases."
-      );
-    }
-  };
-
   const formatPrice = (price: string, period: string): string => {
     return `${price}/${period}`;
   };
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#F4F0EB" }} edges={["top", "left", "right"]}>
     <ThemedView className="flex-1 bg-huntly-cream">
       <Stack.Screen
         options={{ title: "Premium Adventure", headerShown: true }}
@@ -214,17 +191,9 @@ export default function SubscriptionScreen() {
             </View>
           )}
 
-          {/* Restore Purchases */}
-          <Button
-            variant="secondary"
-            size="large"
-            onPress={handleRestore}
-            className="bg-huntly-mint py-4"
-          >
-            Restore Previous Adventures
-          </Button>
         </ScrollView>
       )}
     </ThemedView>
+    </SafeAreaView>
   );
 }

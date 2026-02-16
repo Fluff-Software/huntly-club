@@ -26,8 +26,22 @@ import { PurchasesProvider } from "@/contexts/PurchasesContext";
 import { PlayerProvider } from "@/contexts/PlayerContext";
 import { SignUpProvider } from "@/contexts/SignUpContext";
 import { AuthGuard } from "@/components/authentication/AuthGuard";
+import { supabase } from "@/services/supabase";
 
 import "../global.css";
+
+/** If the URL contains auth tokens in the hash (from email verification redirect), set the session. */
+async function setSessionFromAuthConfirmUrl(url: string): Promise<void> {
+  const hashIndex = url.indexOf("#");
+  if (hashIndex === -1) return;
+  const fragment = url.slice(hashIndex + 1);
+  const params = new URLSearchParams(fragment);
+  const accessToken = params.get("access_token");
+  const refreshToken = params.get("refresh_token");
+  if (accessToken && refreshToken) {
+    await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+  }
+}
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -53,32 +67,25 @@ export default function RootLayout() {
     }
   }, [fontsLoaded]);
 
-  // Handle deep links
+  // Handle deep links (e.g. email verification: huntlyclub://auth/confirm#access_token=...)
   useEffect(() => {
-    // Add event listener for deep links
-    const subscription = Linking.addEventListener("url", (event) => {
-      const parsed = Linking.parse(event.url);
-
-      // Handle authentication redirect URLs
-      if (parsed.path?.includes("auth/confirm")) {
-        router.replace("/auth/confirm");
-      }
-    });
-
-    // Check for initial URL when app starts
-    const checkInitialLink = async () => {
-      const initialUrl = await Linking.getInitialURL();
-      if (initialUrl) {
-        const parsed = Linking.parse(initialUrl);
-
-        // Handle authentication redirect URLs
-        if (parsed.path?.includes("auth/confirm")) {
-          router.replace("/auth/confirm");
-        }
-      }
+    const handleAuthConfirmUrl = async (url: string) => {
+      const parsed = Linking.parse(url);
+      if (!parsed.path?.includes("auth/confirm")) return;
+      await setSessionFromAuthConfirmUrl(url);
+      router.replace("/auth/confirm");
     };
 
-    checkInitialLink();
+    const subscription = Linking.addEventListener("url", (event) => {
+      void handleAuthConfirmUrl(event.url);
+    });
+
+    const checkInitialLink = async () => {
+      const initialUrl = await Linking.getInitialURL();
+      if (initialUrl) await handleAuthConfirmUrl(initialUrl);
+    };
+
+    void checkInitialLink();
 
     return () => {
       subscription.remove();

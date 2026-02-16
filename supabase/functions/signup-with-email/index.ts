@@ -82,7 +82,8 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const redirectTo = Deno.env.get("FRONTEND_CONFIRM_REDIRECT") ?? "huntlyclub://auth/confirm";
+    // Redirect to website handler; it sends mobile users to the app and web users to /verify-success
+const redirectTo = Deno.env.get("FRONTEND_CONFIRM_REDIRECT") ?? "https://www.huntly.world/auth/confirm";
 
     const admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },

@@ -24,25 +24,44 @@ import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useCurrentChapterActivities } from "@/hooks/useCurrentChapterActivities";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { getTeamById } from "@/services/profileService";
+import { getRandomClubPhotos, type ClubPhotoCardItem } from "@/services/activityProgressService";
 import { getTeamCardConfig } from "@/utils/teamUtils";
 
 type HomeMode = "profile" | "activity" | "missions";
 const HOME_MODES: HomeMode[] = ["profile", "activity", "missions"];
 
 const BG_IMAGE = require("@/assets/images/bg.png");
-const CLUB_1_IMAGE = require("@/assets/images/club-1.png");
-const CLUB_2_IMAGE = require("@/assets/images/club-2.png");
 
 const CREAM = "#F4F0EB";
+
+/** Pastel/bright author badge colors (white text) for club cards */
+const CLUB_CARD_AUTHOR_COLORS = [
+  "#D4A05A", // warm amber
+  "#8B7BA8", // soft violet
+  "#7A9B76", // sage green
+  "#5B8A9E", // slate blue
+  "#C97B6C", // dusty coral
+];
 
 export default function HomeScreen() {
   const { scaleW, width, height } = useLayoutScale();
   const { currentPlayer } = usePlayer();
   const { activities: missionCards } = useCurrentChapterActivities();
   const [teamName, setTeamName] = useState<string | null>(null);
+  const [clubCards, setClubCards] = useState<ClubPhotoCardItem[]>([]);
   const initialIndex = 1; // activity (Welcome back)
   const [currentIndex, setCurrentIndex] = useState<number>(initialIndex);
   const currentMode = HOME_MODES[currentIndex] ?? "activity";
+
+  useEffect(() => {
+    let cancelled = false;
+    getRandomClubPhotos(5).then((cards) => {
+      if (!cancelled) setClubCards(cards);
+    }).catch(() => {
+      if (!cancelled) setClubCards([]);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!currentPlayer?.team) {
@@ -396,12 +415,6 @@ export default function HomeScreen() {
     </ScrollView>
   );
 
-  const clubCards = [
-    { id: "1", image: CLUB_1_IMAGE, title: "String it up", author: "Racing Mouse" },
-    { id: "2", image: CLUB_2_IMAGE, title: "Into the green", author: "Tall Giant" },
-    { id: "3", image: CLUB_1_IMAGE, title: "String it up", author: "Racing Mouse" },
-  ];
-
   const renderActivityContent = () => (
     <ScrollView
       className="flex-1"
@@ -459,67 +472,68 @@ export default function HomeScreen() {
           </AnimatedReanimated.View>
         )}
 
-        <View
-          style={{
-            backgroundColor: "#BBE5EB",
-            borderRadius: scaleW(15),
-            paddingTop: scaleW(16),
-            paddingBottom: scaleW(32),
-            borderWidth: 4,
-            borderColor: "#FFF",
-            shadowColor: "#000",
-            shadowOpacity: 0.3,
-            shadowRadius: 2,
-            shadowOffset: { width: 0, height: 2 },
-            elevation: 2,
-            overflow: Platform.OS === "android" ? "visible" : undefined,
-          }}
-          collapsable={Platform.OS !== "android"}
-        >
-          <ThemedText type="heading" style={{ color: "#000", fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(32), textAlign: "center" }}>
-            From around the club
-          </ThemedText>
-          <Animated.ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.horizontalCardsContainer}
-            style={{ overflow: "visible" }}
-            nestedScrollEnabled={Platform.OS === "android"}
-            removeClippedSubviews={false}
-            overScrollMode="never"
-            scrollEventThrottle={16}
-            onScroll={Animated.event(
-              [{ nativeEvent: { contentOffset: { x: clubCardsScrollX } } }],
-              { useNativeDriver: true }
-            )}
-            snapToInterval={clubCardStep}
-            snapToAlignment="start"
-            decelerationRate="fast"
+        {clubCards.length > 0 && (
+          <View
+            style={{
+              backgroundColor: "#BBE5EB",
+              borderRadius: scaleW(15),
+              paddingTop: scaleW(16),
+              paddingBottom: scaleW(32),
+              borderWidth: 4,
+              borderColor: "#FFF",
+              shadowColor: "#000",
+              shadowOpacity: 0.3,
+              shadowRadius: 2,
+              shadowOffset: { width: 0, height: 2 },
+              elevation: 2,
+              overflow: Platform.OS === "android" ? "visible" : undefined,
+            }}
+            collapsable={Platform.OS !== "android"}
           >
-            {clubCards.map((card, index) => {
-              const centerScrollX = index === 0 ? 0 : getCenterScrollX(index);
-              const rotation = clubCardsScrollX.interpolate({
-                inputRange: [
-                  centerScrollX - 120,
-                  centerScrollX,
-                  centerScrollX + 120,
-                ],
-                outputRange: ["-4deg", "0deg", "4deg"],
-                extrapolate: "clamp",
-              });
-              return (
-                <Animated.View
-                  key={card.id}
-                  style={[
-                    styles.clubCard,
-                    {
-                      transform: [{ rotate: rotation }],
-                    },
-                  ]}
-                >
-                  <Pressable style={{ flex: 1 }}>
-                    <View style={styles.clubCardImageWrap}>
-                      <Image source={card.image} style={styles.clubCardImage} resizeMode="cover" />
+            <ThemedText type="heading" style={{ color: "#000", fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(32), textAlign: "center" }}>
+              From around the club
+            </ThemedText>
+            <Animated.ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalCardsContainer}
+              style={{ overflow: "visible" }}
+              nestedScrollEnabled={Platform.OS === "android"}
+              removeClippedSubviews={false}
+              overScrollMode="never"
+              scrollEventThrottle={16}
+              onScroll={Animated.event(
+                [{ nativeEvent: { contentOffset: { x: clubCardsScrollX } } }],
+                { useNativeDriver: true }
+              )}
+              snapToInterval={clubCardStep}
+              snapToAlignment="start"
+              decelerationRate="fast"
+            >
+              {clubCards.map((card, index) => {
+                const centerScrollX = index === 0 ? 0 : getCenterScrollX(index);
+                const rotation = clubCardsScrollX.interpolate({
+                  inputRange: [
+                    centerScrollX - 120,
+                    centerScrollX,
+                    centerScrollX + 120,
+                  ],
+                  outputRange: ["-4deg", "0deg", "4deg"],
+                  extrapolate: "clamp",
+                });
+                return (
+                  <Animated.View
+                    key={card.id}
+                    style={[
+                      styles.clubCard,
+                      {
+                        transform: [{ rotate: rotation }],
+                      },
+                    ]}
+                  >
+                    <Pressable style={{ flex: 1 }}>
+                      <View style={styles.clubCardImageWrap}>
+                        <Image source={{ uri: card.photo_url }} style={styles.clubCardImage} resizeMode="cover" />
                       <ThemedText type="heading" style={{
                         position: "absolute",
                         bottom: scaleW(40),
@@ -540,7 +554,7 @@ export default function HomeScreen() {
                         fontSize: scaleW(16),
                         textAlign: "center",
                         fontWeight: "600",
-                        backgroundColor: "tomato",
+                        backgroundColor: CLUB_CARD_AUTHOR_COLORS[index % CLUB_CARD_AUTHOR_COLORS.length],
                         color: "#FFF",
                         borderRadius: scaleW(20),
                         paddingHorizontal: scaleW(5),
@@ -552,8 +566,9 @@ export default function HomeScreen() {
                 </Animated.View>
               );
             })}
-          </Animated.ScrollView>
-        </View>
+            </Animated.ScrollView>
+          </View>
+        )}
       </View>
     </ScrollView>
   );

@@ -317,6 +317,7 @@ export const ensureProgressRows = async (
 export interface UserActivityPhotoInsert {
   profile_id: number;
   user_activity_id: number;
+  activity_id: number;
   photo_url: string;
 }
 
@@ -332,6 +333,7 @@ export const insertUserActivityPhotos = async (
     rows.map((r) => ({
       profile_id: r.profile_id,
       user_activity_id: r.user_activity_id,
+      activity_id: r.activity_id,
       photo_url: r.photo_url,
       status: 0,
     }))
@@ -341,4 +343,81 @@ export const insertUserActivityPhotos = async (
     console.error("Error inserting activity photos:", error);
     throw new Error(`Failed to insert activity photos: ${error.message}`);
   }
+};
+
+export interface ActivityPhotoItem {
+  photo_url: string;
+}
+
+/**
+ * Returns up to `count` random approved photos for the given activity.
+ * status 1 = approved. If fewer than count exist, returns all available.
+ */
+export const getRandomActivityPhotos = async (
+  count: number,
+  activityId: number
+): Promise<ActivityPhotoItem[]> => {
+  const { data, error } = await supabase
+    .from("user_activity_photos")
+    .select("photo_url")
+    .eq("activity_id", activityId)
+    .eq("status", 1);
+
+  if (error) {
+    console.error("Error fetching activity photos:", error);
+    throw new Error(`Failed to fetch activity photos: ${error.message}`);
+  }
+
+  const list = data ?? [];
+  if (list.length === 0) return [];
+
+  // Shuffle and take up to `count`
+  const shuffled = [...list].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+};
+
+export interface ClubPhotoCardItem {
+  id: string;
+  photo_url: string;
+  title: string;
+  author: string;
+}
+
+/**
+ * Returns up to `count` random approved photos from the club (any activity).
+ * Each item includes activity title and profile nickname for display.
+ * status 1 = approved.
+ */
+export const getRandomClubPhotos = async (
+  count: number
+): Promise<ClubPhotoCardItem[]> => {
+  const { data, error } = await supabase
+    .from("user_activity_photos")
+    .select("photo_id, photo_url, activities(title), profiles(nickname)")
+    .eq("status", 1)
+    .not("activity_id", "is", null);
+
+  if (error) {
+    console.error("Error fetching club photos:", error);
+    throw new Error(`Failed to fetch club photos: ${error.message}`);
+  }
+
+  const list = data ?? [];
+  if (list.length === 0) return [];
+
+  const shuffled = [...list].sort(() => Math.random() - 0.5);
+  const taken = shuffled.slice(0, count);
+
+  return taken.map((row: Record<string, unknown>) => {
+    const activity = row.activities;
+    const profile = row.profiles;
+    const title = Array.isArray(activity) ? activity[0]?.title : (activity as { title?: string } | null)?.title;
+    const nickname = Array.isArray(profile) ? profile[0]?.nickname : (profile as { nickname?: string | null } | null)?.nickname;
+    return {
+      id: String(row.photo_id ?? Math.random()),
+      photo_url: String(row.photo_url ?? ""),
+      title: typeof title === "string" ? title : "",
+      author: typeof nickname === "string" ? nickname : "",
+    };
+  });
 };

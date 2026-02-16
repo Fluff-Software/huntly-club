@@ -12,6 +12,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { BackHeader } from "@/components/BackHeader";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { getActivityById, getActivityImageSource } from "@/services/packService";
+import { getRandomActivityPhotos, type ActivityPhotoItem } from "@/services/activityProgressService";
 import type { Activity } from "@/types/activity";
 import { getCategoryLabel, getCategoryIcon, getCategoryColor } from "@/utils/categoryUtils";
 
@@ -20,9 +21,6 @@ const LIGHT_GREEN = "#7FAF8A";
 const LIGHT_BG = "#f8f8f8";
 const CREAM = "#F6F5F1";
 const HUNTLY_GREEN = "#4F6F52";
-
-const CLUB_1 = require("@/assets/images/club-1.png");
-const CLUB_2 = require("@/assets/images/club-2.png");
 
 function splitBlocks(text: string | null): string[] {
   if (!text || !text.trim()) return [];
@@ -42,6 +40,7 @@ export default function InstructionScreen() {
   const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [clubPhotos, setClubPhotos] = useState<ActivityPhotoItem[]>([]);
 
   const nextScale = useSharedValue(1);
   const nextAnimatedStyle = useAnimatedStyle(() => ({
@@ -60,9 +59,14 @@ export default function InstructionScreen() {
       const data = await getActivityById(Number(id));
       setActivity(data ?? null);
       if (!data) setError("Activity not found");
+      else {
+        const photos = await getRandomActivityPhotos(2, data.id);
+        setClubPhotos(photos);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load activity");
       setActivity(null);
+      setClubPhotos([]);
     } finally {
       setLoading(false);
     }
@@ -339,27 +343,35 @@ export default function InstructionScreen() {
           </Animated.View>
         )}
 
-        <Animated.View
-          entering={FadeInDown.duration(500).delay(580).springify().damping(18)}
-          style={styles.section}
-        >
-          <View>
-            <ThemedText type="heading" style={styles.sectionTitle}>
-              Your team
-            </ThemedText>
-            <ThemedText style={styles.sectionDescription}>
-              See submissions from other people in your team...
-            </ThemedText>
-          </View>
-          <View style={styles.teamRow}>
-            <View style={styles.polaroid}>
-              <Image source={CLUB_1} style={styles.polaroidImage} resizeMode="cover" />
+        {clubPhotos.length > 0 && (
+          <Animated.View
+            entering={FadeInDown.duration(500).delay(580).springify().damping(18)}
+            style={styles.section}
+          >
+            <View>
+              <ThemedText type="heading" style={styles.sectionTitle}>
+                Huntly
+              </ThemedText>
+              <ThemedText style={styles.sectionDescription}>
+                See submissions from other people in huntly world...
+              </ThemedText>
             </View>
-            <View style={[styles.polaroid, styles.polaroidSecond]}>
-              <Image source={CLUB_2} style={styles.polaroidImage} resizeMode="cover" />
+            <View style={styles.teamRow}>
+              {clubPhotos.map((photo, i) => (
+                <View
+                  key={i}
+                  style={[styles.polaroid, i === 1 ? styles.polaroidSecond : undefined]}
+                >
+                  <Image
+                    source={{ uri: photo.photo_url }}
+                    style={styles.polaroidImage}
+                    resizeMode="cover"
+                  />
+                </View>
+              ))}
             </View>
-          </View>
-        </Animated.View>
+          </Animated.View>
+        )}
 
         <Animated.View
           entering={FadeInDown.duration(500).delay(580).springify().damping(18)}

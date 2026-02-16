@@ -31,7 +31,7 @@ INSERT INTO public.pack_activities (pack_id, activity_id, "order") VALUES
   (3, 5, 3);
 
 -- 4. One season
-INSERT INTO public.seasons (name, hero_image, story, story_parts) VALUES
+INSERT INTO public.seasons (name, hero_image, story, story_parts, story_slides) VALUES
   (
     'Spring 2025',
     'https://via.placeholder.com/800x400/4CAF50/FFFFFF?text=Spring+2025',
@@ -42,15 +42,22 @@ INSERT INTO public.seasons (name, hero_image, story, story_parts) VALUES
       'Through the whispering trees they found a hidden path.',
       'Something magical was waiting just ahead.',
       'And so the adventure began.'
-    ]
+    ],
+    '[
+      {"type":"text","value":"With the wind came a strong sense of urgency."},
+      {"type":"text","value":"The explorers went forth to explore."},
+      {"type":"text","value":"Through the whispering trees they found a hidden path."},
+      {"type":"text","value":"Something magical was waiting just ahead."},
+      {"type":"text","value":"And so the adventure began."}
+    ]'::jsonb
   );
 
 -- 5. Chapters for that season (unlock_date in the past so they appear unlocked)
-INSERT INTO public.chapters (season_id, week_number, title, image, body, body_parts, unlock_date) VALUES
-  (1, 1, 'Welcome to the season', NULL, 'Start your journey with a few simple activities.', ARRAY['Start your journey with a few simple activities.'], '2025-01-01'),
-  (1, 2, 'Getting outdoors', NULL, 'Try bird spotting or a short exploration walk.', ARRAY['Try bird spotting or a short exploration walk.'], '2025-01-08'),
-  (1, 3, 'Capture and collect', NULL, 'Use your camera or collect leaves and notice details.', ARRAY['Use your camera or collect leaves and notice details.'], '2025-01-15'),
-  (1, 4, 'Sky and clouds', NULL, 'Spend some time cloud watching and relaxing outside.', ARRAY['Spend some time cloud watching and relaxing outside.'], '2025-01-22');
+INSERT INTO public.chapters (season_id, week_number, title, image, body, body_parts, body_slides, unlock_date) VALUES
+  (1, 1, 'Welcome to the season', NULL, 'Start your journey with a few simple activities.', ARRAY['Start your journey with a few simple activities.'], '[{"type":"text","value":"Start your journey with a few simple activities."}]'::jsonb, '2025-01-01'),
+  (1, 2, 'Getting outdoors', NULL, 'Try bird spotting or a short exploration walk.', ARRAY['Try bird spotting or a short exploration walk.'], '[{"type":"text","value":"Try bird spotting or a short exploration walk."}]'::jsonb, '2025-01-08'),
+  (1, 3, 'Capture and collect', NULL, 'Use your camera or collect leaves and notice details.', ARRAY['Use your camera or collect leaves and notice details.'], '[{"type":"text","value":"Use your camera or collect leaves and notice details."}]'::jsonb, '2025-01-15'),
+  (1, 4, 'Sky and clouds', NULL, 'Spend some time cloud watching and relaxing outside.', ARRAY['Spend some time cloud watching and relaxing outside.'], '[{"type":"text","value":"Spend some time cloud watching and relaxing outside."}]'::jsonb, '2025-01-22');
 
 -- 6. Chapter–activity links
 INSERT INTO public.chapter_activities (chapter_id, activity_id, "order") VALUES

@@ -263,3 +263,82 @@ export const getPackCompletionPercentage = async (
     return 0;
   }
 };
+
+/**
+ * Ensures user_activity_progress rows exist for each profile and activity.
+ * Creates missing rows (profile_id, activity_id) and returns a map of profile_id -> progress id.
+ */
+export const ensureProgressRows = async (
+  profileIds: number[],
+  activityId: number
+): Promise<Record<number, number>> => {
+  if (profileIds.length === 0) return {};
+
+  const { data: existing, error: selectError } = await supabase
+    .from("user_activity_progress")
+    .select("id, profile_id")
+    .eq("activity_id", activityId)
+    .in("profile_id", profileIds);
+
+  if (selectError) {
+    console.error("Error fetching activity progress:", selectError);
+    throw new Error(`Failed to fetch activity progress: ${selectError.message}`);
+  }
+
+  const result: Record<number, number> = {};
+  for (const row of existing ?? []) {
+    result[row.profile_id] = row.id;
+  }
+
+  const missingProfileIds = profileIds.filter((id) => result[id] == null);
+  if (missingProfileIds.length === 0) return result;
+
+  const inserts = missingProfileIds.map((profile_id) => ({
+    profile_id,
+    activity_id: activityId,
+  }));
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("user_activity_progress")
+    .insert(inserts)
+    .select("id, profile_id");
+
+  if (insertError) {
+    console.error("Error creating activity progress:", insertError);
+    throw new Error(`Failed to create activity progress: ${insertError.message}`);
+  }
+
+  for (const row of inserted ?? []) {
+    result[row.profile_id] = row.id;
+  }
+  return result;
+};
+
+export interface UserActivityPhotoInsert {
+  profile_id: number;
+  user_activity_id: number;
+  photo_url: string;
+}
+
+/**
+ * Inserts user_activity_photos rows (status 0 = for review).
+ */
+export const insertUserActivityPhotos = async (
+  rows: UserActivityPhotoInsert[]
+): Promise<void> => {
+  if (rows.length === 0) return;
+
+  const { error } = await supabase.from("user_activity_photos").insert(
+    rows.map((r) => ({
+      profile_id: r.profile_id,
+      user_activity_id: r.user_activity_id,
+      photo_url: r.photo_url,
+      status: 0,
+    }))
+  );
+
+  if (error) {
+    console.error("Error inserting activity photos:", error);
+    throw new Error(`Failed to insert activity photos: ${error.message}`);
+  }
+};

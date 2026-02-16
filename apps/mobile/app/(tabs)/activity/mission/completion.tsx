@@ -4,7 +4,6 @@ import {
   ScrollView,
   Image,
   Pressable,
-  TextInput,
   Text,
   StyleSheet,
   Alert,
@@ -33,7 +32,13 @@ import { BackHeader } from "@/components/BackHeader";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { getActivityById } from "@/services/packService";
+import {
+  ensureProgressRows,
+  insertUserActivityPhotos,
+} from "@/services/activityProgressService";
+import { uploadUserActivityPhoto } from "@/services/storageService";
 import type { Activity } from "@/types/activity";
+import * as FileSystem from "expo-file-system";
 
 const TEXT_SECONDARY = "#2F3336";
 const LIGHT_GREEN = "#7FAF8A";
@@ -119,7 +124,6 @@ export default function CompletionScreen() {
   const [activity, setActivity] = useState<Activity | null>(null);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<number[]>([]);
   const [playerPhotos, setPlayerPhotos] = useState<Record<number, string[]>>({});
-  const [playerHardest, setPlayerHardest] = useState<Record<number, string>>({});
   const [galleryPlayerId, setGalleryPlayerId] = useState<number | null>(null);
   const [galleryModalVisible, setGalleryModalVisible] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
@@ -127,9 +131,9 @@ export default function CompletionScreen() {
   const [fullScreenPhotoIndex, setFullScreenPhotoIndex] = useState<
     number | null
   >(null);
+  const [completing, setCompleting] = useState(false);
 
   const getPlayerPhotos = (playerId: number) => playerPhotos[playerId] ?? [];
-  const getPlayerHardest = (playerId: number) => playerHardest[playerId] ?? "";
 
   useEffect(() => {
     if (!id) return;
@@ -271,10 +275,6 @@ export default function CompletionScreen() {
     if (selectedIndices.length === modalPhotoUris.length) closeGalleryModal();
   };
 
-  const setPlayerHardestText = (playerId: number, text: string) => {
-    setPlayerHardest((prev) => ({ ...prev, [playerId]: text }));
-  };
-
   useEffect(() => {
     if (Platform.OS !== "android" || !galleryModalVisible) return;
     const onBack = () => {
@@ -298,6 +298,73 @@ export default function CompletionScreen() {
       colour: p.colour || fallbackColours[i % fallbackColours.length],
     }));
   }, [profiles]);
+
+  const canComplete =
+    selectedPlayerIds.length > 0 &&
+    selectedPlayerIds.every((id) => getPlayerPhotos(id).length > 0);
+
+  const handleComplete = async () => {
+    if (!activity?.id || !canComplete) return;
+    setCompleting(true);
+    try {
+      // 1–3: Ensure user_activity_progress rows exist for each selected profile
+      const progressIdByProfile = await ensureProgressRows(
+        selectedPlayerIds,
+        activity.id
+      );
+
+      // 4–5: Upload each photo to Supabase bucket "user-activity-photos"
+      const uploaded: { profileId: number; photoUrl: string }[] = [];
+      for (const profileId of selectedPlayerIds) {
+        const uris = getPlayerPhotos(profileId);
+        for (let i = 0; i < uris.length; i++) {
+          const photoUri = uris[i];
+          const tempFileName = `mission_${activity.id}_${profileId}_${Date.now()}_${i}.jpg`;
+          const tempUri = `${FileSystem.cacheDirectory}${tempFileName}`;
+          try {
+            await FileSystem.copyAsync({ from: photoUri, to: tempUri });
+            const fileObject = {
+              uri: tempUri,
+              type: "image/jpeg",
+              name: tempFileName,
+            };
+            const result = await uploadUserActivityPhoto(
+              fileObject,
+              tempFileName,
+              profileId.toString()
+            );
+            if (result.success && result.url) {
+              uploaded.push({ profileId, photoUrl: result.url });
+            }
+          } finally {
+            try {
+              await FileSystem.deleteAsync(tempUri);
+            } catch {
+              // ignore
+            }
+          }
+        }
+      }
+
+      // 6: Create user_activity_photos rows
+      const userActivityIdByProfile = progressIdByProfile;
+      await insertUserActivityPhotos(
+        uploaded.map(({ profileId, photoUrl }) => ({
+          profile_id: profileId,
+          user_activity_id: userActivityIdByProfile[profileId],
+          photo_url: photoUrl,
+        }))
+      );
+
+      router.push("/(tabs)/activity/mission/reward");
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Something went wrong.";
+      Alert.alert("Error", `Failed to complete: ${message}`);
+    } finally {
+      setCompleting(false);
+    }
+  };
 
   const styles = useMemo(
     () =>
@@ -363,15 +430,16 @@ export default function CompletionScreen() {
         },
         photoUploadRow: { flexDirection: "row" },
         photoOptionCell: {
-          flex: 1,
           alignItems: "center",
           justifyContent: "center",
-          paddingVertical: scaleW(72),
-          paddingHorizontal: scaleW(16),
         },
         photoOptionTouchable: {
+          flex: 1,
+          alignSelf: "stretch",
           alignItems: "center",
           justifyContent: "center",
+          paddingVertical: scaleW(102),
+          paddingHorizontal: scaleW(16),
         },
         photoOptionContent: {
           alignItems: "center",
@@ -394,26 +462,6 @@ export default function CompletionScreen() {
           marginTop: scaleW(8),
           textAlign: "center" as const,
           minHeight: scaleW(20),
-        },
-        hardestHeading: {
-          fontSize: scaleW(16),
-          fontWeight: "600",
-          color: TEXT_SECONDARY,
-          textAlign: "center",
-          marginBottom: scaleW(12),
-        },
-        hardestInput: {
-          backgroundColor: "#FFF",
-          borderRadius: scaleW(24),
-          borderWidth: 2,
-          borderColor: TEXT_SECONDARY,
-          paddingHorizontal: scaleW(16),
-          paddingVertical: scaleW(14),
-          fontSize: scaleW(15),
-          color: TEXT_SECONDARY,
-          minHeight: scaleW(150),
-          textAlignVertical: "top",
-          marginBottom: scaleW(32),
         },
         whoHeading: {
           fontSize: scaleW(16),
@@ -762,11 +810,10 @@ export default function CompletionScreen() {
                       style={[
                         styles.photoOptionCell,
                         cameraAnimatedStyle,
-                        hasPhotos && { paddingVertical: scaleW(24) },
                       ]}
                     >
                       <Pressable
-                        style={styles.photoOptionTouchable}
+                        style={[styles.photoOptionTouchable, hasPhotos && { paddingVertical: scaleW(24) }]}
                         onPress={() => takePhoto(profile.id)}
                         onPressIn={() => {
                           cameraScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
@@ -792,11 +839,10 @@ export default function CompletionScreen() {
                       style={[
                         styles.photoOptionCell,
                         galleryAnimatedStyle,
-                        hasPhotos && { paddingVertical: scaleW(24) },
                       ]}
                     >
                       <Pressable
-                        style={styles.photoOptionTouchable}
+                        style={[styles.photoOptionTouchable, hasPhotos && { paddingVertical: scaleW(54) }]}
                         onPress={() => pickImage(profile.id)}
                         onPressIn={() => {
                           galleryScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
@@ -819,17 +865,6 @@ export default function CompletionScreen() {
                     </Animated.View>
                   </View>
                 </View>
-                <ThemedText type="heading" style={styles.hardestHeading}>
-                  What did you find the hardest?
-                </ThemedText>
-                <TextInput
-                  style={styles.hardestInput}
-                  placeholder="Write a few words..."
-                  placeholderTextColor="#9E9E9E"
-                  value={getPlayerHardest(profile.id)}
-                  onChangeText={(text) => setPlayerHardestText(profile.id, text)}
-                  multiline
-                />
               </ExpandableSection>
             </Animated.View>
           );
@@ -842,12 +877,12 @@ export default function CompletionScreen() {
           <Pressable
             style={[
               styles.completeButton,
-              selectedPlayerIds.length === 0 && styles.completeButtonDisabled,
+              (!canComplete || completing) && styles.completeButtonDisabled,
             ]}
-            disabled={selectedPlayerIds.length === 0}
-            onPress={() => router.push("/(tabs)/activity/mission/reward")}
+            disabled={!canComplete || completing}
+            onPress={handleComplete}
             onPressIn={() => {
-              if (selectedPlayerIds.length > 0) {
+              if (canComplete && !completing) {
                 completeScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
               }
             }}
@@ -856,7 +891,7 @@ export default function CompletionScreen() {
             }}
           >
             <ThemedText type="heading" style={styles.completeButtonText}>
-              Complete
+              {completing ? "Completing…" : "Complete"}
             </ThemedText>
           </Pressable>
         </Animated.View>

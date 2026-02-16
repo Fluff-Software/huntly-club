@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useRouter, useSegments } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { ThemedView } from "@/components/ThemedView";
 import { getProfiles } from "@/services/profileService";
 
@@ -15,6 +16,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const { currentPlayer } = usePlayer();
   const segments = useSegments();
   const router = useRouter();
+  const signUpContext = useSignUpOptional();
   const [checkingProfiles, setCheckingProfiles] = useState(false);
 
   useEffect(() => {
@@ -29,6 +31,12 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
     if (!user && !inUnauthFlow) {
       router.replace("/auth");
+      return;
+    }
+
+    if (user && !user.email_confirmed_at && segments[0] !== "sign-up") {
+      signUpContext?.setParentEmail(user.email ?? "");
+      router.replace("/sign-up/verify-email");
       return;
     }
 

@@ -119,16 +119,18 @@ Deno.serve(async (req) => {
       console.error("generateLink error:", linkError?.message ?? "no action_link");
       return jsonResponse({ error: "Could not generate verification link. Please try again." }, 500);
     }
-    const subject = "Confirm your Huntly Club account";
+    const subject = "Verify your email for Huntly Club";
     const htmlPart = `
-      <p>Thanks for signing up for Huntly Club.</p>
-      <p>Click the link below to confirm your email and continue:</p>
-      <p><a href="${actionLink}">Confirm your email</a></p>
-      <p>If you didn't create an account, you can ignore this email.</p>
+      <p>Hi there,</p>
+      <p>You signed up for Huntly Club. To finish setting up your account, verify your email by opening the link below:</p>
+      <p><a href="${actionLink}">Verify my email</a></p>
+      <p>This link will expire in 24 hours. If you didn't sign up, you can safely ignore this message.</p>
+      <p>— The Huntly Club team</p>
     `;
-    const textPart = `Thanks for signing up for Huntly Club. Confirm your email by visiting: ${actionLink}`;
+    const textPart = `You signed up for Huntly Club. Verify your email by visiting: ${actionLink}\n\nIf you didn't sign up, you can ignore this email.`;
+    const replyTo = Deno.env.get("MAILJET_REPLY_TO");
 
-    await sendEmail({ to: email, subject, htmlPart, textPart });
+    await sendEmail({ to: email, subject, htmlPart, textPart, ...(replyTo && { replyTo }) });
   } catch (e) {
     if (e instanceof Error && e.message.includes("Email could not be sent")) {
       return jsonResponse({ error: "Verification email could not be sent. Please try again later." }, 502);

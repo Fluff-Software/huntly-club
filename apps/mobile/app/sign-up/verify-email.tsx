@@ -15,18 +15,19 @@ const CREAM = "#F4F0EB";
 
 export default function VerifyEmailScreen() {
   const { scaleW } = useLayoutScale();
-  const { parentEmail } = useSignUp();
-  const { user } = useAuth();
+  const signUpContext = useSignUp();
+  const { user, signOut } = useAuth();
+  const parentEmail = (signUpContext.parentEmail || user?.email) ?? "";
   const [checking, setChecking] = useState(true);
   const [verificationComplete, setVerificationComplete] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // If user is already authenticated, they've verified their email
-    if (user) {
+    // Only treat as verified when email is confirmed (so unverified logins see this screen)
+    if (user?.email_confirmed_at) {
       setVerificationComplete(true);
       setChecking(false);
-      // Wait a moment to show success message, then proceed
       setTimeout(() => {
         router.replace("/sign-up/players");
       }, 1500);
@@ -37,8 +38,9 @@ export default function VerifyEmailScreen() {
       try {
         const { data: { session } } = await supabase.auth.refreshSession();
         const sessionToCheck = session ?? (await supabase.auth.getSession()).data.session;
+        const confirmed = sessionToCheck?.user?.email_confirmed_at;
 
-        if (sessionToCheck?.user) {
+        if (sessionToCheck?.user && confirmed) {
           setVerificationComplete(true);
           setChecking(false);
 
@@ -51,8 +53,8 @@ export default function VerifyEmailScreen() {
             router.replace("/sign-up/players");
           }, 1500);
         }
-      } catch (error) {
-        console.error("Error checking verification:", error);
+      } catch {
+        // ignore
       }
     };
 
@@ -70,14 +72,16 @@ export default function VerifyEmailScreen() {
   }, [user]);
 
   const handleResendEmail = async () => {
-    if (!parentEmail) return;
-
+    if (!parentEmail || resendLoading) return;
+    setResendLoading(true);
     try {
       await resendVerificationEmail(parentEmail, "signup");
       Alert.alert("Email sent", "Check your inbox for a new verification link.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to resend email.";
       Alert.alert("Error", message);
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -234,25 +238,48 @@ export default function VerifyEmailScreen() {
             </View>
           )}
 
-          <Pressable
-            onPress={handleResendEmail}
+          <ThemedText
+            lightColor="#FFFFFF"
+            darkColor="#FFFFFF"
             style={{
-              marginTop: scaleW(16),
-              paddingVertical: scaleW(12),
-              paddingHorizontal: scaleW(24),
+              textAlign: "center",
+              fontSize: scaleW(14),
+              opacity: 0.9,
+              marginTop: scaleW(24),
             }}
           >
-            <ThemedText
-              lightColor="#FFFFFF"
-              darkColor="#FFFFFF"
-              style={{
-                textAlign: "center",
-                fontSize: scaleW(14),
-                textDecorationLine: "underline",
-              }}
-            >
-              Didn't receive the email? Resend
-            </ThemedText>
+            Didn't receive the email?
+          </ThemedText>
+          <Pressable
+            onPress={handleResendEmail}
+            disabled={resendLoading}
+            style={{
+              alignSelf: "center",
+              marginTop: scaleW(8),
+              paddingVertical: scaleW(14),
+              paddingHorizontal: scaleW(28),
+              borderRadius: scaleW(28),
+              backgroundColor: CREAM,
+              minWidth: scaleW(200),
+              alignItems: "center",
+              justifyContent: "center",
+              opacity: resendLoading ? 0.8 : 1,
+            }}
+          >
+            {resendLoading ? (
+              <ActivityIndicator size="small" color={HUNTLY_GREEN} />
+            ) : (
+              <ThemedText
+                lightColor={HUNTLY_GREEN}
+                darkColor={HUNTLY_GREEN}
+                style={{
+                  fontSize: scaleW(16),
+                  fontWeight: "600",
+                }}
+              >
+                Resend verification email
+              </ThemedText>
+            )}
           </Pressable>
 
           <ThemedText
@@ -268,6 +295,45 @@ export default function VerifyEmailScreen() {
           >
             Check your spam folder if you don't see it
           </ThemedText>
+
+          <Pressable
+            onPress={() => {
+              Alert.alert("Log out", "Return to sign in? You can verify your email later.", [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Log out",
+                  style: "destructive",
+                  onPress: async () => {
+                    try {
+                      await signOut();
+                      router.replace("/auth");
+                    } catch {
+                      router.replace("/auth");
+                    }
+                  },
+                },
+              ]);
+            }}
+            style={{
+              alignSelf: "center",
+              marginTop: scaleW(32),
+              paddingVertical: scaleW(12),
+              paddingHorizontal: scaleW(20),
+            }}
+          >
+            <ThemedText
+              lightColor="#FFFFFF"
+              darkColor="#FFFFFF"
+              style={{
+                fontSize: scaleW(15),
+                fontWeight: "600",
+                textDecorationLine: "underline",
+                opacity: 0.9,
+              }}
+            >
+              Log out
+            </ThemedText>
+          </Pressable>
         </View>
       </View>
     </>

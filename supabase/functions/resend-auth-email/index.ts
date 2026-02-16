@@ -63,26 +63,29 @@ Deno.serve(async (req) => {
       );
     }
 
-    const fromName = Deno.env.get("MAILJET_FROM_NAME") ?? "Huntly Club";
+    const replyTo = Deno.env.get("MAILJET_REPLY_TO");
     if (type === "recovery") {
       const subject = "Reset your Huntly Club password";
       const htmlPart = `
-        <p>You requested a password reset for Huntly Club.</p>
-        <p>Click the link below to set a new password:</p>
-        <p><a href="${actionLink}">Reset password</a></p>
-        <p>If you didn't request this, you can ignore this email.</p>
+        <p>Hi there,</p>
+        <p>You asked to reset your Huntly Club password. Open the link below to set a new password:</p>
+        <p><a href="${actionLink}">Set new password</a></p>
+        <p>This link will expire in 1 hour. If you didn't request this, you can ignore this email.</p>
+        <p>— The Huntly Club team</p>
       `;
-      const textPart = `Reset your Huntly Club password by visiting: ${actionLink}`;
-      await sendEmail({ to: email, subject, htmlPart, textPart });
+      const textPart = `Reset your Huntly Club password: ${actionLink}\n\nIf you didn't request this, you can ignore this email.`;
+      await sendEmail({ to: email, subject, htmlPart, textPart, ...(replyTo && { replyTo }) });
     } else {
-      const subject = "Confirm your Huntly Club account";
+      const subject = "Verify your email for Huntly Club";
       const htmlPart = `
-        <p>Click the link below to confirm your email and continue:</p>
-        <p><a href="${actionLink}">Confirm your email</a></p>
-        <p>If you didn't create an account, you can ignore this email.</p>
+        <p>Hi there,</p>
+        <p>You signed up for Huntly Club. To finish setting up your account, verify your email by opening the link below:</p>
+        <p><a href="${actionLink}">Verify my email</a></p>
+        <p>This link will expire in 24 hours. If you didn't sign up, you can safely ignore this message.</p>
+        <p>— The Huntly Club team</p>
       `;
-      const textPart = `Confirm your email by visiting: ${actionLink}`;
-      await sendEmail({ to: email, subject, htmlPart, textPart });
+      const textPart = `You signed up for Huntly Club. Verify your email by visiting: ${actionLink}\n\nIf you didn't sign up, you can ignore this email.`;
+      await sendEmail({ to: email, subject, htmlPart, textPart, ...(replyTo && { replyTo }) });
     }
   } catch (e) {
     if (e instanceof Error && e.message.includes("Email could not be sent")) {

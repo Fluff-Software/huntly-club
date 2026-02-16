@@ -6,7 +6,9 @@ import {
   View,
   Image,
 } from "react-native";
+import { router } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/ui/Button";
@@ -19,6 +21,7 @@ export function LoginForm({ onCreateAccount }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { signIn, loading } = useAuth();
+  const signUpContext = useSignUpOptional();
 
   const handleSignIn = async () => {
     if (!email.trim() || !password.trim()) {
@@ -30,6 +33,11 @@ export function LoginForm({ onCreateAccount }: LoginFormProps) {
       await signIn(email, password);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to sign in";
+      if (errorMessage.toLowerCase().includes("email not confirmed")) {
+        signUpContext?.setParentEmail(email.trim());
+        router.replace("/sign-up/verify-email");
+        return;
+      }
       Alert.alert("Error", errorMessage);
     }
   };

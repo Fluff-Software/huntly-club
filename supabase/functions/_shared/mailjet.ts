@@ -16,6 +16,10 @@ export type SendEmailParams = {
   subject: string;
   htmlPart?: string;
   textPart?: string;
+  /** Reply-To header (improves deliverability; defaults to from email if not set). */
+  replyTo?: string;
+  /** Optional extra headers (e.g. List-Unsubscribe). */
+  headers?: Record<string, string>;
 };
 
 function getConfig(): MailjetConfig {
@@ -33,18 +37,21 @@ function getConfig(): MailjetConfig {
  * Send one email via Mailjet. At least one of htmlPart or textPart must be provided.
  */
 export async function sendEmail(params: SendEmailParams): Promise<void> {
-  const { to, subject, htmlPart, textPart } = params;
+  const { to, subject, htmlPart, textPart, replyTo, headers } = params;
   if (!htmlPart && !textPart) {
     throw new Error("At least one of htmlPart or textPart is required");
   }
   const { apiKey, apiSecret, fromEmail, fromName } = getConfig();
   const auth = btoa(`${apiKey}:${apiSecret}`);
+  const messageHeaders: Record<string, string> = { ...headers };
+  messageHeaders["Reply-To"] = replyTo ?? fromEmail;
   const body = {
     Messages: [
       {
         From: { Email: fromEmail, Name: fromName },
         To: [{ Email: to }],
         Subject: subject,
+        ...(Object.keys(messageHeaders).length > 0 && { Headers: messageHeaders }),
         ...(textPart && { TextPart: textPart }),
         ...(htmlPart && { HTMLPart: htmlPart }),
       },

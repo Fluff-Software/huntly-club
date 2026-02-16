@@ -42,13 +42,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         await updatePurchasesUserId(userData.id);
       } catch (err) {
-        console.error("Error updating RevenueCat user ID:", err);
+        console.error("Error updating purchases user ID:", err);
       }
     } else {
       try {
         await resetPurchasesUser();
       } catch (err) {
-        console.error("Error resetting RevenueCat user:", err);
+        console.error("Error resetting purchases user:", err);
       }
     }
   }, []);

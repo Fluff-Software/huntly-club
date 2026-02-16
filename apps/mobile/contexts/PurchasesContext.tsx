@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { CustomerInfo, PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
 import { useAuth } from './AuthContext';
 import {
+  type CustomerInfo,
+  type PurchasesOffering,
+  type PurchasesPackage,
   initializePurchases,
   updatePurchasesUserId,
   resetPurchasesUser,
@@ -34,7 +36,6 @@ export const PurchasesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     productIdentifier: null,
   });
 
-  // Initialize RevenueCat
   useEffect(() => {
     const init = async () => {
       setIsLoading(true);

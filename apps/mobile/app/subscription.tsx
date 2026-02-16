@@ -9,8 +9,7 @@ import {
   ScrollView,
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
-import { PurchasesPackage } from "react-native-purchases";
-
+import { type PurchasesPackage } from "@/services/purchasesService";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
 import { usePurchases } from "@/contexts/PurchasesContext";

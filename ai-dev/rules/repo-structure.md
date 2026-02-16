@@ -208,7 +208,6 @@ export function Button({ variant, ...props }: ButtonProps) {
 # .env.example
 EXPO_PUBLIC_SUPABASE_URL=your-supabase-url
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-EXPO_PUBLIC_REVENUECAT_API_KEY=your-revenuecat-key
 ```
 
 ### TypeScript Configuration

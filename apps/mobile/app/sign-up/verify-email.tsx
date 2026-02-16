@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, ActivityIndicator, Pressable, Alert } from "react-native";
+import { View, ActivityIndicator, Pressable, Alert, AppState, AppStateStatus } from "react-native";
 import { router } from "expo-router";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -13,63 +13,78 @@ import { useLayoutScale } from "@/hooks/useLayoutScale";
 const HUNTLY_GREEN = "#4F6F52";
 const CREAM = "#F4F0EB";
 
-export default function VerifyEmailScreen() {
-  const { scaleW } = useLayoutScale();
-  const signUpContext = useSignUp();
-  const { user, signOut } = useAuth();
-  const parentEmail = (signUpContext.parentEmail || user?.email) ?? "";
-  const [checking, setChecking] = useState(true);
+function useVerifiedAndContinue(email: string, password: string) {
+  const { session } = useAuth();
   const [verificationComplete, setVerificationComplete] = useState(false);
-  const [resendLoading, setResendLoading] = useState(false);
   const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  const advance = () => {
+    setVerificationComplete(true);
+    if (checkIntervalRef.current) {
+      clearInterval(checkIntervalRef.current);
+      checkIntervalRef.current = null;
+    }
+    setTimeout(() => router.replace("/sign-up/players"), 1500);
+  };
+
+  const checkAndAdvance = async () => {
+    try {
+      // If we have credentials, try sign-in; once they've verified, this succeeds and we get a session (no login screen)
+      if (email.trim() && password) {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email.trim().toLowerCase(),
+          password,
+        });
+        if (!error && data.session?.user?.email_confirmed_at) {
+          advance();
+          return;
+        }
+      }
+      // If we already have a session, refresh and check server user
+      await supabase.auth.refreshSession();
+      const { data: { user: serverUser } } = await supabase.auth.getUser();
+      if (serverUser?.email_confirmed_at) {
+        advance();
+      }
+    } catch {
+      // ignore (e.g. not verified yet, or no session)
+    }
+  };
+
+  // React to session from context (e.g. after deep link sets session)
   useEffect(() => {
-    // Only treat as verified when email is confirmed (so unverified logins see this screen)
-    if (user?.email_confirmed_at) {
-      setVerificationComplete(true);
-      setChecking(false);
-      setTimeout(() => {
-        router.replace("/sign-up/players");
-      }, 1500);
+    if (session?.user?.email_confirmed_at) {
+      advance();
       return;
     }
 
-    const checkVerification = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.refreshSession();
-        const sessionToCheck = session ?? (await supabase.auth.getSession()).data.session;
-        const confirmed = sessionToCheck?.user?.email_confirmed_at;
-
-        if (sessionToCheck?.user && confirmed) {
-          setVerificationComplete(true);
-          setChecking(false);
-
-          if (checkIntervalRef.current) {
-            clearInterval(checkIntervalRef.current);
-            checkIntervalRef.current = null;
-          }
-
-          setTimeout(() => {
-            router.replace("/sign-up/players");
-          }, 1500);
-        }
-      } catch {
-        // ignore
-      }
-    };
-
-    // Check immediately
-    checkVerification();
-
-    // Then check every 3 seconds
-    checkIntervalRef.current = setInterval(checkVerification, 3000);
-
+    checkAndAdvance();
+    checkIntervalRef.current = setInterval(checkAndAdvance, 1000);
     return () => {
       if (checkIntervalRef.current) {
         clearInterval(checkIntervalRef.current);
       }
     };
-  }, [user]);
+  }, [session?.user?.email_confirmed_at, email, password]);
+
+  // When app comes to foreground, check immediately
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState: AppStateStatus) => {
+      if (nextState === "active") void checkAndAdvance();
+    });
+    return () => subscription.remove();
+  }, [email, password]);
+
+  return { verificationComplete };
+}
+
+export default function VerifyEmailScreen() {
+  const { scaleW } = useLayoutScale();
+  const signUpContext = useSignUp();
+  const { user, signOut } = useAuth();
+  const parentEmail = (signUpContext.parentEmail || user?.email) ?? "";
+  const [resendLoading, setResendLoading] = useState(false);
+  const { verificationComplete } = useVerifiedAndContinue(parentEmail, signUpContext.password);
 
   const handleResendEmail = async () => {
     if (!parentEmail || resendLoading) return;
@@ -220,7 +235,7 @@ export default function VerifyEmailScreen() {
             Click the link in the email to continue setting up your explorers.
           </ThemedText>
 
-          {checking && (
+          {!verificationComplete && (
             <View style={{ marginBottom: scaleW(24) }}>
               <ActivityIndicator size="large" color={CREAM} />
               <ThemedText

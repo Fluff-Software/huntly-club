@@ -4,12 +4,9 @@ export interface TeamActivityLogEntry {
   id: number;
   profile_id: number;
   activity_id: number;
-  status: "not_started" | "started" | "completed";
-  started_at: string | null;
+  status: "completed";
   completed_at: string | null;
-  photo_url: string | null;
   notes: string | null;
-  created_at: string;
   profile: {
     id: number;
     name: string;
@@ -41,7 +38,11 @@ export const getTeamActivityLogs = async (
     .from("user_activity_progress")
     .select(
       `
-      *,
+      id,
+      profile_id,
+      activity_id,
+      completed_at,
+      notes,
       profile:profiles!inner(
         id,
         name,
@@ -59,10 +60,7 @@ export const getTeamActivityLogs = async (
     `
     )
     .eq("profile.team", teamId)
-    .in("status", ["started", "completed"])
-    .order("completed_at", { ascending: false, nullsLast: true })
-    .order("started_at", { ascending: false, nullsLast: true })
-    .order("created_at", { ascending: false })
+    .order("completed_at", { ascending: false, nullsFirst: false })
     .limit(limit);
 
   if (error) {
@@ -70,7 +68,7 @@ export const getTeamActivityLogs = async (
     throw new Error(`Failed to fetch team activity logs: ${error.message}`);
   }
 
-  return data || [];
+  return (data ?? []).map((row) => ({ ...row, status: "completed" as const }));
 };
 
 export const getTeamActivityLogsByStatus = async (
@@ -78,40 +76,9 @@ export const getTeamActivityLogsByStatus = async (
   status: "started" | "completed",
   limit: number = 20
 ): Promise<TeamActivityLogEntry[]> => {
-  const { data, error } = await supabase
-    .from("user_activity_progress")
-    .select(
-      `
-      *,
-      profile:profiles!inner(
-        id,
-        name,
-        nickname,
-        colour,
-        team
-      ),
-      activity:activities!inner(
-        id,
-        title,
-        description,
-        image,
-        xp
-      )
-    `
-    )
-    .eq("profile.team", teamId)
-    .eq("status", status)
-    .order("completed_at", { ascending: false, nullsLast: true })
-    .order("started_at", { ascending: false, nullsLast: true })
-    .order("created_at", { ascending: false })
-    .limit(limit);
-
-  if (error) {
-    console.error("Error fetching team activity logs by status:", error);
-    throw new Error(`Failed to fetch team activity logs: ${error.message}`);
-  }
-
-  return data || [];
+  const logs = await getTeamActivityLogs(teamId, limit);
+  if (status === "started") return [];
+  return logs;
 };
 
 export const getTeamInfo = async (teamId: number): Promise<TeamInfo | null> => {

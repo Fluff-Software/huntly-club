@@ -114,28 +114,12 @@ export const TeamActivityLog: React.FC<TeamActivityLogProps> = ({
     const playerName = activity.profile.nickname || activity.profile.name;
     const activityTitle = activity.activity.title;
     const playerColor = activity.profile.colour;
-    const teamXpGained = Math.floor(activity.activity.xp * 0.5); // Team gets 50% of individual XP
-
-    if (activity.status === "completed") {
-      return {
-        text: `completed ${activityTitle}`,
-        playerName,
-        playerColor,
-        teamXpGained,
-      };
-    } else if (activity.status === "started") {
-      return {
-        text: `started ${activityTitle}`,
-        playerName,
-        playerColor,
-        teamXpGained: 0,
-      };
-    }
+    const teamXpGained = Math.floor(activity.activity.xp * 0.5);
     return {
-      text: `is working on ${activityTitle}`,
+      text: `completed ${activityTitle}`,
       playerName,
       playerColor,
-      teamXpGained: 0,
+      teamXpGained,
     };
   };
 
@@ -250,30 +234,16 @@ export const TeamActivityLog: React.FC<TeamActivityLogProps> = ({
                         type="caption"
                         className="text-huntly-charcoal/70 mr-3"
                       >
-                        {formatTimeAgo(
-                          activity.completed_at || activity.started_at
-                        )}
+                        {formatTimeAgo(activity.completed_at)}
                       </ThemedText>
 
                       {/* Status Indicator */}
-                      <View
-                        className={`px-2 py-1 rounded-full ${
-                          activity.status === "completed"
-                            ? "bg-green-100"
-                            : "bg-blue-100"
-                        }`}
-                      >
+                      <View className="px-2 py-1 rounded-full bg-green-100">
                         <ThemedText
                           type="caption"
-                          className={`font-semibold ${
-                            activity.status === "completed"
-                              ? "text-green-700"
-                              : "text-blue-700"
-                          }`}
+                          className="font-semibold text-green-700"
                         >
-                          {activity.status === "completed"
-                            ? "✅ Completed"
-                            : "🔄 Started"}
+                          ✅ Completed
                         </ThemedText>
                       </View>
                     </View>

@@ -1,7 +1,9 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { CustomerInfo, PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
 import {
+  type CustomerInfo,
+  type PurchasesOffering,
+  type PurchasesPackage,
   initializePurchases,
   updatePurchasesUserId,
   resetPurchasesUser,
@@ -9,8 +11,13 @@ import {
   purchasePackage,
   checkSubscriptionStatus,
   restorePurchases,
-  UserSubscriptionInfo
+  UserSubscriptionInfo,
 } from '@/services/purchasesService';
+import {
+  presentPaywall as doPresentPaywall,
+  presentPaywallIfNeeded as doPresentPaywallIfNeeded,
+  presentCustomerCenter as doPresentCustomerCenter,
+} from '@/services/paywallService';
 
 type PurchasesContextType = {
   offerings: PurchasesOffering | null;
@@ -19,6 +26,12 @@ type PurchasesContextType = {
   purchasePackage: (pkg: PurchasesPackage) => Promise<CustomerInfo | null>;
   restorePurchases: () => Promise<CustomerInfo | null>;
   refreshSubscriptionStatus: () => Promise<void>;
+  /** Present RevenueCat paywall (always show). */
+  presentPaywall: () => Promise<void>;
+  /** Present paywall only if user does not have "club" entitlement. */
+  presentPaywallIfNeeded: () => Promise<void>;
+  /** Present Customer Center (manage subscription, restore, cancel). */
+  presentCustomerCenter: () => Promise<void>;
 };
 
 const PurchasesContext = createContext<PurchasesContextType | undefined>(undefined);
@@ -34,12 +47,11 @@ export const PurchasesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     productIdentifier: null,
   });
 
-  // Initialize RevenueCat
   useEffect(() => {
     const init = async () => {
       setIsLoading(true);
       try {
-        await initializePurchases(user?.id);
+        await initializePurchases();
         const offerings = await getOfferings();
         setOfferings(offerings);
         await refreshSubscriptionStatus();
@@ -50,7 +62,7 @@ export const PurchasesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
     };
 
-    // init();
+    void init();
   }, []);
 
   // Update user ID on login/logout
@@ -67,14 +79,14 @@ export const PurchasesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     handleUserChange();
   }, [user]);
 
-  const refreshSubscriptionStatus = async () => {
+  const refreshSubscriptionStatus = useCallback(async () => {
     try {
       const status = await checkSubscriptionStatus();
       setSubscriptionInfo(status);
     } catch (error) {
       console.error('Error refreshing subscription status:', error);
     }
-  };
+  }, []);
 
   const handlePurchasePackage = async (pkg: PurchasesPackage) => {
     setIsLoading(true);
@@ -104,6 +116,23 @@ export const PurchasesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
+  const handlePresentPaywall = useCallback(async () => {
+    const result = await doPresentPaywall();
+    if (result?.customerInfo) await refreshSubscriptionStatus();
+  }, [refreshSubscriptionStatus]);
+
+  const handlePresentPaywallIfNeeded = useCallback(async () => {
+    const result = await doPresentPaywallIfNeeded();
+    if (result && result !== 'not_presented' && result?.customerInfo) {
+      await refreshSubscriptionStatus();
+    }
+  }, [refreshSubscriptionStatus]);
+
+  const handlePresentCustomerCenter = useCallback(async () => {
+    await doPresentCustomerCenter();
+    await refreshSubscriptionStatus();
+  }, [refreshSubscriptionStatus]);
+
   return (
     <PurchasesContext.Provider
       value={{
@@ -113,6 +142,9 @@ export const PurchasesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         purchasePackage: handlePurchasePackage,
         restorePurchases: handleRestorePurchases,
         refreshSubscriptionStatus,
+        presentPaywall: handlePresentPaywall,
+        presentPaywallIfNeeded: handlePresentPaywallIfNeeded,
+        presentCustomerCenter: handlePresentCustomerCenter,
       }}>
       {children}
     </PurchasesContext.Provider>

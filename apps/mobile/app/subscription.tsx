@@ -9,8 +9,7 @@ import {
   ScrollView,
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
-import { PurchasesPackage } from "react-native-purchases";
-
+import { type PurchasesPackage } from "@/services/purchasesService";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
 import { usePurchases } from "@/contexts/PurchasesContext";
@@ -24,6 +23,8 @@ export default function SubscriptionScreen() {
     isLoading,
     purchasePackage,
     restorePurchases,
+    presentPaywall,
+    presentCustomerCenter,
   } = usePurchases();
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
 
@@ -104,6 +105,14 @@ export default function SubscriptionScreen() {
                 : "unknown date"}
             </ThemedText>
             <Button
+              variant="secondary"
+              size="large"
+              onPress={() => presentCustomerCenter()}
+              className="px-6 mb-3"
+            >
+              Manage Subscription
+            </Button>
+            <Button
               variant="primary"
               size="large"
               onPress={() => router.back()}
@@ -133,6 +142,14 @@ export default function SubscriptionScreen() {
               Get unlimited access to all adventure packs and exclusive
               features!
             </ThemedText>
+            <Button
+              variant="primary"
+              size="large"
+              onPress={() => presentPaywall()}
+              className="mt-4"
+            >
+              Show Premium Options
+            </Button>
           </View>
 
           {/* Loading State */}

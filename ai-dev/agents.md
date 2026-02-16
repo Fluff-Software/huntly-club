@@ -21,7 +21,6 @@ Huntly Club is a mobile application built with React Native and Expo that provid
 - **React Navigation** - Bottom tabs and navigation patterns
 - **React Native Reanimated** (^3.16.2) - Animations
 - **React Native Gesture Handler** (~2.20.2) - Touch gestures
-- **React Native Purchases** (^8.9.5) - In-app subscriptions via RevenueCat
 - **Expo Image Picker** (~16.0.6) - Image selection
 - **Expo Haptics** (~14.0.1) - Haptic feedback
 

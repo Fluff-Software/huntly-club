@@ -24,7 +24,7 @@ async function getForReviewPhotos(): Promise<ReviewPhoto[]> {
     .order("uploaded_at", { ascending: true });
 
   if (error) throw new Error(error.message);
-  return (data ?? []) as ReviewPhoto[];
+  return (data ?? []) as unknown as ReviewPhoto[];
 }
 
 function reorderWithPhotoFirst(photos: ReviewPhoto[], photoId: number | null): ReviewPhoto[] {

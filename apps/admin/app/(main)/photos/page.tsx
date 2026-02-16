@@ -43,7 +43,7 @@ async function getPhotosByStatus(status: number): Promise<PhotoRow[]> {
     .order("uploaded_at", { ascending: true });
 
   if (error) throw new Error(error.message);
-  return (data ?? []) as PhotoRow[];
+  return (data ?? []) as unknown as PhotoRow[];
 }
 
 export default async function PhotosPage({

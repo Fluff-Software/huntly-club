@@ -22,7 +22,6 @@ export default function SubscriptionScreen() {
     subscriptionInfo,
     isLoading,
     purchasePackage,
-    restorePurchases,
     presentPaywall,
     presentCustomerCenter,
   } = usePurchases();
@@ -45,30 +44,6 @@ export default function SubscriptionScreen() {
       Alert.alert(
         "Purchase Failed",
         "There was an error processing your purchase."
-      );
-    }
-  };
-
-  const handleRestore = async () => {
-    try {
-      const customerInfo = await restorePurchases();
-      if (
-        customerInfo &&
-        customerInfo.entitlements.active &&
-        Object.keys(customerInfo.entitlements.active).length > 0
-      ) {
-        Alert.alert("Success", "Your purchases have been restored!");
-      } else {
-        Alert.alert(
-          "No Purchases",
-          "No previous purchases were found to restore."
-        );
-      }
-    } catch (error) {
-      console.error("Restore error:", error);
-      Alert.alert(
-        "Restore Failed",
-        "There was an error restoring your purchases."
       );
     }
   };
@@ -214,15 +189,6 @@ export default function SubscriptionScreen() {
             </View>
           )}
 
-          {/* Restore Purchases */}
-          <Button
-            variant="secondary"
-            size="large"
-            onPress={handleRestore}
-            className="bg-huntly-mint py-4"
-          >
-            Restore Previous Adventures
-          </Button>
         </ScrollView>
       )}
     </ThemedView>

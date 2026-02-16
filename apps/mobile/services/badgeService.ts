@@ -220,13 +220,12 @@ export const checkAndAwardBadges = async (
             .from("user_activity_progress")
             .select(
               `
-              activity_id, 
-              status,
+              activity_id,
               activity:activities(pack_id)
             `
             )
             .eq("profile_id", profileId)
-            .eq("status", "completed");
+            .not("completed_at", "is", null);
 
           if (packProgress) {
             // Get unique pack IDs that have been completed
@@ -245,9 +244,9 @@ export const checkAndAwardBadges = async (
         case "activities_completed":
           const { data: activities } = await supabase
             .from("user_activity_progress")
-            .select("status")
+            .select("id")
             .eq("profile_id", profileId)
-            .eq("status", "completed");
+            .not("completed_at", "is", null);
 
           if (activities && activities.length >= badge.requirement_value) {
             shouldAward = true;
@@ -260,12 +259,11 @@ export const checkAndAwardBadges = async (
             .from("user_activity_progress")
             .select(
               `
-              status,
               activity:activities(title)
             `
             )
             .eq("profile_id", profileId)
-            .eq("status", "completed");
+            .not("completed_at", "is", null);
 
           if (categoryActivities && badge.requirement_category) {
             const categoryCount = categoryActivities.filter((item: any) => {
@@ -347,18 +345,18 @@ export const getBadgeProgress = async (
         case "activities_completed":
           const { data: activities } = await supabase
             .from("user_activity_progress")
-            .select("status")
+            .select("id")
             .eq("profile_id", profileId)
-            .eq("status", "completed");
+            .not("completed_at", "is", null);
           currentValue = activities?.length || 0;
           break;
 
         case "packs_completed":
           const { data: packProgress } = await supabase
             .from("user_activity_progress")
-            .select("activity_id, status")
+            .select("activity_id")
             .eq("profile_id", profileId)
-            .eq("status", "completed");
+            .not("completed_at", "is", null);
           currentValue = packProgress?.length || 0;
           break;
       }

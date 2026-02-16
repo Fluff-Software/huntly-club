@@ -107,7 +107,6 @@ export default function ParentsScreen() {
           .select(
             `
             id,
-            status,
             completed_at,
             activities(
               id,
@@ -118,6 +117,7 @@ export default function ParentsScreen() {
           `
           )
           .eq("profile_id", profile.id)
+          .not("completed_at", "is", null)
           .order("completed_at", { ascending: false })
           .limit(5);
 
@@ -126,8 +126,7 @@ export default function ParentsScreen() {
           continue;
         }
 
-        const completedActivities =
-          activities?.filter((a) => a.status === "completed") || [];
+        const completedActivities = activities ?? [];
         const totalActivitiesForExplorer = activities?.length || 0;
         const completedCount = completedActivities.length;
         const explorerXp = profile.xp || 0;
@@ -502,7 +501,7 @@ export default function ParentsScreen() {
                         <View className="flex-row items-center flex-1">
                           <View
                             className={`w-2 h-2 rounded-full mr-3 ${
-                              activity.status === "completed"
+                              activity.completed_at != null
                                 ? "bg-green-500"
                                 : "bg-blue-500"
                             }`}

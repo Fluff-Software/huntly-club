@@ -2,16 +2,22 @@ import { supabase } from "./supabase";
 
 export type ActivityStatus = "not_started" | "started" | "completed";
 
-export interface ActivityProgress {
+export interface ActivityProgressRow {
   id: number;
   profile_id: number;
   activity_id: number;
-  status: ActivityStatus;
-  started_at: string | null;
   completed_at: string | null;
-  photo_url: string | null;
   notes: string | null;
-  created_at: string;
+}
+
+export interface ActivityProgress extends ActivityProgressRow {
+  status: ActivityStatus;
+}
+
+function rowToProgress(row: ActivityProgressRow | null): ActivityProgress | null {
+  if (!row) return null;
+  const status: ActivityStatus = row.completed_at != null ? "completed" : "started";
+  return { ...row, status };
 }
 
 export const getActivityProgress = async (
@@ -30,7 +36,7 @@ export const getActivityProgress = async (
     throw new Error(`Failed to fetch activity progress: ${error.message}`);
   }
 
-  return data;
+  return rowToProgress(data);
 };
 
 export const startActivity = async (
@@ -46,49 +52,25 @@ export const startActivity = async (
     .single();
 
   if (existingRecord) {
-    // Update existing record if not already started
-    if (existingRecord.status === "not_started") {
-      const { data, error } = await supabase
-        .from("user_activity_progress")
-        .update({
-          status: "started",
-          started_at: new Date().toISOString(),
-        })
-        .eq("profile_id", profileId)
-        .eq("activity_id", activityId)
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Error starting activity:", error);
-        throw new Error(`Failed to start activity: ${error.message}`);
-      }
-
-      return data;
-    } else {
-      // Already started or completed, return existing record
-      return existingRecord;
-    }
-  } else {
-    // Insert new record
-    const { data, error } = await supabase
-      .from("user_activity_progress")
-      .insert({
-        profile_id: profileId,
-        activity_id: activityId,
-        status: "started",
-        started_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Error starting activity:", error);
-      throw new Error(`Failed to start activity: ${error.message}`);
-    }
-
-    return data;
+    return rowToProgress(existingRecord)!;
   }
+
+  const { data, error } = await supabase
+    .from("user_activity_progress")
+    .insert({
+      profile_id: profileId,
+      activity_id: activityId,
+      completed_at: null,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error starting activity:", error);
+    throw new Error(`Failed to start activity: ${error.message}`);
+  }
+
+  return rowToProgress(data)!;
 };
 
 export const completeActivity = async (
@@ -106,13 +88,10 @@ export const completeActivity = async (
     .single();
 
   if (existingRecord) {
-    // Update existing record
     const { data, error } = await supabase
       .from("user_activity_progress")
       .update({
-        status: "completed",
         completed_at: new Date().toISOString(),
-        photo_url: photoUrl || null,
         notes: notes || null,
       })
       .eq("profile_id", profileId)
@@ -125,30 +104,26 @@ export const completeActivity = async (
       throw new Error(`Failed to complete activity: ${error.message}`);
     }
 
-    return data;
-  } else {
-    // Insert new record
-    const { data, error } = await supabase
-      .from("user_activity_progress")
-      .insert({
-        profile_id: profileId,
-        activity_id: activityId,
-        status: "completed",
-        started_at: new Date().toISOString(),
-        completed_at: new Date().toISOString(),
-        photo_url: photoUrl || null,
-        notes: notes || null,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Error completing activity:", error);
-      throw new Error(`Failed to complete activity: ${error.message}`);
-    }
-
-    return data;
+    return rowToProgress(data)!;
   }
+
+  const { data, error } = await supabase
+    .from("user_activity_progress")
+    .insert({
+      profile_id: profileId,
+      activity_id: activityId,
+      completed_at: new Date().toISOString(),
+      notes: notes || null,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error completing activity:", error);
+    throw new Error(`Failed to complete activity: ${error.message}`);
+  }
+
+  return rowToProgress(data)!;
 };
 
 export interface RecentCompletedActivity {
@@ -176,15 +151,19 @@ export const getRecentCompletedActivities = async (
     `
     )
     .eq("profile_id", profileId)
-    .eq("status", "completed")
-    .order("completed_at", { ascending: false, nullsLast: true })
+    .not("completed_at", "is", null)
+    .order("completed_at", { ascending: false, nullsFirst: false })
     .limit(limit);
 
   if (error) {
     console.error("Error fetching recent completed activities:", error);
     return [];
   }
-  return (data || []) as RecentCompletedActivity[];
+  const rows = data ?? [];
+  return rows.map((row) => {
+    const activity = Array.isArray(row.activity) ? row.activity[0] : row.activity;
+    return { id: row.id, activity_id: row.activity_id, completed_at: row.completed_at, activity: activity ?? { id: 0, title: "" } };
+  }) as RecentCompletedActivity[];
 };
 
 export const getActivityProgressForPack = async (
@@ -214,7 +193,7 @@ export const getActivityProgressForPack = async (
     );
   }
 
-  return data || [];
+  return (data || []).map((row) => rowToProgress(row)!);
 };
 
 export const getPackCompletionPercentage = async (
@@ -241,7 +220,7 @@ export const getPackCompletionPercentage = async (
     const activityIds = packActivities.map((pa) => pa.activity_id);
     const { data: progressData, error: progressError } = await supabase
       .from("user_activity_progress")
-      .select("activity_id, status")
+      .select("activity_id, completed_at")
       .eq("profile_id", profileId)
       .in("activity_id", activityIds);
 
@@ -250,9 +229,8 @@ export const getPackCompletionPercentage = async (
       return 0;
     }
 
-    // Calculate completion percentage
     const completedActivities =
-      progressData?.filter((p) => p.status === "completed") || [];
+      progressData?.filter((p) => p.completed_at != null) || [];
     const completionPercentage = Math.round(
       (completedActivities.length / activityIds.length) * 100
     );

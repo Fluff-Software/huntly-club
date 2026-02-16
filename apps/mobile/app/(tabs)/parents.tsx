@@ -147,7 +147,6 @@ export default function ParentsScreen() {
           .select(
             `
             id,
-            status,
             completed_at,
             activities(
               id,
@@ -158,15 +157,14 @@ export default function ParentsScreen() {
           `
           )
           .eq("profile_id", profile.id)
-          .eq("status", "completed");
+          .not("completed_at", "is", null);
 
         if (activitiesError) {
           console.error("Error fetching activities:", activitiesError);
           continue;
         }
 
-        const completedActivities =
-          activities?.filter((a) => a.status === "completed") || [];
+        const completedActivities = activities ?? [];
         completedActivities.forEach((a) => {
           if (a.completed_at) {
             completedDates.add(a.completed_at.slice(0, 10));

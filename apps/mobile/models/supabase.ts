@@ -250,35 +250,23 @@ export type Database = {
         Row: {
           activity_id: number
           completed_at: string | null
-          created_at: string
           id: number
           notes: string | null
-          photo_url: string | null
           profile_id: number
-          started_at: string | null
-          status: string
         }
         Insert: {
           activity_id: number
           completed_at?: string | null
-          created_at?: string
           id?: number
           notes?: string | null
-          photo_url?: string | null
           profile_id: number
-          started_at?: string | null
-          status?: string
         }
         Update: {
           activity_id?: number
           completed_at?: string | null
-          created_at?: string
           id?: number
           notes?: string | null
-          photo_url?: string | null
           profile_id?: number
-          started_at?: string | null
-          status?: string
         }
         Relationships: [
           {

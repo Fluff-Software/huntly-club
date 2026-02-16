@@ -60,6 +60,7 @@ export const getTeamActivityLogs = async (
     `
     )
     .eq("profile.team", teamId)
+    .not("completed_at", "is", null)
     .order("completed_at", { ascending: false, nullsFirst: false })
     .limit(limit);
 

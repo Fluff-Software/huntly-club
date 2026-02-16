@@ -15,6 +15,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -79,7 +80,7 @@ export default function SignUpPlayersScreen() {
     resetForm();
   };
 
-  const handleAddAnotherPlayer = () => {
+  const handleAddPlayer = () => {
     if (!name.trim()) return;
     const playerData = {
       name: name.trim(),
@@ -120,10 +121,12 @@ export default function SignUpPlayersScreen() {
 
   const canAddPlayer = name.trim().length > 0;
   const showTrash = name.trim().length > 0 || editingIndex !== null;
+  const hasAnyPlayers = players.length > 0;
+  const showAddAnotherPlayer = hasAnyPlayers;
 
-  const addAnotherScale = useSharedValue(1);
+  const addPlayerScale = useSharedValue(1);
   const continueScale = useSharedValue(1);
-  const addAnotherAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: addAnotherScale.value }] }));
+  const addPlayerAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: addPlayerScale.value }] }));
   const continueAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: continueScale.value }] }));
 
   const containerStyle = { flex: 1, backgroundColor: HUNTLY_GREEN };
@@ -133,15 +136,16 @@ export default function SignUpPlayersScreen() {
     <>
       <StatusBar style="light" />
       <Stack.Screen options={{ title: "Who's playing", headerShown: false }} />
-      <Wrapper
-        {...(Platform.OS === "ios" && { behavior: "padding" as const })}
-        style={containerStyle}
-      >
+      <SafeAreaView style={containerStyle} edges={["top", "left", "right"]}>
+        <Wrapper
+          {...(Platform.OS === "ios" && { behavior: "padding" as const })}
+          style={{ flex: 1 }}
+        >
         <ScrollView
           style={containerStyle}
           contentContainerStyle={{
             paddingHorizontal: scaleW(24),
-            paddingTop: scaleW(80),
+            paddingTop: scaleW(24),
             paddingBottom: scaleW(40),
           }}
           keyboardShouldPersistTaps="handled"
@@ -604,39 +608,40 @@ export default function SignUpPlayersScreen() {
           )}
 
           <Animated.View entering={FadeInDown.duration(500).delay(380).springify().damping(18)}>
-            <Animated.View style={addAnotherAnimatedStyle}>
-              <Pressable
-                onPress={handleAddAnotherPlayer}
-                disabled={!canAddPlayer}
-                onPressIn={() => { addAnotherScale.value = withSpring(0.96, { damping: 15, stiffness: 400 }); }}
-                onPressOut={() => { addAnotherScale.value = withSpring(1, { damping: 15, stiffness: 400 }); }}
-                style={{
-                  alignSelf: "center",
-                  width: "100%",
-                  maxWidth: scaleW(240),
-                  paddingVertical: scaleW(18),
-                  borderRadius: scaleW(50),
-                  backgroundColor: canContinue ? CREAM : "#9CA3AF",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: canContinue ? 0.3 : 0.1,
-                  shadowRadius: 4,
-                  elevation: 2,
-                  marginBottom: scaleW(24),
-                }}
-              >
-                <ThemedText
-                  type="heading"
-                  lightColor={canContinue ? HUNTLY_GREEN : "#FFFFFF"}
-                  darkColor={canContinue ? HUNTLY_GREEN : "#FFFFFF"}
-                  style={{ fontSize: scaleW(16), fontWeight: "600" }}
+            {/* Add player when no players; Add another player once at least one exists */}
+            <Animated.View style={addPlayerAnimatedStyle}>
+                <Pressable
+                  onPress={handleAddPlayer}
+                  disabled={!canAddPlayer}
+                  onPressIn={() => { addPlayerScale.value = withSpring(0.96, { damping: 15, stiffness: 400 }); }}
+                  onPressOut={() => { addPlayerScale.value = withSpring(1, { damping: 15, stiffness: 400 }); }}
+                  style={{
+                    alignSelf: "center",
+                    width: "100%",
+                    maxWidth: scaleW(240),
+                    paddingVertical: scaleW(18),
+                    borderRadius: scaleW(50),
+                    backgroundColor: canAddPlayer ? CREAM : "#9CA3AF",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: canAddPlayer ? 0.3 : 0.1,
+                    shadowRadius: 4,
+                    elevation: 2,
+                    marginBottom: scaleW(24),
+                  }}
                 >
-                  Add another player
-                </ThemedText>
-              </Pressable>
-            </Animated.View>
+                  <ThemedText
+                    type="heading"
+                    lightColor={canAddPlayer ? HUNTLY_GREEN : "#FFFFFF"}
+                    darkColor={canAddPlayer ? HUNTLY_GREEN : "#FFFFFF"}
+                    style={{ fontSize: scaleW(16), fontWeight: "600" }}
+                  >
+                    {showAddAnotherPlayer ? "Add another player" : "Add player"}
+                  </ThemedText>
+                </Pressable>
+              </Animated.View>
 
             <Animated.View style={continueAnimatedStyle}>
               <Pressable
@@ -672,7 +677,8 @@ export default function SignUpPlayersScreen() {
             </Animated.View>
           </Animated.View>
         </ScrollView>
-      </Wrapper>
+        </Wrapper>
+      </SafeAreaView>
     </>
   );
 }

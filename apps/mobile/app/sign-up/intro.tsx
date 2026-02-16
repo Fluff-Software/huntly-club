@@ -21,7 +21,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useFirstSeason } from "@/hooks/useFirstSeason";
@@ -510,42 +510,49 @@ export default function SignUpIntroScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#F5F0E8", justifyContent: "center", alignItems: "center" }}>
-        <StatusBar style="dark" />
-        <Stack.Screen options={{ title: "Welcome", headerShown: false, gestureEnabled: false }} />
-        <ActivityIndicator size="large" color={HUNTLY_GREEN} />
-        <Text style={[styles.messageText, { marginTop: scaleW(16) }]}>Loading…</Text>
-      </View>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#F5F0E8" }} edges={["top", "left", "right"]}>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <StatusBar style="dark" />
+          <Stack.Screen options={{ title: "Welcome", headerShown: false, gestureEnabled: false }} />
+          <ActivityIndicator size="large" color={HUNTLY_GREEN} />
+          <Text style={[styles.messageText, { marginTop: scaleW(16) }]}>Loading…</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#F5F0E8", justifyContent: "center", alignItems: "center", padding: scaleW(24) }}>
-        <StatusBar style="dark" />
-        <Stack.Screen options={{ title: "Welcome", headerShown: false, gestureEnabled: false }} />
-        <Text style={styles.messageText}>{error}</Text>
-        <Pressable onPress={handleRetry} style={[styles.retryButton, { marginTop: scaleW(24) }]}>
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </Pressable>
-      </View>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#F5F0E8" }} edges={["top", "left", "right"]}>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: scaleW(24) }}>
+          <StatusBar style="dark" />
+          <Stack.Screen options={{ title: "Welcome", headerShown: false, gestureEnabled: false }} />
+          <Text style={styles.messageText}>{error}</Text>
+          <Pressable onPress={handleRetry} style={[styles.retryButton, { marginTop: scaleW(24) }]}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (!firstSeason) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#F5F0E8", justifyContent: "center", alignItems: "center", padding: scaleW(24) }}>
-        <StatusBar style="dark" />
-        <Stack.Screen options={{ title: "Welcome", headerShown: false, gestureEnabled: false }} />
-        <Text style={styles.messageText}>No season available.</Text>
-        <Pressable onPress={handleRetry} style={[styles.retryButton, { marginTop: scaleW(24) }]}>
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </Pressable>
-      </View>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#F5F0E8" }} edges={["top", "left", "right"]}>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: scaleW(24) }}>
+          <StatusBar style="dark" />
+          <Stack.Screen options={{ title: "Welcome", headerShown: false, gestureEnabled: false }} />
+          <Text style={styles.messageText}>No season available.</Text>
+          <Pressable onPress={handleRetry} style={[styles.retryButton, { marginTop: scaleW(24) }]}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
+    <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
     <View style={{ flex: 1 }}>
       <StatusBar style="dark" />
       <Stack.Screen options={{ title: "Welcome", headerShown: false, gestureEnabled: false }} />
@@ -563,5 +570,6 @@ export default function SignUpIntroScreen() {
         style={{ flex: 1 }}
       />
     </View>
+    </SafeAreaView>
   );
 }

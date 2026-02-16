@@ -663,25 +663,26 @@ export default function HomeScreen() {
   );
 
   return (
-    <View className="flex-1" style={styles.container}>
-      <Animated.View
-        style={[
-          styles.backgroundContainer,
-          {
-            transform: [{ translateX: backgroundTranslateX }],
-          },
-        ]}
-      >
-        <ImageBackground
-          source={BG_IMAGE}
-          style={styles.backgroundImage}
-          resizeMode="cover"
+    <SafeAreaView edges={["top", "left", "right"]} style={styles.container}>
+      <View className="flex-1" style={styles.container}>
+        <Animated.View
+          style={[
+            styles.backgroundContainer,
+            {
+              transform: [{ translateX: backgroundTranslateX }],
+            },
+          ]}
         >
-          <View style={styles.backgroundOverlay} />
-        </ImageBackground>
-      </Animated.View>
+          <ImageBackground
+            source={BG_IMAGE}
+            style={styles.backgroundImage}
+            resizeMode="cover"
+          >
+            <View style={styles.backgroundOverlay} />
+          </ImageBackground>
+        </Animated.View>
 
-      <SafeAreaView edges={["top", "left", "right"]} className="flex-1">
+        <View className="flex-1">
         {renderNavigationButtons()}
         <Animated.ScrollView
           ref={pagerRef}
@@ -718,7 +719,8 @@ export default function HomeScreen() {
             {renderMissionsContent()}
           </Animated.View>
         </Animated.ScrollView>
-      </SafeAreaView>
-    </View>
+        </View>
+      </View>
+    </SafeAreaView>
   );
 }

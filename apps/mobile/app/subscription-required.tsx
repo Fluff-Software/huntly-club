@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
-import { View, ActivityIndicator } from "react-native";
+import { View, ActivityIndicator, Alert } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
@@ -46,22 +47,22 @@ export default function SubscriptionRequiredScreen() {
 
   if (isLoading) {
     return (
-      <ThemedView className="flex-1 bg-huntly-cream justify-center items-center">
-        <ActivityIndicator size="large" color="#4A7C59" />
-        <ThemedText type="body" className="text-huntly-charcoal mt-4">
-          Checking subscription...
-        </ThemedText>
-      </ThemedView>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#F4F0EB" }} edges={["top", "left", "right"]}>
+        <ThemedView className="flex-1 bg-huntly-cream justify-center items-center">
+          <ActivityIndicator size="large" color="#4A7C59" />
+          <ThemedText type="body" className="text-huntly-charcoal mt-4">
+            Checking subscription...
+          </ThemedText>
+        </ThemedView>
+      </SafeAreaView>
     );
   }
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#F4F0EB" }} edges={["top", "left", "right"]}>
     <ThemedView className="flex-1 bg-huntly-cream">
       <View className="flex-1 justify-center px-8">
         <View className="items-center mb-10">
-          <View className="w-24 h-24 bg-huntly-sage rounded-full items-center justify-center mb-6">
-            <ThemedText className="text-5xl">🔒</ThemedText>
-          </View>
           <ThemedText
             type="title"
             className="text-huntly-forest text-center mb-3"
@@ -97,5 +98,6 @@ export default function SubscriptionRequiredScreen() {
         </View>
       </View>
     </ThemedView>
+    </SafeAreaView>
   );
 }

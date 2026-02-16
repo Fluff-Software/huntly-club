@@ -1,5 +1,6 @@
 import { Link, Stack } from "expo-router";
 import { View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -8,6 +9,7 @@ export default function NotFoundScreen() {
   return (
     <>
       <Stack.Screen options={{ title: "Oops!" }} />
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#F4F0EB" }} edges={["top", "left", "right"]}>
       <ThemedView className="flex-1 bg-huntly-cream">
         <View className="flex-1 items-center justify-center p-8">
           {/* Character Illustration */}
@@ -40,6 +42,7 @@ export default function NotFoundScreen() {
           </Link>
         </View>
       </ThemedView>
+      </SafeAreaView>
     </>
   );
 }

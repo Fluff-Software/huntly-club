@@ -8,6 +8,7 @@ import {
   View,
   ScrollView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
 import { type PurchasesPackage } from "@/services/purchasesService";
 import { ThemedView } from "@/components/ThemedView";
@@ -53,6 +54,7 @@ export default function SubscriptionScreen() {
   };
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#F4F0EB" }} edges={["top", "left", "right"]}>
     <ThemedView className="flex-1 bg-huntly-cream">
       <Stack.Screen
         options={{ title: "Premium Adventure", headerShown: true }}
@@ -192,5 +194,6 @@ export default function SubscriptionScreen() {
         </ScrollView>
       )}
     </ThemedView>
+    </SafeAreaView>
   );
 }

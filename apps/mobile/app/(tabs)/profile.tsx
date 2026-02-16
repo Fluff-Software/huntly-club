@@ -78,7 +78,7 @@ export default function ProfileScreen() {
   const [recentActivities, setRecentActivities] = useState<
     RecentCompletedActivity[]
   >([]);
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { currentPlayer, profiles, setCurrentPlayer, refreshProfiles } =
     usePlayer();
   const router = useRouter();
@@ -450,6 +450,21 @@ export default function ProfileScreen() {
           fontSize: scaleW(17),
           fontWeight: "600",
         },
+        logOutButton: {
+          backgroundColor: COLORS.cream,
+          borderRadius: scaleW(28),
+          paddingVertical: scaleW(14),
+          paddingHorizontal: scaleW(24),
+          alignItems: "center",
+          marginTop: scaleW(16),
+          marginBottom: scaleW(32),
+          marginHorizontal: scaleW(40),
+        },
+        logOutButtonText: {
+          fontSize: scaleW(16),
+          fontWeight: "600",
+          color: COLORS.darkGreen,
+        },
         modalOverlay: {
           flex: 1,
           backgroundColor: "rgba(0,0,0,0.5)",
@@ -808,6 +823,28 @@ export default function ProfileScreen() {
             }}
           >
             <ThemedText type="heading" style={styles.parentZoneText}>Parent Zone</ThemedText>
+          </Pressable>
+
+          <Pressable
+            style={styles.logOutButton}
+            onPress={() => {
+              Alert.alert("Log out", "Are you sure you want to log out?", [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Log out",
+                  style: "destructive",
+                  onPress: async () => {
+                    try {
+                      await signOut();
+                    } catch {
+                      Alert.alert("Error", "Failed to log out");
+                    }
+                  },
+                },
+              ]);
+            }}
+          >
+            <ThemedText style={styles.logOutButtonText}>Log out</ThemedText>
           </Pressable>
         </Animated.View>
       </ScrollView>

@@ -6,13 +6,14 @@ import { usePlayer } from "@/contexts/PlayerContext";
 import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { ThemedView } from "@/components/ThemedView";
 import { getProfiles } from "@/services/profileService";
+import { REQUIRE_EMAIL_VERIFICATION } from "@/constants/auth";
 
 type AuthGuardProps = {
   children: React.ReactNode;
 };
 
 export function AuthGuard({ children }: AuthGuardProps) {
-  const { user, loading } = useAuth();
+  const { user, session, loading } = useAuth();
   const { currentPlayer } = usePlayer();
   const segments = useSegments();
   const router = useRouter();
@@ -34,7 +35,14 @@ export function AuthGuard({ children }: AuthGuardProps) {
       return;
     }
 
-    if (user && !user.email_confirmed_at && segments[0] !== "sign-up") {
+    // Email verification state lives in Supabase Auth (session.user.email_confirmed_at), not in our DB
+    const emailConfirmed = session?.user?.email_confirmed_at != null;
+    if (
+      REQUIRE_EMAIL_VERIFICATION &&
+      user &&
+      !emailConfirmed &&
+      segments[0] !== "sign-up"
+    ) {
       signUpContext?.setParentEmail(user.email ?? "");
       router.replace("/sign-up/verify-email");
       return;
@@ -82,7 +90,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
         })
         .finally(() => setCheckingProfiles(false));
     }
-  }, [user, loading, segments, checkingProfiles, currentPlayer]);
+  }, [user, session, loading, segments, checkingProfiles, currentPlayer]);
 
   const showOverlay = loading || checkingProfiles;
 

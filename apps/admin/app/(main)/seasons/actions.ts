@@ -7,20 +7,27 @@ export type SeasonFormState = {
   error?: string;
 };
 
+function getStoryParts(formData: FormData): string[] {
+  const raw = formData.getAll("story_parts");
+  return raw
+    .map((v) => (typeof v === "string" ? v.trim() : ""))
+    .filter(Boolean);
+}
+
 export async function createSeason(
   _prev: SeasonFormState,
   formData: FormData
 ): Promise<SeasonFormState> {
   const name = (formData.get("name") as string)?.trim() || null;
   const heroImageUrl = (formData.get("hero_image") as string)?.trim() || null;
-  const story = (formData.get("story") as string)?.trim() || null;
+  const storyParts = getStoryParts(formData);
 
   try {
     const supabase = createServerSupabaseClient();
     const { error } = await supabase.from("seasons").insert({
       name: name || null,
       hero_image: heroImageUrl || null,
-      story: story || null,
+      story_parts: storyParts,
     });
 
     if (error) return { error: error.message };
@@ -41,7 +48,7 @@ export async function updateSeason(
 ): Promise<SeasonFormState> {
   const name = (formData.get("name") as string)?.trim() || null;
   const heroImageUrl = (formData.get("hero_image") as string)?.trim() || null;
-  const story = (formData.get("story") as string)?.trim() || null;
+  const storyParts = getStoryParts(formData);
 
   try {
     const supabase = createServerSupabaseClient();
@@ -50,7 +57,7 @@ export async function updateSeason(
       .update({
         name: name || null,
         hero_image: heroImageUrl || null,
-        story: story || null,
+        story_parts: storyParts,
       })
       .eq("id", id);
 

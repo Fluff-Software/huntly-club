@@ -5,6 +5,13 @@ import { revalidatePath } from "next/cache";
 
 export type ChapterFormState = { error?: string };
 
+function getBodyParts(formData: FormData): string[] {
+  const raw = formData.getAll("body_parts");
+  return raw
+    .map((v) => (typeof v === "string" ? v.trim() : ""))
+    .filter(Boolean);
+}
+
 export async function createChapter(
   seasonId: number,
   _prev: ChapterFormState,
@@ -13,7 +20,7 @@ export async function createChapter(
   const weekNumber = parseInt(String(formData.get("week_number")), 10);
   const title = (formData.get("title") as string)?.trim();
   const image = (formData.get("image") as string)?.trim() || null;
-  const body = (formData.get("body") as string)?.trim() || null;
+  const bodyParts = getBodyParts(formData);
   const unlockDate = formData.get("unlock_date") as string;
 
   if (!title || !unlockDate) return { error: "Title and unlock date are required" };
@@ -26,7 +33,7 @@ export async function createChapter(
       week_number: weekNumber,
       title,
       image: image || null,
-      body: body || null,
+      body_parts: bodyParts,
       unlock_date: unlockDate,
     });
 
@@ -50,7 +57,7 @@ export async function updateChapter(
   const weekNumber = parseInt(String(formData.get("week_number")), 10);
   const title = (formData.get("title") as string)?.trim();
   const image = (formData.get("image") as string)?.trim() || null;
-  const body = (formData.get("body") as string)?.trim() || null;
+  const bodyParts = getBodyParts(formData);
   const unlockDate = formData.get("unlock_date") as string;
 
   if (!title || !unlockDate) return { error: "Title and unlock date are required" };
@@ -64,7 +71,7 @@ export async function updateChapter(
         week_number: weekNumber,
         title,
         image: image || null,
-        body: body || null,
+        body_parts: bodyParts,
         unlock_date: unlockDate,
       })
       .eq("id", chapterId);

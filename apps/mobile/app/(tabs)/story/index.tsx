@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState, useCallback } from "react";
+import React, { useMemo, useCallback } from "react";
 import {
   View,
   ScrollView,
@@ -138,6 +138,16 @@ export default function StoryScreen() {
           lineHeight: scaleW(24),
           marginBottom: scaleW(12),
         },
+        readChapterButton: {
+          backgroundColor: "rgba(255,255,255,0.25)",
+          alignSelf: "flex-start",
+          borderRadius: scaleW(28),
+          paddingVertical: scaleW(12),
+          paddingHorizontal: scaleW(24),
+          alignItems: "center",
+          justifyContent: "center",
+          marginTop: scaleW(16),
+        },
         completeButton: {
           backgroundColor: "#7FAF8A",
           alignSelf: "flex-start",
@@ -274,7 +284,9 @@ export default function StoryScreen() {
               style={creamButtonAnimatedStyle}
             >
               <Pressable
-                onPress={() => router.push("/sign-up/intro")}
+                onPress={() =>
+                  router.push({ pathname: "/(tabs)/story/slides", params: { source: "season" } })
+                }
                 onPressIn={() => {
                   creamButtonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
                 }}
@@ -309,17 +321,19 @@ export default function StoryScreen() {
               </ThemedText>
             </Animated.View>
             <Animated.View entering={FadeInDown.duration(500).delay(100 + index * 50).springify().damping(18)}>
-              {(chapter.body
-                ? chapter.body.split(/\n\n+/).filter(Boolean)
-                : []
-              ).map((paragraph, i, arr) => (
-                <ThemedText
-                  key={i}
-                  style={[styles.bodyText, i === arr.length - 1 && { marginBottom: scaleW(4) }]}
-                >
-                  {paragraph.trim()}
+              <Pressable
+                onPress={() =>
+                  router.push({
+                    pathname: "/(tabs)/story/slides",
+                    params: { source: "chapter", chapterId: String(chapter.id) },
+                  })
+                }
+                style={styles.readChapterButton}
+              >
+                <ThemedText style={{ fontSize: scaleW(15), fontWeight: "600", color: "#FFF" }}>
+                  Read this chapter →
                 </ThemedText>
-              ))}
+              </Pressable>
             </Animated.View>
             {index === 0 && (
               <Animated.View

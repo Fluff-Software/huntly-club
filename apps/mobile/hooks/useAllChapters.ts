@@ -6,6 +6,7 @@ export type Chapter = {
   week_number: number;
   title: string | null;
   body: string | null;
+  body_parts: string[] | null;
   unlock_date: string;
 };
 
@@ -26,7 +27,7 @@ export function useAllChapters(): {
 
     const { data, error: chapterError } = await supabase
       .from("chapters")
-      .select("id, week_number, title, body, unlock_date")
+      .select("id, week_number, title, body, body_parts, unlock_date")
       .lte("unlock_date", today)
       .order("unlock_date", { ascending: false });
 

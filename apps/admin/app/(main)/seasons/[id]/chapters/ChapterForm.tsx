@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { Button } from "@/components/Button";
 import { ImageUploadField } from "@/components/ImageUploadField";
+import { TextPartsField } from "@/components/TextPartsField";
 
 type ChapterFormProps = {
   action: (formData: FormData) => Promise<{ error?: string }>;
@@ -11,6 +12,7 @@ type ChapterFormProps = {
     title: string;
     image: string | null;
     body: string | null;
+    body_parts: string[];
     unlock_date: string;
   };
 };
@@ -84,18 +86,12 @@ export function ChapterForm({ action, initial }: ChapterFormProps) {
         help="Upload to Supabase Storage or paste a URL."
       />
 
-      <div>
-        <label htmlFor="body" className="mb-1 block text-sm font-medium text-stone-700">
-          Body (markdown or plain text)
-        </label>
-        <textarea
-          id="body"
-          name="body"
-          rows={6}
-          defaultValue={initial?.body ?? ""}
-          className="w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-        />
-      </div>
+      <TextPartsField
+        name="body_parts"
+        label="Chapter parts (one per slide)"
+        initialParts={initial?.body_parts ?? []}
+        help="Each part appears as one slide in the app. Add parts in order."
+      />
 
       <Button type="submit" size="lg">
         Save chapter

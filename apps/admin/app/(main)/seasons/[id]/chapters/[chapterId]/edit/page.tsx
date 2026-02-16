@@ -83,6 +83,7 @@ export default async function EditChapterPage({
           title: chapter.title,
           image: chapter.image,
           body: chapter.body,
+          body_parts: chapter.body_parts ?? [],
           unlock_date: chapter.unlock_date,
         }}
       />

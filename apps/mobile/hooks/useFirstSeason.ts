@@ -4,7 +4,10 @@ import { supabase } from "@/services/supabase";
 
 const DEFAULT_SEASON_HERO_IMAGE = require("@/assets/images/whispering-wind.png");
 
-export type StorySlide = { type: "text"; value: string } | { type: "image"; value: string };
+export type StorySlide =
+  | { type: "text"; value: string }
+  | { type: "image"; value: string }
+  | { type: "text-image"; text: string; image: string };
 
 export type FirstSeason = {
   name: string | null;

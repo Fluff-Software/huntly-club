@@ -9,17 +9,28 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Image,
-  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, { FadeIn, FadeInUp, withTiming } from "react-native-reanimated";
+import Animated, {
+  FadeIn,
+  FadeInUp,
+  withTiming,
+  withRepeat,
+  withSequence,
+  useSharedValue,
+  useAnimatedStyle,
+  withDelay,
+} from "react-native-reanimated";
 import { BlurView } from "expo-blur";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useFirstSeason } from "@/hooks/useFirstSeason";
 import { useAllChapters } from "@/hooks/useAllChapters";
 
-type StorySlide = { type: "text"; value: string } | { type: "image"; value: string };
+type StorySlide =
+  | { type: "text"; value: string }
+  | { type: "image"; value: string }
+  | { type: "text-image"; text: string; image: string };
 
 const FALLBACK_SLIDES: StorySlide[] = [
   { type: "text", value: "With the wind came a strong sense of urgency." },
@@ -120,36 +131,106 @@ function ImageSlide({
       accessibilityRole="button"
       accessibilityLabel="Image slide. Tap to continue."
     >
-      {isActive && (
-        <>
+      <Image
+        source={{ uri: imageUri }}
+        style={[slideStyles.slideImageBgLayer, { opacity: isActive ? 1 : 0 }]}
+        resizeMode="cover"
+        accessible={false}
+      />
+      <BlurView
+        intensity={80}
+        tint="dark"
+        style={[StyleSheet.absoluteFill, slideStyles.slideImageBgLayer, { opacity: isActive ? 1 : 0 }]}
+      />
+      <View style={slideStyles.slideInner}>
+        <Animated.View
+          entering={isActive ? imageSlideEntering : undefined}
+          style={[
+            slideStyles.slideInner,
+            slideStyles.slideImageWrap,
+            { width, opacity: isActive ? 1 : 0 },
+          ]}
+        >
           <Image
             source={{ uri: imageUri }}
-            style={slideStyles.slideImageBgLayer}
-            resizeMode="cover"
-            accessible={false}
+            style={slideStyles.slideImage}
+            resizeMode="contain"
+            accessible={isActive}
+            accessibilityRole="image"
           />
-          <BlurView
-            intensity={80}
-            tint="dark"
-            style={[StyleSheet.absoluteFill, slideStyles.slideImageBgLayer]}
-          />
-        </>
-      )}
+        </Animated.View>
+      </View>
+    </Pressable>
+  );
+}
+
+function TextImageSlide({
+  text,
+  imageUri,
+  isActive,
+  onPress,
+  scaleW,
+  width,
+  slideStyles,
+}: {
+  text: string;
+  imageUri: string;
+  isActive: boolean;
+  onPress: () => void;
+  scaleW: (n: number) => number;
+  width: number;
+  slideStyles: {
+    slide: object;
+    slideInner: object;
+    sentence: object;
+    letterRow: object;
+    slideImage: object;
+    slideImageWrap: object;
+    slideImageBgLayer: object;
+  };
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[slideStyles.slide, { width }]}
+      accessible
+      accessibilityRole="button"
+      accessibilityLabel={`Story image with caption: ${text}. Tap to continue.`}
+    >
+      <Image
+        source={{ uri: imageUri }}
+        style={[slideStyles.slideImageBgLayer, { opacity: isActive ? 1 : 0 }]}
+        resizeMode="cover"
+        accessible={false}
+      />
+      <BlurView
+        intensity={80}
+        tint="dark"
+        style={[StyleSheet.absoluteFill, slideStyles.slideImageBgLayer, { opacity: isActive ? 1 : 0 }]}
+      />
       <View style={slideStyles.slideInner}>
-        {isActive && (
-          <Animated.View
-            entering={imageSlideEntering}
-            style={[slideStyles.slideInner, slideStyles.slideImageWrap, { width }]}
-          >
-            <Image
-              source={{ uri: imageUri }}
-              style={slideStyles.slideImage}
-              resizeMode="contain"
-              accessible
-              accessibilityRole="image"
-            />
-          </Animated.View>
-        )}
+        <Animated.View
+          entering={isActive ? imageSlideEntering : undefined}
+          style={[
+            slideStyles.slideInner,
+            slideStyles.slideImageWrap,
+            { width, opacity: isActive ? 1 : 0 },
+          ]}
+        >
+          <Image
+            source={{ uri: imageUri }}
+            style={[slideStyles.slideImage, { flex: undefined, height: scaleW(240) }]}
+            resizeMode="contain"
+            accessible={isActive}
+            accessibilityRole="image"
+          />
+          <AnimatedSentence
+            sentence={text}
+            isActive={isActive}
+            scaleW={scaleW}
+            slideStyles={slideStyles}
+          />
+        </Animated.View>
       </View>
     </Pressable>
   );
@@ -189,6 +270,19 @@ function SlideItem({
       />
     );
   }
+  if (slide.type === "text-image") {
+    return (
+      <TextImageSlide
+        text={slide.text}
+        imageUri={slide.image}
+        isActive={isActive}
+        onPress={onPress}
+        scaleW={scaleW}
+        width={width}
+        slideStyles={slideStyles}
+      />
+    );
+  }
   return (
     <Pressable
       onPress={onPress}
@@ -211,11 +305,75 @@ function SlideItem({
   );
 }
 
+function BouncingDot({ delay, scaleW }: { delay: number; scaleW: (n: number) => number }) {
+  const translateY = useSharedValue(0);
+
+  useEffect(() => {
+    translateY.value = withDelay(
+      delay,
+      withRepeat(
+        withSequence(
+          withTiming(-scaleW(8), { duration: 350 }),
+          withTiming(0, { duration: 350 })
+        ),
+        -1,
+        false
+      )
+    );
+  }, []);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        animStyle,
+        {
+          width: scaleW(8),
+          height: scaleW(8),
+          borderRadius: scaleW(4),
+          backgroundColor: CREAM,
+          marginHorizontal: scaleW(4),
+          opacity: 0.7,
+        },
+      ]}
+    />
+  );
+}
+
+function StoryLoadingScreen({ scaleW }: { scaleW: (n: number) => number }) {
+  return (
+    <Animated.View
+      entering={FadeIn.duration(400)}
+      style={{ alignItems: "center", justifyContent: "center", gap: scaleW(16) }}
+    >
+      <Text
+        style={{
+          color: CREAM,
+          fontSize: scaleW(15),
+          fontWeight: "500",
+          opacity: 0.8,
+        }}
+      >
+        Loading story
+      </Text>
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <BouncingDot delay={0} scaleW={scaleW} />
+        <BouncingDot delay={150} scaleW={scaleW} />
+        <BouncingDot delay={300} scaleW={scaleW} />
+      </View>
+    </Animated.View>
+  );
+}
+
 export default function StorySlidesScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ source?: string; chapterId?: string }>();
-  const { firstSeason } = useFirstSeason();
-  const { chapters } = useAllChapters();
+  const { firstSeason, loading: seasonLoading } = useFirstSeason();
+  const { chapters, loading: chaptersLoading } = useAllChapters();
+  const dataLoading = seasonLoading || chaptersLoading;
   const { width } = useWindowDimensions();
   const { scaleW } = useLayoutScale();
   const insets = useSafeAreaInsets();
@@ -252,11 +410,20 @@ export default function StorySlidesScreen() {
   ]);
 
   const imageUris = useMemo(
-    () => slides.filter((s): s is { type: "image"; value: string } => s.type === "image").map((s) => s.value),
+    () =>
+      slides.flatMap((s) => {
+        if (s.type === "image") return [s.value];
+        if (s.type === "text-image") return [s.image];
+        return [];
+      }),
     [slides]
   );
 
   useEffect(() => {
+    if (dataLoading) {
+      setStoryReady(false);
+      return;
+    }
     if (imageUris.length === 0) {
       setStoryReady(true);
       return;
@@ -269,7 +436,7 @@ export default function StorySlidesScreen() {
     return () => {
       cancelled = true;
     };
-  }, [imageUris]);
+  }, [dataLoading, imageUris]);
 
   const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const index = Math.round(e.nativeEvent.contentOffset.x / width);
@@ -309,12 +476,6 @@ export default function StorySlidesScreen() {
         loadingContainer: {
           justifyContent: "center",
           alignItems: "center",
-        },
-        loadingText: {
-          marginTop: scaleW(16),
-          fontSize: scaleW(16),
-          color: CREAM,
-          opacity: 0.95,
         },
         slide: {
           flex: 1,
@@ -426,8 +587,11 @@ export default function StorySlidesScreen() {
   if (!storyReady) {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]} edges={["top", "bottom", "left", "right"]}>
-        <ActivityIndicator size="large" color={CREAM} />
-        <Text style={styles.loadingText}>Loading story…</Text>
+        <StoryLoadingScreen scaleW={scaleW} />
+        {/* Render images at 0 size so the RN image pipeline decodes them before display */}
+        {imageUris.map((uri) => (
+          <Image key={uri} source={{ uri }} style={{ width: 0, height: 0 }} accessible={false} />
+        ))}
       </SafeAreaView>
     );
   }

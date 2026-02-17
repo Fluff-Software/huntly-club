@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/services/supabase";
 
-export type StorySlide = { type: "text"; value: string } | { type: "image"; value: string };
+export type StorySlide =
+  | { type: "text"; value: string }
+  | { type: "image"; value: string }
+  | { type: "text-image"; text: string; image: string };
 
 export type Chapter = {
   id: number;

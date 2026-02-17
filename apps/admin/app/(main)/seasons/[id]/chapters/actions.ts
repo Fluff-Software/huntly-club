@@ -5,19 +5,25 @@ import { revalidatePath } from "next/cache";
 
 export type ChapterFormState = { error?: string };
 
-function getBodySlides(formData: FormData): { type: string; value: string }[] {
+type BodySlide =
+  | { type: "text"; value: string }
+  | { type: "image"; value: string }
+  | { type: "text-image"; text: string; image: string };
+
+function getBodySlides(formData: FormData): BodySlide[] {
   const raw = formData.get("body_slides");
   if (typeof raw !== "string" || !raw.trim()) return [];
   try {
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (p): p is { type: string; value: string } =>
-        p != null &&
-        typeof p === "object" &&
-        typeof (p as { type: unknown }).type === "string" &&
-        typeof (p as { value: unknown }).value === "string"
-    );
+    return parsed.filter((p): p is BodySlide => {
+      if (p == null || typeof p !== "object") return false;
+      const obj = p as Record<string, unknown>;
+      if (obj.type === "text-image") {
+        return typeof obj.text === "string" && typeof obj.image === "string";
+      }
+      return typeof obj.type === "string" && typeof obj.value === "string";
+    });
   } catch {
     return [];
   }

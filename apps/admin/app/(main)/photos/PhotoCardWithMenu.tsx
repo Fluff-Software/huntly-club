@@ -130,7 +130,7 @@ export function PhotoCardWithMenu({ photo, variant }: Props) {
           pending={pending}
         />
       )}
-    <figure className="group relative overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+    <figure className="group relative rounded-xl border border-stone-200 bg-white shadow-sm transition-shadow hover:shadow-md">
       <div
         className="relative aspect-square cursor-pointer bg-stone-100"
         onClick={() => setDetailsOpen(true)}

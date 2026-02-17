@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Pressable,
   ActivityIndicator,
+  Linking,
 } from "react-native";
 import Animated, {
   FadeInDown,
@@ -20,6 +21,7 @@ import { BackHeader } from "@/components/BackHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { useParentResources } from "@/hooks/useParentResources";
 import { supabase } from "@/services/supabase";
 import { ACTIVITY_CATEGORIES } from "@/types/activity";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -73,15 +75,8 @@ export default function ParentsScreen() {
   const [showPinModal, setShowPinModal] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  const resource1Scale = useSharedValue(1);
-  const resource2Scale = useSharedValue(1);
   const settingsScale = useSharedValue(1);
-  const resource1AnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: resource1Scale.value }],
-  }));
-  const resource2AnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: resource2Scale.value }],
-  }));
+  const { resources, loading: resourcesLoading } = useParentResources();
   const settingsAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: settingsScale.value }],
   }));
@@ -581,50 +576,42 @@ export default function ParentsScreen() {
           <ThemedText type="heading" style={[styles.sectionTitle, { marginTop: scaleW(24) }]}>
             Resources
           </ThemedText>
-          <View style={styles.resourceCard}>
-            <ThemedText type="heading" style={styles.resourceTitle}>Adventure Passes</ThemedText>
-            <ThemedText style={styles.resourceDesc}>
-              A printable adventurer pass for each of your explorers
-            </ThemedText>
-            <Animated.View style={resource1AnimatedStyle}>
-              <Pressable
-                style={styles.resourceButton}
-                onPressIn={() => {
-                  resource1Scale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-                }}
-                onPressOut={() => {
-                  resource1Scale.value = withSpring(1, { damping: 15, stiffness: 400 });
-                }}
-              >
-                <ThemedText type="heading" style={styles.resourceButtonText}>
-                  Download & Print
+          {resourcesLoading ? (
+            <View style={styles.resourceCard}>
+              <ActivityIndicator size="small" color={COLORS.charcoal} />
+              <ThemedText style={[styles.resourceDesc, { marginTop: scaleW(8) }]}>
+                Loading resources...
+              </ThemedText>
+            </View>
+          ) : resources.length === 0 ? (
+            <View style={styles.resourceCard}>
+              <ThemedText style={styles.resourceDesc}>No resources yet.</ThemedText>
+            </View>
+          ) : (
+            resources.map((resource) => (
+              <View key={resource.id} style={styles.resourceCard}>
+                <ThemedText type="heading" style={styles.resourceTitle}>
+                  {resource.title}
                 </ThemedText>
-                <MaterialIcons name="print" size={scaleW(18)} color={COLORS.charcoal} />
-              </Pressable>
-            </Animated.View>
-          </View>
-          <View style={styles.resourceCard}>
-            <ThemedText type="heading" style={styles.resourceTitle}>Team Poster</ThemedText>
-            <ThemedText style={styles.resourceDesc}>
-              A poster featuring your team mascot.
-            </ThemedText>
-            <Animated.View style={resource2AnimatedStyle}>
-              <Pressable
-                style={styles.resourceButton}
-                onPressIn={() => {
-                  resource2Scale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-                }}
-                onPressOut={() => {
-                  resource2Scale.value = withSpring(1, { damping: 15, stiffness: 400 });
-                }}
-              >
-                <ThemedText type="heading" style={styles.resourceButtonText}>
-                  Download & Print
-                </ThemedText>
-                <MaterialIcons name="print" size={scaleW(18)} color={COLORS.charcoal} />
-              </Pressable>
-            </Animated.View>
-          </View>
+                {resource.description ? (
+                  <ThemedText style={styles.resourceDesc}>{resource.description}</ThemedText>
+                ) : null}
+                <Pressable
+                  style={styles.resourceButton}
+                  onPress={() => {
+                    if (resource.file_url) {
+                      Linking.openURL(resource.file_url);
+                    }
+                  }}
+                >
+                  <ThemedText type="heading" style={styles.resourceButtonText}>
+                    Download
+                  </ThemedText>
+                  <MaterialIcons name="file-download" size={scaleW(18)} color={COLORS.charcoal} />
+                </Pressable>
+              </View>
+            ))
+          )}
         </Animated.View>
 
         {/* Settings */}

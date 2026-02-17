@@ -191,7 +191,7 @@ export function ParentPinModal({
               </View>
             )}
 
-            <View className="flex-row space-x-3">
+            <View className="flex-row" style={{ gap: 12 }}>
               <Button
                 variant="secondary"
                 size="large"

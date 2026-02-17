@@ -9,15 +9,16 @@ import {
 import { router } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSignUpOptional } from "@/contexts/SignUpContext";
-import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/ui/Button";
+import { useLayoutScale } from "@/hooks/useLayoutScale";
 
 type LoginFormProps = {
   onCreateAccount: () => void;
 };
 
 export function LoginForm({ onCreateAccount }: LoginFormProps) {
+  const { scaleW } = useLayoutScale();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { signIn, loading } = useAuth();
@@ -48,16 +49,23 @@ export function LoginForm({ onCreateAccount }: LoginFormProps) {
       <View className="items-center mb-6">
         <Image
           source={require("@/assets/images/logo.png")}
-          className="w-80 h-80 mb-4"
+          style={{ width: scaleW(350), height: scaleW(350), marginBottom: scaleW(16) }}
           resizeMode="contain"
         />
         <ThemedText
           type="title"
-          className="text-white text-center mb-2"
+          lightColor="#FFFFFF"
+          darkColor="#FFFFFF"
+          style={{ textAlign: "center", marginBottom: 8 }}
         >
           Welcome to Huntly Club!
         </ThemedText>
-        <ThemedText type="body" className="text-white text-center">
+        <ThemedText
+          type="body"
+          lightColor="#FFFFFF"
+          darkColor="#FFFFFF"
+          style={{ textAlign: "center", opacity: 0.95 }}
+        >
           Ready for your next adventure?
         </ThemedText>
       </View>

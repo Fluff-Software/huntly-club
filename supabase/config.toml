@@ -315,3 +315,6 @@ verify_jwt = false
 
 [functions.resend-auth-email]
 verify_jwt = false
+
+[functions.photo-denied-email]
+verify_jwt = false

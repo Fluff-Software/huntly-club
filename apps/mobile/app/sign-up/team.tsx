@@ -127,16 +127,7 @@ export default function SignUpTeamScreen() {
       }
       await refreshProfiles();
       clearSignUpData();
-      Alert.alert(
-        "Welcome to Huntly Club!",
-        "Your explorers are ready for adventure!",
-        [
-          {
-            text: "Let's Go!",
-            onPress: () => router.push("/sign-up/intro"),
-          },
-        ]
-      );
+      router.push("/sign-up/intro");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to create profiles.";
       Alert.alert("Error", message);
@@ -154,9 +145,10 @@ export default function SignUpTeamScreen() {
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{
+            flexGrow: 1,
+            justifyContent: "center",
             paddingHorizontal: scaleW(24),
-            paddingTop: scaleW(24),
-            paddingBottom: scaleW(40),
+            paddingVertical: scaleW(24),
           }}
           showsVerticalScrollIndicator={false}
         >

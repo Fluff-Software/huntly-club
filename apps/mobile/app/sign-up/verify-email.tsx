@@ -153,25 +153,22 @@ export default function VerifyEmailScreen() {
       <StatusBar style="light" />
       <Stack.Screen options={{ title: "Verify Email", headerShown: false }} />
       <SafeAreaView style={{ flex: 1, backgroundColor: HUNTLY_GREEN }} edges={["top", "left", "right"]}>
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: scaleW(24) }}>
         <View
           style={{
-            flex: 1,
-            justifyContent: "center",
             alignItems: "center",
-            paddingHorizontal: scaleW(24),
           }}
         >
           <ThemedText
             type="heading"
             lightColor="#FFFFFF"
             darkColor="#FFFFFF"
-            style={{
-              textAlign: "center",
-              fontWeight: "600",
-              fontSize: scaleW(24),
-              marginBottom: scaleW(12),
-            }}
+              style={{
+                textAlign: "center",
+                fontWeight: "600",
+                fontSize: scaleW(22),
+                marginBottom: scaleW(8),
+              }}
           >
             Check Your Email
           </ThemedText>
@@ -183,8 +180,9 @@ export default function VerifyEmailScreen() {
               textAlign: "center",
               fontSize: scaleW(16),
               opacity: 0.95,
-              marginBottom: scaleW(32),
+              marginBottom: scaleW(20),
               lineHeight: scaleW(24),
+              maxWidth: scaleW(320),
             }}
           >
             We've sent a confirmation link to{"\n"}
@@ -200,7 +198,12 @@ export default function VerifyEmailScreen() {
           </ThemedText>
 
           {!verificationComplete && (
-            <View style={{ marginBottom: scaleW(24) }}>
+            <View
+              style={{
+                marginTop: scaleW(16),
+                marginBottom: scaleW(16),
+              }}
+            >
               <ActivityIndicator size="large" color={CREAM} />
               <ThemedText
                 lightColor="#FFFFFF"
@@ -224,7 +227,7 @@ export default function VerifyEmailScreen() {
               textAlign: "center",
               fontSize: scaleW(14),
               opacity: 0.9,
-              marginTop: scaleW(24),
+              marginTop: scaleW(16),
             }}
           >
             Didn't receive the email?
@@ -236,10 +239,10 @@ export default function VerifyEmailScreen() {
               alignSelf: "center",
               marginTop: scaleW(8),
               paddingVertical: scaleW(14),
-              paddingHorizontal: scaleW(28),
+              paddingHorizontal: scaleW(32),
               borderRadius: scaleW(28),
               backgroundColor: CREAM,
-              minWidth: scaleW(200),
+              minWidth: scaleW(220),
               alignItems: "center",
               justifyContent: "center",
               opacity: resendLoading ? 0.8 : 1,
@@ -267,8 +270,8 @@ export default function VerifyEmailScreen() {
             style={{
               textAlign: "center",
               fontSize: scaleW(12),
-              opacity: 0.7,
-              marginTop: scaleW(24),
+              opacity: 0.8,
+              marginTop: scaleW(16),
               fontStyle: "italic",
             }}
           >
@@ -295,8 +298,8 @@ export default function VerifyEmailScreen() {
             }}
             style={{
               alignSelf: "center",
-              marginTop: scaleW(32),
-              paddingVertical: scaleW(12),
+              marginTop: scaleW(20),
+              paddingVertical: scaleW(10),
               paddingHorizontal: scaleW(20),
             }}
           >

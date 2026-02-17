@@ -3,7 +3,6 @@ import {
   View,
   Image,
   Pressable,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
@@ -64,21 +63,20 @@ export default function AuthScreen() {
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           className="flex-1"
         >
-          <ScrollView
-            className="flex-1"
-            contentContainerStyle={{
-              flexGrow: 1,
+          <View
+            style={{
+              flex: 1,
               justifyContent: "center",
-              padding: scaleW(20),
+              paddingHorizontal: scaleW(20),
+              paddingVertical: scaleW(24),
             }}
-            keyboardShouldPersistTaps="handled"
           >
             {mode === AuthScreenMode.LOGIN ? (
               <LoginForm onCreateAccount={() => router.replace("/get-started")} />
             ) : (
               <SignUpForm onLoginInstead={() => setMode(AuthScreenMode.LOGIN)} />
             )}
-          </ScrollView>
+          </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
     );

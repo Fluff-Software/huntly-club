@@ -142,11 +142,11 @@ export default function SignUpPlayersScreen() {
           style={{ flex: 1 }}
         >
         <ScrollView
-          style={containerStyle}
+          style={{ flex: 1 }}
           contentContainerStyle={{
             paddingHorizontal: scaleW(24),
             paddingTop: scaleW(24),
-            paddingBottom: scaleW(40),
+            paddingBottom: scaleW(24),
           }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -606,77 +606,104 @@ export default function SignUpPlayersScreen() {
               </View>
             </Animated.View>
           )}
-
-          <Animated.View entering={FadeInDown.duration(500).delay(380).springify().damping(18)}>
-            {/* Add player when no players; Add another player once at least one exists */}
-            <Animated.View style={addPlayerAnimatedStyle}>
-                <Pressable
-                  onPress={handleAddPlayer}
-                  disabled={!canAddPlayer}
-                  onPressIn={() => { addPlayerScale.value = withSpring(0.96, { damping: 15, stiffness: 400 }); }}
-                  onPressOut={() => { addPlayerScale.value = withSpring(1, { damping: 15, stiffness: 400 }); }}
-                  style={{
-                    alignSelf: "center",
-                    width: "100%",
-                    maxWidth: scaleW(240),
-                    paddingVertical: scaleW(18),
-                    borderRadius: scaleW(50),
-                    backgroundColor: canAddPlayer ? CREAM : "#9CA3AF",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: canAddPlayer ? 0.3 : 0.1,
-                    shadowRadius: 4,
-                    elevation: 2,
-                    marginBottom: scaleW(24),
-                  }}
-                >
-                  <ThemedText
-                    type="heading"
-                    lightColor={canAddPlayer ? HUNTLY_GREEN : "#FFFFFF"}
-                    darkColor={canAddPlayer ? HUNTLY_GREEN : "#FFFFFF"}
-                    style={{ fontSize: scaleW(16), fontWeight: "600" }}
-                  >
-                    {showAddAnotherPlayer ? "Add another player" : "Add player"}
-                  </ThemedText>
-                </Pressable>
-              </Animated.View>
-
-            <Animated.View style={continueAnimatedStyle}>
-              <Pressable
-                onPress={handleContinue}
-                disabled={!canContinue}
-                onPressIn={() => { continueScale.value = withSpring(0.96, { damping: 15, stiffness: 400 }); }}
-                onPressOut={() => { continueScale.value = withSpring(1, { damping: 15, stiffness: 400 }); }}
-                style={{
-                  alignSelf: "center",
-                  width: "100%",
-                  maxWidth: scaleW(240),
-                  paddingVertical: scaleW(18),
-                  borderRadius: scaleW(50),
-                  backgroundColor: canContinue ? CREAM : "#9CA3AF",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: canContinue ? 0.3 : 0.1,
-                  shadowRadius: 4,
-                  elevation: 2,
-                }}
-              >
-                <ThemedText
-                  type="heading"
-                  lightColor={canContinue ? HUNTLY_GREEN : "#FFFFFF"}
-                  darkColor={canContinue ? HUNTLY_GREEN : "#FFFFFF"}
-                  style={{ fontSize: scaleW(16), fontWeight: "600" }}
-                >
-                  Continue
-                </ThemedText>
-              </Pressable>
-            </Animated.View>
-          </Animated.View>
         </ScrollView>
+
+        {/* Fixed footer: Add player / Add another player + Continue */}
+        <Animated.View
+          entering={FadeInDown.duration(500).delay(380).springify().damping(18)}
+          style={{
+            paddingHorizontal: scaleW(24),
+            paddingTop: scaleW(8),
+            paddingBottom: scaleW(24),
+          }}
+        >
+          <Animated.View style={addPlayerAnimatedStyle}>
+            <Pressable
+              onPress={handleAddPlayer}
+              disabled={!canAddPlayer}
+              onPressIn={() => {
+                addPlayerScale.value = withSpring(0.96, {
+                  damping: 15,
+                  stiffness: 400,
+                });
+              }}
+              onPressOut={() => {
+                addPlayerScale.value = withSpring(1, {
+                  damping: 15,
+                  stiffness: 400,
+                });
+              }}
+              style={{
+                alignSelf: "center",
+                width: "100%",
+                maxWidth: scaleW(240),
+                paddingVertical: scaleW(18),
+                borderRadius: scaleW(50),
+                backgroundColor: canAddPlayer ? CREAM : "#9CA3AF",
+                alignItems: "center",
+                justifyContent: "center",
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: canAddPlayer ? 0.3 : 0.1,
+                shadowRadius: 4,
+                elevation: 2,
+                marginBottom: scaleW(16),
+              }}
+            >
+              <ThemedText
+                type="heading"
+                lightColor={canAddPlayer ? HUNTLY_GREEN : "#FFFFFF"}
+                darkColor={canAddPlayer ? HUNTLY_GREEN : "#FFFFFF"}
+                style={{ fontSize: scaleW(16), fontWeight: "600" }}
+              >
+                {showAddAnotherPlayer ? "Add another player" : "Add player"}
+              </ThemedText>
+            </Pressable>
+          </Animated.View>
+
+          <Animated.View style={continueAnimatedStyle}>
+            <Pressable
+              onPress={handleContinue}
+              disabled={!canContinue}
+              onPressIn={() => {
+                continueScale.value = withSpring(0.96, {
+                  damping: 15,
+                  stiffness: 400,
+                });
+              }}
+              onPressOut={() => {
+                continueScale.value = withSpring(1, {
+                  damping: 15,
+                  stiffness: 400,
+                });
+              }}
+              style={{
+                alignSelf: "center",
+                width: "100%",
+                maxWidth: scaleW(240),
+                paddingVertical: scaleW(18),
+                borderRadius: scaleW(50),
+                backgroundColor: canContinue ? CREAM : "#9CA3AF",
+                alignItems: "center",
+                justifyContent: "center",
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: canContinue ? 0.3 : 0.1,
+                shadowRadius: 4,
+                elevation: 2,
+              }}
+            >
+              <ThemedText
+                type="heading"
+                lightColor={canContinue ? HUNTLY_GREEN : "#FFFFFF"}
+                darkColor={canContinue ? HUNTLY_GREEN : "#FFFFFF"}
+                style={{ fontSize: scaleW(16), fontWeight: "600" }}
+              >
+                Continue
+              </ThemedText>
+            </Pressable>
+          </Animated.View>
+        </Animated.View>
         </Wrapper>
       </SafeAreaView>
     </>

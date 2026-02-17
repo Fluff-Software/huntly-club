@@ -244,13 +244,14 @@ export default function SignUpIntroScreen() {
     const showCard = !!card && !activitiesLoading && !activitiesError;
 
     return (
-      <View style={{ width, height, backgroundColor: "#F5F0E8" }}>
+      <View style={{ width, flex: 1, backgroundColor: "#F5F0E8" }}>
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{
+            flexGrow: 1,
+            justifyContent: "center",
             paddingHorizontal: scaleW(24),
-            paddingTop: scaleW(24),
-            paddingBottom: scaleW(100),
+            paddingVertical: scaleW(24),
           }}
           showsVerticalScrollIndicator={true}
         >
@@ -457,7 +458,20 @@ export default function SignUpIntroScreen() {
             </Animated.View>
           </View>
         )}
-        <Animated.View entering={FadeInDown.duration(500).delay(380).springify().damping(18)} style={dashboardAnimatedStyle}>
+        </ScrollView>
+
+        <Animated.View
+          entering={FadeInDown.duration(500).delay(380).springify().damping(18)}
+          style={[
+            dashboardAnimatedStyle,
+            {
+              paddingHorizontal: scaleW(24),
+              paddingTop: scaleW(12),
+              paddingBottom: Math.max(insets.bottom, scaleW(24)),
+              backgroundColor: "#F5F0E8",
+            },
+          ]}
+        >
           <Pressable
             onPress={goNext}
             onPressIn={() => { dashboardScale.value = withSpring(0.96, { damping: 15, stiffness: 400 }); }}
@@ -478,7 +492,6 @@ export default function SignUpIntroScreen() {
             </Text>
           </Pressable>
         </Animated.View>
-        </ScrollView>
       </View>
     );
   };

@@ -47,7 +47,7 @@ export default function SubscriptionRequiredScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#F4F0EB" }} edges={["top", "left", "right"]}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#F4F0EB" }} edges={["top", "left", "right", "bottom"]}>
         <ThemedView className="flex-1 bg-huntly-cream justify-center items-center">
           <ActivityIndicator size="large" color="#4A7C59" />
           <ThemedText type="body" className="text-huntly-charcoal mt-4">
@@ -59,10 +59,10 @@ export default function SubscriptionRequiredScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#F4F0EB" }} edges={["top", "left", "right"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#F4F0EB" }} edges={["top", "left", "right", "bottom"]}>
     <ThemedView className="flex-1 bg-huntly-cream">
       <View className="flex-1 justify-center px-8">
-        <View className="items-center mb-10">
+        <View className="items-center mb-6">
           <ThemedText
             type="title"
             className="text-huntly-forest text-center mb-3"
@@ -80,7 +80,7 @@ export default function SubscriptionRequiredScreen() {
 
         <View className="gap-4">
           <Button
-            variant="primary"
+            variant="secondary"
             size="large"
             onPress={handleSubscribe}
             className="w-full"

@@ -62,6 +62,15 @@ export async function denyPhoto(
       .eq("photo_id", photoId);
 
     if (error) return { error: error.message };
+    // Best-effort: notify the user via email that their photo was denied.
+    // This should not block the admin action or surface errors to the UI.
+    try {
+      await supabase.functions.invoke("photo-denied-email", {
+        body: { photoIds: [photoId] },
+      });
+    } catch (e) {
+      console.error("Failed to invoke photo-denied-email function:", e);
+    }
     revalidatePath("/photos");
     revalidatePath("/photos/review");
   } catch (e) {
@@ -154,6 +163,14 @@ export async function bulkDenyPhotos(
       .in("photo_id", photoIds);
 
     if (error) return { error: error.message };
+    // Best-effort: notify each user whose photo was denied.
+    try {
+      await supabase.functions.invoke("photo-denied-email", {
+        body: { photoIds },
+      });
+    } catch (e) {
+      console.error("Failed to invoke photo-denied-email function (bulk):", e);
+    }
     revalidatePath("/photos");
     revalidatePath("/photos/review");
   } catch (e) {

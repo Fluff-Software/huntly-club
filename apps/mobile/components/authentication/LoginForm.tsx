@@ -49,7 +49,7 @@ export function LoginForm({ onCreateAccount }: LoginFormProps) {
       <View className="items-center mb-6">
         <Image
           source={require("@/assets/images/logo.png")}
-          style={{ width: scaleW(350), height: scaleW(350), marginBottom: scaleW(16) }}
+          style={{ width: scaleW(300), height: scaleW(300), marginBottom: scaleW(16) }}
           resizeMode="contain"
         />
         <ThemedText

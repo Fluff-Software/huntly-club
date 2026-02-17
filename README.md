@@ -68,7 +68,7 @@ Sign-up verification and password-reset emails are sent via **Mailjet** (not Sup
 
 - **Edge functions**: `signup-with-email` (POST `{ email, password, metadata? }`), `resend-auth-email` (POST `{ email, type: 'signup' | 'recovery' }`).
 - **Secrets**: Configure Mailjet and redirect URLs as Supabase function secrets. See [supabase/EDGE_FUNCTION_SECRETS.md](supabase/EDGE_FUNCTION_SECRETS.md) for the list and `supabase secrets set` commands.
-- **Redirect URLs**: Ensure `huntlyclub://auth/confirm` (and, if you add a reset-password screen, `huntlyclub://auth/reset-password`) are in **Authentication → URL configuration** in the Supabase dashboard.
+- **Redirect URLs**: In **Authentication → URL configuration**, include the URLs used in auth emails, e.g. `https://www.huntly.world/auth/confirm` and `https://www.huntly.world/auth/reset-password` (and any app deep links like `huntlyclub://auth/confirm` if you use them). The reset-password URL must be allowed or the reset link in the email will lead to a blank or error page.
 
 ### 3. GitHub Actions (migrations + functions)
 

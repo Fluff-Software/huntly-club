@@ -10,14 +10,14 @@ supabase secrets set MAILJET_API_SECRET=your_mailjet_api_secret
 supabase secrets set MAILJET_FROM_EMAIL=noreply@yourdomain.com
 supabase secrets set MAILJET_FROM_NAME="Huntly Club"
 supabase secrets set FRONTEND_CONFIRM_REDIRECT=huntlyclub://auth/confirm
-supabase secrets set FRONTEND_RESET_REDIRECT=huntlyclub://auth/reset-password
+supabase secrets set FRONTEND_RESET_REDIRECT=https://www.huntly.world/auth/reset-password
 ```
 
 - **MAILJET_API_KEY** / **MAILJET_API_SECRET**: From [Mailjet API Key Management](https://app.mailjet.com/account/api_keys). Used for Send API v3.1 (Basic auth).
 - **MAILJET_FROM_EMAIL**: Sender address for auth emails. Must be a validated sender in Mailjet.
 - **MAILJET_FROM_NAME**: Display name for the sender.
-- **FRONTEND_CONFIRM_REDIRECT**: Deep link used in verification emails (must match the app’s confirm route).
-- **FRONTEND_RESET_REDIRECT**: Deep link for password reset emails (used when `type: 'recovery'` in resend-auth-email).
+- **FRONTEND_CONFIRM_REDIRECT**: URL used in verification emails (default: website confirm page).
+- **FRONTEND_RESET_REDIRECT**: URL for password reset emails (default: `https://www.huntly.world/auth/reset-password`). Use the website URL so the link works when opened in a browser; deep links like `huntlyclub://auth/reset-password` can show a blank page if the app doesn’t handle the link.
 
 **Optional (deliverability):**
 

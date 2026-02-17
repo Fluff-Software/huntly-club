@@ -8,6 +8,9 @@ import {
   Pressable,
   StyleSheet,
   Platform,
+  ActivityIndicator,
+  type NativeSyntheticEvent,
+  type NativeScrollEvent,
 } from "react-native";
 import AnimatedReanimated, {
   useAnimatedStyle,
@@ -49,19 +52,42 @@ export default function HomeScreen() {
   const { activities: missionCards } = useCurrentChapterActivities();
   const [teamName, setTeamName] = useState<string | null>(null);
   const [clubCards, setClubCards] = useState<ClubPhotoCardItem[]>([]);
+  const [clubCardsLoading, setClubCardsLoading] = useState(true);
+  const [loadingMoreClubCards, setLoadingMoreClubCards] = useState(false);
   const initialIndex = 1; // activity (Welcome back)
   const [currentIndex, setCurrentIndex] = useState<number>(initialIndex);
   const currentMode = HOME_MODES[currentIndex] ?? "activity";
 
   useEffect(() => {
     let cancelled = false;
+    setClubCardsLoading(true);
     getRandomClubPhotos(5).then((cards) => {
       if (!cancelled) setClubCards(cards);
     }).catch(() => {
       if (!cancelled) setClubCards([]);
+    }).finally(() => {
+      if (!cancelled) setClubCardsLoading(false);
     });
     return () => { cancelled = true; };
   }, []);
+
+  const loadMoreClubCards = async () => {
+    if (loadingMoreClubCards || clubCards.length === 0) return;
+    setLoadingMoreClubCards(true);
+    try {
+      const excludeIds = clubCards.map((c) => c.id);
+      const more = await getRandomClubPhotos(5, excludeIds);
+      if (more.length > 0) {
+        const existingIds = new Set(clubCards.map((c) => c.id));
+        const newCards = more.filter((c) => !existingIds.has(c.id));
+        setClubCards((prev) => prev.concat(newCards));
+      }
+    } catch {
+      // ignore; we already have cards
+    } finally {
+      setLoadingMoreClubCards(false);
+    }
+  };
 
   useEffect(() => {
     if (!currentPlayer?.team) {
@@ -472,7 +498,7 @@ export default function HomeScreen() {
           </AnimatedReanimated.View>
         )}
 
-        {clubCards.length > 0 && (
+        {(clubCardsLoading || clubCards.length > 0) && (
           <View
             style={{
               backgroundColor: "#BBE5EB",
@@ -493,6 +519,12 @@ export default function HomeScreen() {
             <ThemedText type="heading" style={{ color: "#000", fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(32), textAlign: "center" }}>
               From around the club
             </ThemedText>
+            {clubCardsLoading && clubCards.length === 0 ? (
+              <View style={{ minHeight: scaleW(200), justifyContent: "center", alignItems: "center", paddingVertical: scaleW(32) }}>
+                <ActivityIndicator size="large" color="#5B8A9E" />
+              </View>
+            ) : (
+            <>
             <Animated.ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -504,7 +536,11 @@ export default function HomeScreen() {
               scrollEventThrottle={16}
               onScroll={Animated.event(
                 [{ nativeEvent: { contentOffset: { x: clubCardsScrollX } } }],
-                { useNativeDriver: true }
+                { useNativeDriver: true, listener: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+                  const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+                  const nearEnd = contentOffset.x + layoutMeasurement.width >= contentSize.width - scaleW(150);
+                  if (nearEnd) loadMoreClubCards();
+                } }
               )}
               snapToInterval={clubCardStep}
               snapToAlignment="start"
@@ -566,7 +602,14 @@ export default function HomeScreen() {
                 </Animated.View>
               );
             })}
+              {loadingMoreClubCards && (
+                <View style={[styles.clubCard, { justifyContent: "center", alignItems: "center", minWidth: scaleW(100) }]}>
+                  <ActivityIndicator size="small" color="#5B8A9E" />
+                </View>
+              )}
             </Animated.ScrollView>
+            </>
+            )}
           </View>
         )}
       </View>

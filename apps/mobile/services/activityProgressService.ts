@@ -365,9 +365,11 @@ export interface ClubPhotoCardItem {
  * Returns up to `count` random approved photos from the club (any activity).
  * Each item includes activity title and profile nickname for display.
  * status 1 = approved. Nicknames come from profile_public (id + nickname only).
+ * Pass excludeIds when loading more to avoid duplicates.
  */
 export const getRandomClubPhotos = async (
-  count: number
+  count: number,
+  excludeIds: string[] = []
 ): Promise<ClubPhotoCardItem[]> => {
   const { data, error } = await supabase
     .from("user_activity_photos")
@@ -383,6 +385,7 @@ export const getRandomClubPhotos = async (
   const list = data ?? [];
   if (list.length === 0) return [];
 
+  const excludeSet = new Set(excludeIds);
   const profileIds = [...new Set((list as { profile_id?: number }[]).map((r) => r.profile_id).filter((id): id is number => id != null))];
   const nicknamesByProfileId: Record<number, string> = {};
   if (profileIds.length > 0) {
@@ -396,7 +399,10 @@ export const getRandomClubPhotos = async (
   }
 
   const shuffled = [...list].sort(() => Math.random() - 0.5);
-  const taken = shuffled.slice(0, count);
+  const filtered = excludeSet.size > 0
+    ? shuffled.filter((row: Record<string, unknown>) => !excludeSet.has(String(row.photo_id ?? "")))
+    : shuffled;
+  const taken = filtered.slice(0, count);
 
   return taken.map((row: Record<string, unknown>) => {
     const activity = row.activities;

@@ -98,6 +98,17 @@ export function LoginForm({ onCreateAccount }: LoginFormProps) {
           secureTextEntry
         />
 
+        <Pressable
+          onPress={() =>
+            router.push("/auth/forgot-password" as Parameters<typeof router.push>[0])
+          }
+          className="mb-4 items-center"
+        >
+          <ThemedText type="link" className="text-huntly-leaf text-center">
+            Forgot your password?
+          </ThemedText>
+        </Pressable>
+
         <Button
           variant="primary"
           size="large"

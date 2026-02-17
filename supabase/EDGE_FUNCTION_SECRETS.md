@@ -25,6 +25,14 @@ supabase secrets set FRONTEND_RESET_REDIRECT=https://www.huntly.world/auth/reset
 
 `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are automatically available to Edge Functions; you do not need to set them manually.
 
+**If reset-password email links open a blank page:** The link is using a deep link (e.g. `huntlyworld://auth/reset-password`) which browsers can’t open. Set the secret so the link uses the website instead:
+
+```bash
+supabase secrets set FRONTEND_RESET_REDIRECT=https://www.huntly.world/auth/reset-password
+```
+
+Then redeploy the function: `supabase functions deploy resend-auth-email`. New reset emails will point to the website; existing emails will still have the old link.
+
 ---
 
 ## Reducing soft bounces (Mailjet + Supabase)

@@ -50,7 +50,7 @@ export async function createActivity(
     revalidatePath("/dashboard");
   } catch (e) {
     return {
-      error: e instanceof Error ? e.message : "Failed to create activity",
+      error: e instanceof Error ? e.message : "Failed to create mission",
     };
   }
   return {};
@@ -99,7 +99,7 @@ export async function updateActivity(
     revalidatePath(`/activities/${id}/edit`);
   } catch (e) {
     return {
-      error: e instanceof Error ? e.message : "Failed to update activity",
+      error: e instanceof Error ? e.message : "Failed to update mission",
     };
   }
   return {};

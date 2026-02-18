@@ -20,7 +20,7 @@ export default async function ActivitiesPage() {
       <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold text-stone-900">
-            Activities
+            Missions
           </h1>
           <p className="mt-1 text-sm text-stone-500">
             Missions can be assigned to chapters when editing a chapter.
@@ -33,7 +33,7 @@ export default async function ActivitiesPage() {
 
       {activities.length === 0 ? (
         <p className="rounded-xl border border-dashed border-stone-300 bg-stone-50/50 py-12 text-center text-stone-500">
-          No activities yet. Create one to get started.
+          No missions yet. Create one to get started.
         </p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white shadow-sm">

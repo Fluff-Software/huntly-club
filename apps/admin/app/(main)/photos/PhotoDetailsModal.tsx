@@ -194,7 +194,7 @@ export function PhotoDetailsModal({
                 )}
               </DetailsSection>
 
-              <DetailsSection title="Activity">
+              <DetailsSection title="Mission">
                 {data.activity ? (
                   <dl className="space-y-1.5 text-sm">
                     <Row label="Title" value={data.activity.title} />

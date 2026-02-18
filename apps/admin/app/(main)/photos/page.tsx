@@ -64,7 +64,7 @@ export default async function PhotosPage({
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold text-stone-900">Photos</h1>
           <p className="mt-1 text-sm text-stone-500">
-            Activity photos by status. Use the review flow to approve or deny.
+            Mission photos by status. Use the review flow to approve or deny.
           </p>
         </div>
         {isForReview && (
@@ -116,7 +116,7 @@ export default async function PhotosPage({
                 <div className="relative aspect-square bg-stone-100">
                   <Image
                     src={photo.photo_url}
-                    alt="Activity submission"
+                    alt="Mission submission"
                     fill
                     sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
                     className="object-cover"

@@ -122,7 +122,7 @@ export function ChapterMissions({
             }}
             disabled={isPending}
           >
-            <option value="">Choose activity…</option>
+            <option value="">Choose mission…</option>
             {available.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.title}
@@ -132,7 +132,7 @@ export function ChapterMissions({
         </div>
       ) : (
         allActivities.length === 0 && (
-          <p className="text-sm text-stone-500">No activities in the system. Add some in Activities first.</p>
+          <p className="text-sm text-stone-500">No missions in the system. Add some in Missions first.</p>
         )
       )}
 

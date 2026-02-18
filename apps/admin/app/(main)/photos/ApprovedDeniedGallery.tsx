@@ -237,7 +237,7 @@ function SelectableCard({
       <div className="relative aspect-square bg-stone-100">
         <img
           src={photo.photo_url}
-          alt="Activity submission"
+          alt="Mission submission"
           className="h-full w-full object-cover"
         />
         <div className="absolute left-2 top-2">

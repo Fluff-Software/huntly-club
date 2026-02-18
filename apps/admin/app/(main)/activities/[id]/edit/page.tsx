@@ -56,7 +56,7 @@ export default async function EditActivityPage({
       />
       <p className="mt-4">
         <Button href="/activities" variant="ghost" size="md">
-          Back to activities
+          Back to missions
         </Button>
       </p>
     </div>

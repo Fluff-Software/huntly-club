@@ -181,7 +181,7 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
             <div className="relative h-full w-full bg-stone-100">
               <Image
                 src={current.photo_url}
-                alt="Activity submission"
+                alt="Mission submission"
                 fill
                 sizes="(max-width: 640px) 100vw, 32rem"
                 className="pointer-events-none object-contain"

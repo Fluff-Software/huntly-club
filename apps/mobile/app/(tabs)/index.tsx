@@ -49,7 +49,7 @@ const CLUB_CARD_AUTHOR_COLORS = [
 export default function HomeScreen() {
   const { scaleW, width, height } = useLayoutScale();
   const { currentPlayer } = usePlayer();
-  const { activities: missionCards } = useCurrentChapterActivities();
+  const { nextMission, loading: missionLoading } = useCurrentChapterActivities(currentPlayer?.id ?? null);
   const [teamName, setTeamName] = useState<string | null>(null);
   const [clubCards, setClubCards] = useState<ClubPhotoCardItem[]>([]);
   const [clubCardsLoading, setClubCardsLoading] = useState(true);
@@ -116,14 +116,9 @@ export default function HomeScreen() {
   const clubCardsPaddingHorizontal = Math.max(0, Math.round((clubViewportWidth - cardWidth) / 2));
   const getCenterScrollX = (index: number) => index * clubCardStep;
 
-  const missionCardsScrollX = useRef(new Animated.Value(0)).current;
   const missionCardWidth = scaleW(270);
-  const missionCardBorderWidth = 6;
-  const missionCardGap = scaleW(12);
-  const missionCardStep = missionCardWidth + missionCardGap;
   const missionViewportWidth = width - scaleW(48);
   const missionCardsPaddingHorizontal = Math.max(0, Math.round((missionViewportWidth - missionCardWidth) / 2));
-  const getMissionCenterScrollX = (index: number) => index * missionCardStep;
 
   const springLessBouncy = { damping: 15, stiffness: 120 };
   const buttonSpring = { damping: 15, stiffness: 400 };
@@ -643,50 +638,17 @@ export default function HomeScreen() {
               textShadowOffset: { width: 0, height: 0 },
             }}
         >
-          Your help is needed!
+          Current Mission
         </ThemedText>
 
-        <View collapsable={Platform.OS !== "android"}>
-          <Animated.ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.horizontalMissionCardsContainer}
-            style={{ overflow: "visible", marginBottom: scaleW(24) }}
-            nestedScrollEnabled={Platform.OS === "android"}
-            removeClippedSubviews={false}
-            overScrollMode="never"
-            scrollEventThrottle={16}
-            onScroll={Animated.event(
-              [{ nativeEvent: { contentOffset: { x: missionCardsScrollX } } }],
-              { useNativeDriver: true }
-            )}
-            snapToInterval={missionCardStep}
-            snapToAlignment="start"
-            decelerationRate="fast"
-          >
-            {missionCards.map((card, index) => {
-              const centerScrollX = index === 0 ? 0 : getMissionCenterScrollX(index);
-              const rotation = missionCardsScrollX.interpolate({
-                inputRange: [
-                  centerScrollX - 120,
-                  centerScrollX,
-                  centerScrollX + 120,
-                ],
-                outputRange: ["-2deg", "0deg", "2deg"],
-                extrapolate: "clamp",
-              });
-              return (
-                <Animated.View
-                  key={card.id}
-                  style={{
-                    transform: [{ rotate: rotation }],
-                  }}
-                >
-                  <MissionCard card={card} tiltDeg={0} />
-                </Animated.View>
-              );
-            })}
-          </Animated.ScrollView>
+        <View collapsable={Platform.OS !== "android"} style={{ alignItems: "center", marginBottom: scaleW(24) }}>
+          {missionLoading ? (
+            <View style={{ paddingVertical: scaleW(48), alignItems: "center" }}>
+              <ActivityIndicator size="large" color="#FFF" />
+            </View>
+          ) : nextMission ? (
+            <MissionCard card={nextMission} tiltDeg={0} />
+          ) : null}
         </View>
 
         <AnimatedReanimated.View style={missionsButtonStyle}>

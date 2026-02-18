@@ -41,9 +41,11 @@ function toMissionCardData(card: ChapterActivityCard): MissionCardData {
   return { id: card.id, image: card.image, title: card.title, description: card.description };
 }
 
-export function useCurrentChapterActivities(): {
+export function useCurrentChapterActivities(profileId: number | null): {
   activities: MissionCardData[];
   activityCards: ChapterActivityCard[];
+  /** Next mission for the user in this chapter (first incomplete, or first in chapter if no profile) */
+  nextMission: MissionCardData | null;
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -52,6 +54,31 @@ export function useCurrentChapterActivities(): {
   const [activityCards, setActivityCards] = useState<ChapterActivityCard[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(true);
   const [activitiesError, setActivitiesError] = useState<string | null>(null);
+  const [completedActivityIds, setCompletedActivityIds] = useState<Set<string>>(new Set());
+
+  const fetchCompletedForChapter = useCallback(async (chapterId: number, profileId: number | null) => {
+    if (!profileId) {
+      setCompletedActivityIds(new Set());
+      return;
+    }
+    const { data: rows } = await supabase
+      .from("chapter_activities")
+      .select("activity_id")
+      .eq("chapter_id", chapterId);
+    const activityIds = (rows ?? []).map((r) => r.activity_id);
+    if (activityIds.length === 0) {
+      setCompletedActivityIds(new Set());
+      return;
+    }
+    const { data: progress } = await supabase
+      .from("user_activity_progress")
+      .select("activity_id")
+      .eq("profile_id", profileId)
+      .in("activity_id", activityIds)
+      .not("completed_at", "is", null);
+    const completed = new Set((progress ?? []).map((p) => String(p.activity_id)));
+    setCompletedActivityIds(completed);
+  }, []);
 
   const fetchActivities = useCallback(async (chapterId: number) => {
     setActivitiesError(null);
@@ -84,6 +111,11 @@ export function useCurrentChapterActivities(): {
     fetchActivities(currentChapter.id);
   }, [currentChapter?.id, fetchActivities]);
 
+  useEffect(() => {
+    if (!currentChapter?.id) return;
+    fetchCompletedForChapter(currentChapter.id, profileId);
+  }, [currentChapter?.id, profileId, fetchCompletedForChapter]);
+
   const loading = chapterLoading || activitiesLoading;
   const error = chapterError ?? activitiesError;
 
@@ -91,12 +123,24 @@ export function useCurrentChapterActivities(): {
     await refetchChapter();
     if (currentChapter?.id) {
       await fetchActivities(currentChapter.id);
+      await fetchCompletedForChapter(currentChapter.id, profileId);
     }
-  }, [refetchChapter, fetchActivities, currentChapter?.id]);
+  }, [refetchChapter, fetchActivities, fetchCompletedForChapter, currentChapter?.id, profileId]);
+
+  // Next mission = first activity in chapter order that is not completed, or first activity if all complete / no profile
+  const nextMission: MissionCardData | null =
+    currentChapter && activityCards.length > 0
+      ? (() => {
+          const firstIncomplete = activityCards.find((c) => !completedActivityIds.has(c.id));
+          const card = firstIncomplete ?? activityCards[0];
+          return toMissionCardData(card);
+        })()
+      : null;
 
   return {
     activities: currentChapter ? activityCards.map(toMissionCardData) : [],
     activityCards: currentChapter ? activityCards : [],
+    nextMission,
     loading,
     error,
     refetch,

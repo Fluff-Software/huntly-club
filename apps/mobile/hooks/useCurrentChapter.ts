@@ -27,9 +27,27 @@ export function useCurrentChapter(): {
 
     const today = new Date().toISOString().slice(0, 10);
 
+    // Latest season (highest id)
+    const { data: latestSeason, error: seasonError } = await supabase
+      .from("seasons")
+      .select("id")
+      .order("id", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (seasonError || !latestSeason) {
+      setError(seasonError?.message ?? "Failed to load season");
+      setCurrentChapter(null);
+      setNextChapterDate(null);
+      setLoading(false);
+      return;
+    }
+
+    // Newest unlocked chapter in that season (unlock_date <= today, most recent first)
     const { data: chapterData, error: chapterError } = await supabase
       .from("chapters")
       .select("id, week_number, title, body, unlock_date")
+      .eq("season_id", latestSeason.id)
       .lte("unlock_date", today)
       .order("unlock_date", { ascending: false })
       .limit(1)
@@ -46,6 +64,7 @@ export function useCurrentChapter(): {
     const { data: nextData, error: nextError } = await supabase
       .from("chapters")
       .select("unlock_date")
+      .eq("season_id", latestSeason.id)
       .gt("unlock_date", today)
       .order("unlock_date", { ascending: true })
       .limit(1)

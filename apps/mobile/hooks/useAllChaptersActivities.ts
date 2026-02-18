@@ -127,3 +127,105 @@ export function useAllChaptersActivities(): {
     refetch: fetchData,
   };
 }
+
+/** Chapter with its activities (latest season, unlocked only). For Missions screen. */
+export type ChapterWithActivities = {
+  id: number;
+  week_number: number;
+  title: string | null;
+  unlock_date: string;
+  activities: ChapterActivityCard[];
+};
+
+export function useChaptersWithActivities(): {
+  chapters: ChapterWithActivities[];
+  loading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+} {
+  const [chapters, setChapters] = useState<ChapterWithActivities[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
+    setError(null);
+    setLoading(true);
+    const today = new Date().toISOString().slice(0, 10);
+
+    const { data: latestSeason, error: seasonError } = await supabase
+      .from("seasons")
+      .select("id")
+      .order("id", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (seasonError || !latestSeason) {
+      setError(seasonError?.message ?? "Failed to load season");
+      setChapters([]);
+      setLoading(false);
+      return;
+    }
+
+    const { data: chapterList, error: chaptersError } = await supabase
+      .from("chapters")
+      .select("id, week_number, title, unlock_date")
+      .eq("season_id", latestSeason.id)
+      .lte("unlock_date", today)
+      .order("unlock_date", { ascending: false });
+
+    if (chaptersError) {
+      setError(chaptersError.message ?? "Failed to load chapters");
+      setChapters([]);
+      setLoading(false);
+      return;
+    }
+
+    const chapterIds = (chapterList ?? []).map((c: { id: number }) => c.id);
+    if (chapterIds.length === 0) {
+      setChapters([]);
+      setLoading(false);
+      return;
+    }
+
+    const { data: rows, error: activitiesError } = await supabase
+      .from("chapter_activities")
+      .select("chapter_id, order, activities(id, image, title, description, xp, categories)")
+      .in("chapter_id", chapterIds)
+      .order("order", { ascending: true });
+
+    if (activitiesError) {
+      setError(activitiesError.message ?? "Failed to load activities");
+      setChapters([]);
+      setLoading(false);
+      return;
+    }
+
+    const byChapter = new Map<number, ChapterActivityCard[]>();
+    for (const row of rows ?? []) {
+      const r = row as ChapterActivityRow;
+      const card = toChapterActivityCard(r);
+      if (!card) continue;
+      const list = byChapter.get(r.chapter_id) ?? [];
+      list.push(card);
+      byChapter.set(r.chapter_id, list);
+    }
+
+    const result: ChapterWithActivities[] = (chapterList ?? []).map(
+      (ch: { id: number; week_number: number; title: string | null; unlock_date: string }) => ({
+        id: ch.id,
+        week_number: ch.week_number,
+        title: ch.title,
+        unlock_date: ch.unlock_date,
+        activities: byChapter.get(ch.id) ?? [],
+      })
+    );
+    setChapters(result);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return { chapters, loading, error, refetch: fetchData };
+}

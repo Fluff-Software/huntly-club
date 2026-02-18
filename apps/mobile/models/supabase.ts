@@ -285,6 +285,54 @@ export type Database = {
           },
         ]
       }
+      user_achievements: {
+        Row: {
+          id: number
+          profile_id: number
+          team_id: number
+          source: string
+          source_id: number
+          message: string
+          xp: number
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          profile_id: number
+          team_id: number
+          source: string
+          source_id: number
+          message: string
+          xp?: number
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          profile_id?: number
+          team_id?: number
+          source?: string
+          source_id?: number
+          message?: string
+          xp?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_achievements_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_achievements_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_badges: {
         Row: {
           badge_id: number

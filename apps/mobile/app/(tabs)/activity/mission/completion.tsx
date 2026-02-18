@@ -35,6 +35,7 @@ import { getActivityById } from "@/services/packService";
 import {
   ensureProgressRows,
   insertUserActivityPhotos,
+  insertUserAchievementsForMission,
 } from "@/services/activityProgressService";
 import { uploadUserActivityPhoto } from "@/services/storageService";
 import type { Activity } from "@/types/activity";
@@ -308,10 +309,24 @@ export default function CompletionScreen() {
     setCompleting(true);
     try {
       // 1–3: Ensure user_activity_progress rows exist for each selected profile
-      const progressIdByProfile = await ensureProgressRows(
-        selectedPlayerIds,
-        activity.id
-      );
+      const { progressIdByProfile, inserted: insertedProgress } =
+        await ensureProgressRows(selectedPlayerIds, activity.id);
+
+      // When new progress rows were created, record achievements
+      if (insertedProgress.length > 0) {
+        const activityXp = activity.xp ?? 0;
+        await insertUserAchievementsForMission(
+          insertedProgress.map((row) => {
+            const profile = profiles.find((p) => p.id === row.profile_id);
+            return {
+              profile_id: row.profile_id,
+              team_id: profile?.team ?? 0,
+              source_id: row.id,
+              xp: activityXp,
+            };
+          })
+        );
+      }
 
       // 4–5: Upload each photo to Supabase bucket "user-activity-photos"
       const uploaded: { profileId: number; photoUrl: string }[] = [];

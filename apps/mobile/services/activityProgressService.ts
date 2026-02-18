@@ -242,15 +242,23 @@ export const getPackCompletionPercentage = async (
   }
 };
 
+export interface EnsureProgressRowsResult {
+  progressIdByProfile: Record<number, number>;
+  /** Rows that were newly created (use to e.g. insert user_achievements). */
+  inserted: { id: number; profile_id: number }[];
+}
+
 /**
  * Ensures user_activity_progress rows exist for each profile and activity.
- * Creates missing rows (profile_id, activity_id) and returns a map of profile_id -> progress id.
+ * Creates missing rows (profile_id, activity_id) and returns a map of profile_id -> progress id
+ * plus the list of newly inserted rows.
  */
 export const ensureProgressRows = async (
   profileIds: number[],
   activityId: number
-): Promise<Record<number, number>> => {
-  if (profileIds.length === 0) return {};
+): Promise<EnsureProgressRowsResult> => {
+  const empty: EnsureProgressRowsResult = { progressIdByProfile: {}, inserted: [] };
+  if (profileIds.length === 0) return empty;
 
   const { data: existing, error: selectError } = await supabase
     .from("user_activity_progress")
@@ -263,13 +271,15 @@ export const ensureProgressRows = async (
     throw new Error(`Failed to fetch activity progress: ${selectError.message}`);
   }
 
-  const result: Record<number, number> = {};
+  const progressIdByProfile: Record<number, number> = {};
   for (const row of existing ?? []) {
-    result[row.profile_id] = row.id;
+    progressIdByProfile[row.profile_id] = row.id;
   }
 
-  const missingProfileIds = profileIds.filter((id) => result[id] == null);
-  if (missingProfileIds.length === 0) return result;
+  const missingProfileIds = profileIds.filter((id) => progressIdByProfile[id] == null);
+  if (missingProfileIds.length === 0) {
+    return { progressIdByProfile, inserted: [] };
+  }
 
   const inserts = missingProfileIds.map((profile_id) => ({
     profile_id,
@@ -286,10 +296,48 @@ export const ensureProgressRows = async (
     throw new Error(`Failed to create activity progress: ${insertError.message}`);
   }
 
-  for (const row of inserted ?? []) {
-    result[row.profile_id] = row.id;
+  const insertedRows = inserted ?? [];
+  for (const row of insertedRows) {
+    progressIdByProfile[row.profile_id] = row.id;
   }
-  return result;
+
+  return {
+    progressIdByProfile,
+    inserted: insertedRows,
+  };
+};
+
+export interface UserAchievementInsert {
+  profile_id: number;
+  team_id: number;
+  source_id: number;
+  xp: number;
+}
+
+/**
+ * Inserts user_achievements rows for newly created user_activity_progress (e.g. mission completion).
+ * source is "mission", message is "completed a mission".
+ */
+export const insertUserAchievementsForMission = async (
+  rows: UserAchievementInsert[]
+): Promise<void> => {
+  if (rows.length === 0) return;
+
+  const { error } = await supabase.from("user_achievements").insert(
+    rows.map((r) => ({
+      profile_id: r.profile_id,
+      team_id: r.team_id,
+      source: "mission",
+      source_id: r.source_id,
+      message: "completed a mission",
+      xp: r.xp,
+    }))
+  );
+
+  if (error) {
+    console.error("Error inserting user achievements:", error);
+    throw new Error(`Failed to insert user achievements: ${error.message}`);
+  }
 };
 
 export interface UserActivityPhotoInsert {

@@ -1,10 +1,8 @@
-import React, { useRef, useMemo, useCallback } from "react";
+import React, { useMemo } from "react";
 import {
   View,
   ScrollView,
-  Animated as RNAnimated,
   StyleSheet,
-  Platform,
   ActivityIndicator,
   Pressable,
 } from "react-native";
@@ -13,39 +11,19 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
 import { BackHeader } from "@/components/BackHeader";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
-import { useCurrentChapterActivities } from "@/hooks/useCurrentChapterActivities";
-import { useAllChaptersActivities } from "@/hooks/useAllChaptersActivities";
+import { useChaptersWithActivities, type ChapterWithActivities } from "@/hooks/useAllChaptersActivities";
 import { MissionCard } from "@/components/MissionCard";
-import type { ChapterActivityCard } from "@/hooks/useCurrentChapterActivities";
 
 const MISSIONS_ORANGE = "#D2684B";
 
+function chapterSectionTitle(chapter: ChapterWithActivities): string {
+  const title = chapter.title?.trim() || "Missions";
+  return `Week ${chapter.week_number} - ${title}`;
+}
+
 export default function MissionsScreen() {
-  const { scaleW, width } = useLayoutScale();
-  const { activityCards: currentCards, loading: currentLoading, error: currentError, refetch: refetchCurrent } = useCurrentChapterActivities();
-  const { activityCards: allCards, loading: allLoading, error: allError, refetch: refetchAll } = useAllChaptersActivities();
-
-  const currentIds = useMemo(() => new Set(currentCards.map((c) => c.id)), [currentCards]);
-  const oldCards: ChapterActivityCard[] = useMemo(
-    () => allCards.filter((card) => !currentIds.has(card.id)),
-    [allCards, currentIds]
-  );
-
-  const loading = currentLoading || allLoading;
-  const error = currentError ?? allError;
-  const refetch = useCallback(async () => {
-    await refetchCurrent();
-    await refetchAll();
-  }, [refetchCurrent, refetchAll]);
-
-  const missionCardsScrollX = useRef(new RNAnimated.Value(0)).current;
-  const oldMissionCardsScrollX = useRef(new RNAnimated.Value(0)).current;
-  const missionCardWidth = scaleW(270);
-  const missionCardBorderWidth = 6;
-  const missionCardGap = scaleW(12);
-  const missionCardStep = missionCardWidth + missionCardGap;
-  const missionCardsPaddingHorizontal = Math.max(0, Math.round((width - missionCardWidth) / 2));
-  const getMissionCenterScrollX = (index: number) => index * missionCardStep;
+  const { scaleW } = useLayoutScale();
+  const { chapters, loading, error, refetch } = useChaptersWithActivities();
 
   const styles = useMemo(
     () =>
@@ -69,18 +47,16 @@ export default function MissionsScreen() {
           fontSize: scaleW(18),
           fontWeight: "600",
           color: "#FFF",
-          marginBottom: scaleW(8),
+          marginBottom: scaleW(12),
           marginHorizontal: scaleW(20),
           opacity: 0.95,
         },
         sectionBlock: {
-          marginBottom: scaleW(24),
+          marginBottom: scaleW(28),
         },
-        cardsScroll: { overflow: "visible" as const },
-        cardsContent: {
-          paddingLeft: missionCardsPaddingHorizontal,
-          paddingRight: missionCardsPaddingHorizontal,
-          paddingBottom: scaleW(4),
+        cardWrap: {
+          marginBottom: scaleW(16),
+          paddingHorizontal: scaleW(20),
         },
         loadingContainer: {
           paddingVertical: scaleW(48),
@@ -100,7 +76,7 @@ export default function MissionsScreen() {
         },
         emptyText: { fontSize: scaleW(16), color: "#FFF", textAlign: "center" as const, opacity: 0.9 },
       }),
-    [scaleW, width, missionCardsPaddingHorizontal]
+    [scaleW]
   );
 
   return (
@@ -116,7 +92,7 @@ export default function MissionsScreen() {
         overScrollMode="never"
       >
         <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
-          <ThemedText type="heading" style={styles.title}>Missions</ThemedText>
+          <ThemedText type="heading" style={styles.title}>Current Missions</ThemedText>
         </Animated.View>
 
         {loading && (
@@ -138,86 +114,65 @@ export default function MissionsScreen() {
 
         {!loading && !error && (
           <>
-            <Animated.View entering={FadeInDown.duration(500).delay(100).springify().damping(18)} style={styles.sectionBlock}>
-              <ThemedText type="heading" style={styles.sectionTitle}>This chapter&apos;s missions</ThemedText>
-              <View style={styles.cardsScroll}>
-                <RNAnimated.ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.cardsContent}
-                  style={{ overflow: "visible" }}
-                  nestedScrollEnabled={Platform.OS === "android"}
-                  removeClippedSubviews={false}
-                  overScrollMode="never"
-                  scrollEventThrottle={16}
-                  onScroll={RNAnimated.event(
-                    [{ nativeEvent: { contentOffset: { x: missionCardsScrollX } } }],
-                    { useNativeDriver: true }
-                  )}
-                  snapToInterval={missionCardStep}
-                  snapToAlignment="start"
-                  decelerationRate="fast"
+            {chapters.length === 0 ? (
+              <View style={[styles.loadingContainer, { paddingVertical: scaleW(24) }]}>
+                <ThemedText style={styles.emptyText}>No chapters yet.</ThemedText>
+              </View>
+            ) : (
+              <>
+                {/* Current missions (latest chapter) */}
+                <Animated.View
+                  key={chapters[0].id}
+                  entering={FadeInDown.duration(400).delay(80).springify().damping(18)}
+                  style={styles.sectionBlock}
                 >
-                  {currentCards.length === 0 ? (
-                    <View style={[styles.loadingContainer, { paddingVertical: scaleW(24) }]}>
+                  <ThemedText type="heading" style={styles.sectionTitle}>
+                    {chapterSectionTitle(chapters[0])}
+                  </ThemedText>
+                  {chapters[0].activities.length === 0 ? (
+                    <View style={{ paddingHorizontal: scaleW(20), paddingVertical: scaleW(12) }}>
                       <ThemedText style={styles.emptyText}>No missions for this chapter yet.</ThemedText>
                     </View>
                   ) : (
-                    currentCards.map((card, index) => {
-                      const centerScrollX = index === 0 ? 0 : getMissionCenterScrollX(index);
-                      const rotation = missionCardsScrollX.interpolate({
-                        inputRange: [centerScrollX - 120, centerScrollX, centerScrollX + 120],
-                        outputRange: ["-2deg", "0deg", "2deg"],
-                        extrapolate: "clamp",
-                      });
-                      return (
-                        <RNAnimated.View key={card.id} style={{ transform: [{ rotate: rotation }] }}>
-                          <MissionCard card={card} xp={card.xp} tiltDeg={0} />
-                        </RNAnimated.View>
-                      );
-                    })
+                    chapters[0].activities.map((card) => (
+                      <View key={card.id} style={styles.cardWrap}>
+                        <MissionCard card={card} xp={card.xp} tiltDeg={0} />
+                      </View>
+                    ))
                   )}
-                </RNAnimated.ScrollView>
-              </View>
-            </Animated.View>
+                </Animated.View>
 
-            {oldCards.length > 0 && (
-              <Animated.View entering={FadeInDown.duration(500).delay(200).springify().damping(18)} style={styles.sectionBlock}>
-                <ThemedText type="heading" style={styles.sectionTitle}>Previous missions</ThemedText>
-                <View style={styles.cardsScroll}>
-                  <RNAnimated.ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.cardsContent}
-                    style={{ overflow: "visible" }}
-                    nestedScrollEnabled={Platform.OS === "android"}
-                    removeClippedSubviews={false}
-                    overScrollMode="never"
-                    scrollEventThrottle={16}
-                    onScroll={RNAnimated.event(
-                      [{ nativeEvent: { contentOffset: { x: oldMissionCardsScrollX } } }],
-                      { useNativeDriver: true }
-                    )}
-                    snapToInterval={missionCardStep}
-                    snapToAlignment="start"
-                    decelerationRate="fast"
-                  >
-                    {oldCards.map((card, index) => {
-                      const centerScrollX = index === 0 ? 0 : getMissionCenterScrollX(index);
-                      const rotation = oldMissionCardsScrollX.interpolate({
-                        inputRange: [centerScrollX - 120, centerScrollX, centerScrollX + 120],
-                        outputRange: ["-2deg", "0deg", "2deg"],
-                        extrapolate: "clamp",
-                      });
-                      return (
-                        <RNAnimated.View key={card.id} style={{ transform: [{ rotate: rotation }] }}>
-                          <MissionCard card={card} xp={card.xp} tiltDeg={0} />
-                        </RNAnimated.View>
-                      );
-                    })}
-                  </RNAnimated.ScrollView>
-                </View>
-              </Animated.View>
+                {/* Previous missions label + sections for earlier chapters */}
+                {chapters.length > 1 && (
+                  <>
+                    <ThemedText type="heading" style={styles.sectionTitle}>
+                      Previous missions
+                    </ThemedText>
+                    {chapters.slice(1).map((chapter, index) => (
+                      <Animated.View
+                        key={chapter.id}
+                        entering={FadeInDown.duration(400).delay(140 + index * 60).springify().damping(18)}
+                        style={styles.sectionBlock}
+                      >
+                        <ThemedText type="heading" style={styles.sectionTitle}>
+                          {chapterSectionTitle(chapter)}
+                        </ThemedText>
+                        {chapter.activities.length === 0 ? (
+                          <View style={{ paddingHorizontal: scaleW(20), paddingVertical: scaleW(12) }}>
+                            <ThemedText style={styles.emptyText}>No missions for this chapter yet.</ThemedText>
+                          </View>
+                        ) : (
+                          chapter.activities.map((card) => (
+                            <View key={card.id} style={styles.cardWrap}>
+                              <MissionCard card={card} xp={card.xp} tiltDeg={0} />
+                            </View>
+                          ))
+                        )}
+                      </Animated.View>
+                    ))}
+                  </>
+                )}
+              </>
             )}
           </>
         )}

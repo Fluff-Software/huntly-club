@@ -56,7 +56,7 @@ export default function SignUpIntroScreen() {
   const { scaleW, width, height } = useLayoutScale();
   const insets = useSafeAreaInsets();
   const { firstSeason, heroImageSource, loading: seasonLoading, error: seasonError, refetch: refetchSeason } = useFirstSeason();
-  const { activityCards, loading: activitiesLoading, error: activitiesError, refetch: refetchActivities } = useCurrentChapterActivities();
+  const { activityCards, loading: activitiesLoading, error: activitiesError, refetch: refetchActivities } = useCurrentChapterActivities(null);
   const flatListRef = useRef<FlatList>(null);
 
   const loading = seasonLoading || activitiesLoading;

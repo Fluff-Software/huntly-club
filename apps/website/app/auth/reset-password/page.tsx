@@ -95,7 +95,7 @@ export default function ResetPasswordPage() {
             Password updated
           </h1>
           <p className="text-sm leading-relaxed text-huntly-slate">
-            Your password has been updated. You can now sign in to the Huntly Club app with your new password.
+            Your password has been updated. You can now sign in to the Huntly World app with your new password.
           </p>
         </div>
       </div>

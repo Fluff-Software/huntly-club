@@ -1,8 +1,8 @@
-# Huntly Club - Project Overview
+# Huntly World - Project Overview
 
 ## About the Project
 
-Huntly Club is a mobile application built with React Native and Expo that provides an interactive platform for outdoor activities and adventures. The app is designed for families and children to explore nature through gamified activity packs, earn badges, and track progress.
+Huntly World is a mobile application built with React Native and Expo that provides an interactive platform for outdoor activities and adventures. The app is designed for families and children to explore nature through gamified activity packs, earn badges, and track progress.
 
 ## Tech Stack
 

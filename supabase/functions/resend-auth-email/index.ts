@@ -66,26 +66,26 @@ Deno.serve(async (req) => {
 
     const replyTo = Deno.env.get("MAILJET_REPLY_TO");
     if (type === "recovery") {
-      const subject = "Reset your Huntly Club password";
+      const subject = "Reset your Huntly World password";
       const htmlPart = `
         <p>Hi there,</p>
-        <p>You asked to reset your Huntly Club password. Open the link below to set a new password:</p>
+        <p>You asked to reset your Huntly World password. Open the link below to set a new password:</p>
         <p><a href="${actionLink}">Set new password</a></p>
         <p>This link will expire in 1 hour. If you didn't request this, you can ignore this email.</p>
-        <p>— The Huntly Club team</p>
+        <p>— The Huntly World team</p>
       `;
-      const textPart = `Reset your Huntly Club password: ${actionLink}\n\nIf you didn't request this, you can ignore this email.`;
+      const textPart = `Reset your Huntly World password: ${actionLink}\n\nIf you didn't request this, you can ignore this email.`;
       await sendEmail({ to: email, subject, htmlPart, textPart, ...(replyTo && { replyTo }) });
     } else {
-      const subject = "Verify your email for Huntly Club";
+      const subject = "Verify your email for Huntly World";
       const htmlPart = `
         <p>Hi there,</p>
-        <p>You signed up for Huntly Club. To finish setting up your account, verify your email by opening the link below:</p>
+        <p>You signed up for Huntly World. To finish setting up your account, verify your email by opening the link below:</p>
         <p><a href="${actionLink}">Verify my email</a></p>
         <p>This link will expire in 24 hours. If you didn't sign up, you can safely ignore this message.</p>
-        <p>— The Huntly Club team</p>
+        <p>— The Huntly World team</p>
       `;
-      const textPart = `You signed up for Huntly Club. Verify your email by visiting: ${actionLink}\n\nIf you didn't sign up, you can ignore this email.`;
+      const textPart = `You signed up for Huntly World. Verify your email by visiting: ${actionLink}\n\nIf you didn't sign up, you can ignore this email.`;
       await sendEmail({ to: email, subject, htmlPart, textPart, ...(replyTo && { replyTo }) });
     }
   } catch (e) {

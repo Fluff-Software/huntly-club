@@ -12,7 +12,7 @@ Review the code using these guidelines:
 
 Focus on:
 1. Code quality and TypeScript best practices
-2. Adherence to Huntly Club patterns
+2. Adherence to Huntly World patterns
 3. Security vulnerabilities
 4. Performance issues
 5. Accessibility concerns

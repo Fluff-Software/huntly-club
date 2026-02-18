@@ -3,7 +3,7 @@
 ## Design System
 
 ### Color Palette
-The Huntly Club brand uses a nature-inspired color palette:
+The Huntly World brand uses a nature-inspired color palette:
 
 **Primary Colors:**
 - `huntly-amber` (#F5B800) - Primary accent, call-to-action

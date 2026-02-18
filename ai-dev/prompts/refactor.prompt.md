@@ -1,6 +1,6 @@
 # Code Refactoring Prompt
 
-You are tasked with refactoring code in the Huntly Club application to improve code quality, maintainability, and performance while maintaining existing functionality.
+You are tasked with refactoring code in the Huntly World application to improve code quality, maintainability, and performance while maintaining existing functionality.
 
 ## Context
 - This is a React Native/Expo application with TypeScript

@@ -1,5 +1,5 @@
 /**
- * RevenueCat-powered purchases service for Huntly Club.
+ * RevenueCat-powered purchases service for Huntly World.
  * Entitlement: "club" — gates premium / subscription features.
  *
  * Product configuration (RevenueCat dashboard):

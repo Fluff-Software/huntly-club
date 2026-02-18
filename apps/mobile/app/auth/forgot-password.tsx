@@ -36,7 +36,7 @@ export default function ForgotPasswordScreen() {
 
       Alert.alert(
         "Check your email",
-        "If this email is registered with Huntly Club, you'll receive a link to reset your password."
+        "If this email is registered with Huntly World, you'll receive a link to reset your password."
       );
       router.back();
     } catch (err) {

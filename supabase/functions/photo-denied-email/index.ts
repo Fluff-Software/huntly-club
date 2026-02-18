@@ -103,10 +103,10 @@ Deno.serve(async (req) => {
       const activityTitle = row.activities?.title ?? "an activity";
       const reason = (row.reason ?? "").trim();
 
-      const subject = "Your Huntly Club photo was not approved";
+      const subject = "Your Huntly World photo was not approved";
       const htmlPart = `
         <p>Hi${childName ? ` ${childName}` : ""},</p>
-        <p>Thanks for submitting a photo for <strong>${activityTitle}</strong> on Huntly Club.</p>
+        <p>Thanks for submitting a photo for <strong>${activityTitle}</strong> on Huntly World.</p>
         <p>Our team reviewed your photo but unfortunately we couldn't approve it.</p>
         ${
           reason
@@ -114,17 +114,17 @@ Deno.serve(async (req) => {
             : "<p>We couldn't approve this photo because it didn't meet our activity guidelines.</p>"
         }
         <p>You’re welcome to try again with a new photo that better matches the activity instructions.</p>
-        <p>— The Huntly Club team</p>
+        <p>— The Huntly World team</p>
       `;
 
       const textReason = reason || "The photo did not meet our activity guidelines.";
       const textPart =
         `Hi${childName ? ` ${childName}` : ""},\n\n` +
-        `Thanks for submitting a photo for "${activityTitle}" on Huntly Club.\n` +
+        `Thanks for submitting a photo for "${activityTitle}" on Huntly World.\n` +
         `Our team reviewed your photo but unfortunately we couldn't approve it.\n\n` +
         `Reason:\n${textReason}\n\n` +
         `You’re welcome to try again with a new photo that better matches the activity instructions.\n\n` +
-        `— The Huntly Club team`;
+        `— The Huntly World team`;
 
       try {
         await sendEmail({ to, subject, htmlPart, textPart, ...(replyTo && { replyTo }) });

@@ -1,4 +1,4 @@
-# RevenueCat integration (Huntly Club)
+# RevenueCat integration (Huntly World)
 
 This app uses [RevenueCat](https://www.revenuecat.com/) for subscriptions and entitlement checking.
 

@@ -26,7 +26,7 @@ function getConfig(): MailjetConfig {
   const apiKey = Deno.env.get("MAILJET_API_KEY");
   const apiSecret = Deno.env.get("MAILJET_API_SECRET");
   const fromEmail = Deno.env.get("MAILJET_FROM_EMAIL");
-  const fromName = Deno.env.get("MAILJET_FROM_NAME") ?? "Huntly Club";
+  const fromName = Deno.env.get("MAILJET_FROM_NAME") ?? "Huntly World";
   if (!apiKey || !apiSecret || !fromEmail) {
     throw new Error("Missing Mailjet configuration (MAILJET_API_KEY, MAILJET_API_SECRET, MAILJET_FROM_EMAIL)");
   }

@@ -58,7 +58,7 @@ export function LoginForm({ onCreateAccount }: LoginFormProps) {
           darkColor="#FFFFFF"
           style={{ textAlign: "center", marginBottom: 8 }}
         >
-          Welcome to Huntly Club!
+          Welcome to Huntly World!
         </ThemedText>
         <ThemedText
           type="body"

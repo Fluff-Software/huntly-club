@@ -5,7 +5,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Huntly Club brand colors based on design images
+        // Huntly World brand colors based on design images
         huntly: {
           // Primary greens from nature theme
           forest: "#2D5A27", // Dark green for headers and navigation

@@ -8,7 +8,7 @@ The auth email edge functions (`signup-with-email`, `resend-auth-email`) need th
 supabase secrets set MAILJET_API_KEY=your_mailjet_api_key
 supabase secrets set MAILJET_API_SECRET=your_mailjet_api_secret
 supabase secrets set MAILJET_FROM_EMAIL=noreply@yourdomain.com
-supabase secrets set MAILJET_FROM_NAME="Huntly Club"
+supabase secrets set MAILJET_FROM_NAME="Huntly World"
 supabase secrets set FRONTEND_CONFIRM_REDIRECT=huntlyclub://auth/confirm
 supabase secrets set FRONTEND_RESET_REDIRECT=https://www.huntly.world/auth/reset-password
 ```
@@ -42,7 +42,7 @@ There’s no widely reported “Supabase + Mailjet” soft-bounce bug; issues ar
 ### 1. Get the actual bounce reason
 
 - In Mailjet: **Statistics → Latest messages sent** (or **View all stats**).
-- **Click the subject line** of the bounced message (e.g. “Verify your email for Huntly Club”).
+- **Click the subject line** of the bounced message (e.g. “Verify your email for Huntly World”).
 - Check the **Details** column (or the message detail view) for the reason (e.g. “SPF fail”, “mailbox full”, “greylisting”). That tells you whether it’s auth, reputation, or recipient.
 
 ### 2. SPF (one record, under 10 lookups)
@@ -69,7 +69,7 @@ There’s no widely reported “Supabase + Mailjet” soft-bounce bug; issues ar
 
 ### 6. What we already do in code
 
-- **Subject** – Always set (e.g. “Verify your email for Huntly Club”); empty subject is fallback-protected in the Mailjet helper.
+- **Subject** – Always set (e.g. “Verify your email for Huntly World”); empty subject is fallback-protected in the Mailjet helper.
 - **Reply-To** – Set (from address or `MAILJET_REPLY_TO`).
 - **Content** – Plain, conversational copy; no link/open tracking that could break Supabase auth links.
 

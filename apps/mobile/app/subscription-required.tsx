@@ -73,7 +73,7 @@ export default function SubscriptionRequiredScreen() {
             type="body"
             className="text-huntly-charcoal text-center leading-6"
           >
-            Huntly Club requires an active subscription to access the app.
+            Huntly World requires an active subscription to access the app.
             Subscribe below or restore a previous purchase to continue.
           </ThemedText>
         </View>

@@ -1,6 +1,6 @@
-# Multi-Agent Patterns for Huntly Club
+# Multi-Agent Patterns for Huntly World
 
-This document describes patterns for using multiple AI agents collaboratively for complex development tasks in the Huntly Club project.
+This document describes patterns for using multiple AI agents collaboratively for complex development tasks in the Huntly World project.
 
 ## When to Use Multiple Agents
 
@@ -127,7 +127,7 @@ Use multiple agents to refactor in parallel.
 - Maintains consistency
 - Faster completion
 
-## Huntly Club Specific Patterns
+## Huntly World Specific Patterns
 
 ### Pattern: Feature Development Pipeline
 
@@ -320,7 +320,7 @@ Documentation Agent: ⏳ Pending
 
 ### Implementation Agent Template
 ```markdown
-You are implementing [feature] for Huntly Club.
+You are implementing [feature] for Huntly World.
 
 Context:
 @ai-dev/agents.md
@@ -342,7 +342,7 @@ Deliverables:
 
 ### Review Agent Template
 ```markdown
-You are reviewing code for Huntly Club.
+You are reviewing code for Huntly World.
 
 Context:
 @ai-dev/prompts/review.prompt.md
@@ -363,7 +363,7 @@ Provide detailed feedback with examples.
 
 ### Testing Agent Template
 ```markdown
-You are writing tests for Huntly Club.
+You are writing tests for Huntly World.
 
 Context:
 @ai-dev/prompts/test-generator.prompt.md

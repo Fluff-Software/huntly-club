@@ -1,6 +1,6 @@
 # Test Generation Prompt
 
-You are writing comprehensive tests for the Huntly Club application using Jest and React Testing Library.
+You are writing comprehensive tests for the Huntly World application using Jest and React Testing Library.
 
 ## Context
 - Test framework: Jest with `jest-expo`

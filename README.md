@@ -1,4 +1,4 @@
-# Welcome to Huntly Club 👋
+# Welcome to Huntly World 👋
 
 This is an Expo project, which uses Supabase for the back end.
 

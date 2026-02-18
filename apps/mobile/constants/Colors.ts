@@ -1,5 +1,5 @@
 /**
- * Huntly Club color scheme - maps to Tailwind classes
+ * Huntly World color scheme - maps to Tailwind classes
  * All colors should be used via Tailwind classes for consistency
  */
 

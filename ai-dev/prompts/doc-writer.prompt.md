@@ -1,6 +1,6 @@
 # Documentation Writer Prompt
 
-You are writing clear, comprehensive documentation for the Huntly Club application. Documentation should be accessible to developers of varying experience levels.
+You are writing clear, comprehensive documentation for the Huntly World application. Documentation should be accessible to developers of varying experience levels.
 
 ## Documentation Types
 

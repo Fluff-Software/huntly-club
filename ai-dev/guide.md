@@ -1,6 +1,6 @@
 # AI Development Guide
 
-This guide explains how to use the `ai-dev/` directory with various AI coding assistants for the Huntly Club project.
+This guide explains how to use the `ai-dev/` directory with various AI coding assistants for the Huntly World project.
 
 ## Overview
 
@@ -129,7 +129,7 @@ GitHub Copilot uses `.github/copilot-instructions.md` for project context.
 Create `.github/copilot-instructions.md`:
 
 ```markdown
-# Huntly Club Development Instructions
+# Huntly World Development Instructions
 
 ## Project Overview
 [Copy relevant content from agents.md]
@@ -190,7 +190,7 @@ Cursor supports both `.cursorrules` and direct file references.
 Create `.cursorrules` at project root:
 
 ```
-You are working on Huntly Club, a React Native/Expo app.
+You are working on Huntly World, a React Native/Expo app.
 
 # Project Context
 [Key points from agents.md]
@@ -267,7 +267,7 @@ Most AI coding assistants support project-level instructions:
 
 Create `AI_INSTRUCTIONS.md` at root:
 ```markdown
-# AI Development Instructions for Huntly Club
+# AI Development Instructions for Huntly World
 
 [Consolidated content from ai-dev/rules/ files]
 

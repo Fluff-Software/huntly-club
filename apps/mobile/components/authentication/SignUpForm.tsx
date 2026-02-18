@@ -115,7 +115,7 @@ export function SignUpForm({ onLoginInstead }: SignUpFormProps) {
           type="title"
           className="text-huntly-forest text-center mb-2"
         >
-          Join Huntly Club!
+          Join Huntly World!
         </ThemedText>
         <ThemedText type="body" className="text-huntly-charcoal text-center">
           Start your adventure today!

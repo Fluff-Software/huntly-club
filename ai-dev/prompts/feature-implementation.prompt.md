@@ -1,6 +1,6 @@
 # Feature Implementation Prompt
 
-You are implementing a new feature for the Huntly Club application. Follow the established patterns and guidelines to ensure consistency and quality.
+You are implementing a new feature for the Huntly World application. Follow the established patterns and guidelines to ensure consistency and quality.
 
 ## Implementation Process
 

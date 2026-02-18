@@ -1,6 +1,6 @@
 # Code Review Prompt
 
-You are conducting a thorough code review for the Huntly Club application. Review the code for quality, correctness, security, and adherence to project standards.
+You are conducting a thorough code review for the Huntly World application. Review the code for quality, correctness, security, and adherence to project standards.
 
 ## Review Criteria
 

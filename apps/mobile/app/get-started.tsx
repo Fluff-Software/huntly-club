@@ -37,7 +37,7 @@ const INTRO_SLIDES = [
   {
     id: "2",
     title: "This is your world to explore.",
-    body: "Go on missions. Discover new things. Earn badges as you learn and grow.",
+    body: "Go on missions. Discover new things as you learn and grow.",
     background: "#BBDCEB",
     graphic: "icons",
   },

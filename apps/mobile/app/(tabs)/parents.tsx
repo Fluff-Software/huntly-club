@@ -72,8 +72,11 @@ export default function ParentsScreen() {
   const [totalXp, setTotalXp] = useState(0);
   const [totalActivities, setTotalActivities] = useState(0);
   const [daysPlayed, setDaysPlayed] = useState(0);
-  const [showPinModal, setShowPinModal] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // Parent Zone math-gate temporarily disabled – keep state commented for easy restore
+  // const [showPinModal, setShowPinModal] = useState(true);
+  // const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
 
   const settingsScale = useSharedValue(1);
   const { resources, loading: resourcesLoading } = useParentResources();
@@ -90,8 +93,9 @@ export default function ParentsScreen() {
 
   useFocusEffect(
     React.useCallback(() => {
-      setShowPinModal(true);
-      setIsAuthenticated(false);
+      // Parent PIN check disabled for now
+      // setShowPinModal(true);
+      // setIsAuthenticated(false);
     }, [])
   );
 

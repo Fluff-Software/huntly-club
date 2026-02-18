@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { sendEmail } from "../_shared/mailjet.ts";
+import { wrapEmailBody } from "../_shared/emailTemplate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -104,18 +105,18 @@ Deno.serve(async (req) => {
       const reason = (row.reason ?? "").trim();
 
       const subject = "Your Huntly World photo was not approved";
-      const htmlPart = `
-        <p>Hi${childName ? ` ${childName}` : ""},</p>
-        <p>Thanks for submitting a photo for <strong>${activityTitle}</strong> on Huntly World.</p>
-        <p>Our team reviewed your photo but unfortunately we couldn't approve it.</p>
+      const bodyHtml = `
+        <p style="margin: 0 0 16px; color: #36454F;">Hi${childName ? ` ${childName}` : ""},</p>
+        <p style="margin: 0 0 16px; color: #36454F;">Thanks for submitting a photo for <strong>${activityTitle}</strong> on Huntly World.</p>
+        <p style="margin: 0 0 16px; color: #36454F;">Our team reviewed your photo but unfortunately we couldn't approve it.</p>
         ${
           reason
-            ? `<p><strong>Reason:</strong><br />${reason.replace(/\n/g, "<br />")}</p>`
-            : "<p>We couldn't approve this photo because it didn't meet our activity guidelines.</p>"
+            ? `<p style="margin: 0 0 16px; color: #36454F;"><strong>Reason:</strong><br />${reason.replace(/\n/g, "<br />")}</p>`
+            : "<p style=\"margin: 0 0 16px; color: #36454F;\">We couldn't approve this photo because it didn't meet our activity guidelines.</p>"
         }
-        <p>You’re welcome to try again with a new photo that better matches the activity instructions.</p>
-        <p>— The Huntly World team</p>
+        <p style="margin: 0; color: #36454F;">You're welcome to try again with a new photo that better matches the activity instructions.</p>
       `;
+      const htmlPart = wrapEmailBody(bodyHtml);
 
       const textReason = reason || "The photo did not meet our activity guidelines.";
       const textPart =

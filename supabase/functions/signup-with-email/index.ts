@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { sendEmail } from "../_shared/mailjet.ts";
+import { wrapEmailBody, ctaButton } from "../_shared/emailTemplate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -118,13 +119,13 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Could not generate verification link. Please try again." }, 500);
     }
     const subject = "Verify your email for Huntly World";
-    const htmlPart = `
-      <p>Hi there,</p>
-      <p>You signed up for Huntly World. To finish setting up your account, verify your email by opening the link below:</p>
-      <p><a href="${actionLink}">Verify my email</a></p>
-      <p>This link will expire in 24 hours. If you didn't sign up, you can safely ignore this message.</p>
-      <p>— The Huntly World team</p>
+    const bodyHtml = `
+      <p style="margin: 0 0 16px; color: #36454F;">Hi there,</p>
+      <p style="margin: 0 0 16px; color: #36454F;">You signed up for Huntly World. To finish setting up your account, verify your email using the button below.</p>
+      ${ctaButton(actionLink, "Verify my email")}
+      <p style="margin: 0; font-size: 14px; color: #36454F;">This link will expire in 24 hours. If you didn't sign up, you can safely ignore this message.</p>
     `;
+    const htmlPart = wrapEmailBody(bodyHtml);
     const textPart = `You signed up for Huntly World. Verify your email by visiting: ${actionLink}\n\nIf you didn't sign up, you can ignore this email.`;
     const replyTo = Deno.env.get("MAILJET_REPLY_TO");
 

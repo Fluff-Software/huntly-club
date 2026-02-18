@@ -18,18 +18,18 @@ import Animated, {
 import { BaseLayout } from "@/components/layout/BaseLayout";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import {
-  getTeamActivityLogs,
-  TeamActivityLogEntry,
   getTeamInfo,
   getAllTeamsWithXp,
+  getTeamAchievements,
+  getTeamAchievementTotals,
   TeamInfo,
 } from "@/services/teamActivityService";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { getTeamCardConfig } from "@/utils/teamUtils";
 import Svg, { Polyline } from "react-native-svg";
 
 const POLYLINE_COLOR = "#838383";
 
-const BEAR_WAVE_IMAGE = require("@/assets/images/bear-wave.png");
 const BEAR_FACE_IMAGE = require("@/assets/images/bear-face.png");
 const FOX_FACE_IMAGE = require("@/assets/images/fox-face.png");
 const OTTER_FACE_IMAGE = require("@/assets/images/otter-face.png");
@@ -58,22 +58,20 @@ const PLACEHOLDER_ACHIEVEMENTS: AchievementItem[] = [
   { id: "4", type: "badge", title: "Curious Llama earned a badge", points: 50 },
 ];
 
-function mapActivitiesToAchievements(activities: TeamActivityLogEntry[]): AchievementItem[] {
-  return activities
-    .filter((a) => a.status === "completed")
-    .slice(0, 10)
-    .map((a, i) => ({
-      id: `act-${a.id}-${i}`,
-      type: "activity",
-      title: `${a.profile?.nickname || a.profile?.name || "Explorer"} completed an activity`,
-      points: a.activity?.xp ?? 0,
-    }));
+function mapAchievementsToItems(achievements: { id: number; profile_name: string; message: string; xp: number }[]): AchievementItem[] {
+  return achievements.slice(0, 10).map((a) => ({
+    id: `ach-${a.id}`,
+    type: "activity" as const,
+    title: `${a.profile_name} ${a.message}`,
+    points: a.xp,
+  }));
 }
 
 export default function SocialScreen() {
   const { scaleW, width } = useLayoutScale();
   const { currentPlayer } = usePlayer();
-  const [teamActivities, setTeamActivities] = useState<TeamActivityLogEntry[]>([]);
+  const [teamAchievements, setTeamAchievements] = useState<Awaited<ReturnType<typeof getTeamAchievements>>>([]);
+  const [teamAchievementTotals, setTeamAchievementTotals] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,10 +83,24 @@ export default function SocialScreen() {
   const bearSlideAnim = useRef(new RNAnimated.Value(400)).current;
   const chartProgress = useSharedValue(0);
 
-  const barHeights = useMemo(
-    () => [scaleW(100), scaleW(160), scaleW(88)],
-    [scaleW]
-  );
+  const barHeights = useMemo(() => {
+    const teamOrder = ["bears", "foxes", "otters"];
+    const teamIdByName = Object.fromEntries(
+      allTeams.map((t) => [t.name.toLowerCase(), t.id])
+    );
+    const maxTotal = Math.max(
+      1,
+      ...teamOrder.map((name) => teamAchievementTotals[teamIdByName[name]] ?? 0)
+    );
+    const minDesign = 40;
+    const maxDesign = 180;
+    return teamOrder.map((name) => {
+      const total = teamAchievementTotals[teamIdByName[name]] ?? 0;
+      const designHeight = minDesign + (total / maxTotal) * (maxDesign - minDesign);
+      console.log(`${name} total: ${total}, designHeight: ${designHeight}`);
+      return scaleW(designHeight);
+    });
+  }, [scaleW, allTeams, teamAchievementTotals]);
   const bar1Style = useAnimatedStyle(() => ({
     height: chartProgress.value * barHeights[0],
     backgroundColor: BAR_WHITE,
@@ -124,14 +136,16 @@ export default function SocialScreen() {
     }
     try {
       setError(null);
-      const [activities, teamData, teamsData] = await Promise.all([
-        getTeamActivityLogs(currentPlayer.team),
+      const [teamData, teamsData, achievements, totals] = await Promise.all([
         getTeamInfo(currentPlayer.team),
         getAllTeamsWithXp(),
+        getTeamAchievements(currentPlayer.team),
+        getTeamAchievementTotals(),
       ]);
-      setTeamActivities(activities);
       setTeamInfo(teamData);
       setAllTeams(teamsData);
+      setTeamAchievements(achievements);
+      setTeamAchievementTotals(totals);
     } catch (err) {
       setError("Failed to load team activities");
     } finally {
@@ -150,9 +164,14 @@ export default function SocialScreen() {
   }, [fetchTeamActivities]);
 
   const achievements = useMemo(() => {
-    const fromApi = mapActivitiesToAchievements(teamActivities);
+    const fromApi = mapAchievementsToItems(teamAchievements);
     return fromApi.length > 0 ? fromApi : PLACEHOLDER_ACHIEVEMENTS;
-  }, [teamActivities]);
+  }, [teamAchievements]);
+
+  const teamCardConfig = useMemo(
+    () => getTeamCardConfig(teamInfo?.name),
+    [teamInfo?.name]
+  );
 
   useEffect(() => {
     setCardCenters([]);
@@ -410,7 +429,7 @@ export default function SocialScreen() {
                 ]}
               >
                 <Image
-                  source={BEAR_WAVE_IMAGE}
+                  source={teamCardConfig.waveImage}
                   style={{ width: "100%", height: "100%" }}
                   resizeMode="contain"
                 />
@@ -418,7 +437,7 @@ export default function SocialScreen() {
             </View>
             <View style={styles.headerText}>
               <Text style={styles.headerTitle}>
-                Bears are doing great this month!
+                {teamCardConfig.title} are doing great this month!
               </Text>
             </View>
           </View>
@@ -451,7 +470,7 @@ export default function SocialScreen() {
         </Animated.View>
         <View style={styles.chartBaseline} />
         <Text style={styles.chartSubtitle}>
-          Foxes are exploring brilliantly this month
+          {teamCardConfig.title} are exploring brilliantly this month
         </Text>
 
         <Animated.View entering={FadeInDown.duration(500).delay(380).springify().damping(18)}>

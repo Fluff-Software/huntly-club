@@ -123,3 +123,80 @@ export const getAllTeamsWithXp = async (): Promise<TeamInfo[]> => {
 
   return data || [];
 };
+
+export interface TeamAchievementEntry {
+  id: number;
+  profile_id: number;
+  team_id: number;
+  source: string;
+  source_id: number;
+  message: string;
+  xp: number;
+  created_at: string;
+  profile_name: string;
+}
+
+/**
+ * Fetches user_achievements for a team. profile_name is resolved from profile_public (nickname).
+ */
+export const getTeamAchievements = async (
+  teamId: number,
+  limit: number = 20
+): Promise<TeamAchievementEntry[]> => {
+  const { data: achievements, error: achievementsError } = await supabase
+    .from("user_achievements")
+    .select("id, profile_id, team_id, source, source_id, message, xp, created_at")
+    .eq("team_id", teamId)
+    .order("created_at", { ascending: false, nullsFirst: false })
+    .order("id", { ascending: false })
+    .limit(limit);
+
+  if (achievementsError) {
+    console.error("Error fetching team achievements:", achievementsError);
+    throw new Error(`Failed to fetch team achievements: ${achievementsError.message}`);
+  }
+
+  const list = achievements ?? [];
+  if (list.length === 0) return [];
+
+  const profileIds = [...new Set(list.map((a) => a.profile_id))];
+  const { data: profilesData, error: profilesError } = await supabase
+    .from("profile_public")
+    .select("id, nickname")
+    .in("id", profileIds);
+
+  if (profilesError) {
+    console.error("Error fetching profile nicknames:", profilesError);
+    throw new Error(`Failed to fetch profile nicknames: ${profilesError.message}`);
+  }
+
+  const nameByProfileId: Record<number, string> = {};
+  for (const p of profilesData ?? []) {
+    nameByProfileId[p.id] = p.nickname?.trim() || "Explorer";
+  }
+
+  return list.map((a) => ({
+    ...a,
+    profile_name: nameByProfileId[a.profile_id] ?? "Explorer",
+  }));
+};
+
+/**
+ * Returns total XP from user_achievements per team_id (for chart scaling).
+ */
+export const getTeamAchievementTotals = async (): Promise<Record<number, number>> => {
+  const { data, error } = await supabase
+    .from("user_achievements")
+    .select("team_id, xp");
+
+  if (error) {
+    console.error("Error fetching team achievement totals:", error);
+    throw new Error(`Failed to fetch team achievement totals: ${error.message}`);
+  }
+
+  const byTeam: Record<number, number> = {};
+  for (const row of data ?? []) {
+    byTeam[row.team_id] = (byTeam[row.team_id] ?? 0) + (row.xp ?? 0);
+  }
+  return byTeam;
+};

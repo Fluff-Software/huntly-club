@@ -40,7 +40,6 @@ import {
 } from "@/services/activityProgressService";
 import { useUserStats } from "@/hooks/useUserStats";
 import { MaterialIcons } from "@expo/vector-icons";
-import { BackHeader } from "@/components/BackHeader";
 
 // Design colors from reference
 const COLORS = {
@@ -644,14 +643,6 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-      <View
-        style={[
-          styles.headerBar,
-          { paddingHorizontal: scaleW(20), paddingBottom: scaleW(8) },
-        ]}
-      >
-        <BackHeader backToLabel="Clubhouse" />
-      </View>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}

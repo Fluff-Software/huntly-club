@@ -134,15 +134,10 @@ export default function ProfileIdScreen() {
     <BaseLayout className="bg-huntly-cream">
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <View className="flex-row items-center mb-6 p-5">
-          <Pressable onPress={() => router.back()} className="mr-4">
-            <ThemedText className="text-huntly-leaf text-lg font-semibold">
-              ← Back
-            </ThemedText>
-          </Pressable>
+        <View className="flex-row items-center justify-center mb-6 p-5">
           <ThemedText
             type="title"
-            className="flex-1 text-center text-huntly-forest"
+            className="text-huntly-forest"
           >
             Edit Explorer
           </ThemedText>

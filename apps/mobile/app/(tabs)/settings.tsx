@@ -18,7 +18,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "expo-router";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { MaterialIcons } from "@expo/vector-icons";
-import { BackHeader } from "@/components/BackHeader";
 
 const COLORS = {
   darkGreen: "#4F6F52",
@@ -171,9 +170,6 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-      <View style={[styles.headerBar, { paddingHorizontal: scaleW(24), paddingBottom: scaleW(8) }]}>
-        <BackHeader backToLabel="Back" backTo="/(tabs)/parents" />
-      </View>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}

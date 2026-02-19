@@ -17,7 +17,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
 import { StatCard } from "@/components/StatCard";
 import { ParentPinModal } from "@/components/ParentPinModal";
-import { BackHeader } from "@/components/BackHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
@@ -437,7 +436,6 @@ export default function ParentsScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         <View style={[styles.scrollContent, { flex: 1 }]}>
-          <BackHeader backToLabel="Your profile" backTo="/(tabs)/profile" />
           <View style={styles.loadingWrap}>
           <ActivityIndicator
             size="large"
@@ -457,7 +455,6 @@ export default function ParentsScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         <View style={[styles.scrollContent, { flex: 1 }]}>
-          <BackHeader backToLabel="Your profile" backTo="/(tabs)/profile" />
           <View style={styles.emptyWrap}>
           <View style={styles.emptyIcon}>
             <ThemedText style={{ fontSize: scaleW(28) }}>🔒</ThemedText>
@@ -496,7 +493,6 @@ export default function ParentsScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         <View style={[styles.scrollContent, { flex: 1 }]}>
-          <BackHeader backToLabel="Your profile" backTo="/(tabs)/profile" />
           <View style={styles.emptyWrap}>
           <View style={styles.emptyIcon}>
             <ThemedText style={{ fontSize: scaleW(28) }}>👥</ThemedText>
@@ -530,9 +526,6 @@ export default function ParentsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-      <View style={[styles.headerBar, { paddingHorizontal: scaleW(30), paddingBottom: scaleW(8) }]}>
-        <BackHeader backToLabel="Your profile" backTo="/(tabs)/profile" />
-      </View>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}

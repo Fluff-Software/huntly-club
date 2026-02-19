@@ -2,7 +2,7 @@ import React from "react";
 import { Pressable, ActivityIndicator, PressableProps } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 
-type ButtonVariant = "primary" | "secondary" | "danger" | "cancel" | "badge";
+type ButtonVariant = "primary" | "secondary" | "danger" | "cancel" | "badge" | "white";
 type ButtonSize = "small" | "medium" | "large";
 
 interface ButtonProps extends Omit<PressableProps, "className"> {
@@ -19,6 +19,7 @@ const variantStyles = {
   danger: "bg-red-500",
   cancel: "bg-huntly-charcoal",
   badge: "bg-huntly-leaf",
+  white: "bg-white",
 };
 
 const sizeStyles = {
@@ -33,6 +34,7 @@ const textColorByVariant = {
   danger: "text-white",
   cancel: "text-white",
   badge: "text-white",
+  white: "text-huntly-forest",
 };
 
 const loadingColorByVariant = {
@@ -41,6 +43,7 @@ const loadingColorByVariant = {
   danger: "#FFFFFF",
   cancel: "#FFFFFF",
   badge: "#FFFFFF",
+  white: "#2D5A27",
 };
 
 const textSizeByButtonSize = {

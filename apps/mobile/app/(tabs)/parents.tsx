@@ -520,8 +520,8 @@ export default function ParentsScreen() {
   const summaryStats: { value: number; label: string; color: "pink" | "green" | "purple" | "cream" }[] = [
     { value: totalActivities, label: "Activities completed", color: "purple" },
     { value: skillAreasTotal, label: "Skill areas", color: "cream" },
-    { value: daysPlayed, label: "Days played", color: "pink" },
-    { value: totalXp, label: "Points Earned", color: "green" },
+    { value: daysPlayed, label: "Days since started", color: "pink" },
+    { value: totalXp, label: "Points earned", color: "green" },
   ];
 
   return (

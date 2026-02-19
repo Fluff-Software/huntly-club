@@ -988,10 +988,10 @@ export default function ProfileScreen() {
             Your progress
           </ThemedText>
           <View style={styles.progressRow}>
-            <StatCard value={daysPlayed} label="Days played" color="pink" />
+            <StatCard value={daysPlayed} label="Days since started" color="pink" />
             <StatCard
               value={pointsEarned}
-              label="Points Earned"
+              label="Points earned"
               color="green"
             />
           </View>

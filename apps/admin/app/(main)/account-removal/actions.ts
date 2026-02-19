@@ -9,6 +9,42 @@ function isOlderThan24h(createdAt: string): boolean {
   return Date.now() - new Date(createdAt).getTime() >= TWENTY_FOUR_HOURS_MS;
 }
 
+type RemovalEmailType = "processed" | "denied";
+
+/** Invoke account-removal-email edge function via fetch so the request is sent reliably from the server. */
+async function sendAccountRemovalEmail(
+  email: string,
+  type: RemovalEmailType
+): Promise<{ ok: boolean; error?: string }> {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    return { ok: false, error: "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" };
+  }
+  const endpoint = `${url.replace(/\/$/, "")}/functions/v1/account-removal-email`;
+  try {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify({ email: email.trim().toLowerCase(), type }),
+    });
+    const body = await res.text();
+    if (!res.ok) {
+      const msg = body ? `${res.status}: ${body}` : String(res.status);
+      console.error("account-removal-email invoke failed:", msg);
+      return { ok: false, error: msg };
+    }
+    return { ok: true };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("account-removal-email invoke error:", e);
+    return { ok: false, error: msg };
+  }
+}
+
 export async function approveRemovalRequest(requestId: number): Promise<{ error?: string }> {
   const supabase = createServerSupabaseClient();
 
@@ -67,20 +103,17 @@ export async function approveRemovalRequest(requestId: number): Promise<{ error?
 
     const { data: authUser } = await supabase.auth.admin.getUserById(userId);
     const currentEmail = authUser?.user?.email ?? "";
-    if (currentEmail && !currentEmail.includes("(REMOVED)")) {
-      try {
-        await supabase.functions.invoke("account-removal-email", {
-          body: { email: currentEmail, type: "processed" },
-        });
-      } catch (e) {
-        console.error("Failed to send account-removal-email (processed):", e);
+    if (currentEmail && !currentEmail.includes("-removed@")) {
+      const emailResult = await sendAccountRemovalEmail(currentEmail, "processed");
+      if (!emailResult.ok) {
+        console.error("Failed to send account-removal-email (processed):", emailResult.error);
       }
-      // Append (REMOVED) to the local part so the result is a valid email (domain unchanged)
+      // Change to local-removed@domain (e.g. example@email.com → example-removed@email.com)
       const atIndex = currentEmail.indexOf("@");
       const newEmail =
         atIndex > 0
-          ? `${currentEmail.slice(0, atIndex)}(REMOVED)${currentEmail.slice(atIndex)}`
-          : `${currentEmail}(REMOVED)`;
+          ? `${currentEmail.slice(0, atIndex)}-removed${currentEmail.slice(atIndex)}`
+          : `${currentEmail}-removed`;
       const { error: updateError } = await supabase.auth.admin.updateUserById(userId, {
         email: newEmail,
       });
@@ -94,6 +127,14 @@ export async function approveRemovalRequest(requestId: number): Promise<{ error?
       .from("account_removal_requests")
       .update({ status: "approved" })
       .eq("id", requestId);
+
+    // Revoke all sessions so the user is logged out on all devices
+    const { error: revokeError } = await supabase.rpc("revoke_user_sessions", {
+      p_user_id: userId,
+    });
+    if (revokeError) {
+      console.error("Failed to revoke user sessions:", revokeError);
+    }
   } catch (e) {
     console.error("Error processing account removal:", e);
     return { error: e instanceof Error ? e.message : "Failed to process removal" };
@@ -127,13 +168,10 @@ export async function denyRemovalRequest(requestId: number): Promise<{ error?: s
 
   if (error) return { error: error.message };
 
-  if (email && !email.endsWith("(REMOVED)")) {
-    try {
-      await supabase.functions.invoke("account-removal-email", {
-        body: { email, type: "denied" },
-      });
-    } catch (e) {
-      console.error("Failed to send account-removal-email (denied):", e);
+  if (email && !email.includes("-removed@")) {
+    const emailResult = await sendAccountRemovalEmail(email, "denied");
+    if (!emailResult.ok) {
+      console.error("Failed to send account-removal-email (denied):", emailResult.error);
     }
   }
   return {};

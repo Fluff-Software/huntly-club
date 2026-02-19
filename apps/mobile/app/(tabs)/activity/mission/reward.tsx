@@ -6,8 +6,10 @@ import {
   Pressable,
   Text,
   StyleSheet,
+  Dimensions,
   type ImageSourcePropType,
 } from "react-native";
+import ConfettiCannon from "react-native-confetti-cannon";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
   FadeInDown,
@@ -23,6 +25,8 @@ import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { MissionCard } from "@/components/MissionCard";
 import { getActivityById, getActivityImageSource } from "@/services/packService";
 import type { MissionCardData } from "@/constants/missionCards";
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 const HUNTLY_GREEN = "#4F6F52";
 const LIGHT_GREEN = "#7FAF8A";
@@ -125,6 +129,20 @@ export default function RewardScreen() {
           width: scaleW(56),
           height: scaleW(56),
           zIndex: 1,
+          backgroundColor: "#FFF",
+          borderRadius: scaleW(28),
+          alignItems: "center",
+          justifyContent: "center",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.3,
+          shadowRadius: 2,
+          elevation: 2,
+        },
+        completionBadgeImage: {
+          width: scaleW(56),
+          height: scaleW(56),
+          padding: scaleW(4),
         },
         wellDoneHeading: {
           fontSize: scaleW(22),
@@ -219,13 +237,15 @@ export default function RewardScreen() {
                 xp={activityXp}
                 tiltDeg={0}
                 marginTopOffset={0}
-                onStartPress={() => {}}
+                showStartButton={false}
               />
-              <Image
-                source={BADGE_ICON}
-                style={styles.completionBadge}
-                resizeMode="contain"
-              />
+              <View style={styles.completionBadge}>
+                <Image
+                  source={BADGE_ICON}
+                  style={styles.completionBadgeImage}
+                  resizeMode="contain"
+                />
+              </View>
             </>
           )}
         </Animated.View>
@@ -294,6 +314,29 @@ export default function RewardScreen() {
           </Pressable>
         </Animated.View>
       </ScrollView>
+      <View
+        style={[StyleSheet.absoluteFill, { zIndex: 9999, elevation: 9999 }]}
+        pointerEvents="none"
+      >
+        <ConfettiCannon
+          count={200}
+          origin={{ x: SCREEN_WIDTH / 2, y: SCREEN_HEIGHT / 2 - scaleW(40) }}
+          explosionSpeed={350}
+          fallSpeed={3500}
+          fadeOut
+          autoStart
+          colors={[
+            "#FF1493",
+            "#00C853",
+            "#FF8C00",
+            "#FFD700",
+            "#00BCD4",
+            "#E91E8C",
+            "#FFA500",
+            "#26A69A",
+          ]}
+        />
+      </View>
     </SafeAreaView>
   );
 }

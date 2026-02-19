@@ -291,7 +291,12 @@ export default function CompletionScreen() {
 
   const displayProfiles = useMemo(() => {
     const fallbackColours = [CARD_BAR_BLUE, CARD_BAR_GREEN];
-    return profiles.map((p, i) => ({
+    const sorted = [...profiles].sort(
+      (a, b) =>
+        new Date(a.created_at ?? 0).getTime() -
+        new Date(b.created_at ?? 0).getTime()
+    );
+    return sorted.map((p, i) => ({
       id: p.id,
       name: p.name ?? "Player",
       nickname: p.nickname ?? "",
@@ -374,7 +379,7 @@ export default function CompletionScreen() {
       const achievementsForReward = insertedProgress.map((row) => ({
         profile_name:
           profiles.find((p) => p.id === row.profile_id)?.nickname ?? "Explorer",
-        message: "completed an activity",
+        message: "completed a mission",
         xp: activity.xp ?? 0,
       }));
 

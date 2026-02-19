@@ -13,7 +13,7 @@ const HOME_TEAM = require("@/assets/images/home-team.png");
 
 const TAB_BAR_COLORS: Record<string, string> = {
   index: "#4F6F52",
-  story: "#4B9CD2",
+  story: "#1E2E28",
   missions: "#D2684B",
   social: "#F7A676",
 };

@@ -34,7 +34,6 @@ import {
 import { generateNickname } from "@/services/nicknameGenerator";
 import { getTeamImageSource } from "@/utils/teamUtils";
 import { ColorPicker } from "@/components/ui/ColorPicker";
-import { getUserBadges, type UserBadge } from "@/services/badgeService";
 import {
   getRecentCompletedActivities,
   type RecentCompletedActivity,
@@ -58,11 +57,6 @@ const COLORS = {
 
 const PLAYER_ACCENTS = [COLORS.accentBlue, COLORS.accentGreen];
 
-const BADGE_IMAGE = require("@/assets/images/badge.png");
-const PLANTING_IMAGE = require("@/assets/images/planting.png");
-const MATHS_IMAGE = require("@/assets/images/maths.png");
-const RESILIENCE_IMAGE = require("@/assets/images/resilience.png");
-
 export default function ProfileScreen() {
   const [name, setName] = useState("");
   const [selectedColor, setSelectedColor] = useState<string>("#FF6B35");
@@ -78,7 +72,6 @@ export default function ProfileScreen() {
   const [addNickname, setAddNickname] = useState(() => generateNickname());
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAddExplorer, setShowAddExplorer] = useState(false);
-  const [userBadges, setUserBadges] = useState<UserBadge[]>([]);
   const [recentActivities, setRecentActivities] = useState<
     RecentCompletedActivity[]
   >([]);
@@ -93,9 +86,9 @@ export default function ProfileScreen() {
     () =>
       [...profiles].sort(
         (a, b) =>
-          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
       ),
-    [profiles]
+    [profiles],
   );
 
   const editScale = useSharedValue(1);
@@ -117,7 +110,7 @@ export default function ProfileScreen() {
       return () => {
         isMounted = false;
       };
-    }, [refreshProfiles])
+    }, [refreshProfiles]),
   );
 
   useEffect(() => {
@@ -142,16 +135,19 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (currentPlayer && user) {
-      getUserBadges(user.id, currentPlayer.id).then(setUserBadges).catch(() => setUserBadges([]));
-      getRecentCompletedActivities(currentPlayer.id).then(setRecentActivities).catch(() => setRecentActivities([]));
+      getRecentCompletedActivities(currentPlayer.id)
+        .then(setRecentActivities)
+        .catch(() => setRecentActivities([]));
     } else {
-      setUserBadges([]);
       setRecentActivities([]);
     }
   }, [currentPlayer?.id, user?.id]);
 
   useEffect(() => {
-    const profile = editingProfileId != null ? profiles.find((p) => p.id === editingProfileId) : null;
+    const profile =
+      editingProfileId != null
+        ? profiles.find((p) => p.id === editingProfileId)
+        : null;
     if (profile) {
       setEditName(profile.name);
       setEditNickname(profile.nickname || generateNickname());
@@ -183,7 +179,7 @@ export default function ProfileScreen() {
       Alert.alert(
         "Explorer Created! 🎉",
         "Your new explorer has been created and is now active!",
-        [{ text: "OK", onPress: () => router.replace("/") }]
+        [{ text: "OK", onPress: () => router.replace("/") }],
       );
     } catch (error) {
       const msg =
@@ -200,7 +196,7 @@ export default function ProfileScreen() {
     Alert.alert(
       "Explorer Selected! 🎉",
       `${profile.name} is now your active explorer!`,
-      [{ text: "OK", onPress: () => router.replace("/") }]
+      [{ text: "OK", onPress: () => router.replace("/") }],
     );
   };
 
@@ -228,7 +224,8 @@ export default function ProfileScreen() {
         colour: editColor,
         team: profile.team,
       });
-      if (currentPlayer?.id === editingProfileId) setCurrentPlayer(updatedProfile);
+      if (currentPlayer?.id === editingProfileId)
+        setCurrentPlayer(updatedProfile);
       await refreshProfiles();
       setEditingProfileId(null);
       Alert.alert("Success", "Explorer updated successfully!");
@@ -297,8 +294,18 @@ export default function ProfileScreen() {
             ? "rd"
             : "th";
     const months = [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December",
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
     ];
     return `Completed ${day}${suffix} ${months[d.getMonth()]} ${d.getFullYear()}`;
   };
@@ -409,52 +416,6 @@ export default function ProfileScreen() {
           justifyContent: "center",
           gap: scaleW(16),
           paddingHorizontal: scaleW(12),
-        },
-        skillsCard: {
-          backgroundColor: COLORS.white,
-          borderRadius: scaleW(20),
-          padding: scaleW(20),
-          alignItems: "center",
-        },
-        skillsRow: {
-          flexDirection: "row",
-          justifyContent: "space-around",
-          width: "100%",
-          marginBottom: scaleW(12),
-          paddingVertical: scaleW(20),
-        },
-        skillItem: {
-          alignItems: "center",
-        },
-        skillIcon: {
-          width: scaleW(24),
-          height: scaleW(24),
-        },
-        skillLabel: {
-          fontSize: scaleW(14),
-          color: COLORS.black,
-          fontWeight: "600",
-          marginTop: scaleW(6),
-        },
-        skillsTitle: {
-          fontSize: scaleW(18),
-          fontWeight: "600",
-          color: COLORS.black,
-        },
-        badgesWrap: {
-          flexDirection: "row",
-          flexWrap: "wrap",
-          gap: scaleW(12),
-        },
-        badgeIcon: {
-          width: scaleW(100),
-          height: scaleW(100),
-          alignItems: "center",
-          justifyContent: "center",
-        },
-        badgeImage: {
-          width: scaleW(100),
-          height: scaleW(100),
         },
         activityCard: {
           flexDirection: "row",
@@ -685,12 +646,17 @@ export default function ProfileScreen() {
           marginTop: scaleW(8),
         },
       }),
-    [scaleW]
+    [scaleW],
   );
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-      <View style={[styles.headerBar, { paddingHorizontal: scaleW(20), paddingBottom: scaleW(8) }]}>
+      <View
+        style={[
+          styles.headerBar,
+          { paddingHorizontal: scaleW(20), paddingBottom: scaleW(8) },
+        ]}
+      >
         <BackHeader backToLabel="Clubhouse" />
       </View>
       <ScrollView
@@ -706,20 +672,40 @@ export default function ProfileScreen() {
           style={styles.section}
         >
           <View style={styles.sectionHeader}>
-            <ThemedText type="heading" style={styles.sectionTitle}>Your players</ThemedText>
+            <ThemedText type="heading" style={styles.sectionTitle}>
+              Your players
+            </ThemedText>
             {isEditing ? (
-              <Pressable onPress={handleDoneEditing} style={styles.editIconWrap} hitSlop={12}>
-                <ThemedText style={{ fontSize: scaleW(16), fontWeight: "600", color: COLORS.white }}>Done</ThemedText>
+              <Pressable
+                onPress={handleDoneEditing}
+                style={styles.editIconWrap}
+                hitSlop={12}
+              >
+                <ThemedText
+                  style={{
+                    fontSize: scaleW(16),
+                    fontWeight: "600",
+                    color: COLORS.white,
+                  }}
+                >
+                  Done
+                </ThemedText>
               </Pressable>
             ) : (
               <Animated.View style={editAnimatedStyle}>
                 <Pressable
                   onPress={() => setIsEditing(true)}
                   onPressIn={() => {
-                    editScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+                    editScale.value = withSpring(0.96, {
+                      damping: 15,
+                      stiffness: 400,
+                    });
                   }}
                   onPressOut={() => {
-                    editScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+                    editScale.value = withSpring(1, {
+                      damping: 15,
+                      stiffness: 400,
+                    });
                   }}
                   style={styles.editIconWrap}
                   hitSlop={12}
@@ -732,40 +718,54 @@ export default function ProfileScreen() {
 
           {!isEditing && profiles.length === 0 && (
             <View style={styles.cardCream}>
-              <ThemedText style={styles.cardTextPrimary}>No players yet</ThemedText>
+              <ThemedText style={styles.cardTextPrimary}>
+                No players yet
+              </ThemedText>
               <ThemedText style={styles.cardTextSecondary}>
                 Tap Edit to add an explorer
               </ThemedText>
             </View>
           )}
 
-          {!isEditing && sortedProfiles.length > 0 && sortedProfiles.map((profile, index) => (
-            <Animated.View
-              key={profile.id}
-              entering={FadeInDown.duration(400).delay(80 + index * 60).springify().damping(18)}
-            >
-              <Pressable
-                style={[
-                  styles.playerCard,
-                  currentPlayer?.id === profile.id && styles.playerCardSelected,
-                ]}
-                onPress={() => handleSelectPlayer(profile)}
+          {!isEditing &&
+            sortedProfiles.length > 0 &&
+            sortedProfiles.map((profile, index) => (
+              <Animated.View
+                key={profile.id}
+                entering={FadeInDown.duration(400)
+                  .delay(80 + index * 60)
+                  .springify()
+                  .damping(18)}
               >
-                <View
+                <Pressable
                   style={[
-                    styles.playerAccent,
-                    { backgroundColor: profile.colour || PLAYER_ACCENTS[index % PLAYER_ACCENTS.length] },
+                    styles.playerCard,
+                    currentPlayer?.id === profile.id &&
+                      styles.playerCardSelected,
                   ]}
-                />
-                <View style={styles.playerCardContent}>
-                  <ThemedText type="heading" style={styles.playerName}>{profile.name}</ThemedText>
-                  <ThemedText style={styles.playerNickname}>
-                    {profile.nickname || "Explorer"}
-                  </ThemedText>
-                </View>
-              </Pressable>
-            </Animated.View>
-          ))}
+                  onPress={() => handleSelectPlayer(profile)}
+                >
+                  <View
+                    style={[
+                      styles.playerAccent,
+                      {
+                        backgroundColor:
+                          profile.colour ||
+                          PLAYER_ACCENTS[index % PLAYER_ACCENTS.length],
+                      },
+                    ]}
+                  />
+                  <View style={styles.playerCardContent}>
+                    <ThemedText type="heading" style={styles.playerName}>
+                      {profile.name}
+                    </ThemedText>
+                    <ThemedText style={styles.playerNickname}>
+                      {profile.nickname || "Explorer"}
+                    </ThemedText>
+                  </View>
+                </Pressable>
+              </Animated.View>
+            ))}
 
           {isEditing && (
             <>
@@ -782,13 +782,20 @@ export default function ProfileScreen() {
                     <View
                       style={[
                         styles.playerAccent,
-                        { backgroundColor: isExpanded ? editColor : (profile.colour || PLAYER_ACCENTS[index % PLAYER_ACCENTS.length]) },
+                        {
+                          backgroundColor: isExpanded
+                            ? editColor
+                            : profile.colour ||
+                              PLAYER_ACCENTS[index % PLAYER_ACCENTS.length],
+                        },
                       ]}
                     />
                     <View style={{ flex: 1 }}>
                       {isExpanded ? (
                         <View style={styles.inlineFormPadding}>
-                          <ThemedText style={styles.inlineFormLabel}>Name</ThemedText>
+                          <ThemedText style={styles.inlineFormLabel}>
+                            Name
+                          </ThemedText>
                           <TextInput
                             style={styles.inlineFormInput}
                             placeholder="Enter name"
@@ -797,19 +804,29 @@ export default function ProfileScreen() {
                             onChangeText={setEditName}
                             autoCapitalize="words"
                           />
-                          <ThemedText style={styles.inlineFormLabel}>Explorer Nickname</ThemedText>
+                          <ThemedText style={styles.inlineFormLabel}>
+                            Explorer Nickname
+                          </ThemedText>
                           <View style={styles.nicknameRow}>
                             <View style={styles.nicknameDisplay}>
-                              <ThemedText style={styles.nicknameText}>{editNickname}</ThemedText>
+                              <ThemedText style={styles.nicknameText}>
+                                {editNickname}
+                              </ThemedText>
                             </View>
                             <Pressable
                               style={styles.generateBtn}
-                              onPress={() => setEditNickname(generateNickname())}
+                              onPress={() =>
+                                setEditNickname(generateNickname())
+                              }
                             >
-                              <ThemedText style={styles.generateBtnText}>🎲 Generate</ThemedText>
+                              <ThemedText style={styles.generateBtnText}>
+                                🎲 Generate
+                              </ThemedText>
                             </Pressable>
                           </View>
-                          <ThemedText style={styles.inlineFormLabel}>Colour</ThemedText>
+                          <ThemedText style={styles.inlineFormLabel}>
+                            Colour
+                          </ThemedText>
                           <View style={styles.colorPickerWrap}>
                             <ColorPicker
                               selectedColor={editColor}
@@ -818,28 +835,61 @@ export default function ProfileScreen() {
                             />
                           </View>
                           <View style={styles.modalActions}>
-                            <Pressable style={[styles.modalButton, styles.modalButtonCancel]} onPress={handleCancelEdit}>
-                              <ThemedText style={styles.modalButtonCancelText}>Cancel</ThemedText>
+                            <Pressable
+                              style={[
+                                styles.modalButton,
+                                styles.modalButtonCancel,
+                              ]}
+                              onPress={handleCancelEdit}
+                            >
+                              <ThemedText style={styles.modalButtonCancelText}>
+                                Cancel
+                              </ThemedText>
                             </Pressable>
                             <Pressable
-                              style={[styles.modalButton, styles.modalButtonSave]}
+                              style={[
+                                styles.modalButton,
+                                styles.modalButtonSave,
+                              ]}
                               onPress={handleSaveEdit}
                               disabled={loading}
                             >
-                              {loading ? <ActivityIndicator color={COLORS.white} /> : <ThemedText style={styles.modalButtonSaveText}>Save</ThemedText>}
+                              {loading ? (
+                                <ActivityIndicator color={COLORS.white} />
+                              ) : (
+                                <ThemedText style={styles.modalButtonSaveText}>
+                                  Save
+                                </ThemedText>
+                              )}
                             </Pressable>
                           </View>
                         </View>
                       ) : (
                         <Pressable
                           onPress={() => handleExpandEdit(profile)}
-                          style={{ flexDirection: "row", alignItems: "center", paddingVertical: scaleW(16), paddingHorizontal: scaleW(20) }}
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            paddingVertical: scaleW(16),
+                            paddingHorizontal: scaleW(20),
+                          }}
                         >
                           <View style={{ flex: 1 }}>
-                            <ThemedText type="heading" style={styles.playerName}>{profile.name}</ThemedText>
-                            <ThemedText style={styles.playerNickname}>{profile.nickname || "Explorer"}</ThemedText>
+                            <ThemedText
+                              type="heading"
+                              style={styles.playerName}
+                            >
+                              {profile.name}
+                            </ThemedText>
+                            <ThemedText style={styles.playerNickname}>
+                              {profile.nickname || "Explorer"}
+                            </ThemedText>
                           </View>
-                          <MaterialIcons name="edit" size={scaleW(22)} color={COLORS.darkGreen} />
+                          <MaterialIcons
+                            name="edit"
+                            size={scaleW(22)}
+                            color={COLORS.darkGreen}
+                          />
                         </Pressable>
                       )}
                     </View>
@@ -847,7 +897,8 @@ export default function ProfileScreen() {
                 );
               })}
 
-              {(editingProfileId !== null || (editingProfileId === null && !showAddForm)) && (
+              {(editingProfileId !== null ||
+                (editingProfileId === null && !showAddForm)) && (
                 <Pressable
                   onPress={() => {
                     setEditingProfileId(null);
@@ -855,12 +906,28 @@ export default function ProfileScreen() {
                   }}
                   style={[styles.playerCard, styles.addNewPlayerCard]}
                 >
-                  <View style={[styles.playerAccent, { backgroundColor: COLORS.accentGreen }]} />
+                  <View
+                    style={[
+                      styles.playerAccent,
+                      { backgroundColor: COLORS.accentGreen },
+                    ]}
+                  />
                   <View style={styles.playerCardContent}>
-                    <ThemedText type="heading" style={styles.playerName}>Add a new player</ThemedText>
+                    <ThemedText type="heading" style={styles.playerName}>
+                      Add a new player
+                    </ThemedText>
                   </View>
-                  <View style={{ justifyContent: "center", marginRight: scaleW(16) }}>
-                    <MaterialIcons name="add" size={scaleW(24)} color={COLORS.darkGreen} />
+                  <View
+                    style={{
+                      justifyContent: "center",
+                      marginRight: scaleW(16),
+                    }}
+                  >
+                    <MaterialIcons
+                      name="add"
+                      size={scaleW(24)}
+                      color={COLORS.darkGreen}
+                    />
                   </View>
                 </Pressable>
               )}
@@ -868,7 +935,9 @@ export default function ProfileScreen() {
               {editingProfileId === null && showAddForm && (
                 <View style={styles.inlineAddCard}>
                   <ThemedText style={styles.inlineFormLabel}>Name</ThemedText>
-                  <ThemedText style={styles.inlineFormHint}>(Only visible to you)</ThemedText>
+                  <ThemedText style={styles.inlineFormHint}>
+                    (Only visible to you)
+                  </ThemedText>
                   <TextInput
                     style={styles.inlineFormInput}
                     placeholder="Enter name"
@@ -877,28 +946,47 @@ export default function ProfileScreen() {
                     onChangeText={setName}
                     autoCapitalize="words"
                   />
-                  <ThemedText style={styles.inlineFormLabel}>Explorer Nickname</ThemedText>
+                  <ThemedText style={styles.inlineFormLabel}>
+                    Explorer Nickname
+                  </ThemedText>
                   <View style={styles.nicknameRow}>
                     <View style={styles.nicknameDisplay}>
-                      <ThemedText style={styles.nicknameText}>{addNickname}</ThemedText>
+                      <ThemedText style={styles.nicknameText}>
+                        {addNickname}
+                      </ThemedText>
                     </View>
-                    <Pressable style={styles.generateBtn} onPress={() => setAddNickname(generateNickname())}>
-                      <ThemedText style={styles.generateBtnText}>🎲 Generate</ThemedText>
+                    <Pressable
+                      style={styles.generateBtn}
+                      onPress={() => setAddNickname(generateNickname())}
+                    >
+                      <ThemedText style={styles.generateBtnText}>
+                        🎲 Generate
+                      </ThemedText>
                     </Pressable>
                   </View>
                   <ThemedText style={styles.inlineFormLabel}>Colour</ThemedText>
                   <View style={styles.colorPickerWrap}>
-                    <ColorPicker selectedColor={selectedColor} onColorSelect={setSelectedColor} size="medium" />
+                    <ColorPicker
+                      selectedColor={selectedColor}
+                      onColorSelect={setSelectedColor}
+                      size="medium"
+                    />
                   </View>
                   <Pressable
-                    style={[styles.modalButton, styles.modalButtonSave, { marginTop: scaleW(12) }]}
+                    style={[
+                      styles.modalButton,
+                      styles.modalButtonSave,
+                      { marginTop: scaleW(12) },
+                    ]}
                     onPress={handleAddExplorerInline}
                     disabled={loading || !name.trim()}
                   >
                     {loading ? (
                       <ActivityIndicator color={COLORS.white} />
                     ) : (
-                      <ThemedText style={styles.modalButtonSaveText}>Add Explorer</ThemedText>
+                      <ThemedText style={styles.modalButtonSaveText}>
+                        Add Explorer
+                      </ThemedText>
                     )}
                   </Pressable>
                 </View>
@@ -912,13 +1000,11 @@ export default function ProfileScreen() {
           entering={FadeInDown.duration(500).delay(150).springify().damping(18)}
           style={styles.section}
         >
-          <ThemedText type="heading" style={styles.sectionTitle}>Your progress</ThemedText>
+          <ThemedText type="heading" style={styles.sectionTitle}>
+            Your progress
+          </ThemedText>
           <View style={styles.progressRow}>
-            <StatCard
-              value={daysPlayed}
-              label="Days played"
-              color="pink"
-            />
+            <StatCard value={daysPlayed} label="Days played" color="pink" />
             <StatCard
               value={pointsEarned}
               label="Points Earned"
@@ -995,14 +1081,25 @@ export default function ProfileScreen() {
           entering={FadeInDown.duration(500).delay(480).springify().damping(18)}
           style={styles.section}
         >
-          <ThemedText type="heading" style={styles.sectionTitle}>Recent activities</ThemedText>
+          <ThemedText type="heading" style={styles.sectionTitle}>
+            Recent activities
+          </ThemedText>
           {recentActivities.length === 0 ? (
             <View style={styles.activityCard}>
               <View style={styles.activityCardContent}>
-                <ThemedText type="heading" style={styles.activityName}>No activities yet</ThemedText>
-                <ThemedText style={styles.activityDate}>Complete missions to see them here</ThemedText>
+                <ThemedText type="heading" style={styles.activityName}>
+                  No activities yet
+                </ThemedText>
+                <ThemedText style={styles.activityDate}>
+                  Complete missions to see them here
+                </ThemedText>
               </View>
-              <MaterialIcons name="chevron-right" size={24} color={COLORS.arrow} style={styles.activityArrow} />
+              <MaterialIcons
+                name="chevron-right"
+                size={24}
+                color={COLORS.arrow}
+                style={styles.activityArrow}
+              />
             </View>
           ) : (
             recentActivities.map((act) => (
@@ -1012,7 +1109,11 @@ export default function ProfileScreen() {
                 onPress={() => router.push("/(tabs)/missions")}
               >
                 <View style={styles.activityCardContent}>
-                  <ThemedText type="heading" style={styles.activityName} numberOfLines={1}>
+                  <ThemedText
+                    type="heading"
+                    style={styles.activityName}
+                    numberOfLines={1}
+                  >
                     {act.activity?.title ?? "Activity"}
                   </ThemedText>
                   <ThemedText style={styles.activityDate}>
@@ -1039,13 +1140,21 @@ export default function ProfileScreen() {
             style={styles.parentZoneButton}
             onPress={() => router.push("/(tabs)/parents")}
             onPressIn={() => {
-              parentZoneScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+              parentZoneScale.value = withSpring(0.96, {
+                damping: 15,
+                stiffness: 400,
+              });
             }}
             onPressOut={() => {
-              parentZoneScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+              parentZoneScale.value = withSpring(1, {
+                damping: 15,
+                stiffness: 400,
+              });
             }}
           >
-            <ThemedText type="heading" style={styles.parentZoneText}>Parent Zone</ThemedText>
+            <ThemedText type="heading" style={styles.parentZoneText}>
+              Parent Zone
+            </ThemedText>
           </Pressable>
 
           <Pressable
@@ -1101,7 +1210,9 @@ export default function ProfileScreen() {
             <ThemedText style={styles.inputLabel}>Choose Your Team</ThemedText>
             {teams.length === 0 ? (
               <View style={styles.noTeams}>
-                <ThemedText style={styles.noTeamsText}>No teams available yet</ThemedText>
+                <ThemedText style={styles.noTeamsText}>
+                  No teams available yet
+                </ThemedText>
               </View>
             ) : (
               <ScrollView
@@ -1148,7 +1259,9 @@ export default function ProfileScreen() {
               {loading ? (
                 <ActivityIndicator color={COLORS.white} />
               ) : (
-                <ThemedText style={styles.modalButtonSaveText}>Add Explorer</ThemedText>
+                <ThemedText style={styles.modalButtonSaveText}>
+                  Add Explorer
+                </ThemedText>
               )}
             </Pressable>
             <Pressable

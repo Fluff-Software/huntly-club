@@ -8,7 +8,7 @@
 
 import { Platform } from 'react-native';
 import RevenueCatUI from 'react-native-purchases-ui';
-import { CLUB_ENTITLEMENT_ID } from './purchasesService';
+import { CLUB_ENTITLEMENT_ID, REVENUECAT_DISABLED } from './purchasesService';
 
 const isPaywallSupported = (): boolean =>
   Platform.OS === 'ios' || Platform.OS === 'android';
@@ -24,6 +24,7 @@ export type PresentPaywallIfNeededResult =
  * always show the paywall (e.g. "Upgrade" button).
  */
 export async function presentPaywall(): Promise<PresentPaywallResult> {
+  if (REVENUECAT_DISABLED) return null;
   if (!isPaywallSupported()) return null;
   try {
     const result = await RevenueCatUI.presentPaywall();
@@ -39,6 +40,7 @@ export async function presentPaywall(): Promise<PresentPaywallResult> {
  * Returns 'not_presented' if the user already has access.
  */
 export async function presentPaywallIfNeeded(): Promise<PresentPaywallIfNeededResult> {
+  if (REVENUECAT_DISABLED) return null;
   if (!isPaywallSupported()) return null;
   try {
     const result = await RevenueCatUI.presentPaywallIfNeeded({
@@ -56,6 +58,7 @@ export async function presentPaywallIfNeeded(): Promise<PresentPaywallIfNeededRe
  * cancel, or get help. Best used for subscribed users (e.g. "Manage subscription").
  */
 export async function presentCustomerCenter(): Promise<boolean> {
+  if (REVENUECAT_DISABLED) return false;
   if (!isPaywallSupported()) return false;
   try {
     await RevenueCatUI.presentCustomerCenter();

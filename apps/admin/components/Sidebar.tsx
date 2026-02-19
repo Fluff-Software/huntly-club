@@ -12,6 +12,7 @@ const nav = [
   { href: "/activities", label: "Missions" },
   { href: "/resources", label: "Resources" },
   { href: "/photos", label: "Photos" },
+  { href: "/account-removal", label: "Account Removal" },
   { href: "/admins", label: "Admins" },
   { href: "/account", label: "Account" },
 ];

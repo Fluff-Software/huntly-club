@@ -5,6 +5,7 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
+import { AppState, AppStateStatus } from "react-native";
 import {
   getCurrentUser,
   signIn,
@@ -12,6 +13,7 @@ import {
   signOut,
   onAuthStateChange,
 } from "@/services/authService";
+import { supabase } from "@/services/supabase";
 import {
   updatePurchasesUserId,
   resetPurchasesUser,
@@ -150,6 +152,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setLoading(false);
     }
   }, [updateUser]);
+
+  // When app comes to foreground, check if account was removed (server-side); if so, sign out.
+  useEffect(() => {
+    if (!session?.user) return;
+
+    const checkRemovedAccount = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) return;
+      const email = data.user?.email ?? "";
+      if (email.includes("-removed@")) {
+        await handleSignOut();
+      }
+    };
+
+    const subscription = AppState.addEventListener(
+      "change",
+      (nextState: AppStateStatus) => {
+        if (nextState === "active") {
+          checkRemovedAccount();
+        }
+      }
+    );
+
+    // Also run once when we already have a session (e.g. app was in background when account was removed).
+    checkRemovedAccount();
+
+    return () => subscription.remove();
+  }, [session?.user, handleSignOut]);
 
   return (
     <AuthContext.Provider

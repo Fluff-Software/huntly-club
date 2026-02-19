@@ -23,6 +23,9 @@ type SignUpContextValue = {
   selectedTeamName: string | null;
   setSelectedTeamName: (name: string | null) => void;
   clearSignUpData: () => void;
+  /** True only once after completing sign-up; used to show welcome modal then dismiss. */
+  showPostSignUpWelcome: boolean;
+  setShowPostSignUpWelcome: (value: boolean) => void;
 };
 
 const SignUpContext = createContext<SignUpContextValue | null>(null);
@@ -32,6 +35,7 @@ export function SignUpProvider({ children }: { children: React.ReactNode }) {
   const [password, setPassword] = useState("");
   const [players, setPlayers] = useState<SignUpPlayer[]>([]);
   const [selectedTeamName, setSelectedTeamName] = useState<string | null>(null);
+  const [showPostSignUpWelcome, setShowPostSignUpWelcome] = useState(false);
 
   const addPlayer = useCallback((player: SignUpPlayer) => {
     setPlayers((prev) => [...prev, player]);
@@ -83,6 +87,8 @@ export function SignUpProvider({ children }: { children: React.ReactNode }) {
         selectedTeamName,
         setSelectedTeamName,
         clearSignUpData,
+        showPostSignUpWelcome,
+        setShowPostSignUpWelcome,
       }}
     >
       {children}

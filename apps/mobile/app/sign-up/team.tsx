@@ -63,6 +63,7 @@ export default function SignUpTeamScreen() {
     players,
     setSelectedTeamName,
     clearSignUpData,
+    setShowPostSignUpWelcome,
   } = useSignUp();
   const { user } = useAuth();
   const { refreshProfiles } = usePlayer();
@@ -127,7 +128,8 @@ export default function SignUpTeamScreen() {
       }
       await refreshProfiles();
       clearSignUpData();
-      router.push("/sign-up/intro");
+      setShowPostSignUpWelcome(true);
+      router.replace("/(tabs)");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to create profiles.";
       Alert.alert("Error", message);

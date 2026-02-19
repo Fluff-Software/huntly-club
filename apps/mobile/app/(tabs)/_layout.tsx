@@ -2,7 +2,9 @@ import { Tabs } from "expo-router";
 import { Image, Platform, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { PostSignUpWelcome } from "@/components/PostSignUpWelcome";
 
 const HOME_CLUBHOUSE = require("@/assets/images/home-clubhouse.png");
 const HOME_STORY = require("@/assets/images/home-story.png");
@@ -38,6 +40,9 @@ export default function TabLayout() {
   const { currentPlayer } = usePlayer();
   const { scaleW } = useLayoutScale();
   const insets = useSafeAreaInsets();
+  const signUpContext = useSignUpOptional();
+  const showPostSignUpWelcome = signUpContext?.showPostSignUpWelcome ?? false;
+  const setShowPostSignUpWelcome = signUpContext?.setShowPostSignUpWelcome;
 
   const activeColor = "#FFFFFF";
   const inactiveColor = "rgba(255,255,255,0.6)";
@@ -50,7 +55,12 @@ export default function TabLayout() {
   const tabBarHeight = scaleW(72) + bottomInset;
 
   return (
-    <Tabs
+    <>
+      <PostSignUpWelcome
+        visible={showPostSignUpWelcome}
+        onDismiss={() => setShowPostSignUpWelcome?.(false)}
+      />
+      <Tabs
       screenOptions={({ route }) => ({
         tabBarActiveTintColor: activeColor,
         tabBarInactiveTintColor: inactiveColor,
@@ -142,7 +152,8 @@ export default function TabLayout() {
           href: null,
         }}
       />
-    </Tabs>
+      </Tabs>
+    </>
   );
 }
 

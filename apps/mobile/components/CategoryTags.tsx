@@ -1,7 +1,8 @@
 import React from "react";
 import { View } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "./ThemedText";
-import { getCategoryIcon } from "@/utils/categoryUtils";
+import { getCategoryIcon, getCategoryColor } from "@/utils/categoryUtils";
 
 interface CategoryTagsProps {
   categories: string[];
@@ -26,23 +27,11 @@ export const CategoryTags: React.FC<CategoryTagsProps> = ({
   const getSizeClasses = () => {
     switch (size) {
       case "small":
-        return {
-          container: "px-2 py-1",
-          text: "text-xs",
-          icon: "text-xs",
-        };
+        return { container: "px-2 py-1", text: "text-xs", iconSize: 12 };
       case "large":
-        return {
-          container: "px-3 py-2",
-          text: "text-sm",
-          icon: "text-sm",
-        };
+        return { container: "px-3 py-2", text: "text-sm", iconSize: 16 };
       default:
-        return {
-          container: "px-2.5 py-1.5",
-          text: "text-xs",
-          icon: "text-xs",
-        };
+        return { container: "px-2.5 py-1.5", text: "text-xs", iconSize: 14 };
     }
   };
 
@@ -57,12 +46,13 @@ export const CategoryTags: React.FC<CategoryTagsProps> = ({
         >
           <View className="flex-row items-center">
             {showIcons && (
-              <ThemedText
-                className={`${sizeClasses.icon} mr-1`}
-                style={{ color: "#6B7280" }}
-              >
-                {getCategoryIcon(category)}
-              </ThemedText>
+              <View className="mr-1">
+                <MaterialIcons
+                  name={getCategoryIcon(category) as any}
+                  size={sizeClasses.iconSize}
+                  color={getCategoryColor(category)}
+                />
+              </View>
             )}
             <ThemedText
               type="caption"

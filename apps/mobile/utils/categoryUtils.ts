@@ -68,7 +68,7 @@ export function getCategoryLabel(category: string): string {
  */
 export function getCategoryIcon(category: string): string {
   const categoryInfo = getCategoryInfo(category);
-  return categoryInfo?.icon || "🏷️";
+  return categoryInfo?.icon || "label";
 }
 
 /**

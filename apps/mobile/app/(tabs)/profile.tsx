@@ -93,11 +93,15 @@ export default function ProfileScreen() {
 
   const editScale = useSharedValue(1);
   const parentZoneScale = useSharedValue(1);
+  const logOutScale = useSharedValue(1);
   const editAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: editScale.value }],
   }));
   const parentZoneAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: parentZoneScale.value }],
+  }));
+  const logOutAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: logOutScale.value }],
   }));
 
   useFocusEffect(
@@ -459,20 +463,9 @@ export default function ProfileScreen() {
           fontSize: scaleW(17),
           fontWeight: "600",
         },
-        logOutButton: {
-          backgroundColor: COLORS.cream,
-          borderRadius: scaleW(28),
-          paddingVertical: scaleW(14),
-          paddingHorizontal: scaleW(24),
-          alignItems: "center",
-          marginTop: scaleW(16),
+        logOutButtonWrap: {
+          marginTop: scaleW(8),
           marginBottom: scaleW(32),
-          marginHorizontal: scaleW(40),
-        },
-        logOutButtonText: {
-          fontSize: scaleW(16),
-          fontWeight: "600",
-          color: COLORS.darkGreen,
         },
         modalOverlay: {
           flex: 1,
@@ -1156,9 +1149,15 @@ export default function ProfileScreen() {
               Parent Zone
             </ThemedText>
           </Pressable>
+        </Animated.View>
 
+        {/* Log out */}
+        <Animated.View
+          entering={FadeInDown.duration(500).delay(620).springify().damping(18)}
+          style={[logOutAnimatedStyle, styles.logOutButtonWrap]}
+        >
           <Pressable
-            style={styles.logOutButton}
+            style={styles.parentZoneButton}
             onPress={() => {
               Alert.alert("Log out", "Are you sure you want to log out?", [
                 { text: "Cancel", style: "cancel" },
@@ -1175,8 +1174,22 @@ export default function ProfileScreen() {
                 },
               ]);
             }}
+            onPressIn={() => {
+              logOutScale.value = withSpring(0.96, {
+                damping: 15,
+                stiffness: 400,
+              });
+            }}
+            onPressOut={() => {
+              logOutScale.value = withSpring(1, {
+                damping: 15,
+                stiffness: 400,
+              });
+            }}
           >
-            <ThemedText style={styles.logOutButtonText}>Log out</ThemedText>
+            <ThemedText type="heading" style={styles.parentZoneText}>
+              Log out
+            </ThemedText>
           </Pressable>
         </Animated.View>
       </ScrollView>

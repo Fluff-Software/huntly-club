@@ -13,48 +13,48 @@ export type CategoryFilter = {
   color: string;
 };
 
-// Common categories used in the app
+// Common categories used in the app (icon = MaterialIcons name)
 export const ACTIVITY_CATEGORIES: CategoryFilter[] = [
   {
     category: "nature",
     label: "Nature",
-    icon: "🌿",
+    icon: "eco",
     color: "#4CAF50",
   },
   {
     category: "photography",
     label: "Photography",
-    icon: "📸",
+    icon: "camera-alt",
     color: "#2196F3",
   },
   {
     category: "outdoor",
     label: "Outdoor",
-    icon: "🏕️",
+    icon: "cabin",
     color: "#FF9800",
   },
   {
     category: "wildlife",
     label: "Wildlife",
-    icon: "🐦",
+    icon: "pets",
     color: "#795548",
   },
   {
     category: "exploration",
     label: "Exploration",
-    icon: "🗺️",
+    icon: "travel-explore",
     color: "#9C27B0",
   },
   {
     category: "creativity",
     label: "Creativity",
-    icon: "🎨",
+    icon: "brush",
     color: "#E91E63",
   },
   {
     category: "observation",
     label: "Observation",
-    icon: "👁️",
+    icon: "visibility",
     color: "#607D8B",
   },
 ];

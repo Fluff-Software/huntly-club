@@ -16,18 +16,28 @@ type BackHeaderProps = {
   backToLabel: string;
   /** Use "light" on light backgrounds (dark icon/text), "dark" on dark backgrounds (white icon/text). Default "dark". */
   variant?: "light" | "dark";
+  /** When set, navigate to this route instead of router.back(). E.g. "/(tabs)/profile". */
+  backTo?: string;
 };
 
-export function BackHeader({ backToLabel, variant = "dark" }: BackHeaderProps) {
+export function BackHeader({ backToLabel, variant = "dark", backTo }: BackHeaderProps) {
   const router = useRouter();
   const { scaleW } = useLayoutScale();
   const isLight = variant === "light";
   const iconColor = isLight ? COLORS.darkGreen : COLORS.white;
   const labelColor = isLight ? COLORS.charcoal : COLORS.white;
 
+  const onPress = () => {
+    if (backTo) {
+      router.push(backTo as any);
+    } else {
+      router.back();
+    }
+  };
+
   return (
     <Pressable
-      onPress={() => router.back()}
+      onPress={onPress}
       style={[styles.wrap, { marginBottom: scaleW(16), paddingVertical: scaleW(8) }]}
       hitSlop={12}
     >

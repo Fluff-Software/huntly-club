@@ -172,7 +172,7 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <View style={[styles.headerBar, { paddingHorizontal: scaleW(24), paddingBottom: scaleW(8) }]}>
-        <BackHeader backToLabel="Back" />
+        <BackHeader backToLabel="Back" backTo="/(tabs)/parents" />
       </View>
       <ScrollView
         style={styles.scrollView}

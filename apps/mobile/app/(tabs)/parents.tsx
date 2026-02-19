@@ -23,6 +23,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useParentResources } from "@/hooks/useParentResources";
 import { supabase } from "@/services/supabase";
+import { getTotalXpForProfileIds } from "@/services/teamActivityService";
 import { ACTIVITY_CATEGORIES } from "@/types/activity";
 import { MaterialIcons } from "@expo/vector-icons";
 
@@ -71,7 +72,8 @@ export default function ParentsScreen() {
   const [loading, setLoading] = useState(true);
   const [totalXp, setTotalXp] = useState(0);
   const [totalActivities, setTotalActivities] = useState(0);
-  const [daysPlayed, setDaysPlayed] = useState(0);
+  const [skillAreasTotal, setSkillAreasTotal] = useState(0);
+  const [showAllProgress, setShowAllProgress] = useState(false);
   // Parent Zone math-gate temporarily disabled – keep state commented for easy restore
   // const [showPinModal, setShowPinModal] = useState(true);
   // const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -121,7 +123,6 @@ export default function ParentsScreen() {
       if (profilesError) throw profilesError;
 
       const explorerStats: ExplorerStats[] = [];
-      let totalXpSum = 0;
       let totalActivitiesSum = 0;
       const categoryStatsMap: {
         [category: string]: {
@@ -130,7 +131,6 @@ export default function ParentsScreen() {
           explorers: Set<number>;
         };
       } = {};
-      const completedDates = new Set<string>();
 
       ACTIVITY_CATEGORIES.forEach((cat) => {
         categoryStatsMap[cat.category] = {
@@ -164,16 +164,9 @@ export default function ParentsScreen() {
         }
 
         const completedActivities = activities ?? [];
-        completedActivities.forEach((a) => {
-          if (a.completed_at) {
-            completedDates.add(a.completed_at.slice(0, 10));
-          }
-        });
-
         const completedCount = completedActivities.length;
         const explorerXp = profile.xp || 0;
 
-        totalXpSum += explorerXp;
         totalActivitiesSum += completedCount;
 
         const explorerCategoryStats: {
@@ -228,11 +221,17 @@ export default function ParentsScreen() {
         .filter((a) => a.totalActivities > 0)
         .sort((a, b) => b.totalActivities - a.totalActivities);
 
+      const skillTotal = ACTIVITY_CATEGORIES.reduce(
+        (sum, cat) => sum + (categoryStatsMap[cat.category]?.count ?? 0),
+        0
+      );
+
       setExplorers(explorerStats);
       setCategoryAnalytics(analytics);
-      setTotalXp(totalXpSum);
       setTotalActivities(totalActivitiesSum);
-      setDaysPlayed(completedDates.size);
+      setSkillAreasTotal(skillTotal);
+      const profileIds = (profiles || []).map((p: { id: number }) => p.id);
+      getTotalXpForProfileIds(profileIds).then(setTotalXp).catch(() => setTotalXp(0));
     } catch (error) {
       console.error("Error fetching explorers data:", error);
     } finally {
@@ -326,6 +325,17 @@ export default function ParentsScreen() {
         activityCountLabel: {
           fontSize: scaleW(13),
           color: COLORS.charcoal,
+        },
+        showAllProgressButton: {
+          alignSelf: "center",
+          paddingVertical: scaleW(12),
+          paddingHorizontal: scaleW(20),
+          marginTop: scaleW(8),
+        },
+        showAllProgressText: {
+          fontSize: scaleW(15),
+          fontWeight: "600",
+          color: COLORS.white,
         },
         resourceCard: {
           backgroundColor: COLORS.cardGray,
@@ -427,7 +437,7 @@ export default function ParentsScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         <View style={[styles.scrollContent, { flex: 1 }]}>
-          <BackHeader backToLabel="Your profile" />
+          <BackHeader backToLabel="Your profile" backTo="/(tabs)/profile" />
           <View style={styles.loadingWrap}>
           <ActivityIndicator
             size="large"
@@ -447,7 +457,7 @@ export default function ParentsScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         <View style={[styles.scrollContent, { flex: 1 }]}>
-          <BackHeader backToLabel="Your profile" />
+          <BackHeader backToLabel="Your profile" backTo="/(tabs)/profile" />
           <View style={styles.emptyWrap}>
           <View style={styles.emptyIcon}>
             <ThemedText style={{ fontSize: scaleW(28) }}>🔒</ThemedText>
@@ -486,7 +496,7 @@ export default function ParentsScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         <View style={[styles.scrollContent, { flex: 1 }]}>
-          <BackHeader backToLabel="Your profile" />
+          <BackHeader backToLabel="Your profile" backTo="/(tabs)/profile" />
           <View style={styles.emptyWrap}>
           <View style={styles.emptyIcon}>
             <ThemedText style={{ fontSize: scaleW(28) }}>👥</ThemedText>
@@ -501,9 +511,19 @@ export default function ParentsScreen() {
     );
   }
 
+  const daysPlayed = user?.created_at != null
+    ? Math.max(
+        0,
+        Math.floor(
+          (Date.now() - new Date(user.created_at).getTime()) /
+            (24 * 60 * 60 * 1000)
+        )
+      )
+    : 0;
+
   const summaryStats: { value: number; label: string; color: "pink" | "green" | "purple" | "cream" }[] = [
     { value: totalActivities, label: "Activities completed", color: "purple" },
-    { value: categoryAnalytics.length, label: "Skill areas", color: "cream" },
+    { value: skillAreasTotal, label: "Skill areas", color: "cream" },
     { value: daysPlayed, label: "Days played", color: "pink" },
     { value: totalXp, label: "Points Earned", color: "green" },
   ];
@@ -511,7 +531,7 @@ export default function ParentsScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <View style={[styles.headerBar, { paddingHorizontal: scaleW(30), paddingBottom: scaleW(8) }]}>
-        <BackHeader backToLabel="Your profile" />
+        <BackHeader backToLabel="Your profile" backTo="/(tabs)/profile" />
       </View>
       <ScrollView
         style={styles.scrollView}
@@ -545,33 +565,47 @@ export default function ParentsScreen() {
               </ThemedText>
             </View>
           ) : (
-            categoryAnalytics.slice(0, 6).map((cat, i) => (
-              <Animated.View
-                key={cat.category}
-                entering={FadeInDown.duration(400).delay(200 + i * 50).springify().damping(18)}
-              >
-                <View style={styles.activityCard}>
-                  <View style={styles.activityCardLeft}>
-                    <View style={styles.activityIconWrap}>
-                      <ThemedText style={styles.activityIconText}>
-                        {cat.icon}
+            <>
+              {(showAllProgress ? categoryAnalytics : categoryAnalytics.slice(0, 4)).map((cat, i) => (
+                <Animated.View
+                  key={cat.category}
+                  entering={FadeInDown.duration(400).delay(200 + i * 50).springify().damping(18)}
+                >
+                  <View style={styles.activityCard}>
+                    <View style={styles.activityCardLeft}>
+                      <View style={styles.activityIconWrap}>
+                        <MaterialIcons
+                          name={cat.icon as any}
+                          size={scaleW(22)}
+                          color={cat.color}
+                        />
+                      </View>
+                      <ThemedText style={styles.activityCategoryName}>
+                        {cat.label}
                       </ThemedText>
                     </View>
-                    <ThemedText style={styles.activityCategoryName}>
-                      {cat.label}
-                    </ThemedText>
+                    <View style={styles.activityCountWrap}>
+                      <ThemedText style={styles.activityCountNum}>
+                        {cat.totalActivities}
+                      </ThemedText>
+                      <ThemedText style={styles.activityCountLabel}>
+                        Activities Completed
+                      </ThemedText>
+                    </View>
                   </View>
-                  <View style={styles.activityCountWrap}>
-                    <ThemedText style={styles.activityCountNum}>
-                      {cat.totalActivities}
-                    </ThemedText>
-                    <ThemedText style={styles.activityCountLabel}>
-                      Activities Completed
-                    </ThemedText>
-                  </View>
-                </View>
-              </Animated.View>
-            ))
+                </Animated.View>
+              ))}
+              {categoryAnalytics.length > 4 && (
+                <Pressable
+                  onPress={() => setShowAllProgress((prev) => !prev)}
+                  style={styles.showAllProgressButton}
+                >
+                  <ThemedText style={styles.showAllProgressText}>
+                    {showAllProgress ? "Show Less" : "Show All"}
+                  </ThemedText>
+                </Pressable>
+              )}
+            </>
           )}
         </Animated.View>
 

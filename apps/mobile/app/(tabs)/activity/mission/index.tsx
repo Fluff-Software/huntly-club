@@ -1,5 +1,6 @@
 import React, { useMemo, useEffect, useState, useCallback } from "react";
 import { View, ScrollView, Image, Pressable, StyleSheet, ActivityIndicator } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
   FadeInDown,
@@ -265,8 +266,14 @@ export default function InstructionScreen() {
             <View style={styles.tagsRow}>
               {categories.slice(0, 5).map((cat) => (
                 <View key={cat} style={[styles.tag, styles.tagNeutral]}>
+                  <MaterialIcons
+                    name={getCategoryIcon(cat) as any}
+                    size={14}
+                    color={getCategoryColor(cat)}
+                    style={{ marginRight: 4 }}
+                  />
                   <ThemedText style={styles.tagText}>
-                    {getCategoryIcon(cat)} {getCategoryLabel(cat)}
+                    {getCategoryLabel(cat)}
                   </ThemedText>
                 </View>
               ))}

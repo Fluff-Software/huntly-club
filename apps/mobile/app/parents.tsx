@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, ScrollView, Image, TouchableOpacity } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { BaseLayout } from "@/components/layout/BaseLayout";
@@ -350,9 +351,11 @@ export default function ParentsScreen() {
                       className="w-12 h-12 rounded-full items-center justify-center mr-3"
                       style={{ backgroundColor: `${category.color}20` }}
                     >
-                      <ThemedText className="text-xl">
-                        {category.icon}
-                      </ThemedText>
+                      <MaterialIcons
+                        name={category.icon as any}
+                        size={24}
+                        color={category.color}
+                      />
                     </View>
                     <View className="flex-1">
                       <ThemedText

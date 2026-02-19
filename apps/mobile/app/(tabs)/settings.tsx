@@ -29,6 +29,7 @@ import {
   getPendingRemovalRequest,
   cancelRemovalRequest,
   canCancelRemovalRequest,
+  sendAccountRemovalNotification,
 } from "@/services/accountRemovalService";
 
 const COLORS = {
@@ -115,6 +116,7 @@ export default function SettingsScreen() {
       setShowRemovalModal(false);
       setRemovalReason("");
       await refreshPendingRemoval();
+      sendAccountRemovalNotification(user.email ?? "", "created");
       Alert.alert(
         "Request submitted",
         "Your account removal request has been sent. An admin will review it. You can cancel the request within 24 hours from Settings."
@@ -143,6 +145,7 @@ export default function SettingsScreen() {
             try {
               await cancelRemovalRequest(user.id);
               setPendingRemovalRequest(null);
+              sendAccountRemovalNotification(user.email ?? "", "canceled");
               Alert.alert("Request cancelled", "Your account removal request has been cancelled.");
             } catch (e) {
               Alert.alert(

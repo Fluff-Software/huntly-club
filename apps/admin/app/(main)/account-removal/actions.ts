@@ -68,6 +68,13 @@ export async function approveRemovalRequest(requestId: number): Promise<{ error?
     const { data: authUser } = await supabase.auth.admin.getUserById(userId);
     const currentEmail = authUser?.user?.email ?? "";
     if (currentEmail && !currentEmail.endsWith("(REMOVED)")) {
+      try {
+        await supabase.functions.invoke("account-removal-email", {
+          body: { email: currentEmail, type: "processed" },
+        });
+      } catch (e) {
+        console.error("Failed to send account-removal-email (processed):", e);
+      }
       const newEmail = `${currentEmail}(REMOVED)`;
       await supabase.auth.admin.updateUserById(userId, { email: newEmail });
     }
@@ -86,6 +93,21 @@ export async function approveRemovalRequest(requestId: number): Promise<{ error?
 
 export async function denyRemovalRequest(requestId: number): Promise<{ error?: string }> {
   const supabase = createServerSupabaseClient();
+
+  const { data: request, error: fetchError } = await supabase
+    .from("account_removal_requests")
+    .select("id, user_id")
+    .eq("id", requestId)
+    .eq("status", "pending")
+    .single();
+
+  if (fetchError || !request) {
+    return { error: "Request not found or no longer pending" };
+  }
+
+  const { data: authUser } = await supabase.auth.admin.getUserById(request.user_id);
+  const email = authUser?.user?.email ?? "";
+
   const { error } = await supabase
     .from("account_removal_requests")
     .update({ status: "rejected" })
@@ -93,5 +115,15 @@ export async function denyRemovalRequest(requestId: number): Promise<{ error?: s
     .eq("status", "pending");
 
   if (error) return { error: error.message };
+
+  if (email && !email.endsWith("(REMOVED)")) {
+    try {
+      await supabase.functions.invoke("account-removal-email", {
+        body: { email, type: "denied" },
+      });
+    } catch (e) {
+      console.error("Failed to send account-removal-email (denied):", e);
+    }
+  }
   return {};
 }

@@ -95,3 +95,23 @@ export async function cancelRemovalRequest(userId: string): Promise<void> {
     );
   }
 }
+
+export type AccountRemovalEmailType = "created" | "canceled";
+
+/**
+ * Sends the account-removal notification email (created or canceled).
+ * Best-effort: does not throw; logs errors.
+ */
+export async function sendAccountRemovalNotification(
+  email: string,
+  type: AccountRemovalEmailType
+): Promise<void> {
+  if (!email?.trim()) return;
+  try {
+    await supabase.functions.invoke("account-removal-email", {
+      body: { email: email.trim().toLowerCase(), type },
+    });
+  } catch (e) {
+    console.error("Error sending account removal email:", e);
+  }
+}

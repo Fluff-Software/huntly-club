@@ -372,7 +372,20 @@ export default function CompletionScreen() {
         }))
       );
 
-      router.push("/(tabs)/activity/mission/reward");
+      const achievementsForReward = insertedProgress.map((row) => ({
+        profile_name:
+          profiles.find((p) => p.id === row.profile_id)?.nickname ?? "Explorer",
+        message: "completed an activity",
+        xp: activity.xp ?? 0,
+      }));
+
+      router.push({
+        pathname: "/(tabs)/activity/mission/reward",
+        params: {
+          activityId: String(activity.id),
+          achievements: JSON.stringify(achievementsForReward),
+        },
+      } as { pathname: string; params: Record<string, string> });
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Something went wrong.";

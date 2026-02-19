@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from "react";
+import React, { useMemo, useEffect, useState } from "react";
 import {
   View,
   ScrollView,
@@ -6,6 +6,7 @@ import {
   Pressable,
   Text,
   StyleSheet,
+  type ImageSourcePropType,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
@@ -16,26 +17,68 @@ import Animated, {
   withSequence,
   withDelay,
 } from "react-native-reanimated";
-import { useRouter, useNavigation } from "expo-router";
+import { useRouter, useNavigation, useLocalSearchParams } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { MissionCard } from "@/components/MissionCard";
-import { MISSION_CARDS } from "@/constants/missionCards";
+import { getActivityById, getActivityImageSource } from "@/services/packService";
+import type { MissionCardData } from "@/constants/missionCards";
 
 const HUNTLY_GREEN = "#4F6F52";
 const LIGHT_GREEN = "#7FAF8A";
 const CARD_GRAY = "#D9D9D9";
 
 const BADGE_ICON = require("@/assets/images/badge.png");
-const STAR_ICON = require("@/assets/images/get-started-icon-2.png");
 const CELEBRATE_ICON = require("@/assets/images/celebrate.png");
 
-const COMPLETION_CARD = MISSION_CARDS[0];
+const DEFAULT_CARD_IMAGE = require("@/assets/images/laser-fortress.jpg");
+
+type RewardAchievement = { profile_name: string; message: string; xp: number };
 
 export default function RewardScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const { scaleW } = useLayoutScale();
+  const params = useLocalSearchParams<{ activityId?: string; achievements?: string }>();
+
+  const [activityCard, setActivityCard] = useState<MissionCardData | null>(null);
+  const [activityXp, setActivityXp] = useState<number | null>(null);
+  const [achievements, setAchievements] = useState<RewardAchievement[]>([]);
+
+  useEffect(() => {
+    const activityId = params.activityId ? Number(params.activityId) : null;
+    if (!activityId) return;
+    getActivityById(activityId)
+      .then((activity) => {
+        if (!activity) return;
+        const imageSource = getActivityImageSource(activity.image) as ImageSourcePropType | null;
+        setActivityCard({
+          id: String(activity.id),
+          image: imageSource ?? DEFAULT_CARD_IMAGE,
+          title: activity.title,
+          description: activity.description ?? "",
+        });
+        setActivityXp(activity.xp ?? null);
+      })
+      .catch(() => {
+        setActivityCard(null);
+        setActivityXp(null);
+      });
+  }, [params.activityId]);
+
+  useEffect(() => {
+    try {
+      const raw = params.achievements;
+      if (raw) {
+        const parsed = JSON.parse(raw) as RewardAchievement[];
+        setAchievements(Array.isArray(parsed) ? parsed : []);
+      } else {
+        setAchievements([]);
+      }
+    } catch {
+      setAchievements([]);
+    }
+  }, [params.achievements]);
 
   const celebrateScale = useSharedValue(0.85);
   const goHomeScale = useSharedValue(1);
@@ -94,6 +137,8 @@ export default function RewardScreen() {
           alignItems: "center",
           gap: scaleW(24),
           paddingBottom: scaleW(24),
+          paddingHorizontal: scaleW(24),
+          position: "relative" as const,
         },
         achievementCard: {
           backgroundColor: CARD_GRAY,
@@ -167,57 +212,67 @@ export default function RewardScreen() {
           entering={FadeInDown.duration(500).delay(0).springify().damping(18)}
           style={[styles.cardWrap, cardCelebrateStyle]}
         >
-          <MissionCard
-            card={COMPLETION_CARD}
-            tiltDeg={0}
-            marginTopOffset={0}
-            onStartPress={() => {}}
-          />
-          <Image
-            source={BADGE_ICON}
-            style={styles.completionBadge}
-            resizeMode="contain"
-          />
+          {activityCard && (
+            <>
+              <MissionCard
+                card={activityCard}
+                xp={activityXp}
+                tiltDeg={0}
+                marginTopOffset={0}
+                onStartPress={() => {}}
+              />
+              <Image
+                source={BADGE_ICON}
+                style={styles.completionBadge}
+                resizeMode="contain"
+              />
+            </>
+          )}
         </Animated.View>
 
         <Animated.View entering={FadeInDown.duration(500).delay(200).springify().damping(18)}>
           <Text style={styles.wellDoneHeading}>Well done!</Text>
         </Animated.View>
 
-        <Animated.View
-          entering={FadeInDown.duration(500).delay(350).springify().damping(18)}
-          style={styles.achievementTimeline}
-        >
-          <View style={styles.achievementCard}>
-            <View style={styles.achievementIcon}>
-              <Image
-                source={CELEBRATE_ICON}
-                style={styles.achievementIconImage}
-                resizeMode="contain"
-              />
-            </View>
-            <View style={styles.achievementText}>
-              <Text style={styles.achievementTitle}>Completed an activity</Text>
-              <Text style={styles.achievementPoints}>+ 50 points</Text>
-            </View>
-          </View>
-
-          <Animated.View entering={FadeInDown.duration(400).delay(450).springify().damping(18)}>
-            <View style={styles.achievementCard}>
-              <View style={styles.achievementIcon}>
-                <Image
-                  source={STAR_ICON}
-                  style={styles.achievementIconImage}
-                  resizeMode="contain"
-                />
-              </View>
-              <View style={styles.achievementText}>
-                <Text style={styles.achievementTitle}>Earned a badge</Text>
-                <Text style={styles.achievementPoints}>+ 50 points</Text>
-              </View>
-            </View>
+        {achievements.length > 0 && (
+          <Animated.View
+            entering={FadeInDown.duration(500).delay(350).springify().damping(18)}
+            style={styles.achievementTimeline}
+          >
+            {achievements.map((item, index) => (
+              <Animated.View
+                key={`${item.profile_name}-${index}`}
+                entering={FadeInDown.duration(400).delay(450 + index * 60).springify().damping(18)}
+                style={{ zIndex: 1 }}
+              >
+                <View
+                  style={[
+                    styles.achievementCard,
+                    {
+                      transform: [{ rotate: index % 2 === 0 ? "-2deg" : "2deg" }],
+                      marginLeft: index % 2 === 0 ? scaleW(20) : 0,
+                      marginRight: index % 2 === 1 ? scaleW(20) : 0,
+                    },
+                  ]}
+                >
+                  <View style={styles.achievementIcon}>
+                    <Image
+                      source={CELEBRATE_ICON}
+                      style={styles.achievementIconImage}
+                      resizeMode="contain"
+                    />
+                  </View>
+                  <View style={styles.achievementText}>
+                    <Text style={styles.achievementTitle}>
+                      {item.profile_name} {item.message}
+                    </Text>
+                    <Text style={styles.achievementPoints}>+ {item.xp} points</Text>
+                  </View>
+                </View>
+              </Animated.View>
+            ))}
           </Animated.View>
-        </Animated.View>
+        )}
 
         <Animated.View
           entering={FadeInDown.duration(500).delay(550).springify().damping(18)}

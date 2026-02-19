@@ -194,42 +194,28 @@ export default function GetStartedScreen() {
         )}
 
         {/* Graphic */}
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", marginTop: scaleW(24) }}>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", marginTop: scaleW(24), paddingBottom: scaleW(48) }}>
           {item.graphic === "bear" && (
-            <Animated.View
-              style={{
-                position: "absolute",
-                bottom: scaleW(-125),
-                right: scaleW(-80),
-                transform: [{ translateX: bearSlideAnim }],
-              }}
-            >
+            <Animated.View style={{ transform: [{ translateX: bearSlideAnim }] }}>
               <Image
-                source={require("@/assets/images/bear-wave.png")}
+                source={require("@/assets/images/welcomeAnimals.png")}
                 resizeMode="contain"
-                style={{ width: scaleW(350), height: scaleW(350) }}
+                style={{ width: scaleW(300), height: scaleW(300) }}
               />
             </Animated.View>
           )}
           {item.graphic === "icons" && (
-            <View style={{ position: "absolute", flexDirection: "row", alignItems: "center", top: scaleW(20) }}>
-              <Image
-                source={require("@/assets/images/get-started-icon-1.png")}
-                resizeMode="contain"
-                style={{ width: scaleW(120), height: scaleW(120), marginTop: scaleW(140) }}
-              />
-              <Image
-                source={require("@/assets/images/get-started-icon-2.png")}
-                resizeMode="contain"
-                style={{ width: scaleW(100), height: scaleW(100), marginTop: scaleW(-20) }}
-              />
-            </View>
+            <Image
+              source={require("@/assets/images/welcomeExplore.png")}
+              resizeMode="contain"
+              style={{ width: scaleW(300), height: scaleW(300) }}
+            />
           )}
           {item.graphic === "mountain" && (
             <Image
-              source={require("@/assets/images/get-started-icon-3.png")}
+              source={require("@/assets/images/welcomeExploreTogether.png")}
               resizeMode="contain"
-              style={{ position: "absolute", bottom: scaleW(-55), width: scaleW(330), height: scaleW(330) }}
+              style={{ width: scaleW(300), height: scaleW(300) }}
             />
           )}
         </View>

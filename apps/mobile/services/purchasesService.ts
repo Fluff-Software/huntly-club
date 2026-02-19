@@ -18,6 +18,9 @@ import Purchases, {
   type PurchasesError,
 } from 'react-native-purchases';
 
+/** Set to true to temporarily disable RevenueCat (no SDK calls, everyone treated as subscribed). */
+export const REVENUECAT_DISABLED = true;
+
 /** Entitlement identifier used for club / premium access. */
 export const CLUB_ENTITLEMENT_ID = 'club';
 
@@ -136,6 +139,7 @@ let isConfigured = false;
  * Optionally pass existing user id to identify the user; otherwise anonymous.
  */
 export const initializePurchases = async (userId?: string | null): Promise<void> => {
+  if (REVENUECAT_DISABLED) return;
   if (!isIAPSupported()) return;
 
   try {
@@ -243,6 +247,7 @@ export const purchasePackage = async (
  * Current subscription status derived from CustomerInfo and entitlement "club".
  */
 export const checkSubscriptionStatus = async (): Promise<UserSubscriptionInfo> => {
+  if (REVENUECAT_DISABLED) return { ...defaultSubscriptionInfo, isSubscribed: true, status: 'active' };
   if (!isIAPSupported() || !isConfigured) return defaultSubscriptionInfo;
   try {
     const info = await Purchases.getCustomerInfo();

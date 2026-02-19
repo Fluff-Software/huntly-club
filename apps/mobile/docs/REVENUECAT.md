@@ -35,6 +35,24 @@ This app uses [RevenueCat](https://www.revenuecat.com/) for subscriptions and en
 - **Paywall**: Use `presentPaywall()` to always show the paywall, or `presentPaywallIfNeeded()` to show it only when the user does not have `club`.
 - **Customer Center**: Use `presentCustomerCenter()` (e.g. from the subscription screen for subscribed users).
 
+## Disabling and re-enabling
+
+RevenueCat can be turned off with a single flag (e.g. for development or to ship without subscriptions). When disabled, the SDK is never configured, paywall/Customer Center are no-ops, and all users are treated as subscribed so the subscription gate is skipped.
+
+**To disable:** In `apps/mobile/services/purchasesService.ts`, set:
+
+```ts
+export const REVENUECAT_DISABLED = true;
+```
+
+**To re-enable:** Set it back to `false` in the same file:
+
+```ts
+export const REVENUECAT_DISABLED = false;
+```
+
+No other files need to change. Ensure your `.env` has `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY` and `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY` when re-enabling.
+
 ## Testing
 
 - Use a **development build** (e.g. `eas build --profile development`) to test real IAP; Expo Go uses RevenueCat’s preview/mock mode.

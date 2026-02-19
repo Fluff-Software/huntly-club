@@ -21,6 +21,7 @@ import Animated, {
   useAnimatedStyle,
   withDelay,
 } from "react-native-reanimated";
+import { MaterialIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
@@ -41,8 +42,10 @@ const FALLBACK_SLIDES: StorySlide[] = [
 ];
 
 const STORY_BLUE = "#4B9CD2";
+const STORY_CONTAINER_BG = "#1E2E28";
 const CREAM = "#F4F0EB";
 const DARK_GREEN = "#2D5A27";
+const AUTO_PLAY_INTERVAL_MS = 3000;
 
 function imageSlideEntering() {
   "worklet";
@@ -378,8 +381,10 @@ export default function StorySlidesScreen() {
   const { scaleW } = useLayoutScale();
   const insets = useSafeAreaInsets();
   const flatListRef = useRef<FlatList>(null);
+  const currentIndexRef = useRef(0);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [storyReady, setStoryReady] = useState(false);
+  const [autoPlay, setAutoPlay] = useState(false);
 
   const slides = useMemo((): StorySlide[] => {
     const fromSlides = (raw: StorySlide[] | null | undefined): StorySlide[] | null => {
@@ -438,6 +443,26 @@ export default function StorySlidesScreen() {
     };
   }, [dataLoading, imageUris]);
 
+  useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
+
+  useEffect(() => {
+    if (!autoPlay || !flatListRef.current) return;
+    const id = setInterval(() => {
+      const idx = currentIndexRef.current;
+      if (idx >= slides.length - 1) {
+        setAutoPlay(false);
+        return;
+      }
+      flatListRef.current?.scrollToOffset({
+        offset: (idx + 1) * width,
+        animated: true,
+      });
+    }, AUTO_PLAY_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [autoPlay, slides.length, width]);
+
   const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const index = Math.round(e.nativeEvent.contentOffset.x / width);
     setCurrentIndex(index);
@@ -469,7 +494,7 @@ export default function StorySlidesScreen() {
   const styles = useMemo(
     () =>
       StyleSheet.create({
-        container: { flex: 1, backgroundColor: STORY_BLUE },
+        container: { flex: 1, backgroundColor: STORY_CONTAINER_BG },
         slidesWrapper: {
           flex: 1,
         },
@@ -513,11 +538,22 @@ export default function StorySlidesScreen() {
         slideImageBgLayer: {
           ...StyleSheet.absoluteFillObject,
         },
-        dotsRow: {
+        bottomControls: {
           position: "absolute",
           bottom: 0,
           left: 0,
           right: 0,
+          flexDirection: "column",
+          alignItems: "center",
+          paddingBottom: insets.bottom,
+        },
+        playButton: {
+          padding: scaleW(10),
+          borderRadius: scaleW(20),
+          backgroundColor: "rgba(255,255,255,0.25)",
+          marginBottom: scaleW(8),
+        },
+        dotsRow: {
           flexDirection: "row",
           justifyContent: "center",
           alignItems: "center",
@@ -526,7 +562,7 @@ export default function StorySlidesScreen() {
         },
         missionsCta: {
           position: "absolute",
-          bottom: scaleW(56),
+          bottom: scaleW(56) + insets.bottom,
           left: scaleW(24),
           right: scaleW(24),
           backgroundColor: CREAM,
@@ -567,7 +603,7 @@ export default function StorySlidesScreen() {
           fontWeight: "600",
         },
       }),
-    [scaleW, insets.top, insets.left, width]
+    [scaleW, insets.top, insets.left, insets.bottom, width]
   );
 
   const renderItem = useCallback(
@@ -586,7 +622,7 @@ export default function StorySlidesScreen() {
 
   if (!storyReady) {
     return (
-      <SafeAreaView style={[styles.container, styles.loadingContainer]} edges={["top", "bottom", "left", "right"]}>
+      <SafeAreaView style={[styles.container, styles.loadingContainer]} edges={["top", "left", "right"]}>
         <StoryLoadingScreen scaleW={scaleW} />
         {/* Render images at 0 size so the RN image pipeline decodes them before display */}
         {imageUris.map((uri) => (
@@ -597,7 +633,7 @@ export default function StorySlidesScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom", "left", "right"]}>
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <Pressable
         onPress={() => router.back()}
         style={styles.backButton}
@@ -627,16 +663,33 @@ export default function StorySlidesScreen() {
             index,
           })}
         />
-        <View style={styles.dotsRow}>
-        {slides.map((_, i) => (
-          <View
-            key={i}
-            style={[
-              styles.dot,
-              { backgroundColor: i === currentIndex ? CREAM : "rgba(255,255,255,0.4)" },
-            ]}
-          />
-        ))}
+        <View style={styles.bottomControls}>
+          {currentIndex !== slides.length - 1 && (
+            <Pressable
+              onPress={() => setAutoPlay((prev) => !prev)}
+              style={styles.playButton}
+              accessible
+              accessibilityRole="button"
+              accessibilityLabel={autoPlay ? "Pause auto-play" : "Play automatically"}
+            >
+              <MaterialIcons
+                name={autoPlay ? "pause" : "play-arrow"}
+                size={scaleW(24)}
+                color="#FFF"
+              />
+            </Pressable>
+          )}
+          <View style={styles.dotsRow}>
+            {slides.map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.dot,
+                  { backgroundColor: i === currentIndex ? CREAM : "rgba(255,255,255,0.4)" },
+                ]}
+              />
+            ))}
+          </View>
         </View>
         {currentIndex === slides.length - 1 && (
           <Pressable

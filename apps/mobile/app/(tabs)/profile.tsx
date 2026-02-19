@@ -34,7 +34,6 @@ import {
 import { generateNickname } from "@/services/nicknameGenerator";
 import { getTeamImageSource } from "@/utils/teamUtils";
 import { ColorPicker } from "@/components/ui/ColorPicker";
-import { getUserBadges, type UserBadge } from "@/services/badgeService";
 import {
   getRecentCompletedActivities,
   type RecentCompletedActivity,
@@ -57,11 +56,6 @@ const COLORS = {
 
 const PLAYER_ACCENTS = [COLORS.accentBlue, COLORS.accentGreen];
 
-const BADGE_IMAGE = require("@/assets/images/badge.png");
-const PLANTING_IMAGE = require("@/assets/images/planting.png");
-const MATHS_IMAGE = require("@/assets/images/maths.png");
-const RESILIENCE_IMAGE = require("@/assets/images/resilience.png");
-
 export default function ProfileScreen() {
   const [name, setName] = useState("");
   const [selectedColor, setSelectedColor] = useState<string>("#FF6B35");
@@ -74,7 +68,6 @@ export default function ProfileScreen() {
   const [editColor, setEditColor] = useState<string>("#FF6B35");
   const [editTeam, setEditTeam] = useState<number | null>(null);
   const [showAddExplorer, setShowAddExplorer] = useState(false);
-  const [userBadges, setUserBadges] = useState<UserBadge[]>([]);
   const [recentActivities, setRecentActivities] = useState<
     RecentCompletedActivity[]
   >([]);
@@ -128,10 +121,8 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (currentPlayer && user) {
-      getUserBadges(user.id, currentPlayer.id).then(setUserBadges).catch(() => setUserBadges([]));
       getRecentCompletedActivities(currentPlayer.id).then(setRecentActivities).catch(() => setRecentActivities([]));
     } else {
-      setUserBadges([]);
       setRecentActivities([]);
     }
   }, [currentPlayer?.id, user?.id]);
@@ -361,52 +352,6 @@ export default function ProfileScreen() {
           justifyContent: "center",
           gap: scaleW(16),
           paddingHorizontal: scaleW(12),
-        },
-        skillsCard: {
-          backgroundColor: COLORS.white,
-          borderRadius: scaleW(20),
-          padding: scaleW(20),
-          alignItems: "center",
-        },
-        skillsRow: {
-          flexDirection: "row",
-          justifyContent: "space-around",
-          width: "100%",
-          marginBottom: scaleW(12),
-          paddingVertical: scaleW(20),
-        },
-        skillItem: {
-          alignItems: "center",
-        },
-        skillIcon: {
-          width: scaleW(24),
-          height: scaleW(24),
-        },
-        skillLabel: {
-          fontSize: scaleW(14),
-          color: COLORS.black,
-          fontWeight: "600",
-          marginTop: scaleW(6),
-        },
-        skillsTitle: {
-          fontSize: scaleW(18),
-          fontWeight: "600",
-          color: COLORS.black,
-        },
-        badgesWrap: {
-          flexDirection: "row",
-          flexWrap: "wrap",
-          gap: scaleW(12),
-        },
-        badgeIcon: {
-          width: scaleW(100),
-          height: scaleW(100),
-          alignItems: "center",
-          justifyContent: "center",
-        },
-        badgeImage: {
-          width: scaleW(100),
-          height: scaleW(100),
         },
         activityCard: {
           flexDirection: "row",
@@ -703,67 +648,6 @@ export default function ProfileScreen() {
               label="Points Earned"
               color="green"
             />
-          </View>
-        </Animated.View>
-
-        {/* Top Skills */}
-        <Animated.View
-          entering={FadeInDown.duration(500).delay(280).springify().damping(18)}
-          style={styles.section}
-        >
-          <View style={styles.skillsCard}>
-            <View style={styles.skillsRow}>
-              <View style={styles.skillItem}>
-                <Image
-                  source={PLANTING_IMAGE}
-                  style={styles.skillIcon}
-                  resizeMode="contain"
-                />
-                <ThemedText type="heading" style={styles.skillLabel}>Planting</ThemedText>
-              </View>
-              <View style={styles.skillItem}>
-                <Image
-                  source={MATHS_IMAGE}
-                  style={styles.skillIcon}
-                  resizeMode="contain"
-                />
-                <ThemedText type="heading" style={styles.skillLabel}>Maths</ThemedText>
-              </View>
-              <View style={styles.skillItem}>
-                <Image
-                  source={RESILIENCE_IMAGE}
-                  style={styles.skillIcon}
-                  resizeMode="contain"
-                />
-                <ThemedText type="heading" style={styles.skillLabel}>Resilience</ThemedText>
-              </View>
-            </View>
-            <ThemedText type="heading" style={styles.skillsTitle}>Top Skills</ThemedText>
-          </View>
-        </Animated.View>
-
-        {/* Your badges */}
-        <Animated.View
-          entering={FadeInDown.duration(500).delay(380).springify().damping(18)}
-          style={styles.section}
-        >
-          <ThemedText type="heading" style={styles.sectionTitle}>Your badges</ThemedText>
-          <View style={styles.badgesWrap}>
-            {(userBadges.length > 0
-              ? userBadges.slice(0, 5)
-              : [1, 2, 3, 4, 5]
-            ).map((item, i) => (
-              <View
-                key={typeof item === "number" ? `badge-placeholder-${item}` : item.id}
-                style={styles.badgeIcon}
-              >
-                <Image
-                  source={BADGE_IMAGE}
-                  style={styles.badgeImage}
-                  resizeMode="contain"
-                />
-              </View>
-            ))}
           </View>
         </Animated.View>
 

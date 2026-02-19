@@ -82,6 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           const userData = {
             id: session.user.id,
             email: session.user.email,
+            created_at: session.user.created_at,
           };
           updateUser(userData);
         } else {
@@ -106,6 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           const userData = {
             id: session.user.id,
             email: session.user.email,
+            created_at: session.user.created_at,
           };
           await updateUser(userData);
         }
@@ -126,6 +128,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           const userData = {
             id: session.user.id,
             email: session.user.email,
+            created_at: session.user.created_at,
           };
           await updateUser(userData);
         }

@@ -39,6 +39,7 @@ import {
   getRecentCompletedActivities,
   type RecentCompletedActivity,
 } from "@/services/activityProgressService";
+import { useUserStats } from "@/hooks/useUserStats";
 import { MaterialIcons } from "@expo/vector-icons";
 import { BackHeader } from "@/components/BackHeader";
 
@@ -69,10 +70,13 @@ export default function ProfileScreen() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [editingProfileId, setEditingProfileId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [editNickname, setEditNickname] = useState("");
   const [editColor, setEditColor] = useState<string>("#FF6B35");
   const [editTeam, setEditTeam] = useState<number | null>(null);
+  const [addNickname, setAddNickname] = useState(() => generateNickname());
+  const [showAddForm, setShowAddForm] = useState(false);
   const [showAddExplorer, setShowAddExplorer] = useState(false);
   const [userBadges, setUserBadges] = useState<UserBadge[]>([]);
   const [recentActivities, setRecentActivities] = useState<
@@ -81,8 +85,18 @@ export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const { currentPlayer, profiles, setCurrentPlayer, refreshProfiles } =
     usePlayer();
+  const { daysPlayed, pointsEarned } = useUserStats();
   const router = useRouter();
   const { scaleW } = useLayoutScale();
+
+  const sortedProfiles = useMemo(
+    () =>
+      [...profiles].sort(
+        (a, b) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      ),
+    [profiles]
+  );
 
   const editScale = useSharedValue(1);
   const parentZoneScale = useSharedValue(1);
@@ -137,13 +151,14 @@ export default function ProfileScreen() {
   }, [currentPlayer?.id, user?.id]);
 
   useEffect(() => {
-    if (currentPlayer && isEditing) {
-      setEditName(currentPlayer.name);
-      setEditNickname(currentPlayer.nickname || generateNickname());
-      setEditColor(currentPlayer.colour);
-      setEditTeam(currentPlayer.team);
+    const profile = editingProfileId != null ? profiles.find((p) => p.id === editingProfileId) : null;
+    if (profile) {
+      setEditName(profile.name);
+      setEditNickname(profile.nickname || generateNickname());
+      setEditColor(profile.colour);
+      setEditTeam(profile.team);
     }
-  }, [isEditing, currentPlayer?.id]);
+  }, [editingProfileId, profiles]);
 
   const handleCreateProfile = async () => {
     if (!name.trim() || !selectedTeam) {
@@ -180,8 +195,8 @@ export default function ProfileScreen() {
   };
 
   const handleSelectPlayer = (profile: Profile) => {
+    if (isEditing) return;
     setCurrentPlayer(profile);
-    setIsEditing(false);
     Alert.alert(
       "Explorer Selected! 🎉",
       `${profile.name} is now your active explorer!`,
@@ -189,27 +204,33 @@ export default function ProfileScreen() {
     );
   };
 
+  const handleExpandEdit = (profile: Profile) => {
+    setShowAddForm(false);
+    setEditingProfileId(profile.id);
+    setEditName(profile.name);
+    setEditNickname(profile.nickname || generateNickname());
+    setEditColor(profile.colour);
+    setEditTeam(profile.team);
+  };
+
   const handleSaveEdit = async () => {
-    if (
-      !currentPlayer ||
-      !editName.trim() ||
-      !editNickname.trim() ||
-      !editTeam
-    ) {
+    if (editingProfileId == null || !editName.trim() || !editNickname.trim()) {
       Alert.alert("Error", "Please fill in all fields");
       return;
     }
+    const profile = profiles.find((p) => p.id === editingProfileId);
+    if (!profile) return;
     setLoading(true);
     try {
-      const updatedProfile = await updateProfile(currentPlayer.id, {
+      const updatedProfile = await updateProfile(editingProfileId, {
         name: editName.trim(),
         nickname: editNickname.trim(),
         colour: editColor,
-        team: editTeam,
+        team: profile.team,
       });
-      setCurrentPlayer(updatedProfile);
+      if (currentPlayer?.id === editingProfileId) setCurrentPlayer(updatedProfile);
       await refreshProfiles();
-      setIsEditing(false);
+      setEditingProfileId(null);
       Alert.alert("Success", "Explorer updated successfully!");
     } catch (error) {
       const msg =
@@ -221,11 +242,46 @@ export default function ProfileScreen() {
   };
 
   const handleCancelEdit = () => {
+    setEditingProfileId(null);
+  };
+
+  const handleDoneEditing = () => {
     setIsEditing(false);
-    setEditName("");
-    setEditNickname("");
-    setEditColor("#FF6B35");
-    setEditTeam(null);
+    setEditingProfileId(null);
+    setShowAddForm(false);
+  };
+
+  const handleAddExplorerInline = async () => {
+    if (!name.trim() || !user) {
+      Alert.alert("Error", "Please fill in name");
+      return;
+    }
+    const defaultTeam = currentPlayer?.team ?? teams[0]?.id;
+    if (defaultTeam == null) {
+      Alert.alert("Error", "No team available. Please try again later.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await createProfile({
+        user_id: user.id,
+        name: name.trim(),
+        nickname: addNickname.trim() || generateNickname(),
+        colour: selectedColor,
+        team: defaultTeam,
+      });
+      await refreshProfiles();
+      setName("");
+      setAddNickname(generateNickname());
+      setShowAddForm(false);
+      Alert.alert("Explorer created", "Your new explorer has been added.");
+    } catch (error) {
+      const msg =
+        error instanceof Error ? error.message : "Failed to create explorer";
+      Alert.alert("Error", msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const formatActivityDate = (dateStr: string | null) => {
@@ -246,17 +302,6 @@ export default function ProfileScreen() {
     ];
     return `Completed ${day}${suffix} ${months[d.getMonth()]} ${d.getFullYear()}`;
   };
-
-  const daysPlayed =
-    recentActivities.length > 0
-      ? new Set(
-          recentActivities
-            .map((a) => a.completed_at && a.completed_at.slice(0, 10))
-            .filter(Boolean)
-        ).size
-      : 0;
-
-  const pointsEarned = currentPlayer?.xp ?? 0;
 
   const styles = useMemo(
     () =>
@@ -341,6 +386,9 @@ export default function ProfileScreen() {
           fontSize: scaleW(14),
           color: COLORS.charcoal,
           marginTop: scaleW(2),
+        },
+        addNewPlayerCard: {
+          marginTop: scaleW(4),
         },
         addExplorerRow: {
           flexDirection: "row",
@@ -605,6 +653,37 @@ export default function ProfileScreen() {
           color: COLORS.charcoal,
           fontWeight: "600",
         },
+        inlineFormPadding: {
+          padding: scaleW(24),
+        },
+        inlineFormLabel: {
+          fontSize: scaleW(16),
+          fontWeight: "600",
+          color: COLORS.charcoal,
+          marginBottom: scaleW(4),
+        },
+        inlineFormHint: {
+          fontSize: scaleW(12),
+          color: COLORS.charcoal,
+          marginBottom: scaleW(8),
+        },
+        inlineFormInput: {
+          height: scaleW(48),
+          borderWidth: 2,
+          borderColor: COLORS.accentGreen,
+          borderRadius: scaleW(12),
+          paddingHorizontal: scaleW(16),
+          fontSize: scaleW(16),
+          color: COLORS.charcoal,
+          backgroundColor: COLORS.white,
+          marginBottom: scaleW(16),
+        },
+        inlineAddCard: {
+          backgroundColor: COLORS.cream,
+          borderRadius: scaleW(20),
+          padding: scaleW(24),
+          marginTop: scaleW(8),
+        },
       }),
     [scaleW]
   );
@@ -628,61 +707,203 @@ export default function ProfileScreen() {
         >
           <View style={styles.sectionHeader}>
             <ThemedText type="heading" style={styles.sectionTitle}>Your players</ThemedText>
-            <Animated.View style={editAnimatedStyle}>
-              <Pressable
-                onPress={() => profiles.length > 0 && setIsEditing(true)}
-                onPressIn={() => {
-                  editScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-                }}
-                onPressOut={() => {
-                  editScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-                }}
-                style={styles.editIconWrap}
-                hitSlop={12}
-              >
-                <MaterialIcons
-                  name="edit"
-                  size={22}
-                  color={COLORS.white}
-                />
+            {isEditing ? (
+              <Pressable onPress={handleDoneEditing} style={styles.editIconWrap} hitSlop={12}>
+                <ThemedText style={{ fontSize: scaleW(16), fontWeight: "600", color: COLORS.white }}>Done</ThemedText>
               </Pressable>
-            </Animated.View>
+            ) : (
+              <Animated.View style={editAnimatedStyle}>
+                <Pressable
+                  onPress={() => setIsEditing(true)}
+                  onPressIn={() => {
+                    editScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+                  }}
+                  onPressOut={() => {
+                    editScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+                  }}
+                  style={styles.editIconWrap}
+                  hitSlop={12}
+                >
+                  <MaterialIcons name="edit" size={22} color={COLORS.white} />
+                </Pressable>
+              </Animated.View>
+            )}
           </View>
-          {profiles.length === 0 ? (
+
+          {!isEditing && profiles.length === 0 && (
             <View style={styles.cardCream}>
               <ThemedText style={styles.cardTextPrimary}>No players yet</ThemedText>
               <ThemedText style={styles.cardTextSecondary}>
-                Add an explorer to get started
+                Tap Edit to add an explorer
               </ThemedText>
             </View>
-          ) : (
-            profiles.map((profile, index) => (
-              <Animated.View
-                key={profile.id}
-                entering={FadeInDown.duration(400).delay(80 + index * 60).springify().damping(18)}
+          )}
+
+          {!isEditing && sortedProfiles.length > 0 && sortedProfiles.map((profile, index) => (
+            <Animated.View
+              key={profile.id}
+              entering={FadeInDown.duration(400).delay(80 + index * 60).springify().damping(18)}
+            >
+              <Pressable
+                style={[
+                  styles.playerCard,
+                  currentPlayer?.id === profile.id && styles.playerCardSelected,
+                ]}
+                onPress={() => handleSelectPlayer(profile)}
               >
-                <Pressable
+                <View
                   style={[
-                    styles.playerCard,
-                    currentPlayer?.id === profile.id && styles.playerCardSelected,
+                    styles.playerAccent,
+                    { backgroundColor: profile.colour || PLAYER_ACCENTS[index % PLAYER_ACCENTS.length] },
                   ]}
-                  onPress={() => handleSelectPlayer(profile)}
-                >
+                />
+                <View style={styles.playerCardContent}>
+                  <ThemedText type="heading" style={styles.playerName}>{profile.name}</ThemedText>
+                  <ThemedText style={styles.playerNickname}>
+                    {profile.nickname || "Explorer"}
+                  </ThemedText>
+                </View>
+              </Pressable>
+            </Animated.View>
+          ))}
+
+          {isEditing && (
+            <>
+              {sortedProfiles.map((profile, index) => {
+                const isExpanded = editingProfileId === profile.id;
+                return (
                   <View
+                    key={profile.id}
                     style={[
-                      styles.playerAccent,
-                      { backgroundColor: profile.colour || PLAYER_ACCENTS[index % PLAYER_ACCENTS.length] },
+                      styles.playerCard,
+                      { marginBottom: scaleW(12), minHeight: undefined },
                     ]}
-                  />
+                  >
+                    <View
+                      style={[
+                        styles.playerAccent,
+                        { backgroundColor: isExpanded ? editColor : (profile.colour || PLAYER_ACCENTS[index % PLAYER_ACCENTS.length]) },
+                      ]}
+                    />
+                    <View style={{ flex: 1 }}>
+                      {isExpanded ? (
+                        <View style={styles.inlineFormPadding}>
+                          <ThemedText style={styles.inlineFormLabel}>Name</ThemedText>
+                          <TextInput
+                            style={styles.inlineFormInput}
+                            placeholder="Enter name"
+                            placeholderTextColor="#9CA3AF"
+                            value={editName}
+                            onChangeText={setEditName}
+                            autoCapitalize="words"
+                          />
+                          <ThemedText style={styles.inlineFormLabel}>Explorer Nickname</ThemedText>
+                          <View style={styles.nicknameRow}>
+                            <View style={styles.nicknameDisplay}>
+                              <ThemedText style={styles.nicknameText}>{editNickname}</ThemedText>
+                            </View>
+                            <Pressable
+                              style={styles.generateBtn}
+                              onPress={() => setEditNickname(generateNickname())}
+                            >
+                              <ThemedText style={styles.generateBtnText}>🎲 Generate</ThemedText>
+                            </Pressable>
+                          </View>
+                          <ThemedText style={styles.inlineFormLabel}>Colour</ThemedText>
+                          <View style={styles.colorPickerWrap}>
+                            <ColorPicker
+                              selectedColor={editColor}
+                              onColorSelect={setEditColor}
+                              size="medium"
+                            />
+                          </View>
+                          <View style={styles.modalActions}>
+                            <Pressable style={[styles.modalButton, styles.modalButtonCancel]} onPress={handleCancelEdit}>
+                              <ThemedText style={styles.modalButtonCancelText}>Cancel</ThemedText>
+                            </Pressable>
+                            <Pressable
+                              style={[styles.modalButton, styles.modalButtonSave]}
+                              onPress={handleSaveEdit}
+                              disabled={loading}
+                            >
+                              {loading ? <ActivityIndicator color={COLORS.white} /> : <ThemedText style={styles.modalButtonSaveText}>Save</ThemedText>}
+                            </Pressable>
+                          </View>
+                        </View>
+                      ) : (
+                        <Pressable
+                          onPress={() => handleExpandEdit(profile)}
+                          style={{ flexDirection: "row", alignItems: "center", paddingVertical: scaleW(16), paddingHorizontal: scaleW(20) }}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <ThemedText type="heading" style={styles.playerName}>{profile.name}</ThemedText>
+                            <ThemedText style={styles.playerNickname}>{profile.nickname || "Explorer"}</ThemedText>
+                          </View>
+                          <MaterialIcons name="edit" size={scaleW(22)} color={COLORS.darkGreen} />
+                        </Pressable>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
+
+              {(editingProfileId !== null || (editingProfileId === null && !showAddForm)) && (
+                <Pressable
+                  onPress={() => {
+                    setEditingProfileId(null);
+                    setShowAddForm(true);
+                  }}
+                  style={[styles.playerCard, styles.addNewPlayerCard]}
+                >
+                  <View style={[styles.playerAccent, { backgroundColor: COLORS.accentGreen }]} />
                   <View style={styles.playerCardContent}>
-                    <ThemedText type="heading" style={styles.playerName}>{profile.name}</ThemedText>
-                    <ThemedText style={styles.playerNickname}>
-                      {profile.nickname || "Explorer"}
-                    </ThemedText>
+                    <ThemedText type="heading" style={styles.playerName}>Add a new player</ThemedText>
+                  </View>
+                  <View style={{ justifyContent: "center", marginRight: scaleW(16) }}>
+                    <MaterialIcons name="add" size={scaleW(24)} color={COLORS.darkGreen} />
                   </View>
                 </Pressable>
-              </Animated.View>
-            ))
+              )}
+
+              {editingProfileId === null && showAddForm && (
+                <View style={styles.inlineAddCard}>
+                  <ThemedText style={styles.inlineFormLabel}>Name</ThemedText>
+                  <ThemedText style={styles.inlineFormHint}>(Only visible to you)</ThemedText>
+                  <TextInput
+                    style={styles.inlineFormInput}
+                    placeholder="Enter name"
+                    placeholderTextColor="#9CA3AF"
+                    value={name}
+                    onChangeText={setName}
+                    autoCapitalize="words"
+                  />
+                  <ThemedText style={styles.inlineFormLabel}>Explorer Nickname</ThemedText>
+                  <View style={styles.nicknameRow}>
+                    <View style={styles.nicknameDisplay}>
+                      <ThemedText style={styles.nicknameText}>{addNickname}</ThemedText>
+                    </View>
+                    <Pressable style={styles.generateBtn} onPress={() => setAddNickname(generateNickname())}>
+                      <ThemedText style={styles.generateBtnText}>🎲 Generate</ThemedText>
+                    </Pressable>
+                  </View>
+                  <ThemedText style={styles.inlineFormLabel}>Colour</ThemedText>
+                  <View style={styles.colorPickerWrap}>
+                    <ColorPicker selectedColor={selectedColor} onColorSelect={setSelectedColor} size="medium" />
+                  </View>
+                  <Pressable
+                    style={[styles.modalButton, styles.modalButtonSave, { marginTop: scaleW(12) }]}
+                    onPress={handleAddExplorerInline}
+                    disabled={loading || !name.trim()}
+                  >
+                    {loading ? (
+                      <ActivityIndicator color={COLORS.white} />
+                    ) : (
+                      <ThemedText style={styles.modalButtonSaveText}>Add Explorer</ThemedText>
+                    )}
+                  </Pressable>
+                </View>
+              )}
+            </>
           )}
         </Animated.View>
 
@@ -706,7 +927,7 @@ export default function ProfileScreen() {
           </View>
         </Animated.View>
 
-        {/* Top Skills */}
+        {/* Top Skills — commented out
         <Animated.View
           entering={FadeInDown.duration(500).delay(280).springify().damping(18)}
           style={styles.section}
@@ -741,8 +962,9 @@ export default function ProfileScreen() {
             <ThemedText type="heading" style={styles.skillsTitle}>Top Skills</ThemedText>
           </View>
         </Animated.View>
+        */}
 
-        {/* Your badges */}
+        {/* Your badges — commented out
         <Animated.View
           entering={FadeInDown.duration(500).delay(380).springify().damping(18)}
           style={styles.section}
@@ -766,6 +988,7 @@ export default function ProfileScreen() {
             ))}
           </View>
         </Animated.View>
+        */}
 
         {/* Recent activities */}
         <Animated.View
@@ -848,103 +1071,6 @@ export default function ProfileScreen() {
           </Pressable>
         </Animated.View>
       </ScrollView>
-
-      {/* Edit modal */}
-      <Modal
-        visible={isEditing}
-        animationType="slide"
-        transparent
-        onRequestClose={handleCancelEdit}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <ThemedText style={styles.modalTitle}>Edit Explorer</ThemedText>
-            <TextInput
-              style={styles.input}
-              placeholder="Explorer Name"
-              placeholderTextColor="#8B4513"
-              value={editName}
-              onChangeText={setEditName}
-              autoCapitalize="words"
-            />
-            <ThemedText style={styles.inputLabel}>Adventure Nickname</ThemedText>
-            <View style={styles.nicknameRow}>
-              <View style={styles.nicknameDisplay}>
-                <ThemedText style={styles.nicknameText}>{editNickname}</ThemedText>
-              </View>
-              <Pressable
-                style={styles.generateBtn}
-                onPress={() => setEditNickname(generateNickname())}
-              >
-                <ThemedText style={styles.generateBtnText}>🎲 Generate</ThemedText>
-              </Pressable>
-            </View>
-            <ThemedText style={styles.inputLabel}>Choose Your Color</ThemedText>
-            <View style={styles.colorPickerWrap}>
-              <ColorPicker
-                selectedColor={editColor}
-                onColorSelect={setEditColor}
-                size="medium"
-              />
-            </View>
-            <ThemedText style={styles.inputLabel}>Choose Your Team</ThemedText>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.teamsScroll}
-            >
-              {teams.map((team) => {
-                const teamImage = getTeamImageSource(team.name);
-                const isSelected = editTeam === team.id;
-                return (
-                  <Pressable
-                    key={team.id}
-                    onPress={() => setEditTeam(team.id)}
-                    style={[
-                      styles.teamOption,
-                      isSelected && styles.teamOptionSelected,
-                    ]}
-                  >
-                    {teamImage ? (
-                      <Image
-                        source={teamImage}
-                        style={styles.teamImage}
-                        resizeMode="contain"
-                      />
-                    ) : (
-                      <View
-                        style={[
-                          styles.teamColorDot,
-                          { backgroundColor: team.colour || "#ccc" },
-                        ]}
-                      />
-                    )}
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-            <View style={styles.modalActions}>
-              <Pressable
-                style={[styles.modalButton, styles.modalButtonCancel]}
-                onPress={handleCancelEdit}
-              >
-                <ThemedText style={styles.modalButtonCancelText}>Cancel</ThemedText>
-              </Pressable>
-              <Pressable
-                style={[styles.modalButton, styles.modalButtonSave]}
-                onPress={handleSaveEdit}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color={COLORS.white} />
-                ) : (
-                  <ThemedText style={styles.modalButtonSaveText}>Save</ThemedText>
-                )}
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
 
       {/* Add explorer modal */}
       <Modal

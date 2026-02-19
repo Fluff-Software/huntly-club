@@ -200,3 +200,23 @@ export const getTeamAchievementTotals = async (): Promise<Record<number, number>
   }
   return byTeam;
 };
+
+/**
+ * Returns total XP from user_achievements for the given profile IDs (e.g. all of a user's profiles).
+ */
+export const getTotalXpForProfileIds = async (
+  profileIds: number[]
+): Promise<number> => {
+  if (profileIds.length === 0) return 0;
+  const { data, error } = await supabase
+    .from("user_achievements")
+    .select("xp")
+    .in("profile_id", profileIds);
+
+  if (error) {
+    console.error("Error fetching total XP for profiles:", error);
+    return 0;
+  }
+
+  return (data ?? []).reduce((sum, row) => sum + (row.xp ?? 0), 0);
+};

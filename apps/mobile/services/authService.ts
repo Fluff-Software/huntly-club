@@ -41,6 +41,7 @@ export const checkEmailAvailable = async (email: string): Promise<{ available: b
 export type User = {
   id: string;
   email: string | undefined;
+  created_at?: string;
 };
 
 export type Session = {
@@ -124,6 +125,7 @@ export const getCurrentUser = async (): Promise<User | null> => {
   return {
     id: data.user.id,
     email: data.user.email,
+    created_at: data.user.created_at,
   };
 };
 

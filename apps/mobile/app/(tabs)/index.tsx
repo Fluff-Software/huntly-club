@@ -25,6 +25,7 @@ import { MissionCard } from "@/components/MissionCard";
 import { StatCard } from "@/components/StatCard";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useCurrentChapterActivities } from "@/hooks/useCurrentChapterActivities";
+import { useUserStats } from "@/hooks/useUserStats";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { getTeamById } from "@/services/profileService";
 import { getRandomClubPhotos, type ClubPhotoCardItem } from "@/services/activityProgressService";
@@ -49,6 +50,7 @@ const CLUB_CARD_AUTHOR_COLORS = [
 export default function HomeScreen() {
   const { scaleW, width, height } = useLayoutScale();
   const { currentPlayer } = usePlayer();
+  const { daysPlayed, pointsEarned } = useUserStats();
   const { nextMission, loading: missionLoading } = useCurrentChapterActivities(currentPlayer?.id ?? null);
   const [teamName, setTeamName] = useState<string | null>(null);
   const [clubCards, setClubCards] = useState<ClubPhotoCardItem[]>([]);
@@ -402,12 +404,12 @@ export default function HomeScreen() {
           paddingHorizontal: scaleW(12),
         }}>
           <StatCard
-            value={41}
+            value={daysPlayed}
             label="Days played"
             color="pink"
           />
           <StatCard
-            value={139}
+            value={pointsEarned}
             label="Points Earned"
             color="green"
           />

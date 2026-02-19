@@ -85,7 +85,6 @@ export default function SocialScreen() {
     return teamOrder.map((name) => {
       const total = teamAchievementTotals[teamIdByName[name]] ?? 0;
       const designHeight = minDesign + (total / maxTotal) * (maxDesign - minDesign);
-      console.log(`${name} total: ${total}, designHeight: ${designHeight}`);
       return scaleW(designHeight);
     });
   }, [scaleW, allTeams, teamAchievementTotals]);

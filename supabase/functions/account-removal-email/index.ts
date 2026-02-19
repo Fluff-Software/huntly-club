@@ -56,12 +56,12 @@ function buildContent(type: EmailType): { html: string; text: string } {
     case "processed": {
       const html = `
         <p style="margin: 0 0 16px; color: #36454F;">Your account removal request has been approved and processed.</p>
-        <p style="margin: 0 0 16px; color: #36454F;">Your personal data has been removed from Huntly World. Payment and subscription records are retained as required.</p>
+        <p style="margin: 0 0 16px; color: #36454F;">Your personal data has been removed from Huntly World.</p>
         <p style="margin: 0; color: #36454F;">Thank you for having been part of Huntly World.</p>
       `;
       const text =
         "Your account removal request has been approved and processed.\n\n" +
-        "Your personal data has been removed from Huntly World. Payment and subscription records are retained as required.\n\n" +
+        "Your personal data has been removed from Huntly World.\n\n" +
         "Thank you for having been part of Huntly World.";
       return { html, text };
     }

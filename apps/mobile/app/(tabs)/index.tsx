@@ -47,6 +47,14 @@ const CLUB_CARD_AUTHOR_COLORS = [
   "#C97B6C", // dusty coral
 ];
 
+const TEAM_CARD_MESSAGES = [
+  "We're doing great helping test the wind clues this week!",
+  "We're making progress on the challenges this week!",
+  "We're doing well with the nature clues and teamwork!",
+  "We're having fun exploring and solving puzzles together!",
+  "We're doing great with the outdoor missions!",
+];
+
 export default function HomeScreen() {
   const { scaleW, width, height } = useLayoutScale();
   const { currentPlayer } = usePlayer();
@@ -59,6 +67,7 @@ export default function HomeScreen() {
   const initialIndex = 1; // activity (Welcome back)
   const [currentIndex, setCurrentIndex] = useState<number>(initialIndex);
   const currentMode = HOME_MODES[currentIndex] ?? "activity";
+  const teamCardMessage = useMemo(() => TEAM_CARD_MESSAGES[Math.floor(Math.random() * TEAM_CARD_MESSAGES.length)], []);
 
   useEffect(() => {
     let cancelled = false;
@@ -480,7 +489,7 @@ export default function HomeScreen() {
                 <View className="flex-1">
                   <ThemedText type="heading" style={{ color: "#000", fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(16) }}>{teamCardConfig.title}</ThemedText>
                   <ThemedText type="body" style={{ color: "#000", fontSize: scaleW(18), width: scaleW(170), lineHeight: scaleW(20) }}>
-                    We're doing great helping test the wind clues this week!
+                    {teamCardMessage}
                   </ThemedText>
                 </View>
                 <View style={{ width: scaleW(120) }}>

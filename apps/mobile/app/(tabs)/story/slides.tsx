@@ -587,23 +587,8 @@ export default function StorySlidesScreen() {
           height: scaleW(8),
           borderRadius: scaleW(4),
         },
-        backButton: {
-          position: "absolute",
-          top: insets.top + scaleW(8),
-          left: insets.left + scaleW(16),
-          zIndex: 10,
-          paddingVertical: scaleW(8),
-          paddingHorizontal: scaleW(16),
-          borderRadius: scaleW(20),
-          backgroundColor: "rgba(255,255,255,0.25)",
-        },
-        backButtonText: {
-          color: "#FFF",
-          fontSize: scaleW(15),
-          fontWeight: "600",
-        },
       }),
-    [scaleW, insets.top, insets.left, insets.bottom, width]
+    [scaleW, insets.bottom, width]
   );
 
   const renderItem = useCallback(
@@ -634,16 +619,6 @@ export default function StorySlidesScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <Pressable
-        onPress={() => router.back()}
-        style={styles.backButton}
-        accessible
-        accessibilityRole="button"
-        accessibilityLabel="Back to story"
-      >
-        <Text style={styles.backButtonText}>← Back</Text>
-      </Pressable>
-
       <View style={styles.slidesWrapper}>
         <FlatList
           ref={flatListRef}

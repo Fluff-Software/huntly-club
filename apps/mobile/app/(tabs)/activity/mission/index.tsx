@@ -10,7 +10,6 @@ import Animated, {
 } from "react-native-reanimated";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
-import { BackHeader } from "@/components/BackHeader";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { getActivityById, getActivityImageSource } from "@/services/packService";
 import { getRandomActivityPhotos, type ActivityPhotoItem } from "@/services/activityProgressService";
@@ -240,9 +239,6 @@ export default function InstructionScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <View style={{ paddingHorizontal: scaleW(20), paddingBottom: scaleW(4), backgroundColor: LIGHT_GREEN }}>
-        <BackHeader backToLabel="Missions" variant="light" />
-      </View>
       <ScrollView
         style={styles.pageInner}
         contentContainerStyle={{ paddingBottom: scaleW(100) }}

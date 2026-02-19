@@ -9,7 +9,6 @@ import {
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
-import { BackHeader } from "@/components/BackHeader";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useChaptersWithActivities, type ChapterWithActivities } from "@/hooks/useAllChaptersActivities";
 import { MissionCard } from "@/components/MissionCard";
@@ -54,10 +53,12 @@ export default function MissionsScreen() {
         sectionBlock: {
           marginBottom: scaleW(28),
         },
-        cardWrap: {
-          marginBottom: scaleW(16),
+        cardRow: {
+          flexDirection: "row",
           paddingHorizontal: scaleW(20),
+          paddingRight: scaleW(32),
         },
+        cardWrap: {},
         loadingContainer: {
           paddingVertical: scaleW(48),
           alignItems: "center" as const,
@@ -81,9 +82,6 @@ export default function MissionsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <View style={{ paddingHorizontal: scaleW(20), paddingBottom: scaleW(4), backgroundColor: MISSIONS_ORANGE }}>
-        <BackHeader backToLabel="Clubhouse" variant="dark" />
-      </View>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={styles.scrollContent}
@@ -134,11 +132,17 @@ export default function MissionsScreen() {
                       <ThemedText style={styles.emptyText}>No missions for this chapter yet.</ThemedText>
                     </View>
                   ) : (
-                    chapters[0].activities.map((card) => (
-                      <View key={card.id} style={styles.cardWrap}>
-                        <MissionCard card={card} xp={card.xp} tiltDeg={0} />
-                      </View>
-                    ))
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.cardRow}
+                    >
+                      {chapters[0].activities.map((card) => (
+                        <View key={card.id} style={styles.cardWrap}>
+                          <MissionCard card={card} xp={card.xp} tiltDeg={0} />
+                        </View>
+                      ))}
+                    </ScrollView>
                   )}
                 </Animated.View>
 
@@ -162,11 +166,17 @@ export default function MissionsScreen() {
                             <ThemedText style={styles.emptyText}>No missions for this chapter yet.</ThemedText>
                           </View>
                         ) : (
-                          chapter.activities.map((card) => (
-                            <View key={card.id} style={styles.cardWrap}>
-                              <MissionCard card={card} xp={card.xp} tiltDeg={0} />
-                            </View>
-                          ))
+                          <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.cardRow}
+                          >
+                            {chapter.activities.map((card) => (
+                              <View key={card.id} style={styles.cardWrap}>
+                                <MissionCard card={card} xp={card.xp} tiltDeg={0} />
+                              </View>
+                            ))}
+                          </ScrollView>
                         )}
                       </Animated.View>
                     ))}

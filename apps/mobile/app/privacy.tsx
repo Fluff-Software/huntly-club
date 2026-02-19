@@ -5,7 +5,6 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/ThemedText";
-import { BackHeader } from "@/components/BackHeader";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { PRIVACY_POLICY_SECTIONS } from "@/constants/privacyPolicy";
 
@@ -27,9 +26,6 @@ export default function PrivacyScreen() {
           headerShown: false,
         }}
       />
-      <View style={[styles.header, { paddingHorizontal: scaleW(24), paddingBottom: scaleW(12) }]}>
-        <BackHeader backToLabel="Back" variant="light" />
-      </View>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[

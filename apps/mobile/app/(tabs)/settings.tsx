@@ -288,7 +288,6 @@ export default function SettingsScreen() {
           backgroundColor: COLORS.white,
           borderRadius: scaleW(24),
           padding: scaleW(24),
-          maxHeight: "85%",
         },
         modalTitle: {
           fontSize: scaleW(20),

@@ -67,7 +67,7 @@ export async function approveRemovalRequest(requestId: number): Promise<{ error?
 
     const { data: authUser } = await supabase.auth.admin.getUserById(userId);
     const currentEmail = authUser?.user?.email ?? "";
-    if (currentEmail && !currentEmail.endsWith("(REMOVED)")) {
+    if (currentEmail && !currentEmail.includes("(REMOVED)")) {
       try {
         await supabase.functions.invoke("account-removal-email", {
           body: { email: currentEmail, type: "processed" },
@@ -75,8 +75,19 @@ export async function approveRemovalRequest(requestId: number): Promise<{ error?
       } catch (e) {
         console.error("Failed to send account-removal-email (processed):", e);
       }
-      const newEmail = `${currentEmail}(REMOVED)`;
-      await supabase.auth.admin.updateUserById(userId, { email: newEmail });
+      // Append (REMOVED) to the local part so the result is a valid email (domain unchanged)
+      const atIndex = currentEmail.indexOf("@");
+      const newEmail =
+        atIndex > 0
+          ? `${currentEmail.slice(0, atIndex)}(REMOVED)${currentEmail.slice(atIndex)}`
+          : `${currentEmail}(REMOVED)`;
+      const { error: updateError } = await supabase.auth.admin.updateUserById(userId, {
+        email: newEmail,
+      });
+      if (updateError) {
+        console.error("Failed to update user email to (REMOVED):", updateError);
+        return { error: `Account data was removed but email could not be updated: ${updateError.message}` };
+      }
     }
 
     await supabase

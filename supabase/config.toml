@@ -318,3 +318,6 @@ verify_jwt = false
 
 [functions.photo-denied-email]
 verify_jwt = false
+
+[functions.account-removal-email]
+verify_jwt = false

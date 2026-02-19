@@ -19,6 +19,7 @@ type MissionCardProps = {
   tiltDeg?: number;
   marginTopOffset?: number;
   onStartPress?: () => void;
+  showStartButton?: boolean;
 };
 
 export function MissionCard({
@@ -27,6 +28,7 @@ export function MissionCard({
   tiltDeg = 0,
   marginTopOffset = 0,
   onStartPress,
+  showStartButton = true,
 }: MissionCardProps) {
   const { scaleW } = useLayoutScale();
 
@@ -53,7 +55,6 @@ export function MissionCard({
           shadowRadius: 2,
           shadowOffset: { width: 0, height: 2 },
           elevation: 2,
-          overflow: "hidden",
         },
         imageWrap: {
           width: "100%",
@@ -151,18 +152,20 @@ export function MissionCard({
         <ThemedText style={styles.description} numberOfLines={4} ellipsizeMode="tail">
           {card.description}
         </ThemedText>
-        <Pressable style={styles.startButton} onPress={handleStart}>
-          <ThemedText
-            type="heading"
-            style={{
-              fontSize: scaleW(16),
-              fontWeight: "600",
-              color: "#FFF",
-            }}
-          >
-            Start
-          </ThemedText>
-        </Pressable>
+        {showStartButton && (
+          <Pressable style={styles.startButton} onPress={handleStart}>
+            <ThemedText
+              type="heading"
+              style={{
+                fontSize: scaleW(16),
+                fontWeight: "600",
+                color: "#FFF",
+              }}
+            >
+              Start
+            </ThemedText>
+          </Pressable>
+        )}
       </View>
     </View>
   );

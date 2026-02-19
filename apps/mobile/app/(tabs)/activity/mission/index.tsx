@@ -391,7 +391,7 @@ export default function InstructionScreen() {
             }}
           >
             <ThemedText type="heading" style={styles.nextButtonText}>
-              Next
+              Complete Challenge
             </ThemedText>
           </Pressable>
         </Animated.View>

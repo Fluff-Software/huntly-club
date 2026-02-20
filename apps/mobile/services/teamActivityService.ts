@@ -1,5 +1,13 @@
 import { supabase } from "./supabase";
 
+/** Start and end of current month in ISO format for Supabase filters. */
+function getCurrentMonthRange(): { from: string; to: string } {
+  const now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth(), 1);
+  const to = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  return { from: from.toISOString(), to: to.toISOString() };
+}
+
 export interface TeamActivityLogEntry {
   id: number;
   profile_id: number;
@@ -137,16 +145,19 @@ export interface TeamAchievementEntry {
 }
 
 /**
- * Fetches user_achievements for a team. profile_name is resolved from profile_public (nickname).
+ * Fetches user_achievements for a team (current month only). profile_name is resolved from profile_public (nickname).
  */
 export const getTeamAchievements = async (
   teamId: number,
   limit: number = 20
 ): Promise<TeamAchievementEntry[]> => {
+  const { from, to } = getCurrentMonthRange();
   const { data: achievements, error: achievementsError } = await supabase
     .from("user_achievements")
     .select("id, profile_id, team_id, source, source_id, message, xp, created_at")
     .eq("team_id", teamId)
+    .gte("created_at", from)
+    .lte("created_at", to)
     .order("created_at", { ascending: false, nullsFirst: false })
     .order("id", { ascending: false })
     .limit(limit);
@@ -182,12 +193,15 @@ export const getTeamAchievements = async (
 };
 
 /**
- * Returns total XP from user_achievements per team_id (for chart scaling).
+ * Returns total XP from user_achievements per team_id for the current month (for chart scaling).
  */
 export const getTeamAchievementTotals = async (): Promise<Record<number, number>> => {
+  const { from, to } = getCurrentMonthRange();
   const { data, error } = await supabase
     .from("user_achievements")
-    .select("team_id, xp");
+    .select("team_id, xp")
+    .gte("created_at", from)
+    .lte("created_at", to);
 
   if (error) {
     console.error("Error fetching team achievement totals:", error);

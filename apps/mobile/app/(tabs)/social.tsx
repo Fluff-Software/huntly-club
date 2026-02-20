@@ -7,6 +7,7 @@ import {
   Image,
   StyleSheet,
   Animated as RNAnimated,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
@@ -32,6 +33,10 @@ const FOX_FACE_IMAGE = require("@/assets/images/fox-face.png");
 const OTTER_FACE_IMAGE = require("@/assets/images/otter-face.png");
 const CELEBRATE_IMAGE = require("@/assets/images/celebrate.png");
 const GET_STARTED_ICON_2_IMAGE = require("@/assets/images/get-started-icon-2.png");
+
+const ACHIEVEMENTS_INITIAL = 4;
+const ACHIEVEMENTS_PAGE_SIZE = 4;
+const LOAD_MORE_THRESHOLD = 40;
 
 const HEADER_ORANGE = "#F7A676";
 const PAGE_BG = "#EBCDBB";
@@ -67,6 +72,7 @@ export default function SocialScreen() {
   const [error, setError] = useState<string | null>(null);
   const [teamInfo, setTeamInfo] = useState<TeamInfo | null>(null);
   const [allTeams, setAllTeams] = useState<TeamInfo[]>([]);
+  const [visibleAchievementsCount, setVisibleAchievementsCount] = useState(ACHIEVEMENTS_INITIAL);
 
   const bearSlideAnim = useRef(new RNAnimated.Value(400)).current;
   const chartProgress = useSharedValue(0);
@@ -80,8 +86,8 @@ export default function SocialScreen() {
       1,
       ...teamOrder.map((name) => teamAchievementTotals[teamIdByName[name]] ?? 0)
     );
-    const minDesign = 40;
-    const maxDesign = 180;
+    const minDesign = 20;
+    const maxDesign = 220;
     return teamOrder.map((name) => {
       const total = teamAchievementTotals[teamIdByName[name]] ?? 0;
       const designHeight = minDesign + (total / maxTotal) * (maxDesign - minDesign);
@@ -153,6 +159,28 @@ export default function SocialScreen() {
   const achievements = useMemo(
     () => mapAchievementsToItems(teamAchievements),
     [teamAchievements]
+  );
+
+  useEffect(() => {
+    setVisibleAchievementsCount(ACHIEVEMENTS_INITIAL);
+  }, [teamAchievements]);
+
+  const visibleAchievements = useMemo(
+    () => achievements.slice(0, visibleAchievementsCount),
+    [achievements, visibleAchievementsCount]
+  );
+  const hasMoreAchievements = visibleAchievementsCount < achievements.length;
+  const showNoMoreMessage = achievements.length > ACHIEVEMENTS_INITIAL && !hasMoreAchievements;
+
+  const handleScroll = useCallback(
+    (event: { nativeEvent: { contentOffset: { y: number }; contentSize: { height: number }; layoutMeasurement: { height: number } } }) => {
+      const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+      const scrollEnd = contentOffset.y + layoutMeasurement.height;
+      if (contentSize.height - scrollEnd < LOAD_MORE_THRESHOLD && hasMoreAchievements) {
+        setVisibleAchievementsCount((prev) => Math.min(prev + ACHIEVEMENTS_PAGE_SIZE, achievements.length));
+      }
+    },
+    [hasMoreAchievements, achievements.length]
   );
 
   const teamCardConfig = useMemo(
@@ -326,6 +354,19 @@ export default function SocialScreen() {
           textAlign: "center",
           marginBottom: scaleW(8),
         },
+        loadingMoreWrap: {
+          paddingVertical: scaleW(24),
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        noMoreAchievements: {
+          fontSize: scaleW(14),
+          color: "#000",
+          opacity: 0.6,
+          textAlign: "center",
+          marginTop: scaleW(16),
+          marginBottom: scaleW(8),
+        },
       }),
     [scaleW]
   );
@@ -395,6 +436,8 @@ export default function SocialScreen() {
         showsVerticalScrollIndicator={false}
         bounces={false}
         overScrollMode="never"
+        onScroll={handleScroll}
+        scrollEventThrottle={200}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -460,7 +503,7 @@ export default function SocialScreen() {
           <Text style={styles.achievementsTitle}>Recent achievements</Text>
         </Animated.View>
         <View style={[styles.timeline, { position: "relative" }]}>
-          {achievements.map((item, index) => (
+          {visibleAchievements.map((item, index) => (
             <Animated.View
               key={item.id}
               entering={FadeInDown.duration(400).delay(450 + index * 60).springify().damping(18)}
@@ -490,6 +533,14 @@ export default function SocialScreen() {
               </View>
             </Animated.View>
           ))}
+          {hasMoreAchievements && (
+            <View style={styles.loadingMoreWrap}>
+              <ActivityIndicator size="small" color={CHART_BASELINE} />
+            </View>
+          )}
+          {showNoMoreMessage && (
+            <Text style={styles.noMoreAchievements}>No more achievements to load</Text>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>

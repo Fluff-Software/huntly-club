@@ -9,6 +9,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Image,
+  Platform,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
@@ -143,6 +144,7 @@ function ImageSlide({
       <BlurView
         intensity={80}
         tint="dark"
+        experimentalBlurMethod={Platform.OS === "android" ? "dimezisBlurView" : undefined}
         style={[StyleSheet.absoluteFill, slideStyles.slideImageBgLayer, { opacity: isActive ? 1 : 0 }]}
       />
       <View style={slideStyles.slideInner}>
@@ -216,6 +218,7 @@ function TextImageSlide({
       <BlurView
         intensity={80}
         tint="dark"
+        experimentalBlurMethod={Platform.OS === "android" ? "dimezisBlurView" : undefined}
         style={[StyleSheet.absoluteFill, slideStyles.slideImageBgLayer, { opacity: isActive ? 1 : 0 }]}
       />
       <View style={slideStyles.slideInner}>

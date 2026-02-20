@@ -35,6 +35,5 @@ ALTER TABLE "public"."activities"
   DROP COLUMN "hints",
   DROP COLUMN "tips";
 
-ALTER TABLE "public"."activities"
-  RENAME COLUMN "hints_new" TO "hints",
-  RENAME COLUMN "tips_new" TO "tips";
+ALTER TABLE "public"."activities" RENAME COLUMN "hints_new" TO "hints";
+ALTER TABLE "public"."activities" RENAME COLUMN "tips_new" TO "tips";

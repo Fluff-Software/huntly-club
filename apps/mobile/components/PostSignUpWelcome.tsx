@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from "react";
-import { View, Modal, StyleSheet, Dimensions, Image, ImageBackground } from "react-native";
+import { View, Modal, StyleSheet, Image, ImageBackground } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -15,7 +15,6 @@ import { useLayoutScale } from "@/hooks/useLayoutScale";
 const bounceSpring = { damping: 10, stiffness: 140 };
 const stepBounceSpring = { damping: 12, stiffness: 180 };
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const HUNTLY_GREEN = "#4F6F52";
 const CREAM = "#F4F0EB";
 const PARTY_PURPLE = "#C77DFF";
@@ -30,7 +29,7 @@ interface PostSignUpWelcomeProps {
 }
 
 export function PostSignUpWelcome({ visible, onDismiss }: PostSignUpWelcomeProps) {
-  const { scaleW } = useLayoutScale();
+  const { scaleW, width, height } = useLayoutScale();
   const router = useRouter();
   const [step, setStep] = React.useState<Step>("welcome");
   const cardScale = useSharedValue(0);
@@ -118,9 +117,9 @@ export function PostSignUpWelcome({ visible, onDismiss }: PostSignUpWelcomeProps
       },
       welcomeScreen: {
         width: scaleW(320),
-        maxWidth: SCREEN_WIDTH - scaleW(40),
+        maxWidth: width - scaleW(40),
         aspectRatio: imageAspectRatio > 0 ? imageAspectRatio : 0.75,
-        maxHeight: SCREEN_HEIGHT * 0.65,
+        maxHeight: height * 0.65,
         borderRadius: scaleW(24),
         overflow: "hidden" as const,
         shadowColor: PARTY_PURPLE,
@@ -183,10 +182,10 @@ export function PostSignUpWelcome({ visible, onDismiss }: PostSignUpWelcomeProps
             </Animated.View>
             <View style={StyleSheet.absoluteFill} pointerEvents="none">
               <ConfettiCannon
-                count={200}
-                origin={{ x: SCREEN_WIDTH / 2, y: SCREEN_HEIGHT / 2 - scaleW(40) }}
-                explosionSpeed={350}
-                fallSpeed={3500}
+                count={scaleW(200)}
+                origin={{ x: width / 2, y: height / 2 - scaleW(40) }}
+                explosionSpeed={scaleW(350)}
+                fallSpeed={scaleW(3500)}
                 fadeOut
                 autoStart
                 colors={[

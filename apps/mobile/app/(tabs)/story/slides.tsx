@@ -174,6 +174,8 @@ function TextImageSlide({
   onPress,
   scaleW,
   width,
+  height,
+  isTablet,
   slideStyles,
 }: {
   text: string;
@@ -182,6 +184,8 @@ function TextImageSlide({
   onPress: () => void;
   scaleW: (n: number) => number;
   width: number;
+  height: number;
+  isTablet: boolean;
   slideStyles: {
     slide: object;
     slideInner: object;
@@ -192,6 +196,9 @@ function TextImageSlide({
     slideImageBgLayer: object;
   };
 }) {
+  const imageWidth = width - scaleW(48);
+  const imageHeight = isTablet ? height * 0.5 : scaleW(280);
+  
   return (
     <Pressable
       onPress={onPress}
@@ -217,12 +224,12 @@ function TextImageSlide({
           style={[
             slideStyles.slideInner,
             slideStyles.slideImageWrap,
-            { width, opacity: isActive ? 1 : 0 },
+            { width: imageWidth, opacity: isActive ? 1 : 0 },
           ]}
         >
           <Image
             source={{ uri: imageUri }}
-            style={[slideStyles.slideImage, { flex: undefined, height: scaleW(240) }]}
+            style={[slideStyles.slideImage, { width: imageWidth, height: imageHeight, flex: undefined }]}
             resizeMode="contain"
             accessible={isActive}
             accessibilityRole="image"
@@ -245,6 +252,8 @@ function SlideItem({
   onPress,
   scaleW,
   width,
+  height,
+  isTablet,
   slideStyles,
 }: {
   slide: StorySlide;
@@ -252,6 +261,8 @@ function SlideItem({
   onPress: () => void;
   scaleW: (n: number) => number;
   width: number;
+  height: number;
+  isTablet: boolean;
   slideStyles: {
     slide: object;
     slideInner: object;
@@ -282,6 +293,8 @@ function SlideItem({
         onPress={onPress}
         scaleW={scaleW}
         width={width}
+        height={height}
+        isTablet={isTablet}
         slideStyles={slideStyles}
       />
     );
@@ -377,8 +390,8 @@ export default function StorySlidesScreen() {
   const { firstSeason, loading: seasonLoading } = useFirstSeason();
   const { chapters, loading: chaptersLoading } = useAllChapters();
   const dataLoading = seasonLoading || chaptersLoading;
-  const { width } = useWindowDimensions();
-  const { scaleW } = useLayoutScale();
+  const { width, height } = useWindowDimensions();
+  const { scaleW, isTablet } = useLayoutScale();
   const insets = useSafeAreaInsets();
   const flatListRef = useRef<FlatList>(null);
   const currentIndexRef = useRef(0);
@@ -599,10 +612,12 @@ export default function StorySlidesScreen() {
         onPress={goNext}
         scaleW={scaleW}
         width={width}
+        height={height}
+        isTablet={isTablet}
         slideStyles={styles}
       />
     ),
-    [currentIndex, goNext, scaleW, width, styles]
+    [currentIndex, goNext, scaleW, width, height, isTablet, styles]
   );
 
   if (!storyReady) {

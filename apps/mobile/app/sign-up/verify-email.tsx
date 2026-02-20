@@ -166,8 +166,8 @@ export default function VerifyEmailScreen() {
               style={{
                 textAlign: "center",
                 fontWeight: "600",
-                fontSize: scaleW(22),
-                marginBottom: scaleW(8),
+                fontSize: scaleW(26),
+                marginBottom: scaleW(12),
               }}
           >
             Check Your Email
@@ -180,20 +180,37 @@ export default function VerifyEmailScreen() {
               textAlign: "center",
               fontSize: scaleW(16),
               opacity: 0.95,
-              marginBottom: scaleW(20),
+              marginBottom: scaleW(8),
               lineHeight: scaleW(24),
-              maxWidth: scaleW(320),
             }}
           >
-            We've sent a confirmation link to{"\n"}
-            <ThemedText
-              lightColor="#FFFFFF"
-              darkColor="#FFFFFF"
-              style={{ fontWeight: "600" }}
-            >
-              {parentEmail}
-            </ThemedText>
-            {"\n\n"}
+            We've sent a confirmation link to
+          </ThemedText>
+          <ThemedText
+            lightColor="#FFFFFF"
+            darkColor="#FFFFFF"
+            style={{
+              textAlign: "center",
+              fontSize: scaleW(14),
+              fontWeight: "600",
+              opacity: 0.9,
+              marginBottom: scaleW(20),
+            }}
+          >
+            {parentEmail}
+          </ThemedText>
+          <ThemedText
+            lightColor="#FFFFFF"
+            darkColor="#FFFFFF"
+            style={{
+              textAlign: "center",
+              fontSize: scaleW(16),
+              opacity: 0.95,
+              marginBottom: scaleW(20),
+              lineHeight: scaleW(24),
+              maxWidth: scaleW(340),
+            }}
+          >
             Click the link in the email to continue setting up your explorers.
           </ThemedText>
 

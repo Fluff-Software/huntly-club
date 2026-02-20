@@ -309,7 +309,14 @@ export default function HomeScreen() {
         onPress={onPress}
         onPressIn={() => { navScale.value = withSpring(0.96, buttonSpring); }}
         onPressOut={() => { navScale.value = withSpring(1, buttonSpring); }}
-        className="bg-white/90 rounded-full px-4 py-2 flex-row items-center"
+        style={{
+          backgroundColor: "rgba(255, 255, 255, 0.9)",
+          borderRadius: scaleW(25),
+          paddingHorizontal: scaleW(16),
+          paddingVertical: scaleW(10),
+          flexDirection: "row",
+          alignItems: "center",
+        }}
       >
         {children}
       </Pressable>
@@ -317,28 +324,30 @@ export default function HomeScreen() {
   );
 
   const renderNavigationButtons = () => {
+    const navTextStyle = { fontSize: scaleW(14), color: "#4F6F52", fontWeight: "600" as const };
+    const arrowStyle = { fontSize: scaleW(14), color: "#4F6F52" };
+    
     if (currentMode === "profile") {
       return (
-        <View className="flex-row items-center justify-between px-6 pt-4">
-          <ThemedText type="body" className="text-white font-jua opacity-90">
-          </ThemedText>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: scaleW(24), paddingTop: scaleW(16) }}>
+          <View style={{ width: scaleW(100) }} />
           {wrapNavPressable(() => switchMode("activity"), (
             <>
-              <ThemedText type="body" className="text-huntly-forest font-jua">
+              <ThemedText type="body" style={navTextStyle}>
                 Activity
               </ThemedText>
-              <ThemedText className="text-huntly-forest ml-2 font-jua">→</ThemedText>
+              <ThemedText style={[arrowStyle, { marginLeft: scaleW(8) }]}>→</ThemedText>
             </>
           ))}
         </View>
       );
     } else if (currentMode === "activity") {
       return (
-        <View className="flex-row items-center justify-between px-6 pt-4">
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: scaleW(24), paddingTop: scaleW(16) }}>
           {wrapNavPressable(() => switchMode("profile"), (
             <>
-              <ThemedText className="text-huntly-forest mr-2 font-jua">←</ThemedText>
-              <ThemedText type="body" className="text-huntly-forest font-jua">
+              <ThemedText style={[arrowStyle, { marginRight: scaleW(8) }]}>←</ThemedText>
+              <ThemedText type="body" style={navTextStyle}>
                 Profile
               </ThemedText>
             </>
@@ -346,26 +355,26 @@ export default function HomeScreen() {
 
           {wrapNavPressable(() => switchMode("missions"), (
             <>
-              <ThemedText type="body" className="text-huntly-forest font-jua">
+              <ThemedText type="body" style={navTextStyle}>
                 Missions
               </ThemedText>
-              <ThemedText className="text-huntly-forest ml-2 font-jua">→</ThemedText>
+              <ThemedText style={[arrowStyle, { marginLeft: scaleW(8) }]}>→</ThemedText>
             </>
           ))}
         </View>
       );
     } else {
       return (
-        <View className="flex-row items-center justify-between px-6 pt-4">
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: scaleW(24), paddingTop: scaleW(16) }}>
           {wrapNavPressable(() => switchMode("activity"), (
             <>
-              <ThemedText className="text-huntly-forest mr-2 font-jua">←</ThemedText>
-              <ThemedText type="body" className="text-huntly-forest font-jua">
+              <ThemedText style={[arrowStyle, { marginRight: scaleW(8) }]}>←</ThemedText>
+              <ThemedText type="body" style={navTextStyle}>
                 Activity
               </ThemedText>
             </>
           ))}
-          <View style={{ width: scaleW(60) }} />
+          <View style={{ width: scaleW(100) }} />
         </View>
       );
     }
@@ -394,6 +403,7 @@ export default function HomeScreen() {
               alignSelf: "center",
               maxWidth: scaleW(200),
               fontSize: scaleW(24),
+              lineHeight: scaleW(32),
               fontWeight: "600",
               textAlign: "center",
               marginTop: scaleW(48),
@@ -468,8 +478,9 @@ export default function HomeScreen() {
           className="text-white"
           style={{
               alignSelf: "center",
-              maxWidth: scaleW(200),
+              maxWidth: scaleW(220),
               fontSize: scaleW(24),
+              lineHeight: scaleW(32),
               fontWeight: "600",
               textAlign: "center",
               marginTop: scaleW(16),
@@ -486,9 +497,9 @@ export default function HomeScreen() {
           <AnimatedReanimated.View style={bearCardStyle}>
             <View style={[styles.bearsCard, { backgroundColor: teamCardConfig.backgroundColor, borderWidth: 4, borderColor: "#FFF" }]}>
               <View className="flex-row items-center flex-1 overflow-hidden p-4">
-                <View className="flex-1">
-                  <ThemedText type="heading" style={{ color: "#000", fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(16) }}>{teamCardConfig.title}</ThemedText>
-                  <ThemedText type="body" style={{ color: "#000", fontSize: scaleW(18), width: scaleW(170), lineHeight: scaleW(20) }}>
+                <View style={{ flex: 1, paddingRight: scaleW(8) }}>
+                  <ThemedText type="heading" style={{ color: "#000", fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(12), lineHeight: scaleW(28) }}>{teamCardConfig.title}</ThemedText>
+                  <ThemedText type="body" style={{ color: "#000", fontSize: scaleW(16), lineHeight: scaleW(24) }}>
                     {teamCardMessage}
                   </ThemedText>
                 </View>
@@ -522,7 +533,7 @@ export default function HomeScreen() {
             }}
             collapsable={Platform.OS !== "android"}
           >
-            <ThemedText type="heading" style={{ color: "#000", fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(32), textAlign: "center" }}>
+            <ThemedText type="heading" style={{ color: "#000", fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(32), textAlign: "center", lineHeight: scaleW(28) }}>
               From around the club
             </ThemedText>
             {clubCardsLoading && clubCards.length === 0 ? (
@@ -640,6 +651,7 @@ export default function HomeScreen() {
           style={{
               alignSelf: "center",
               fontSize: scaleW(24),
+              lineHeight: scaleW(32),
               fontWeight: "600",
               textAlign: "center",
               marginTop: scaleW(48),

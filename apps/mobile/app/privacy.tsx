@@ -1,8 +1,9 @@
 import React from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
-import { Stack } from "expo-router";
+import { ScrollView, StyleSheet, View, Pressable } from "react-native";
+import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { MaterialIcons } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
@@ -26,6 +27,20 @@ export default function PrivacyScreen() {
           headerShown: false,
         }}
       />
+      <View style={[styles.header, { paddingHorizontal: scaleW(16), paddingVertical: scaleW(12) }]}>
+        <Pressable
+          onPress={() => router.back()}
+          style={({ pressed }) => [
+            styles.backButton,
+            { 
+              padding: scaleW(8),
+              opacity: pressed ? 0.7 : 1,
+            },
+          ]}
+        >
+          <MaterialIcons name="arrow-back" size={scaleW(24)} color={COLORS.darkGreen} />
+        </Pressable>
+      </View>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[
@@ -60,7 +75,8 @@ export default function PrivacyScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.white },
-  header: { backgroundColor: COLORS.white },
+  header: { backgroundColor: COLORS.white, flexDirection: "row", alignItems: "center" },
+  backButton: { borderRadius: 8 },
   scroll: { flex: 1, backgroundColor: COLORS.white },
   content: {},
   title: { color: COLORS.darkGreen },

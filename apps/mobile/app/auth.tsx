@@ -150,13 +150,13 @@ export default function AuthScreen() {
       <View
         style={{
           position: "absolute",
-          width: scaleW(800),
-          top: heroHeight - scaleW(36),
-          left: -scaleW(200),
+          width: width * 2,
+          top: heroHeight - scaleW(80),
+          left: -width / 2,
           bottom: 0,
           backgroundColor: HUNTLY_GREEN,
-          borderTopLeftRadius: "50%",
-          borderTopRightRadius: "50%",
+          borderTopLeftRadius: width,
+          borderTopRightRadius: width,
           zIndex: 1,
           overflow: "hidden",
         }}
@@ -175,13 +175,14 @@ export default function AuthScreen() {
         <View
           style={{
             position: "absolute",
-            left: 0,
+            left: width / 2,
             right: 0,
-            top: scaleW(130),
+            top: scaleW(180),
             paddingHorizontal: scaleW(24),
             paddingTop: scaleW(24),
             paddingBottom: scaleW(40),
             alignItems: "center",
+            width: width,
           }}
         >
           <Animated.View entering={FadeInDown.duration(500).delay(150).springify().damping(18)}>
@@ -191,9 +192,11 @@ export default function AuthScreen() {
               darkColor="#FFFFFF"
               style={{
                 marginBottom: scaleW(60),
+                marginTop: scaleW(20),
                 textAlign: "center",
                 fontWeight: "600",
-                fontSize: scaleW(26),
+                fontSize: scaleW(28),
+                lineHeight: scaleW(36),
               }}
             >
               Where curiosity grows.

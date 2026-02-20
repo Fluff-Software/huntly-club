@@ -44,19 +44,26 @@ export function LoginForm({ onCreateAccount }: LoginFormProps) {
   };
 
   return (
-    <View className="p-5 w-full max-w-sm rounded-2xl self-center">
+    <View 
+      style={{ 
+        padding: scaleW(20), 
+        width: "100%", 
+        maxWidth: scaleW(340),
+        alignSelf: "center",
+      }}
+    >
       {/* Logo/Character */}
-      <View className="items-center mb-6">
+      <View style={{ alignItems: "center", marginBottom: scaleW(24) }}>
         <Image
           source={require("@/assets/images/logo.png")}
-          style={{ width: scaleW(300), height: scaleW(300), marginBottom: scaleW(16) }}
+          style={{ width: scaleW(280), height: scaleW(280), marginBottom: scaleW(16) }}
           resizeMode="contain"
         />
         <ThemedText
           type="title"
           lightColor="#FFFFFF"
           darkColor="#FFFFFF"
-          style={{ textAlign: "center", marginBottom: 8 }}
+          style={{ textAlign: "center", marginBottom: scaleW(8), fontSize: scaleW(28) }}
         >
           Welcome to Huntly World!
         </ThemedText>
@@ -64,23 +71,50 @@ export function LoginForm({ onCreateAccount }: LoginFormProps) {
           type="body"
           lightColor="#FFFFFF"
           darkColor="#FFFFFF"
-          style={{ textAlign: "center", opacity: 0.95 }}
+          style={{ textAlign: "center", opacity: 0.95, fontSize: scaleW(16) }}
         >
           Ready for your next adventure?
         </ThemedText>
       </View>
 
       {/* Login Form */}
-      <View className="bg-white rounded-2xl p-6 shadow-soft">
+      <View 
+        style={{ 
+          backgroundColor: "#FFFFFF", 
+          borderRadius: scaleW(16), 
+          padding: scaleW(24),
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+          elevation: 3,
+        }}
+      >
         <ThemedText
           type="subtitle"
-          className="text-huntly-forest text-center mb-6"
+          style={{ 
+            textAlign: "center", 
+            marginBottom: scaleW(24),
+            fontSize: scaleW(20),
+          }}
         >
           Sign In
         </ThemedText>
 
         <TextInput
-          className="h-14 mb-4 border-2 border-huntly-mint rounded-xl px-4 bg-huntly-cream text-huntly-forest text-base"
+          style={{
+            height: scaleW(56),
+            marginBottom: scaleW(16),
+            borderWidth: 2,
+            borderColor: "#A8D5BA",
+            borderRadius: scaleW(12),
+            paddingHorizontal: scaleW(16),
+            backgroundColor: "#FDF8F3",
+            color: "#4F6F52",
+            fontSize: scaleW(16),
+            lineHeight: scaleW(22),
+            textAlignVertical: "center",
+          }}
           placeholder="Email"
           placeholderTextColor="#8B4513"
           value={email}
@@ -90,7 +124,19 @@ export function LoginForm({ onCreateAccount }: LoginFormProps) {
         />
 
         <TextInput
-          className="h-14 mb-6 border-2 border-huntly-mint rounded-xl px-4 bg-huntly-cream text-huntly-forest text-base"
+          style={{
+            height: scaleW(56),
+            marginBottom: scaleW(24),
+            borderWidth: 2,
+            borderColor: "#A8D5BA",
+            borderRadius: scaleW(12),
+            paddingHorizontal: scaleW(16),
+            backgroundColor: "#FDF8F3",
+            color: "#4F6F52",
+            fontSize: scaleW(16),
+            lineHeight: scaleW(22),
+            textAlignVertical: "center",
+          }}
           placeholder="Password"
           placeholderTextColor="#8B4513"
           value={password}
@@ -102,9 +148,12 @@ export function LoginForm({ onCreateAccount }: LoginFormProps) {
           onPress={() =>
             router.push("/auth/forgot-password" as Parameters<typeof router.push>[0])
           }
-          className="mb-4 items-center"
+          style={{ marginBottom: scaleW(16), alignItems: "center" }}
         >
-          <ThemedText type="link" className="text-huntly-leaf text-center">
+          <ThemedText 
+            type="link" 
+            style={{ textAlign: "center", fontSize: scaleW(14) }}
+          >
             Forgot your password?
           </ThemedText>
         </Pressable>
@@ -114,17 +163,21 @@ export function LoginForm({ onCreateAccount }: LoginFormProps) {
           size="large"
           onPress={handleSignIn}
           loading={loading}
-          className="mb-4"
+          style={{ marginBottom: scaleW(16) }}
         >
           Sign In
         </Button>
 
-        <Pressable onPress={onCreateAccount} className="items-center">
-          <ThemedText type="link" className="text-huntly-leaf text-center">
+        <Pressable onPress={onCreateAccount} style={{ alignItems: "center" }}>
+          <ThemedText 
+            type="link" 
+            style={{ textAlign: "center", fontSize: scaleW(14) }}
+          >
             Don't have an account? Create one
           </ThemedText>
         </Pressable>
       </View>
+      <View style={{ height: scaleW(40) }} />
     </View>
   );
 }

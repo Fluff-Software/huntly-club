@@ -162,7 +162,7 @@ export default function SignUpTeamScreen() {
               style={{
                 textAlign: "center",
                 fontWeight: "600",
-                fontSize: scaleW(20),
+                fontSize: scaleW(24),
               }}
             >
               Choose your team
@@ -176,6 +176,7 @@ export default function SignUpTeamScreen() {
                 opacity: 0.95,
                 marginTop: scaleW(8),
                 marginBottom: scaleW(32),
+                lineHeight: scaleW(24),
               }}
             >
               You'll all explore together as one team.
@@ -212,7 +213,7 @@ export default function SignUpTeamScreen() {
                         position: "absolute",
                         width: scaleW(170),
                         height: scaleW(170),
-                        bottom: -73,
+                        bottom: scaleW(-73),
                       }}
                     />
                   </View>
@@ -257,7 +258,7 @@ export default function SignUpTeamScreen() {
                         position: "absolute",
                         width: scaleW(170),
                         height: scaleW(170),
-                        bottom: -75,
+                        bottom: scaleW(-75),
                       }}
                     />
                   </View>
@@ -276,10 +277,11 @@ export default function SignUpTeamScreen() {
                 style={{
                   alignSelf: "center",
                   width: "100%",
-                  maxWidth: scaleW(240),
+                  maxWidth: scaleW(260),
                   paddingVertical: scaleW(18),
                   borderRadius: scaleW(50),
                   marginTop: scaleW(20),
+                  marginBottom: scaleW(40),
                   backgroundColor: selectedName && !creating ? CREAM : "#9CA3AF",
                   alignItems: "center",
                   justifyContent: "center",

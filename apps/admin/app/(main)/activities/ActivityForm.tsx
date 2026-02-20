@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useActionState, useState } from "react";
+import { useActionState, useState, useRef, useEffect } from "react";
 import { Button } from "@/components/Button";
 import { ImageUploadField } from "@/components/ImageUploadField";
 
@@ -60,6 +60,18 @@ const TrashIcon = () => (
   </svg>
 );
 
+const ChevronIcon = ({ open, className = "" }: { open: boolean; className?: string }) => (
+  <svg
+    className={`h-5 w-5 shrink-0 text-stone-500 transition-transform ${open ? "rotate-180" : ""} ${className}`}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+    aria-hidden
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+  </svg>
+);
+
 export function ActivityForm({ action, categoriesList, initial }: ActivityFormProps) {
   const [state, formAction] = useActionState(
     async (_: { error?: string }, formData: FormData) => action(formData),
@@ -74,6 +86,20 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>(() =>
     initial && Array.isArray(initial.categories) ? initial.categories : []
   );
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const categoriesDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (categoriesDropdownRef.current && !categoriesDropdownRef.current.contains(e.target as Node)) {
+        setCategoriesOpen(false);
+      }
+    }
+    if (categoriesOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [categoriesOpen]);
 
   return (
     <form action={formAction} className="max-w-2xl space-y-6">
@@ -178,54 +204,100 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
         </div>
       </div>
 
-      <div>
+      <div ref={categoriesDropdownRef} className="relative">
         <label className="mb-1 block text-sm font-medium text-stone-700">
           Categories
         </label>
-        <p className="mb-2 text-xs text-stone-500">Select one or more categories (icon + name)</p>
-        <div className="flex flex-wrap gap-2">
-          {categoriesList.map((cat) => {
-            const checked = selectedCategoryIds.includes(cat.id);
-            return (
-              <label
-                key={cat.id}
-                className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
-                  checked
-                    ? "border-huntly-forest bg-huntly-forest/10 text-stone-900"
-                    : "border-stone-300 bg-white text-stone-700 hover:bg-stone-50"
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => {
-                    setSelectedCategoryIds((prev) =>
-                      prev.includes(cat.id) ? prev.filter((id) => id !== cat.id) : [...prev, cat.id]
-                    );
-                  }}
-                  className="h-4 w-4 rounded border-stone-300 text-huntly-forest focus:ring-huntly-sage"
-                />
-                {cat.icon ? (
-                  <span className="relative inline-block h-5 w-5 shrink-0 overflow-hidden rounded">
-                    <Image
-                      src={cat.icon}
-                      alt=""
-                      width={20}
-                      height={20}
-                      className="object-cover"
-                      unoptimized={!cat.icon.includes("supabase.co")}
-                    />
+        <button
+          type="button"
+          onClick={() => setCategoriesOpen((open) => !open)}
+          className="flex min-h-[2.75rem] w-full items-center gap-2 rounded-lg border border-stone-300 bg-white px-3 py-2 text-left text-sm text-stone-700 shadow-sm transition-colors hover:bg-stone-50 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+          aria-expanded={categoriesOpen}
+          aria-haspopup="listbox"
+        >
+          <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            {selectedCategoryIds.length === 0 ? (
+              "Select Categories"
+            ) : (
+              selectedCategoryIds
+                .map((id) => categoriesList.find((c) => c.id === id))
+                .filter((c): c is CategoryOption => c != null)
+                .map((cat) => (
+                  <span
+                    key={cat.id}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 bg-stone-50 px-2 py-1 text-stone-800"
+                  >
+                    {cat.icon ? (
+                      <span className="relative inline-block h-4 w-4 shrink-0 overflow-hidden rounded">
+                        <Image
+                          src={cat.icon}
+                          alt=""
+                          width={16}
+                          height={16}
+                          className="object-cover"
+                          unoptimized={!cat.icon.includes("supabase.co")}
+                        />
+                      </span>
+                    ) : (
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-stone-200 text-[10px] text-stone-500">
+                        •
+                      </span>
+                    )}
+                    <span>{cat.name || `Category ${cat.id}`}</span>
                   </span>
-                ) : (
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-stone-200 text-xs text-stone-500">
-                    •
-                  </span>
-                )}
-                <span>{cat.name || `Category ${cat.id}`}</span>
-              </label>
-            );
-          })}
-        </div>
+                ))
+            )}
+          </span>
+          <ChevronIcon open={categoriesOpen} className="shrink-0" />
+        </button>
+        {categoriesOpen && (
+          <div
+            className="absolute top-full left-0 z-10 mt-1 max-h-64 w-full min-w-[16rem] overflow-auto rounded-lg border border-stone-200 bg-white py-1 shadow-lg"
+            role="listbox"
+          >
+            {categoriesList.map((cat) => {
+              const checked = selectedCategoryIds.includes(cat.id);
+              return (
+                <label
+                  key={cat.id}
+                  role="option"
+                  aria-selected={checked}
+                  className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-stone-50 ${
+                    checked ? "bg-huntly-forest/10 text-stone-900" : "text-stone-700"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => {
+                      setSelectedCategoryIds((prev) =>
+                        prev.includes(cat.id) ? prev.filter((id) => id !== cat.id) : [...prev, cat.id]
+                      );
+                    }}
+                    className="h-4 w-4 rounded border-stone-300 text-huntly-forest focus:ring-huntly-sage"
+                  />
+                  {cat.icon ? (
+                    <span className="relative inline-block h-5 w-5 shrink-0 overflow-hidden rounded">
+                      <Image
+                        src={cat.icon}
+                        alt=""
+                        width={20}
+                        height={20}
+                        className="object-cover"
+                        unoptimized={!cat.icon.includes("supabase.co")}
+                      />
+                    </span>
+                  ) : (
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-stone-200 text-xs text-stone-500">
+                      •
+                    </span>
+                  )}
+                  <span>{cat.name || `Category ${cat.id}`}</span>
+                </label>
+              );
+            })}
+          </div>
+        )}
         {selectedCategoryIds.map((id) => (
           <input key={id} type="hidden" name="categories" value={id} />
         ))}

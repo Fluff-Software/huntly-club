@@ -5,16 +5,28 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { CategoryIconModal } from "./CategoryIconModal";
 import { saveCategories, getCategories, type CategoryEditRow } from "./actions";
+import { uploadCategoryIcon } from "@/lib/upload-actions";
 
-function serialize(rows: CategoryEditRow[]): string {
+type RowWithPending = CategoryEditRow & {
+  pendingIconFile?: File;
+  pendingIconPreviewUrl?: string;
+};
+
+function serialize(rows: RowWithPending[]): string {
   return JSON.stringify(
-    rows.map((r) => ({ id: r.id, icon: r.icon, name: r.name, _deleted: r._deleted }))
+    rows.map((r) => ({
+      id: r.id,
+      icon: r.icon,
+      name: r.name,
+      _deleted: r._deleted,
+      hasPendingFile: !!r.pendingIconFile,
+    }))
   );
 }
 
 export function CategoriesList({ initial }: { initial: CategoryEditRow[] }) {
   const router = useRouter();
-  const [rows, setRows] = useState<CategoryEditRow[]>(() =>
+  const [rows, setRows] = useState<RowWithPending[]>(() =>
     initial.length ? initial : [{ id: 0, icon: null, name: "" }]
   );
   const [savedSnapshot, setSavedSnapshot] = useState<string>(() => serialize(rows));
@@ -28,10 +40,14 @@ export function CategoriesList({ initial }: { initial: CategoryEditRow[] }) {
     setRows((prev) => [...prev, { id: 0, icon: null, name: "" }]);
   }, []);
 
-  const updateRow = useCallback((index: number, patch: Partial<CategoryEditRow>) => {
+  const updateRow = useCallback((index: number, patch: Partial<RowWithPending>) => {
     setRows((prev) => {
       const next = [...prev];
-      next[index] = { ...next[index], ...patch };
+      const row = next[index];
+      if (row?.pendingIconPreviewUrl && (patch.pendingIconFile !== undefined || patch.icon !== undefined)) {
+        URL.revokeObjectURL(row.pendingIconPreviewUrl);
+      }
+      next[index] = { ...row, ...patch };
       return next;
     });
   }, []);
@@ -48,13 +64,40 @@ export function CategoriesList({ initial }: { initial: CategoryEditRow[] }) {
     if (!hasChanges) return;
     setSaving(true);
     setError(null);
-    const toSave = rows.filter((r) => !r._deleted);
-    const result = await saveCategories(toSave);
+    const toSave = rows.filter((r) => !r._deleted) as RowWithPending[];
+    const resolvedRows: CategoryEditRow[] = [];
+    for (const row of toSave) {
+      if (row.pendingIconFile) {
+        const formData = new FormData();
+        formData.set("file", row.pendingIconFile);
+        const uploadResult = await uploadCategoryIcon(formData);
+        if (uploadResult.error) {
+          setError(uploadResult.error);
+          setSaving(false);
+          toSave.forEach((r) => r.pendingIconPreviewUrl && URL.revokeObjectURL(r.pendingIconPreviewUrl));
+          return;
+        }
+        resolvedRows.push({
+          id: row.id,
+          icon: uploadResult.url ?? row.icon,
+          name: row.name,
+        });
+      } else {
+        resolvedRows.push({
+          id: row.id,
+          icon: row.icon,
+          name: row.name,
+        });
+      }
+    }
+    const result = await saveCategories(resolvedRows);
     if (result.error) {
       setError(result.error);
       setSaving(false);
+      toSave.forEach((r) => r.pendingIconPreviewUrl && URL.revokeObjectURL(r.pendingIconPreviewUrl));
       return;
     }
+    toSave.forEach((r) => r.pendingIconPreviewUrl && URL.revokeObjectURL(r.pendingIconPreviewUrl));
     const fresh = await getCategories();
     const next = fresh.length ? fresh : [{ id: 0, icon: null, name: "" }];
     setRows(next);
@@ -64,7 +107,10 @@ export function CategoriesList({ initial }: { initial: CategoryEditRow[] }) {
   }, [hasChanges, rows, router]);
 
   const handleCancel = useCallback(() => {
-    setRows(JSON.parse(savedSnapshot));
+    setRows((prev) => {
+      prev.forEach((r) => r.pendingIconPreviewUrl && URL.revokeObjectURL(r.pendingIconPreviewUrl));
+      return JSON.parse(savedSnapshot);
+    });
     setError(null);
   }, [savedSnapshot]);
 
@@ -81,18 +127,18 @@ export function CategoriesList({ initial }: { initial: CategoryEditRow[] }) {
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white shadow-sm">
-        <table className="min-w-full divide-y divide-stone-200">
+      <div className="max-w-2xl overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+        <table className="w-full table-fixed divide-y divide-stone-200">
           <thead>
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500">
+              <th className="w-20 px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-stone-500">
                 Icon
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500">
+              <th className="px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-stone-500">
                 Name
               </th>
-              <th className="relative px-6 py-3">
-                <span className="sr-only">Delete</span>
+              <th className="w-20 px-3 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-stone-500">
+                Delete
               </th>
             </tr>
           </thead>
@@ -101,40 +147,40 @@ export function CategoriesList({ initial }: { initial: CategoryEditRow[] }) {
               if (row._deleted) return null;
               return (
                 <tr key={row.id ? `row-${row.id}` : `new-${index}`}>
-                  <td className="whitespace-nowrap px-6 py-4">
+                  <td className="w-20 px-3 py-2.5">
                     <button
                       type="button"
                       onClick={() => setModalForIndex(index)}
-                      className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg border border-stone-300 bg-stone-50 hover:bg-stone-100"
+                      className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-stone-300 bg-stone-50 hover:bg-stone-100"
                     >
-                      {row.icon ? (
+                      {(row.pendingIconPreviewUrl ?? row.icon) ? (
                         <Image
-                          src={row.icon}
+                          src={row.pendingIconPreviewUrl ?? row.icon ?? ""}
                           alt=""
-                          width={48}
-                          height={48}
+                          width={40}
+                          height={40}
                           className="object-cover"
-                          unoptimized={!row.icon.includes("supabase.co")}
+                          unoptimized={!row.icon?.includes("supabase.co")}
                         />
                       ) : (
                         <span className="text-stone-400">+</span>
                       )}
                     </button>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="min-w-0 px-3 py-2.5">
                     <input
                       type="text"
                       value={row.name}
                       onChange={(e) => updateRow(index, { name: e.target.value })}
                       placeholder="Category name"
-                      className="w-full max-w-xs rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+                      className="w-full min-w-0 max-w-full rounded-lg border border-stone-300 px-3 py-1.5 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
                     />
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4">
+                  <td className="w-20 px-3 py-2.5 text-right">
                     <button
                       type="button"
                       onClick={() => deleteRow(index)}
-                      className="rounded-lg border border-stone-300 p-2 text-stone-600 hover:bg-stone-100"
+                      className="inline-flex rounded-lg border border-stone-300 p-1.5 text-stone-600 hover:bg-stone-100"
                       aria-label="Delete category"
                     >
                       <TrashIcon />
@@ -176,9 +222,24 @@ export function CategoriesList({ initial }: { initial: CategoryEditRow[] }) {
       <CategoryIconModal
         isOpen={modalForIndex !== null}
         onClose={() => setModalForIndex(null)}
-        currentIcon={modalForIndex != null ? rows[modalForIndex]?.icon ?? null : null}
-        onSelect={(url) => {
-          if (modalForIndex != null) updateRow(modalForIndex, { icon: url });
+        currentIcon={
+          modalForIndex != null
+            ? rows[modalForIndex]?.pendingIconPreviewUrl ?? rows[modalForIndex]?.icon ?? null
+            : null
+        }
+        initialPendingFile={modalForIndex != null ? rows[modalForIndex]?.pendingIconFile : undefined}
+        onSelect={(url, file) => {
+          if (modalForIndex == null) return;
+          if (file) {
+            const prev = rows[modalForIndex];
+            if (prev?.pendingIconPreviewUrl) URL.revokeObjectURL(prev.pendingIconPreviewUrl);
+            updateRow(modalForIndex, {
+              pendingIconFile: file,
+              pendingIconPreviewUrl: URL.createObjectURL(file),
+            });
+          } else {
+            updateRow(modalForIndex, { icon: url ?? null, pendingIconFile: undefined, pendingIconPreviewUrl: undefined });
+          }
           setModalForIndex(null);
         }}
       />

@@ -309,7 +309,7 @@ export default function InstructionScreen() {
             <View style={styles.bulletListContainer}>
               {tipLines.map((line, i) => (
                 <View key={i} style={styles.hintItem}>
-                  <ThemedText style={styles.hintText}>{line}</ThemedText>
+                  <ThemedText style={styles.hintText}>• {line}</ThemedText>
                 </View>
               ))}
             </View>
@@ -327,7 +327,7 @@ export default function InstructionScreen() {
             <View style={styles.bulletListContainer}>
               {hintLines.map((line, i) => (
                 <View key={i} style={styles.hintItem}>
-                  <ThemedText style={styles.hintText}>{line}</ThemedText>
+                  <ThemedText style={styles.hintText}>• {line}</ThemedText>
                 </View>
               ))}
             </View>

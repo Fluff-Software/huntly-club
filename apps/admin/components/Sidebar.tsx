@@ -10,6 +10,7 @@ const nav = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/seasons", label: "Seasons" },
   { href: "/activities", label: "Missions" },
+  { href: "/categories", label: "Categories" },
   { href: "/resources", label: "Resources" },
   { href: "/photos", label: "Photos" },
   { href: "/account-removal", label: "Account Removal" },

@@ -7,6 +7,7 @@ import { BaseLayout } from "@/components/layout/BaseLayout";
 import { Button } from "@/components/ui/Button";
 import { CategoryTags } from "@/components/CategoryTags";
 import { getActivityById, getActivityImageSource } from "@/services/packService";
+import { getCategories, getCategoryById } from "@/services/categoriesService";
 import type { Activity } from "@/types/activity";
 import { completeActivity as completeActivityService } from "@/services/activityService";
 import {
@@ -27,6 +28,7 @@ export default function ActivityDetailScreen() {
   const { id } = useLocalSearchParams();
   const { currentPlayer, refreshProfiles } = usePlayer();
   const [activity, setActivity] = useState<Activity | null>(null);
+  const [categories, setCategories] = useState<Awaited<ReturnType<typeof getCategories>>>([]);
   const [activityProgress, setActivityProgress] =
     useState<ActivityProgress | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,7 +44,10 @@ export default function ActivityDetailScreen() {
     const fetchActivity = async () => {
       try {
         if (!id || !currentPlayer?.id) return;
-        const activityData = await getActivityById(Number(id));
+        const [activityData, categoriesList] = await Promise.all([
+          getActivityById(Number(id)),
+          getCategories(),
+        ]);
         const progressData = await getActivityProgress(
           currentPlayer.id,
           Number(id)
@@ -50,6 +55,7 @@ export default function ActivityDetailScreen() {
 
         if (isMounted) {
           setActivity(activityData);
+          setCategories(categoriesList);
           setActivityProgress(progressData);
 
           // If activity hasn't been started yet, start it
@@ -245,7 +251,10 @@ export default function ActivityDetailScreen() {
           {activity.categories && activity.categories.length > 0 && (
             <View className="mb-4">
               <CategoryTags
-                categories={activity.categories}
+                categoryInfos={activity.categories
+                  .map((cid) => getCategoryById(categories, cid))
+                  .filter((c): c is NonNullable<typeof c> => c != null)
+                  .map((c) => ({ id: c.id, name: c.name, icon: c.icon }))}
                 size="medium"
                 maxDisplay={5}
               />

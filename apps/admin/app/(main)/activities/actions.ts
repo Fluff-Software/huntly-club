@@ -3,10 +3,15 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 
-function parseCategories(value: string): string[] {
-  const trimmed = (value || "").trim();
-  if (!trimmed) return [];
-  return trimmed.split(",").map((s) => s.trim()).filter(Boolean);
+function parseCategoryIds(formData: FormData): number[] {
+  const raw = formData.getAll("categories");
+  const ids: number[] = [];
+  for (const v of raw) {
+    if (v == null || v === "") continue;
+    const n = typeof v === "string" ? parseInt(v, 10) : Number(v);
+    if (!Number.isNaN(n) && n > 0) ids.push(n);
+  }
+  return ids;
 }
 
 export type ActivityFormState = { error?: string };
@@ -31,7 +36,7 @@ export async function createActivity(
   const image = (formData.get("image") as string)?.trim() || null;
   const xp = parseInt(String(formData.get("xp")), 10);
   const photoRequired = formData.get("photo_required") === "on";
-  const categories = parseCategories((formData.get("categories") as string) ?? "");
+  const categoryIds = parseCategoryIds(formData);
 
   try {
     const supabase = createServerSupabaseClient();
@@ -46,7 +51,7 @@ export async function createActivity(
       image: image || null,
       xp: Number.isNaN(xp) ? 10 : xp,
       photo_required: photoRequired,
-      categories: categories.length ? categories : [],
+      categories: categoryIds.length ? categoryIds : [],
     });
 
     if (error) return { error: error.message };
@@ -81,7 +86,7 @@ export async function updateActivity(
   const image = (formData.get("image") as string)?.trim() || null;
   const xp = parseInt(String(formData.get("xp")), 10);
   const photoRequired = formData.get("photo_required") === "on";
-  const categories = parseCategories((formData.get("categories") as string) ?? "");
+  const categoryIds = parseCategoryIds(formData);
 
   try {
     const supabase = createServerSupabaseClient();
@@ -98,7 +103,7 @@ export async function updateActivity(
         image: image || null,
         xp: Number.isNaN(xp) ? 10 : xp,
         photo_required: photoRequired,
-        categories: categories.length ? categories : [],
+        categories: categoryIds.length ? categoryIds : [],
       })
       .eq("id", id);
 

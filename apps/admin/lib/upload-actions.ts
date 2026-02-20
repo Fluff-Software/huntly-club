@@ -55,6 +55,12 @@ export async function uploadActivityImage(
   return uploadImage(formData, "activity-images", "activities");
 }
 
+export async function uploadCategoryIcon(
+  formData: FormData
+): Promise<{ url?: string; error?: string }> {
+  return uploadImage(formData, "activity-images", "categories");
+}
+
 export async function uploadSlideImage(
   formData: FormData
 ): Promise<{ url?: string; error?: string }> {

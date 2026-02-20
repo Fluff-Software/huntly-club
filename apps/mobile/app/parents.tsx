@@ -8,12 +8,7 @@ import { CategoryTags } from "@/components/CategoryTags";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/services/supabase";
-import {
-  getCategoryIcon,
-  getCategoryColor,
-  getCategoryLabel,
-} from "@/utils/categoryUtils";
-import { ACTIVITY_CATEGORIES } from "@/types/activity";
+import { getCategories, getCategoryById } from "@/services/categoriesService";
 
 interface ExplorerStats {
   id: number;
@@ -26,7 +21,7 @@ interface ExplorerStats {
   completedActivities: number;
   recentActivities: any[];
   categoryStats: {
-    [category: string]: {
+    [categoryId: number]: {
       count: number;
       xp: number;
     };
@@ -34,10 +29,9 @@ interface ExplorerStats {
 }
 
 interface CategoryAnalytics {
-  category: string;
+  categoryId: number;
   label: string;
-  icon: string;
-  color: string;
+  icon: string | null;
   totalActivities: number;
   totalXp: number;
   explorerCount: number;
@@ -53,6 +47,7 @@ export default function ParentsScreen() {
   const [loading, setLoading] = useState(true);
   const [totalXp, setTotalXp] = useState(0);
   const [totalActivities, setTotalActivities] = useState(0);
+  const [categoriesList, setCategoriesList] = useState<Awaited<ReturnType<typeof getCategories>>>([]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -81,25 +76,18 @@ export default function ParentsScreen() {
 
       if (profilesError) throw profilesError;
 
+      const categories = await getCategories();
+      setCategoriesList(categories);
       const explorerStats: ExplorerStats[] = [];
       let totalXpSum = 0;
       let totalActivitiesSum = 0;
       const categoryStatsMap: {
-        [category: string]: {
+        [categoryId: number]: {
           count: number;
           xp: number;
           explorers: Set<number>;
         };
       } = {};
-
-      // Initialize category stats
-      ACTIVITY_CATEGORIES.forEach((cat) => {
-        categoryStatsMap[cat.category] = {
-          count: 0,
-          xp: 0,
-          explorers: new Set(),
-        };
-      });
 
       for (const profile of profiles || []) {
         // Get recent activities for this explorer
@@ -135,32 +123,32 @@ export default function ParentsScreen() {
         totalXpSum += explorerXp;
         totalActivitiesSum += completedCount;
 
-        // Calculate category stats for this explorer
+        // Calculate category stats for this explorer (categories are now ids)
         const explorerCategoryStats: {
-          [category: string]: { count: number; xp: number };
+          [categoryId: number]: { count: number; xp: number };
         } = {};
 
         completedActivities.forEach((activity) => {
           const activityData = Array.isArray(activity.activities)
             ? activity.activities[0]
             : activity.activities;
-          const activityCategories = activityData?.categories || [];
+          const activityCategoryIds = Array.isArray(activityData?.categories)
+            ? (activityData.categories as number[]).filter((x): x is number => typeof x === "number" && x > 0)
+            : [];
           const activityXp = activityData?.xp || 0;
 
-          activityCategories.forEach((category: string) => {
-            // Update global category stats
-            if (categoryStatsMap[category]) {
-              categoryStatsMap[category].count += 1;
-              categoryStatsMap[category].xp += activityXp;
-              categoryStatsMap[category].explorers.add(profile.id);
+          activityCategoryIds.forEach((categoryId: number) => {
+            if (!categoryStatsMap[categoryId]) {
+              categoryStatsMap[categoryId] = { count: 0, xp: 0, explorers: new Set() };
             }
-
-            // Update explorer category stats
-            if (!explorerCategoryStats[category]) {
-              explorerCategoryStats[category] = { count: 0, xp: 0 };
+            categoryStatsMap[categoryId].count += 1;
+            categoryStatsMap[categoryId].xp += activityXp;
+            categoryStatsMap[categoryId].explorers.add(profile.id);
+            if (!explorerCategoryStats[categoryId]) {
+              explorerCategoryStats[categoryId] = { count: 0, xp: 0 };
             }
-            explorerCategoryStats[category].count += 1;
-            explorerCategoryStats[category].xp += activityXp;
+            explorerCategoryStats[categoryId].count += 1;
+            explorerCategoryStats[categoryId].xp += activityXp;
           });
         });
 
@@ -178,17 +166,17 @@ export default function ParentsScreen() {
         });
       }
 
-      // Convert category stats to analytics format
-      const analytics: CategoryAnalytics[] = ACTIVITY_CATEGORIES.map((cat) => ({
-        category: cat.category,
-        label: cat.label,
-        icon: cat.icon,
-        color: cat.color,
-        totalActivities: categoryStatsMap[cat.category]?.count || 0,
-        totalXp: categoryStatsMap[cat.category]?.xp || 0,
-        explorerCount: categoryStatsMap[cat.category]?.explorers.size || 0,
-      }))
-        .filter((analytics) => analytics.totalActivities > 0)
+      // Convert category stats to analytics format from DB categories
+      const analytics: CategoryAnalytics[] = categories
+        .map((cat) => ({
+          categoryId: cat.id,
+          label: cat.name ?? `Category ${cat.id}`,
+          icon: cat.icon,
+          totalActivities: categoryStatsMap[cat.id]?.count || 0,
+          totalXp: categoryStatsMap[cat.id]?.xp || 0,
+          explorerCount: categoryStatsMap[cat.id]?.explorers.size || 0,
+        }))
+        .filter((a) => a.totalActivities > 0)
         .sort((a, b) => b.totalActivities - a.totalActivities);
 
       setExplorers(explorerStats);
@@ -340,7 +328,7 @@ export default function ParentsScreen() {
 
             {categoryAnalytics.slice(0, 5).map((category, index) => (
               <View
-                key={category.category}
+                key={category.categoryId}
                 className={`bg-white rounded-2xl p-4 mb-3 shadow-soft border border-huntly-mint/20 ${
                   index === 0 ? "border-2 border-yellow-400" : ""
                 }`}
@@ -348,14 +336,18 @@ export default function ParentsScreen() {
                 <View className="flex-row items-center justify-between">
                   <View className="flex-row items-center flex-1">
                     <View
-                      className="w-12 h-12 rounded-full items-center justify-center mr-3"
-                      style={{ backgroundColor: `${category.color}20` }}
+                      className="w-12 h-12 rounded-full items-center justify-center mr-3 overflow-hidden"
+                      style={{ backgroundColor: "#E5E7EB" }}
                     >
-                      <MaterialIcons
-                        name={category.icon as any}
-                        size={24}
-                        color={category.color}
-                      />
+                      {category.icon ? (
+                        <Image
+                          source={{ uri: category.icon }}
+                          className="w-12 h-12"
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <MaterialIcons name="label" size={24} color="#6B7280" />
+                      )}
                     </View>
                     <View className="flex-1">
                       <ThemedText
@@ -478,7 +470,11 @@ export default function ParentsScreen() {
                     Top Categories
                   </ThemedText>
                   <CategoryTags
-                    categories={Object.keys(explorer.categoryStats).slice(0, 3)}
+                    categoryInfos={Object.keys(explorer.categoryStats)
+                      .slice(0, 3)
+                      .map((idStr) => getCategoryById(categoriesList, Number(idStr)))
+                      .filter((c): c is NonNullable<typeof c> => c != null)
+                      .map((c) => ({ id: c.id, name: c.name, icon: c.icon }))}
                     size="small"
                     maxDisplay={3}
                   />

@@ -6,6 +6,7 @@ import {
   Pressable,
   ActivityIndicator,
   Linking,
+  Image,
 } from "react-native";
 import Animated, {
   FadeInDown,
@@ -23,7 +24,7 @@ import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useParentResources } from "@/hooks/useParentResources";
 import { supabase } from "@/services/supabase";
 import { getTotalXpForProfileIds } from "@/services/teamActivityService";
-import { ACTIVITY_CATEGORIES } from "@/types/activity";
+import { getCategories } from "@/services/categoriesService";
 import { MaterialIcons } from "@expo/vector-icons";
 
 const COLORS = {
@@ -46,15 +47,14 @@ interface ExplorerStats {
   completedActivities: number;
   recentActivities: any[];
   categoryStats: {
-    [category: string]: { count: number; xp: number };
+    [categoryId: number]: { count: number; xp: number };
   };
 }
 
 interface CategoryAnalytics {
-  category: string;
+  categoryId: number;
   label: string;
-  icon: string;
-  color: string;
+  icon: string | null;
   totalActivities: number;
   totalXp: number;
   explorerCount: number;
@@ -121,23 +121,16 @@ export default function ParentsScreen() {
 
       if (profilesError) throw profilesError;
 
+      const categoriesList = await getCategories();
       const explorerStats: ExplorerStats[] = [];
       let totalActivitiesSum = 0;
       const categoryStatsMap: {
-        [category: string]: {
+        [categoryId: number]: {
           count: number;
           xp: number;
           explorers: Set<number>;
         };
       } = {};
-
-      ACTIVITY_CATEGORIES.forEach((cat) => {
-        categoryStatsMap[cat.category] = {
-          count: 0,
-          xp: 0,
-          explorers: new Set(),
-        };
-      });
 
       for (const profile of profiles || []) {
         const { data: activities, error: activitiesError } = await supabase
@@ -169,27 +162,30 @@ export default function ParentsScreen() {
         totalActivitiesSum += completedCount;
 
         const explorerCategoryStats: {
-          [category: string]: { count: number; xp: number };
+          [categoryId: number]: { count: number; xp: number };
         } = {};
 
         completedActivities.forEach((activity) => {
           const activityData = Array.isArray(activity.activities)
             ? activity.activities[0]
             : activity.activities;
-          const activityCategories = activityData?.categories || [];
+          const activityCategoryIds = Array.isArray(activityData?.categories)
+            ? (activityData.categories as number[]).filter((x): x is number => typeof x === "number" && x > 0)
+            : [];
           const activityXp = activityData?.xp || 0;
 
-          activityCategories.forEach((category: string) => {
-            if (categoryStatsMap[category]) {
-              categoryStatsMap[category].count += 1;
-              categoryStatsMap[category].xp += activityXp;
-              categoryStatsMap[category].explorers.add(profile.id);
+          activityCategoryIds.forEach((categoryId: number) => {
+            if (!categoryStatsMap[categoryId]) {
+              categoryStatsMap[categoryId] = { count: 0, xp: 0, explorers: new Set() };
             }
-            if (!explorerCategoryStats[category]) {
-              explorerCategoryStats[category] = { count: 0, xp: 0 };
+            categoryStatsMap[categoryId].count += 1;
+            categoryStatsMap[categoryId].xp += activityXp;
+            categoryStatsMap[categoryId].explorers.add(profile.id);
+            if (!explorerCategoryStats[categoryId]) {
+              explorerCategoryStats[categoryId] = { count: 0, xp: 0 };
             }
-            explorerCategoryStats[category].count += 1;
-            explorerCategoryStats[category].xp += activityXp;
+            explorerCategoryStats[categoryId].count += 1;
+            explorerCategoryStats[categoryId].xp += activityXp;
           });
         });
 
@@ -208,20 +204,20 @@ export default function ParentsScreen() {
         });
       }
 
-      const analytics: CategoryAnalytics[] = ACTIVITY_CATEGORIES.map((cat) => ({
-        category: cat.category,
-        label: cat.label,
-        icon: cat.icon,
-        color: cat.color,
-        totalActivities: categoryStatsMap[cat.category]?.count || 0,
-        totalXp: categoryStatsMap[cat.category]?.xp || 0,
-        explorerCount: categoryStatsMap[cat.category]?.explorers.size || 0,
-      }))
+      const analytics: CategoryAnalytics[] = categoriesList
+        .map((cat) => ({
+          categoryId: cat.id,
+          label: cat.name ?? `Category ${cat.id}`,
+          icon: cat.icon,
+          totalActivities: categoryStatsMap[cat.id]?.count || 0,
+          totalXp: categoryStatsMap[cat.id]?.xp || 0,
+          explorerCount: categoryStatsMap[cat.id]?.explorers.size || 0,
+        }))
         .filter((a) => a.totalActivities > 0)
         .sort((a, b) => b.totalActivities - a.totalActivities);
 
-      const skillTotal = ACTIVITY_CATEGORIES.reduce(
-        (sum, cat) => sum + (categoryStatsMap[cat.category]?.count ?? 0),
+      const skillTotal = Object.values(categoryStatsMap).reduce(
+        (sum, s) => sum + s.count,
         0
       );
 
@@ -561,17 +557,25 @@ export default function ParentsScreen() {
             <>
               {(showAllProgress ? categoryAnalytics : categoryAnalytics.slice(0, 4)).map((cat, i) => (
                 <Animated.View
-                  key={cat.category}
+                  key={cat.categoryId}
                   entering={FadeInDown.duration(400).delay(200 + i * 50).springify().damping(18)}
                 >
                   <View style={styles.activityCard}>
                     <View style={styles.activityCardLeft}>
                       <View style={styles.activityIconWrap}>
-                        <MaterialIcons
-                          name={cat.icon as any}
-                          size={scaleW(22)}
-                          color={cat.color}
-                        />
+                        {cat.icon ? (
+                          <Image
+                            source={{ uri: cat.icon }}
+                            style={{ width: scaleW(22), height: scaleW(22), borderRadius: 2 }}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <MaterialIcons
+                            name="label"
+                            size={scaleW(22)}
+                            color={COLORS.charcoal}
+                          />
+                        )}
                       </View>
                       <ThemedText style={styles.activityCategoryName}>
                         {cat.label}

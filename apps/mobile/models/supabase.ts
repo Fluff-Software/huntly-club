@@ -48,6 +48,7 @@ export type Database = {
           title: string
           trivia: string | null
           xp: number | null
+          categories: number[]
         }
         Insert: {
           created_at?: string
@@ -62,6 +63,7 @@ export type Database = {
           title: string
           trivia?: string | null
           xp?: number | null
+          categories?: number[]
         }
         Update: {
           created_at?: string
@@ -76,6 +78,25 @@ export type Database = {
           title?: string
           trivia?: string | null
           xp?: number | null
+          categories?: number[]
+        }
+        Relationships: []
+      }
+      categories: {
+        Row: {
+          id: number
+          icon: string | null
+          name: string | null
+        }
+        Insert: {
+          id?: number
+          icon?: string | null
+          name: string | null
+        }
+        Update: {
+          id?: number
+          icon?: string | null
+          name?: string | null
         }
         Relationships: []
       }

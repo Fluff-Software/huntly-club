@@ -13,8 +13,8 @@ import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { getActivityById, getActivityImageSource } from "@/services/packService";
 import { getRandomActivityPhotos, type ActivityPhotoItem } from "@/services/activityProgressService";
+import { getCategories, getCategoryById, type Category } from "@/services/categoriesService";
 import type { Activity } from "@/types/activity";
-import { getCategoryLabel, getCategoryIcon, getCategoryColor } from "@/utils/categoryUtils";
 
 const TEXT_SECONDARY = "#2F3336";
 const LIGHT_GREEN = "#7FAF8A";
@@ -38,6 +38,7 @@ export default function InstructionScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { scaleW } = useLayoutScale();
   const [activity, setActivity] = useState<Activity | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [clubPhotos, setClubPhotos] = useState<ActivityPhotoItem[]>([]);
@@ -56,8 +57,12 @@ export default function InstructionScreen() {
     setError(null);
     setLoading(true);
     try {
-      const data = await getActivityById(Number(id));
+      const [data, cats] = await Promise.all([
+        getActivityById(Number(id)),
+        getCategories(),
+      ]);
       setActivity(data ?? null);
+      setCategories(cats);
       if (!data) setError("Activity not found");
       else {
         const photos = await getRandomActivityPhotos(2, data.id);
@@ -232,7 +237,10 @@ export default function InstructionScreen() {
   }
 
   const imageSource = getActivityImageSource(activity.image);
-  const categories = activity.categories && Array.isArray(activity.categories) ? activity.categories : [];
+  const categoryIds = activity.categories && Array.isArray(activity.categories) ? activity.categories : [];
+  const categoryInfos = categoryIds
+    .map((cid) => getCategoryById(categories, cid))
+    .filter((c): c is NonNullable<typeof c> => c != null);
   const hintLines = Array.isArray(activity.hints)
     ? activity.hints.filter(Boolean)
     : splitBulletLines(activity.hints as string | null);
@@ -262,19 +270,20 @@ export default function InstructionScreen() {
             style={styles.mainImage}
             resizeMode="cover"
           />
-          {categories.length > 0 && (
+          {categoryInfos.length > 0 && (
             <View style={styles.tagsRow}>
-              {categories.slice(0, 5).map((cat) => (
-                <View key={cat} style={[styles.tag, styles.tagNeutral]}>
-                  <MaterialIcons
-                    name={getCategoryIcon(cat) as any}
-                    size={14}
-                    color={getCategoryColor(cat)}
-                    style={{ marginRight: 4 }}
-                  />
-                  <ThemedText style={styles.tagText}>
-                    {getCategoryLabel(cat)}
-                  </ThemedText>
+              {categoryInfos.slice(0, 5).map((cat, i) => (
+                <View key={`cat-${i}-${cat.name}`} style={[styles.tag, styles.tagNeutral]}>
+                  {cat.icon ? (
+                    <Image
+                      source={{ uri: cat.icon }}
+                      style={{ width: 14, height: 14, marginRight: 4, borderRadius: 2 }}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <MaterialIcons name="label" size={14} color="#6B7280" style={{ marginRight: 4 }} />
+                  )}
+                  <ThemedText style={styles.tagText}>{cat.name}</ThemedText>
                 </View>
               ))}
             </View>

@@ -9,6 +9,11 @@ export type Pack = Tables<"packs"> & {
 export type PackActivity = Tables<"pack_activities">;
 
 // Helper function to safely transform activity data
+function toCategoryIds(raw: unknown): number[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((x): x is number => typeof x === "number" && x > 0);
+}
+
 function transformActivity(activityData: any): Activity {
   return {
     id: activityData.id,
@@ -22,7 +27,7 @@ function transformActivity(activityData: any): Activity {
     photo_required: activityData.photo_required,
     image: activityData.image,
     xp: activityData.xp,
-    categories: activityData.categories || [],
+    categories: toCategoryIds(activityData.categories),
     created_at: activityData.created_at,
   };
 }

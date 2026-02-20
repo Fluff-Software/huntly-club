@@ -1,8 +1,8 @@
 import { Tables } from "@/models/supabase";
 
-// Extend the auto-generated Activity type to include categories
+// Extend the auto-generated Activity type to include categories (array of category ids)
 export type Activity = Tables<"activities"> & {
-  categories: string[];
+  categories: number[];
 };
 
 // Type for category filtering

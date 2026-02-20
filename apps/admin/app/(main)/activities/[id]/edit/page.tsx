@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { updateActivity } from "../../actions";
+import { getCategories } from "@/app/(main)/categories/actions";
 import { Button } from "@/components/Button";
 import { ActivityForm } from "../../ActivityForm";
 
@@ -16,6 +17,11 @@ async function getActivity(id: number) {
   return data;
 }
 
+function toCategoryIds(raw: unknown): number[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((x): x is number => typeof x === "number" && x > 0);
+}
+
 export default async function EditActivityPage({
   params,
 }: {
@@ -25,8 +31,17 @@ export default async function EditActivityPage({
   const activityId = parseInt(id, 10);
   if (Number.isNaN(activityId)) notFound();
 
-  const activity = await getActivity(activityId);
+  const [activity, categoriesList] = await Promise.all([
+    getActivity(activityId),
+    getCategories(),
+  ]);
   if (!activity) notFound();
+
+  const categoryOptions = categoriesList.map((c) => ({
+    id: c.id,
+    name: c.name,
+    icon: c.icon,
+  }));
 
   async function submit(formData: FormData) {
     "use server";
@@ -40,6 +55,7 @@ export default async function EditActivityPage({
       </h1>
       <ActivityForm
         action={submit}
+        categoriesList={categoryOptions}
         initial={{
           name: activity.name,
           title: activity.title,
@@ -51,7 +67,7 @@ export default async function EditActivityPage({
           image: activity.image,
           xp: activity.xp,
           photo_required: activity.photo_required,
-          categories: Array.isArray(activity.categories) ? activity.categories : [],
+          categories: toCategoryIds(activity.categories),
         }}
       />
       <p className="mt-4">

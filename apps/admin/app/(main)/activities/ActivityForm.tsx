@@ -1,11 +1,19 @@
 "use client";
 
+import Image from "next/image";
 import { useActionState, useState } from "react";
 import { Button } from "@/components/Button";
 import { ImageUploadField } from "@/components/ImageUploadField";
 
+export type CategoryOption = {
+  id: number;
+  name: string | null;
+  icon: string | null;
+};
+
 type ActivityFormProps = {
   action: (formData: FormData) => Promise<{ error?: string }>;
+  categoriesList: CategoryOption[];
   initial?: {
     name: string;
     title: string;
@@ -17,14 +25,9 @@ type ActivityFormProps = {
     image: string | null;
     xp: number | null;
     photo_required: boolean | null;
-    categories: string[] | null;
+    categories: number[] | null;
   };
 };
-
-function formatCategories(cats: string[] | null | undefined): string {
-  if (!cats || !Array.isArray(cats)) return "";
-  return cats.join(", ");
-}
 
 function normalizeStringArray(value: string[] | string | null | undefined): string[] {
   if (value == null) return [];
@@ -57,7 +60,7 @@ const TrashIcon = () => (
   </svg>
 );
 
-export function ActivityForm({ action, initial }: ActivityFormProps) {
+export function ActivityForm({ action, categoriesList, initial }: ActivityFormProps) {
   const [state, formAction] = useActionState(
     async (_: { error?: string }, formData: FormData) => action(formData),
     { error: undefined }
@@ -67,6 +70,9 @@ export function ActivityForm({ action, initial }: ActivityFormProps) {
   );
   const [tipsList, setTipsList] = useState<string[]>(() =>
     normalizeStringArray(initial?.tips).length > 0 ? normalizeStringArray(initial?.tips) : [""]
+  );
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>(() =>
+    initial && Array.isArray(initial.categories) ? initial.categories : []
   );
 
   return (
@@ -173,17 +179,56 @@ export function ActivityForm({ action, initial }: ActivityFormProps) {
       </div>
 
       <div>
-        <label htmlFor="categories" className="mb-1 block text-sm font-medium text-stone-700">
-          Categories (comma-separated)
+        <label className="mb-1 block text-sm font-medium text-stone-700">
+          Categories
         </label>
-        <input
-          id="categories"
-          name="categories"
-          type="text"
-          defaultValue={formatCategories(initial?.categories)}
-          placeholder="e.g. nature, wildlife, observation"
-          className="w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-        />
+        <p className="mb-2 text-xs text-stone-500">Select one or more categories (icon + name)</p>
+        <div className="flex flex-wrap gap-2">
+          {categoriesList.map((cat) => {
+            const checked = selectedCategoryIds.includes(cat.id);
+            return (
+              <label
+                key={cat.id}
+                className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                  checked
+                    ? "border-huntly-forest bg-huntly-forest/10 text-stone-900"
+                    : "border-stone-300 bg-white text-stone-700 hover:bg-stone-50"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => {
+                    setSelectedCategoryIds((prev) =>
+                      prev.includes(cat.id) ? prev.filter((id) => id !== cat.id) : [...prev, cat.id]
+                    );
+                  }}
+                  className="h-4 w-4 rounded border-stone-300 text-huntly-forest focus:ring-huntly-sage"
+                />
+                {cat.icon ? (
+                  <span className="relative inline-block h-5 w-5 shrink-0 overflow-hidden rounded">
+                    <Image
+                      src={cat.icon}
+                      alt=""
+                      width={20}
+                      height={20}
+                      className="object-cover"
+                      unoptimized={!cat.icon.includes("supabase.co")}
+                    />
+                  </span>
+                ) : (
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-stone-200 text-xs text-stone-500">
+                    •
+                  </span>
+                )}
+                <span>{cat.name || `Category ${cat.id}`}</span>
+              </label>
+            );
+          })}
+        </div>
+        {selectedCategoryIds.map((id) => (
+          <input key={id} type="hidden" name="categories" value={id} />
+        ))}
       </div>
 
       <div>

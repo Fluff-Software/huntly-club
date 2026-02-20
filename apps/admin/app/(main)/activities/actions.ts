@@ -21,8 +21,12 @@ export async function createActivity(
 
   const description = (formData.get("description") as string)?.trim() || null;
   const longDescription = (formData.get("long_description") as string)?.trim() || null;
-  const hints = (formData.get("hints") as string)?.trim() || null;
-  const tips = (formData.get("tips") as string)?.trim() || null;
+  const hints = (formData.getAll("hints") as string[])
+    .map((s) => s?.trim())
+    .filter(Boolean);
+  const tips = (formData.getAll("tips") as string[])
+    .map((s) => s?.trim())
+    .filter(Boolean);
   const trivia = (formData.get("trivia") as string)?.trim() || null;
   const image = (formData.get("image") as string)?.trim() || null;
   const xp = parseInt(String(formData.get("xp")), 10);
@@ -36,8 +40,8 @@ export async function createActivity(
       title,
       description,
       long_description: longDescription,
-      hints,
-      tips,
+      hints: hints.length ? hints : null,
+      tips: tips.length ? tips : null,
       trivia,
       image: image || null,
       xp: Number.isNaN(xp) ? 10 : xp,
@@ -67,8 +71,12 @@ export async function updateActivity(
 
   const description = (formData.get("description") as string)?.trim() || null;
   const longDescription = (formData.get("long_description") as string)?.trim() || null;
-  const hints = (formData.get("hints") as string)?.trim() || null;
-  const tips = (formData.get("tips") as string)?.trim() || null;
+  const hints = (formData.getAll("hints") as string[])
+    .map((s) => s?.trim())
+    .filter(Boolean);
+  const tips = (formData.getAll("tips") as string[])
+    .map((s) => s?.trim())
+    .filter(Boolean);
   const trivia = (formData.get("trivia") as string)?.trim() || null;
   const image = (formData.get("image") as string)?.trim() || null;
   const xp = parseInt(String(formData.get("xp")), 10);
@@ -84,8 +92,8 @@ export async function updateActivity(
         title,
         description,
         long_description: longDescription,
-        hints,
-        tips,
+        hints: hints.length ? hints : null,
+        tips: tips.length ? tips : null,
         trivia,
         image: image || null,
         xp: Number.isNaN(xp) ? 10 : xp,

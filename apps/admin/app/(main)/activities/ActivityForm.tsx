@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Button } from "@/components/Button";
 import { ImageUploadField } from "@/components/ImageUploadField";
 
@@ -11,8 +11,8 @@ type ActivityFormProps = {
     title: string;
     description: string | null;
     long_description: string | null;
-    hints: string | null;
-    tips: string | null;
+    hints: string[] | string | null;
+    tips: string[] | string | null;
     trivia: string | null;
     image: string | null;
     xp: number | null;
@@ -26,10 +26,47 @@ function formatCategories(cats: string[] | null | undefined): string {
   return cats.join(", ");
 }
 
+function normalizeStringArray(value: string[] | string | null | undefined): string[] {
+  if (value == null) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    return trimmed
+      .split(/\n/)
+      .map((s) => s.replace(/^\s*•\s*/, "").trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+const TrashIcon = () => (
+  <svg
+    className="h-5 w-5"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+    aria-hidden
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+    />
+  </svg>
+);
+
 export function ActivityForm({ action, initial }: ActivityFormProps) {
   const [state, formAction] = useActionState(
     async (_: { error?: string }, formData: FormData) => action(formData),
     { error: undefined }
+  );
+  const [hintsList, setHintsList] = useState<string[]>(() =>
+    normalizeStringArray(initial?.hints).length > 0 ? normalizeStringArray(initial?.hints) : [""]
+  );
+  const [tipsList, setTipsList] = useState<string[]>(() =>
+    normalizeStringArray(initial?.tips).length > 0 ? normalizeStringArray(initial?.tips) : [""]
   );
 
   return (
@@ -150,29 +187,67 @@ export function ActivityForm({ action, initial }: ActivityFormProps) {
       </div>
 
       <div>
-        <label htmlFor="hints" className="mb-1 block text-sm font-medium text-stone-700">
-          Hints
-        </label>
-        <textarea
-          id="hints"
-          name="hints"
-          rows={3}
-          defaultValue={initial?.hints ?? ""}
-          className="w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-        />
+        <label className="mb-1 block text-sm font-medium text-stone-700">Hints</label>
+        <div className="space-y-2">
+          {hintsList.map((hint, index) => (
+            <div key={index} className="flex gap-2">
+              <input
+                name="hints"
+                type="text"
+                defaultValue={hint}
+                placeholder="e.g. Look for movement in trees and bushes"
+                className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+              />
+              <button
+                type="button"
+                onClick={() => setHintsList((prev) => prev.filter((_, i) => i !== index))}
+                className="rounded-lg border border-stone-300 p-2 text-stone-600 hover:bg-stone-100 focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+                aria-label="Delete hint"
+              >
+                <TrashIcon />
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => setHintsList((prev) => [...prev, ""])}
+            className="flex items-center gap-1 rounded-lg border border-dashed border-stone-400 px-3 py-2 text-sm text-stone-600 hover:border-huntly-sage hover:text-huntly-forest focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+          >
+            + Add hint
+          </button>
+        </div>
       </div>
 
       <div>
-        <label htmlFor="tips" className="mb-1 block text-sm font-medium text-stone-700">
-          Tips
-        </label>
-        <textarea
-          id="tips"
-          name="tips"
-          rows={3}
-          defaultValue={initial?.tips ?? ""}
-          className="w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-        />
+        <label className="mb-1 block text-sm font-medium text-stone-700">Tips</label>
+        <div className="space-y-2">
+          {tipsList.map((tip, index) => (
+            <div key={index} className="flex gap-2">
+              <input
+                name="tips"
+                type="text"
+                defaultValue={tip}
+                placeholder="e.g. Stay quiet and move slowly"
+                className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+              />
+              <button
+                type="button"
+                onClick={() => setTipsList((prev) => prev.filter((_, i) => i !== index))}
+                className="rounded-lg border border-stone-300 p-2 text-stone-600 hover:bg-stone-100 focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+                aria-label="Delete tip"
+              >
+                <TrashIcon />
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => setTipsList((prev) => [...prev, ""])}
+            className="flex items-center gap-1 rounded-lg border border-dashed border-stone-400 px-3 py-2 text-sm text-stone-600 hover:border-huntly-sage hover:text-huntly-forest focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+          >
+            + Add tip
+          </button>
+        </div>
       </div>
 
       <div>

@@ -38,13 +38,13 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
-          hints: string | null
+          hints: string[] | null
           id: number
           image: string | null
           long_description: string | null
           name: string
           photo_required: boolean | null
-          tips: string | null
+          tips: string[] | null
           title: string
           trivia: string | null
           xp: number | null
@@ -52,13 +52,13 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
-          hints?: string | null
+          hints?: string[] | null
           id?: number
           image?: string | null
           long_description?: string | null
           name: string
           photo_required?: boolean | null
-          tips?: string | null
+          tips?: string[] | null
           title: string
           trivia?: string | null
           xp?: number | null
@@ -66,13 +66,13 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
-          hints?: string | null
+          hints?: string[] | null
           id?: number
           image?: string | null
           long_description?: string | null
           name?: string
           photo_required?: boolean | null
-          tips?: string | null
+          tips?: string[] | null
           title?: string
           trivia?: string | null
           xp?: number | null

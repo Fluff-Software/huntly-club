@@ -274,28 +274,52 @@ export default function ActivityDetailScreen() {
           </View>
         )}
 
-        {activity.hints && (
+        {activity.hints && activity.hints.length > 0 && (
           <View className="mb-6">
             <ThemedText type="defaultSemiBold" className="text-huntly-forest mb-3 text-lg">
               💡 Hints
             </ThemedText>
             <View className="bg-huntly-sky/20 p-4 rounded-2xl">
-              <ThemedText type="body" className="text-huntly-charcoal leading-6">
-                {activity.hints}
-              </ThemedText>
+              {Array.isArray(activity.hints) ? (
+                activity.hints.map((hint, i) => (
+                  <ThemedText
+                    key={i}
+                    type="body"
+                    className="text-huntly-charcoal leading-6 mb-2 last:mb-0"
+                  >
+                    • {hint}
+                  </ThemedText>
+                ))
+              ) : (
+                <ThemedText type="body" className="text-huntly-charcoal leading-6">
+                  {activity.hints}
+                </ThemedText>
+              )}
             </View>
           </View>
         )}
 
-        {activity.tips && (
+        {activity.tips && activity.tips.length > 0 && (
           <View className="mb-6">
             <ThemedText type="defaultSemiBold" className="text-huntly-forest mb-3 text-lg">
               🎯 Tips
             </ThemedText>
             <View className="bg-huntly-mint/20 p-4 rounded-2xl">
-              <ThemedText type="body" className="text-huntly-charcoal leading-6">
-                {activity.tips}
-              </ThemedText>
+              {Array.isArray(activity.tips) ? (
+                activity.tips.map((tip, i) => (
+                  <ThemedText
+                    key={i}
+                    type="body"
+                    className="text-huntly-charcoal leading-6 mb-2 last:mb-0"
+                  >
+                    • {tip}
+                  </ThemedText>
+                ))
+              ) : (
+                <ThemedText type="body" className="text-huntly-charcoal leading-6">
+                  {activity.tips}
+                </ThemedText>
+              )}
             </View>
           </View>
         )}

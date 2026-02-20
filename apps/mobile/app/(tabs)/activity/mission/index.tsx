@@ -233,8 +233,12 @@ export default function InstructionScreen() {
 
   const imageSource = getActivityImageSource(activity.image);
   const categories = activity.categories && Array.isArray(activity.categories) ? activity.categories : [];
-  const hintLines = splitBulletLines(activity.hints);
-  const tipLines = splitBulletLines(activity.tips);
+  const hintLines = Array.isArray(activity.hints)
+    ? activity.hints.filter(Boolean)
+    : splitBulletLines(activity.hints as string | null);
+  const tipLines = Array.isArray(activity.tips)
+    ? activity.tips.filter(Boolean)
+    : splitBulletLines(activity.tips as string | null);
   const triviaBlocks = splitBlocks(activity.trivia);
 
   return (

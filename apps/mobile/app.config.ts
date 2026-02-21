@@ -55,6 +55,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     "expo-router",
     [
+      "expo-image-picker",
+      {
+        photosPermission:
+          "Huntly World needs access to your photo library so you can choose and upload photos for activities and mission completion.",
+        cameraPermission:
+          "Huntly World needs camera access so you can take photos for activity and mission completion.",
+      },
+    ],
+    [
       "expo-splash-screen",
       {
           "image": "./assets/images/logo.png",

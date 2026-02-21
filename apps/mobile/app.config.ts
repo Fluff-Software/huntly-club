@@ -33,6 +33,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     //   backgroundColor: "#ffffff",
     // },
     package: 'software.fluff.huntlyclub',
+    googleServicesFile: "./google-services.json",
     intentFilters: [
       {
         action: "VIEW",

@@ -5,6 +5,7 @@ import {
 } from "@react-navigation/native";
 import { useFonts } from "expo-font";
 import { Slot, router } from "expo-router";
+import * as Notifications from "expo-notifications";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
@@ -46,6 +47,16 @@ async function setSessionFromAuthConfirmUrl(url: string): Promise<void> {
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [juaLoaded] = useJuaFonts({
@@ -66,6 +77,16 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded]);
+
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data as { screen?: string } | undefined;
+      if (data?.screen === "story") {
+        router.push("/(tabs)/story");
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   // Handle deep links (e.g. email verification: huntlyclub://auth/confirm#access_token=...)
   useEffect(() => {

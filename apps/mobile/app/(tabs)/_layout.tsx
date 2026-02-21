@@ -1,10 +1,20 @@
 import { Tabs } from "expo-router";
-import { Image, Platform, StyleSheet } from "react-native";
+import { useEffect, useState } from "react";
+import { Image, Modal, Platform, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { PostSignUpWelcome } from "@/components/PostSignUpWelcome";
+import { ThemedText } from "@/components/ThemedText";
+import { Button } from "@/components/ui/Button";
+import {
+  hasAskedPushOptIn,
+  registerForPushNotificationsAsync,
+  savePushToken,
+  setPushOptInAsked,
+} from "@/services/pushNotificationService";
 
 const HOME_CLUBHOUSE = require("@/assets/images/home-clubhouse.png");
 const HOME_STORY = require("@/assets/images/home-story.png");
@@ -37,12 +47,44 @@ function TabIcon({
 }
 
 export default function TabLayout() {
+  const { user } = useAuth();
   const { currentPlayer } = usePlayer();
   const { scaleW } = useLayoutScale();
   const insets = useSafeAreaInsets();
   const signUpContext = useSignUpOptional();
   const showPostSignUpWelcome = signUpContext?.showPostSignUpWelcome ?? false;
   const setShowPostSignUpWelcome = signUpContext?.setShowPostSignUpWelcome;
+  const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
+  const [notificationPromptChecking, setNotificationPromptChecking] = useState(true);
+
+  useEffect(() => {
+    if (!user?.id || showPostSignUpWelcome) {
+      setNotificationPromptChecking(false);
+      return;
+    }
+    let cancelled = false;
+    hasAskedPushOptIn(user.id).then((asked) => {
+      if (!cancelled && !asked) setShowNotificationPrompt(true);
+      if (!cancelled) setNotificationPromptChecking(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, showPostSignUpWelcome]);
+
+  const handleNotificationPromptYes = async () => {
+    if (!user?.id) return;
+    const token = await registerForPushNotificationsAsync();
+    if (token) await savePushToken(user.id, token);
+    await setPushOptInAsked(user.id);
+    setShowNotificationPrompt(false);
+  };
+
+  const handleNotificationPromptNotNow = async () => {
+    if (!user?.id) return;
+    await setPushOptInAsked(user.id);
+    setShowNotificationPrompt(false);
+  };
 
   const activeColor = "#FFFFFF";
   const inactiveColor = "rgba(255,255,255,0.6)";
@@ -60,6 +102,36 @@ export default function TabLayout() {
         visible={showPostSignUpWelcome}
         onDismiss={() => setShowPostSignUpWelcome?.(false)}
       />
+      <Modal
+        visible={showNotificationPrompt && !notificationPromptChecking}
+        transparent
+        animationType="fade"
+        onRequestClose={handleNotificationPromptNotNow}
+      >
+        <View style={styles.notificationPromptOverlay}>
+          <View style={[styles.notificationPromptCard, { padding: scaleW(24), borderRadius: scaleW(16) }]}>
+            <ThemedText
+              type="subtitle"
+              style={{ marginBottom: scaleW(16), textAlign: "center" }}
+            >
+              Would you like to be notified when new chapters are available?
+            </ThemedText>
+            <ThemedText
+              style={{ marginBottom: scaleW(24), textAlign: "center", fontSize: scaleW(14), opacity: 0.9 }}
+            >
+              Get notified when a new chapter is ready to read.
+            </ThemedText>
+            <View style={{ gap: scaleW(12) }}>
+              <Button variant="primary" onPress={handleNotificationPromptYes}>
+                Yes, notify me
+              </Button>
+              <Button variant="cancel" onPress={handleNotificationPromptNotNow}>
+                Not now
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
       <Tabs
       screenOptions={({ route }) => ({
         tabBarActiveTintColor: activeColor,
@@ -159,4 +231,16 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   tabIcon: {},
+  notificationPromptOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  notificationPromptCard: {
+    backgroundColor: "#F8F7F4",
+    maxWidth: 360,
+    width: "100%",
+  },
 });

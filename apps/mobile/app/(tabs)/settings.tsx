@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   View,
   ScrollView,
@@ -18,6 +18,7 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as Device from "expo-device";
 import { ThemedText } from "@/components/ThemedText";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "expo-router";
@@ -31,6 +32,7 @@ import {
   canCancelRemovalRequest,
   sendAccountRemovalNotification,
 } from "@/services/accountRemovalService";
+import { getPushEnabled, setPushEnabled } from "@/services/pushNotificationService";
 
 const COLORS = {
   darkGreen: "#4F6F52",
@@ -47,6 +49,8 @@ export default function SettingsScreen() {
   const { scaleW } = useLayoutScale();
   const [weeklyEmail, setWeeklyEmail] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(false);
+  const [pushNotificationsLoading, setPushNotificationsLoading] = useState(true);
+  const [pushNotificationsToggling, setPushNotificationsToggling] = useState(false);
   const [showRemovalModal, setShowRemovalModal] = useState(false);
   const [removalReason, setRemovalReason] = useState("");
   const [removalSubmitting, setRemovalSubmitting] = useState(false);
@@ -96,6 +100,37 @@ export default function SettingsScreen() {
   React.useEffect(() => {
     refreshPendingRemoval();
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setPushNotificationsLoading(false);
+      return;
+    }
+    getPushEnabled(user.id).then((enabled) => {
+      setPushNotifications(enabled);
+      setPushNotificationsLoading(false);
+    });
+  }, [user?.id]);
+
+  const handlePushToggle = async () => {
+    if (!user?.id || pushNotificationsToggling) return;
+    const next = !pushNotifications;
+    setPushNotificationsToggling(true);
+    try {
+      const ok = await setPushEnabled(user.id, next);
+      if (next && !ok) {
+        Alert.alert(
+          "Notifications unavailable",
+          "Permission was denied or push notifications are not available on this device (e.g. simulator). You can enable them later in your device settings."
+        );
+        setPushNotifications(false);
+      } else {
+        setPushNotifications(next);
+      }
+    } finally {
+      setPushNotificationsToggling(false);
+    }
+  };
 
   const handleOpenRemovalModal = () => {
     if (pendingRemovalRequest) return;
@@ -410,7 +445,8 @@ export default function SettingsScreen() {
           <Animated.View style={pushAnimatedStyle}>
             <Pressable
               style={styles.prefRow}
-              onPress={() => setPushNotifications((v) => !v)}
+              onPress={handlePushToggle}
+              disabled={pushNotificationsLoading || pushNotificationsToggling}
               onPressIn={() => {
                 pushScale.value = withSpring(0.98, { damping: 15, stiffness: 400 });
               }}
@@ -418,18 +454,29 @@ export default function SettingsScreen() {
                 pushScale.value = withSpring(1, { damping: 15, stiffness: 400 });
               }}
             >
-              <ThemedText style={styles.prefLabel}>
-                Receive push notifications
-              </ThemedText>
-              <View style={styles.checkbox}>
-                {pushNotifications ? (
-                  <MaterialIcons
-                    name="check"
-                    size={scaleW(18)}
-                    color={COLORS.darkGreen}
-                  />
+              <View style={{ flex: 1 }}>
+                <ThemedText style={styles.prefLabel}>
+                  Receive push notifications
+                </ThemedText>
+                {!Device.isDevice ? (
+                  <ThemedText style={[styles.prefLabel, { fontSize: scaleW(12), opacity: 0.7, marginTop: scaleW(4) }]}>
+                    Not available on simulator
+                  </ThemedText>
                 ) : null}
               </View>
+              {pushNotificationsLoading || pushNotificationsToggling ? (
+                <ActivityIndicator size="small" color={COLORS.darkGreen} />
+              ) : (
+                <View style={styles.checkbox}>
+                  {pushNotifications ? (
+                    <MaterialIcons
+                      name="check"
+                      size={scaleW(18)}
+                      color={COLORS.darkGreen}
+                    />
+                  ) : null}
+                </View>
+              )}
             </Pressable>
           </Animated.View>
         </Animated.View>

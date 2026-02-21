@@ -7,7 +7,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: "huntly-club",
   version: "1.0.0",
   orientation: "portrait",
-  icon: "./assets/images/icon.png",
+  icon: "./assets/images/ios-light.png",
   scheme: "huntlyclub",
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
@@ -20,13 +20,18 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     config: {
       usesNonExemptEncryption: false
-    }
+    },
+    "icon": {
+        "dark": "./assets/images/ios-dark.png",
+        "light": "./assets/images/ios-light.png",
+        "tinted": "./assets/images/ios-tinted.png"
+      }
   },
   android: {
-    adaptiveIcon: {
-      foregroundImage: "./assets/images/adaptive-icon.png",
-      backgroundColor: "#ffffff",
-    },
+    // adaptiveIcon: {
+    //   foregroundImage: "./assets/images/adaptive-icon.png",
+    //   backgroundColor: "#ffffff",
+    // },
     package: 'software.fluff.huntlyclub',
     intentFilters: [
       {

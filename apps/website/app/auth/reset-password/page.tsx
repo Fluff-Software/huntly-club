@@ -56,7 +56,7 @@ export default function ResetPasswordPage() {
       setStatus("success");
     } catch (err) {
       setStatus("error");
-      setErrorMessage(err instanceof Error ? err.message : "Failed to update password.");
+      setErrorMessage("We couldn't update your password. Give it another try?");
     } finally {
       setSubmitting(false);
     }
@@ -66,7 +66,7 @@ export default function ResetPasswordPage() {
     return (
       <div className="section flex min-h-[60vh] items-center justify-center">
         <div className="card max-w-md text-center">
-          <p className="text-sm leading-relaxed text-huntly-slate">Loading…</p>
+          <p className="text-sm leading-relaxed text-huntly-slate">Getting things ready…</p>
         </div>
       </div>
     );
@@ -80,7 +80,7 @@ export default function ResetPasswordPage() {
             Invalid or expired link
           </h1>
           <p className="text-sm leading-relaxed text-huntly-slate">
-            This password reset link is invalid or has expired. Please request a new one from the app.
+            This link has expired or isn't valid. Request a new one from the app and try again.
           </p>
         </div>
       </div>
@@ -110,10 +110,10 @@ export default function ResetPasswordPage() {
             Something went wrong
           </h1>
           <p className="text-sm leading-relaxed text-huntly-slate">
-            {errorMessage ?? "Failed to update password. The link may have expired."}
+            {errorMessage ?? "We couldn't update your password. The link may have expired - request a new one from the app and try again."}
           </p>
           <p className="mt-4 text-sm text-huntly-slate">
-            Please try requesting a new reset link from the app.
+            Request a new reset link from the app and try again.
           </p>
         </div>
       </div>

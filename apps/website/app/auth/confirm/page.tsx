@@ -13,7 +13,7 @@ export default function AuthConfirmPage() {
     <div className="section flex min-h-[60vh] items-center justify-center">
       <div className="card max-w-md text-center">
         <p className="text-sm leading-relaxed text-huntly-slate">
-          Redirecting…
+          Taking you back to the app…
         </p>
       </div>
     </div>

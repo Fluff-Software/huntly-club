@@ -6,26 +6,31 @@ export const metadata = {
 
 export default function ContactPage() {
   return (
-    <div className="section py-12 sm:py-16">
-      <div className="mx-auto max-w-2xl space-y-8">
-        <div className="space-y-3">
-          <h1 className="font-display text-2xl font-semibold text-huntly-forest sm:text-3xl">
-            Get in touch
-          </h1>
-          <p className="text-sm leading-relaxed text-huntly-slate sm:text-base">
-            We&apos;d love to hear from you — whether you&apos;re a parent,
-            educator, or organisation interested in bringing Huntly World to
-            your community.
-          </p>
+    <>
+      <div className="bg-huntly-stone/20 py-10 sm:py-12">
+        <div className="section">
+          <div className="mx-auto max-w-2xl space-y-3">
+            <h1 className="font-display text-2xl font-semibold text-huntly-forest sm:text-3xl">
+              Get in touch
+            </h1>
+            <p className="text-sm leading-relaxed text-huntly-slate sm:text-base">
+              We&apos;d love to hear from families, schools, clubs and young
+              explorers - whether you&apos;re a parent, educator, or organisation
+              interested in bringing Huntly World to your community.
+            </p>
+          </div>
         </div>
+      </div>
 
+      <div className="section py-12 sm:py-16">
+        <div className="mx-auto max-w-2xl space-y-8">
         <div className="card space-y-5">
           <div className="space-y-2">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-huntly-slate">
               Email
             </h2>
             <p className="text-sm text-huntly-slate">
-              Drop us a note at{" "}
+              Send us a note at{" "}
               <a
                 href="mailto:hello@huntly.app"
                 className="font-medium text-huntly-moss underline-offset-2 hover:underline"
@@ -68,8 +73,9 @@ export default function ContactPage() {
           </Link>
           .
         </p>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

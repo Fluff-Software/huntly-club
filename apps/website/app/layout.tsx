@@ -13,7 +13,7 @@ const nunito = Nunito({
 export const metadata: Metadata = {
   title: "Huntly World – Your club. Your missions. Outdoors.",
   description:
-    "Huntly World gets kids exploring with stories, missions and friendly characters — all in one app.",
+    "Huntly World gets young explorers exploring with stories, missions and friendly characters - all in one app.",
 };
 
 export const viewport: Viewport = {
@@ -72,7 +72,10 @@ export default function RootLayout({
 
           <footer className="border-t-2 border-huntly-stone bg-huntly-parchment py-6">
             <div className="section flex flex-col items-start justify-between gap-3 text-sm text-huntly-slate sm:flex-row sm:items-center">
-              <p>© {new Date().getFullYear()} Fluff Software Limited.</p>
+              <div>
+                <p>© {new Date().getFullYear()} Fluff Software Limited.</p>
+                <p className="mt-1 text-xs text-huntly-slate/90">Adventures for curious kids.</p>
+              </div>
               <div className="flex flex-wrap gap-5">
                 <Link href="/contact" className="font-medium text-huntly-forest underline-offset-2 hover:underline">
                   Get in touch

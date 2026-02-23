@@ -23,6 +23,7 @@ import {
 
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { NetworkProvider } from "@/contexts/NetworkContext";
 import { PurchasesProvider } from "@/contexts/PurchasesContext";
 import { PlayerProvider } from "@/contexts/PlayerContext";
 import { SignUpProvider } from "@/contexts/SignUpContext";
@@ -119,20 +120,20 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <SignUpProvider>
-        <PurchasesProvider>
-          <PlayerProvider>
-            <ThemeProvider
-            value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
-          >
-            <AuthGuard>
-              <Slot />
-            </AuthGuard>
-            <StatusBar style="auto" />
-          </ThemeProvider>
-        </PlayerProvider>
-      </PurchasesProvider>
-      </SignUpProvider>
+      <NetworkProvider>
+        <SignUpProvider>
+          <PurchasesProvider>
+            <PlayerProvider>
+              <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+                <AuthGuard>
+                  <Slot />
+                </AuthGuard>
+                <StatusBar style="auto" />
+              </ThemeProvider>
+            </PlayerProvider>
+          </PurchasesProvider>
+        </SignUpProvider>
+      </NetworkProvider>
     </AuthProvider>
   );
 }

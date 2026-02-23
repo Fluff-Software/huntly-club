@@ -33,35 +33,38 @@ export default function RootLayout({
       <body className="font-sans">
         <div className="page-shell">
           <header className="border-b-2 border-huntly-leaf/30 bg-huntly-parchment/95 backdrop-blur">
-            <div className="section flex items-center justify-between py-4">
-              <Link href="/" className="flex items-center gap-3">
-                <div className="relative h-8 w-32 md:h-9 md:w-40">
+            <div className="section flex min-w-0 items-center justify-between gap-3 py-3 sm:gap-5 sm:py-4">
+              <Link href="/" className="flex min-w-0 shrink items-center gap-2 sm:gap-3">
+                <div className="relative h-7 w-24 shrink-0 sm:h-8 sm:w-32 md:h-9 md:w-40">
                   <Image
                     src="/logo.png"
                     alt="Huntly World logo"
                     fill
-                    sizes="(max-width: 768px) 128px, 160px"
+                    sizes="(max-width: 640px) 96px, (max-width: 768px) 128px, 160px"
                     className="object-contain"
                     priority
                   />
                 </div>
-                <div className="flex flex-col leading-tight">
-                  <span className="text-base font-bold text-huntly-forest">
+                <div className="hidden min-w-0 flex-col leading-tight sm:flex">
+                  <span className="truncate text-base font-bold text-huntly-forest">
                     Huntly World
                   </span>
-                  <span className="text-xs text-huntly-slate">
+                  <span className="truncate text-xs text-huntly-slate">
                     Adventures for curious kids
                   </span>
                 </div>
               </Link>
 
-              <nav className="flex items-center gap-5">
+              <nav className="flex shrink-0 items-center gap-3 sm:gap-5">
                 {navLinks.map((link) => (
-                  <Link key={link.href} href={link.href} className="nav-link">
+                  <Link key={link.href} href={link.href} className="nav-link hidden text-sm sm:inline-block">
                     {link.label}
                   </Link>
                 ))}
-                <Link href="/contact" className="btn-primary">
+                <Link
+                  href="/contact"
+                  className="btn-primary whitespace-nowrap px-4 py-2 text-sm sm:px-5 sm:py-2.5 sm:text-sm"
+                >
                   Get in touch
                 </Link>
               </nav>

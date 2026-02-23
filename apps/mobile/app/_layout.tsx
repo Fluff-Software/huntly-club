@@ -27,7 +27,6 @@ import { NetworkProvider } from "@/contexts/NetworkContext";
 import { PurchasesProvider } from "@/contexts/PurchasesContext";
 import { PlayerProvider } from "@/contexts/PlayerContext";
 import { SignUpProvider } from "@/contexts/SignUpContext";
-import { View } from "react-native";
 import { AuthGuard } from "@/components/authentication/AuthGuard";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { supabase } from "@/services/supabase";
@@ -121,26 +120,24 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <NetworkProvider>
+    <NetworkProvider>
+      <AuthProvider>
         <SignUpProvider>
           <PurchasesProvider>
             <PlayerProvider>
-              <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+              <ThemeProvider
+                value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+              >
+                <OfflineBanner />
                 <AuthGuard>
-                  <View style={{ flex: 1 }}>
-                    <OfflineBanner />
-                    <View style={{ flex: 1 }}>
-                      <Slot />
-                    </View>
-                  </View>
+                  <Slot />
                 </AuthGuard>
                 <StatusBar style="auto" />
               </ThemeProvider>
             </PlayerProvider>
           </PurchasesProvider>
         </SignUpProvider>
-      </NetworkProvider>
-    </AuthProvider>
+      </AuthProvider>
+    </NetworkProvider>
   );
 }

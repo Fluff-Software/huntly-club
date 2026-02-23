@@ -30,7 +30,6 @@ import { usePlayer } from "@/contexts/PlayerContext";
 import { getTeamById } from "@/services/profileService";
 import { getRandomClubPhotos, type ClubPhotoCardItem } from "@/services/activityProgressService";
 import { getTeamCardConfig } from "@/utils/teamUtils";
-import { useNetwork } from "@/contexts/NetworkContext";
 
 type HomeMode = "profile" | "activity" | "missions";
 const HOME_MODES: HomeMode[] = ["profile", "activity", "missions"];
@@ -59,47 +58,29 @@ const TEAM_CARD_MESSAGES = [
 export default function HomeScreen() {
   const { scaleW, width, height } = useLayoutScale();
   const { currentPlayer } = usePlayer();
-  const { daysPlayed, pointsEarned, refetch: refetchUserStats } = useUserStats();
-  const { nextMission, loading: missionLoading, refetch: refetchMissions } = useCurrentChapterActivities(currentPlayer?.id ?? null);
-  const { isConnected, backOnlineTrigger } = useNetwork();
+  const { daysPlayed, pointsEarned } = useUserStats();
+  const { nextMission, loading: missionLoading } = useCurrentChapterActivities(currentPlayer?.id ?? null);
   const [teamName, setTeamName] = useState<string | null>(null);
   const [clubCards, setClubCards] = useState<ClubPhotoCardItem[]>([]);
   const [clubCardsLoading, setClubCardsLoading] = useState(true);
-  const [clubCardsLoadFailed, setClubCardsLoadFailed] = useState(false);
   const [loadingMoreClubCards, setLoadingMoreClubCards] = useState(false);
   const initialIndex = 1; // activity (Welcome back)
   const [currentIndex, setCurrentIndex] = useState<number>(initialIndex);
   const currentMode = HOME_MODES[currentIndex] ?? "activity";
   const teamCardMessage = useMemo(() => TEAM_CARD_MESSAGES[Math.floor(Math.random() * TEAM_CARD_MESSAGES.length)], []);
 
-  const fetchClubCards = React.useCallback(() => {
-    setClubCardsLoadFailed(false);
+  useEffect(() => {
+    let cancelled = false;
     setClubCardsLoading(true);
-    getRandomClubPhotos(5)
-      .then((cards) => {
-        setClubCards(cards);
-      })
-      .catch(() => {
-        setClubCards([]);
-        setClubCardsLoadFailed(true);
-      })
-      .finally(() => {
-        setClubCardsLoading(false);
-      });
+    getRandomClubPhotos(5).then((cards) => {
+      if (!cancelled) setClubCards(cards);
+    }).catch(() => {
+      if (!cancelled) setClubCards([]);
+    }).finally(() => {
+      if (!cancelled) setClubCardsLoading(false);
+    });
+    return () => { cancelled = true; };
   }, []);
-
-  useEffect(() => {
-    fetchClubCards();
-  }, [fetchClubCards]);
-
-  // When we come back online, refetch all home data (missions, team, club photos, stats)
-  useEffect(() => {
-    if (backOnlineTrigger > 0) {
-      fetchClubCards();
-      void refetchMissions();
-      void refetchUserStats();
-    }
-  }, [backOnlineTrigger, fetchClubCards, refetchMissions, refetchUserStats]);
 
   const loadMoreClubCards = async () => {
     if (loadingMoreClubCards || clubCards.length === 0) return;
@@ -129,7 +110,7 @@ export default function HomeScreen() {
       if (!cancelled && team) setTeamName(team.name);
     });
     return () => { cancelled = true; };
-  }, [currentPlayer?.team, backOnlineTrigger]);
+  }, [currentPlayer?.team]);
 
   const teamCardConfig = teamName ? getTeamCardConfig(teamName) : null;
 
@@ -534,7 +515,7 @@ export default function HomeScreen() {
           </AnimatedReanimated.View>
         )}
 
-        {(clubCardsLoading || clubCards.length > 0 || clubCardsLoadFailed) && (
+        {(clubCardsLoading || clubCards.length > 0) && (
           <View
             style={{
               backgroundColor: "#BBE5EB",
@@ -555,28 +536,9 @@ export default function HomeScreen() {
             <ThemedText type="heading" style={{ color: "#000", fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(32), textAlign: "center", lineHeight: scaleW(28) }}>
               From around the club
             </ThemedText>
-            {clubCardsLoading && clubCards.length === 0 && !clubCardsLoadFailed ? (
+            {clubCardsLoading && clubCards.length === 0 ? (
               <View style={{ minHeight: scaleW(200), justifyContent: "center", alignItems: "center", paddingVertical: scaleW(32) }}>
                 <ActivityIndicator size="large" color="#5B8A9E" />
-              </View>
-            ) : clubCardsLoadFailed && clubCards.length === 0 ? (
-              <View style={{ minHeight: scaleW(200), justifyContent: "center", alignItems: "center", paddingVertical: scaleW(32), paddingHorizontal: scaleW(24) }}>
-                <ThemedText type="body" style={{ color: "#000", fontSize: scaleW(16), textAlign: "center", marginBottom: scaleW(16) }}>
-                  {isConnected === false ? "No connection. Photos will load when you're back online." : "Couldn't load photos. Check your connection and try again."}
-                </ThemedText>
-                {(isConnected === true || isConnected === null) && (
-                  <Pressable
-                    onPress={() => fetchClubCards()}
-                    style={{
-                      backgroundColor: "#5B8A9E",
-                      paddingHorizontal: scaleW(24),
-                      paddingVertical: scaleW(12),
-                      borderRadius: scaleW(24),
-                    }}
-                  >
-                    <ThemedText type="body" style={{ color: "#FFF", fontWeight: "600" }}>Retry</ThemedText>
-                  </Pressable>
-                )}
               </View>
             ) : (
             <>

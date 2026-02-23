@@ -1,45 +1,75 @@
-import { View, StyleSheet, Platform } from "react-native";
+import React, { useEffect } from "react";
+import { View, Text, StyleSheet, Animated } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ThemedText } from "@/components/ThemedText";
 import { useNetwork } from "@/contexts/NetworkContext";
 
+const CREAM = "#F4F0EB";
+const OFFLINE_BG = "#8B4513";
+const OFFLINE_TEXT = "#FFF";
+
 /**
- * App-level banner shown when the device has no connection.
- * Content will refresh automatically when back online (handled by screens that use backOnlineTrigger).
+ * Banner shown at the top of the app when there is no internet connection.
+ * Only renders after network state is ready to avoid flashing on startup.
  */
 export function OfflineBanner() {
-  const { isConnected } = useNetwork();
   const insets = useSafeAreaInsets();
+  const { isConnected, isReady } = useNetwork();
+  const opacity = React.useRef(new Animated.Value(0)).current;
 
-  if (isConnected !== false) return null;
+  const show = isReady && !isConnected;
+
+  useEffect(() => {
+    Animated.timing(opacity, {
+      toValue: show ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [show, opacity]);
+
+  if (!isReady) return null;
 
   return (
-    <View
+    <Animated.View
       style={[
         styles.banner,
-        { paddingTop: Math.max(insets.top, 8) + 8, paddingBottom: 8 },
+        { paddingTop: Math.max(insets.top, 8), paddingBottom: 8 },
+        { opacity },
       ]}
+      pointerEvents={show ? "auto" : "none"}
     >
-      <ThemedText style={styles.text}>
-        No connection. Content will refresh when you're back online.
-      </ThemedText>
-    </View>
+      <View style={styles.content}>
+        <Text style={styles.text}>No internet connection</Text>
+        <Text style={styles.subtext}>
+          Some features may be unavailable. Check your connection and try again.
+        </Text>
+      </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   banner: {
-    backgroundColor: "#D2684B",
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    zIndex: 9999,
+    backgroundColor: OFFLINE_BG,
     paddingHorizontal: 16,
-    ...Platform.select({
-      ios: { shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2 },
-      android: { elevation: 4 },
-    }),
+  },
+  content: {
+    flexDirection: "column",
+    gap: 2,
   },
   text: {
-    color: "#FFF",
-    fontSize: 14,
-    fontWeight: "600",
-    textAlign: "center",
+    fontFamily: "ComicNeue_700Bold",
+    fontSize: 15,
+    color: OFFLINE_TEXT,
+  },
+  subtext: {
+    fontFamily: "ComicNeue_400Regular",
+    fontSize: 13,
+    color: CREAM,
+    opacity: 0.95,
   },
 });

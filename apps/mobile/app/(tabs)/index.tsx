@@ -59,9 +59,9 @@ const TEAM_CARD_MESSAGES = [
 export default function HomeScreen() {
   const { scaleW, width, height } = useLayoutScale();
   const { currentPlayer } = usePlayer();
-  const { daysPlayed, pointsEarned } = useUserStats();
-  const { nextMission, loading: missionLoading } = useCurrentChapterActivities(currentPlayer?.id ?? null);
-  const { isConnected } = useNetwork();
+  const { daysPlayed, pointsEarned, refetch: refetchUserStats } = useUserStats();
+  const { nextMission, loading: missionLoading, refetch: refetchMissions } = useCurrentChapterActivities(currentPlayer?.id ?? null);
+  const { isConnected, backOnlineTrigger } = useNetwork();
   const [teamName, setTeamName] = useState<string | null>(null);
   const [clubCards, setClubCards] = useState<ClubPhotoCardItem[]>([]);
   const [clubCardsLoading, setClubCardsLoading] = useState(true);
@@ -92,6 +92,15 @@ export default function HomeScreen() {
     fetchClubCards();
   }, [fetchClubCards]);
 
+  // When we come back online, refetch all home data (missions, team, club photos, stats)
+  useEffect(() => {
+    if (backOnlineTrigger > 0) {
+      fetchClubCards();
+      void refetchMissions();
+      void refetchUserStats();
+    }
+  }, [backOnlineTrigger, fetchClubCards, refetchMissions, refetchUserStats]);
+
   const loadMoreClubCards = async () => {
     if (loadingMoreClubCards || clubCards.length === 0) return;
     setLoadingMoreClubCards(true);
@@ -120,7 +129,7 @@ export default function HomeScreen() {
       if (!cancelled && team) setTeamName(team.name);
     });
     return () => { cancelled = true; };
-  }, [currentPlayer?.team]);
+  }, [currentPlayer?.team, backOnlineTrigger]);
 
   const teamCardConfig = teamName ? getTeamCardConfig(teamName) : null;
 

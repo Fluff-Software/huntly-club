@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { getTotalXpForProfileIds } from "@/services/teamActivityService";
 
@@ -8,7 +8,7 @@ import { getTotalXpForProfileIds } from "@/services/teamActivityService";
  * - pointsEarned: total XP from user_achievements for this profile only
  * When no profile is selected, both are 0.
  */
-export function useUserStats(): { daysPlayed: number; pointsEarned: number } {
+export function useUserStats(): { daysPlayed: number; pointsEarned: number; refetch: () => Promise<void> } {
   const { currentPlayer } = usePlayer();
   const [pointsEarned, setPointsEarned] = useState(0);
 
@@ -23,6 +23,19 @@ export function useUserStats(): { daysPlayed: number; pointsEarned: number } {
         )
       : 0;
 
+  const refetch = useCallback(async () => {
+    if (currentPlayer?.id != null) {
+      try {
+        const points = await getTotalXpForProfileIds([currentPlayer.id]);
+        setPointsEarned(points);
+      } catch {
+        setPointsEarned(0);
+      }
+    } else {
+      setPointsEarned(0);
+    }
+  }, [currentPlayer?.id]);
+
   useEffect(() => {
     if (currentPlayer?.id != null) {
       getTotalXpForProfileIds([currentPlayer.id])
@@ -33,5 +46,5 @@ export function useUserStats(): { daysPlayed: number; pointsEarned: number } {
     }
   }, [currentPlayer?.id]);
 
-  return { daysPlayed, pointsEarned };
+  return { daysPlayed, pointsEarned, refetch };
 }

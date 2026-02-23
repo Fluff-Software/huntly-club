@@ -23,12 +23,31 @@ import {
 
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { NetworkProvider } from "@/contexts/NetworkContext";
-import { PurchasesProvider } from "@/contexts/PurchasesContext";
+import { NetworkProvider, useNetwork } from "@/contexts/NetworkContext";
 import { PlayerProvider } from "@/contexts/PlayerContext";
+import { PurchasesProvider } from "@/contexts/PurchasesContext";
 import { SignUpProvider } from "@/contexts/SignUpContext";
 import { AuthGuard } from "@/components/authentication/AuthGuard";
 import { supabase } from "@/services/supabase";
+
+/** Keys app content by backOnlineTrigger so the whole app remounts when connection is restored. */
+function AppContentWithNetworkRefresh({ colorScheme }: { colorScheme: "light" | "dark" | null | undefined }) {
+  const { backOnlineTrigger } = useNetwork();
+  return (
+    <SignUpProvider>
+      <PurchasesProvider>
+        <PlayerProvider>
+          <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+            <AuthGuard>
+              <Slot key={backOnlineTrigger} />
+            </AuthGuard>
+            <StatusBar style="auto" />
+          </ThemeProvider>
+        </PlayerProvider>
+      </PurchasesProvider>
+    </SignUpProvider>
+  );
+}
 
 import "../global.css";
 
@@ -121,18 +140,7 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <NetworkProvider>
-        <SignUpProvider>
-          <PurchasesProvider>
-            <PlayerProvider>
-              <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-                <AuthGuard>
-                  <Slot />
-                </AuthGuard>
-                <StatusBar style="auto" />
-              </ThemeProvider>
-            </PlayerProvider>
-          </PurchasesProvider>
-        </SignUpProvider>
+        <AppContentWithNetworkRefresh colorScheme={colorScheme} />
       </NetworkProvider>
     </AuthProvider>
   );

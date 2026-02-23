@@ -61,7 +61,7 @@ export default function HomeScreen() {
   const { currentPlayer } = usePlayer();
   const { daysPlayed, pointsEarned } = useUserStats();
   const { nextMission, loading: missionLoading } = useCurrentChapterActivities(currentPlayer?.id ?? null);
-  const { isConnected, backOnlineTrigger } = useNetwork();
+  const { isConnected } = useNetwork();
   const [teamName, setTeamName] = useState<string | null>(null);
   const [clubCards, setClubCards] = useState<ClubPhotoCardItem[]>([]);
   const [clubCardsLoading, setClubCardsLoading] = useState(true);
@@ -91,13 +91,6 @@ export default function HomeScreen() {
   useEffect(() => {
     fetchClubCards();
   }, [fetchClubCards]);
-
-  // When we come back online, refetch club photos so they load
-  useEffect(() => {
-    if (backOnlineTrigger > 0) {
-      fetchClubCards();
-    }
-  }, [backOnlineTrigger, fetchClubCards]);
 
   const loadMoreClubCards = async () => {
     if (loadingMoreClubCards || clubCards.length === 0) return;

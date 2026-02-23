@@ -376,7 +376,7 @@ function StoryLoadingScreen({ scaleW }: { scaleW: (n: number) => number }) {
           opacity: 0.8,
         }}
       >
-        Loading story
+        Getting your story ready…
       </Text>
       <View style={{ flexDirection: "row", alignItems: "center" }}>
         <BouncingDot delay={0} scaleW={scaleW} />

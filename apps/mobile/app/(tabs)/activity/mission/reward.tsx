@@ -43,6 +43,13 @@ const CELEBRATE_ICON = require("@/assets/images/celebrate.png");
 
 const DEFAULT_CARD_IMAGE = require("@/assets/images/laser-fortress.jpg");
 
+const WELL_DONE_HEADLINES = [
+  "Well done!",
+  "You did it!",
+  "Mission complete!",
+  "Adventure complete!",
+];
+
 type RewardAchievement = { profile_name: string; message: string; xp: number };
 
 export default function RewardScreen() {
@@ -50,6 +57,11 @@ export default function RewardScreen() {
   const navigation = useNavigation();
   const { scaleW } = useLayoutScale();
   const params = useLocalSearchParams<{ activityId?: string; achievements?: string }>();
+
+  const wellDoneHeadline = useMemo(
+    () => WELL_DONE_HEADLINES[Math.floor(Math.random() * WELL_DONE_HEADLINES.length)],
+    []
+  );
 
   const [activityCard, setActivityCard] = useState<MissionCardData | null>(null);
   const [activityXp, setActivityXp] = useState<number | null>(null);
@@ -366,7 +378,7 @@ export default function RewardScreen() {
         </Animated.View>
 
         <Animated.View entering={FadeInDown.duration(500).delay(200).springify().damping(18)}>
-          <Text style={styles.wellDoneHeading}>Well done!</Text>
+          <Text style={styles.wellDoneHeading}>{wellDoneHeadline}</Text>
         </Animated.View>
 
         {achievements.length > 0 && (

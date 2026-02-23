@@ -233,7 +233,7 @@ export default function StoryScreen() {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]} edges={["top", "left", "right"]}>
         <ActivityIndicator size="large" color="#FFF" />
-        <ThemedText style={styles.loadingText}>Loading story…</ThemedText>
+        <ThemedText style={styles.loadingText}>Getting your story ready…</ThemedText>
       </SafeAreaView>
     );
   }
@@ -241,7 +241,7 @@ export default function StoryScreen() {
   if (error) {
     return (
       <SafeAreaView style={[styles.container, styles.errorContainer]} edges={["top", "left", "right"]}>
-        <ThemedText style={styles.errorText}>{error}</ThemedText>
+        <ThemedText style={styles.errorText}>Something went wrong loading your story.</ThemedText>
         <Pressable
           onPress={handleRetry}
           style={styles.retryButton}
@@ -253,7 +253,7 @@ export default function StoryScreen() {
           }}
         >
           <ThemedText type="heading" style={styles.retryButtonText}>
-            Retry
+            Try again
           </ThemedText>
         </Pressable>
       </SafeAreaView>
@@ -368,7 +368,7 @@ export default function StoryScreen() {
         {firstSeason && chapters.length === 0 && (
           <View style={[styles.chapterContainer, styles.loadingContainer]}>
             <ThemedText style={styles.errorText}>
-              No chapters in this season yet.
+              No chapters in this season yet. Check back soon—new adventures are on the way!
             </ThemedText>
           </View>
         )}
@@ -376,7 +376,7 @@ export default function StoryScreen() {
         {!firstSeason && chapters.length === 0 && (
           <View style={[styles.chapterContainer, styles.loadingContainer]}>
             <ThemedText style={styles.errorText}>
-              No story content available yet.
+              No story content available yet. Your next chapter is coming soon!
             </ThemedText>
           </View>
         )}

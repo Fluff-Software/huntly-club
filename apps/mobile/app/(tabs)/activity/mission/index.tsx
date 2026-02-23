@@ -223,7 +223,7 @@ export default function InstructionScreen() {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]} edges={["top", "left", "right"]}>
         <ActivityIndicator size="large" color={HUNTLY_GREEN} />
-        <ThemedText style={[styles.errorText, { marginTop: scaleW(16) }]}>Loading activity…</ThemedText>
+        <ThemedText style={[styles.errorText, { marginTop: scaleW(16) }]}>Loading your mission…</ThemedText>
       </SafeAreaView>
     );
   }

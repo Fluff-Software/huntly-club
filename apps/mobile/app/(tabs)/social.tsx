@@ -405,7 +405,7 @@ export default function SocialScreen() {
             Select Your Explorer
           </Text>
           <Text style={styles.emptyStateBody}>
-            Choose an explorer profile to view your team
+            Choose an explorer profile to view your team. Teams make exploring even more fun!
           </Text>
         </View>
       </BaseLayout>
@@ -420,7 +420,7 @@ export default function SocialScreen() {
             Join a Team
           </Text>
           <Text style={styles.emptyStateBody}>
-            Your explorer needs to join a team to view team activities
+            Your explorer needs to join a team to view team activities. Create an explorer in Clubhouse to get started!
           </Text>
         </View>
       </BaseLayout>
@@ -431,7 +431,7 @@ export default function SocialScreen() {
     return (
       <SafeAreaView style={[styles.page, { justifyContent: "center", alignItems: "center" }]} edges={["top", "left", "right"]}>
         <Text style={styles.loadingText}>
-          Loading...
+          Loading your team…
         </Text>
       </SafeAreaView>
     );
@@ -569,7 +569,7 @@ export default function SocialScreen() {
             </View>
           )}
           {showNoMoreMessage && (
-            <Text style={styles.noMoreAchievements}>No more achievements to load</Text>
+            <Text style={styles.noMoreAchievements}>You're all caught up! More achievements will appear as your team explores.</Text>
           )}
         </View>
       </ScrollView>

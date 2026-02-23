@@ -108,15 +108,15 @@ export default function MissionsScreen() {
         {loading && (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#FFF" />
-            <ThemedText style={[styles.emptyText, { marginTop: scaleW(16) }]}>Loading missions…</ThemedText>
+            <ThemedText style={[styles.emptyText, { marginTop: scaleW(16) }]}>Finding your missions…</ThemedText>
           </View>
         )}
         {error && !loading && (
           <View style={styles.errorContainer}>
-            <ThemedText style={styles.errorText}>{error}</ThemedText>
+            <ThemedText style={styles.errorText}>Something went wrong loading your missions.</ThemedText>
             <Pressable style={styles.retryButton} onPress={refetch}>
               <ThemedText type="heading" style={{ fontSize: scaleW(16), fontWeight: "600", color: "#2D5A27" }}>
-                Retry
+                Try again
               </ThemedText>
             </Pressable>
           </View>
@@ -126,7 +126,7 @@ export default function MissionsScreen() {
           <>
             {chapters.length === 0 ? (
               <View style={[styles.loadingContainer, { paddingVertical: scaleW(24) }]}>
-                <ThemedText style={styles.emptyText}>No chapters yet.</ThemedText>
+                <ThemedText style={styles.emptyText}>New adventures are on the way. Check back soon!</ThemedText>
               </View>
             ) : (
               <>
@@ -141,7 +141,7 @@ export default function MissionsScreen() {
                   </ThemedText>
                   {chapters[0].activities.length === 0 ? (
                     <View style={{ paddingHorizontal: scaleW(20), paddingVertical: scaleW(12) }}>
-                      <ThemedText style={styles.emptyText}>No missions for this chapter yet.</ThemedText>
+                      <ThemedText style={styles.emptyText}>No missions here yet—your next challenge is coming!</ThemedText>
                     </View>
                   ) : (
                     <ScrollView
@@ -180,7 +180,7 @@ export default function MissionsScreen() {
                         </ThemedText>
                         {chapter.activities.length === 0 ? (
                           <View style={{ paddingHorizontal: scaleW(20), paddingVertical: scaleW(12) }}>
-                            <ThemedText style={styles.emptyText}>No missions for this chapter yet.</ThemedText>
+                            <ThemedText style={styles.emptyText}>No missions here yet—your next challenge is coming!</ThemedText>
                           </View>
                         ) : (
                           <ScrollView

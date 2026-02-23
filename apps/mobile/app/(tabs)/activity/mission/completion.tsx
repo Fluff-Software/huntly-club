@@ -176,8 +176,8 @@ export default function CompletionScreen() {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
-          "Permission Required",
-          "Sorry, we need camera access to take photos for this activity."
+          "Camera access",
+          "We need camera access so you can capture your mission."
         );
         return;
       }
@@ -193,7 +193,7 @@ export default function CompletionScreen() {
       }
     } catch (error) {
       console.error("Camera error:", error);
-      Alert.alert("Error", "Failed to take photo. Please try again.");
+      Alert.alert("Oops", "We couldn't save that—give it another try?");
     }
   };
 
@@ -203,8 +203,8 @@ export default function CompletionScreen() {
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
-          "Permission Required",
-          "Sorry, we need gallery access to pick photos for this activity."
+          "Gallery access",
+          "We need gallery access so you can add photos to your mission."
         );
         return;
       }
@@ -224,7 +224,7 @@ export default function CompletionScreen() {
       }
     } catch (error) {
       console.error("Image picker error:", error);
-      Alert.alert("Error", "Failed to pick image. Please try again.");
+      Alert.alert("Oops", "We couldn't add that photo—give it another try?");
     }
   };
 
@@ -393,7 +393,7 @@ export default function CompletionScreen() {
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Something went wrong.";
-      Alert.alert("Error", `Failed to complete: ${message}`);
+      Alert.alert("Oops", "We couldn't save that—give it another try?");
     } finally {
       setCompleting(false);
     }

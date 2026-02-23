@@ -38,9 +38,9 @@ export function OfflineBanner() {
       pointerEvents={show ? "auto" : "none"}
     >
       <View style={styles.content}>
-        <Text style={styles.text}>No internet connection</Text>
+        <Text style={styles.text}>You're offline</Text>
         <Text style={styles.subtext}>
-          Some features may be unavailable. Check your connection and try again.
+          When you're back online, your adventures will be here.
         </Text>
       </View>
     </Animated.View>

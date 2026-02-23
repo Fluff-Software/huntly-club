@@ -16,6 +16,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
+import { useFocusEffect } from "expo-router";
 import { BaseLayout } from "@/components/layout/BaseLayout";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import {
@@ -76,6 +77,7 @@ export default function SocialScreen() {
 
   const bearSlideAnim = useRef(new RNAnimated.Value(400)).current;
   const chartProgress = useSharedValue(0);
+  const scrollRef = useRef<ScrollView>(null);
 
   const barHeights = useMemo(() => {
     const teamOrder = ["bears", "foxes", "otters"];
@@ -149,6 +151,13 @@ export default function SocialScreen() {
   useEffect(() => {
     fetchTeamActivities();
   }, [fetchTeamActivities]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchTeamActivities();
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, [fetchTeamActivities])
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -432,6 +441,7 @@ export default function SocialScreen() {
   return (
     <SafeAreaView style={styles.page} edges={["top", "left", "right"]}>
       <ScrollView
+        ref={scrollRef}
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         bounces={false}

@@ -16,7 +16,7 @@ export type Chapter = {
   unlock_date: string;
 };
 
-export function useAllChapters(): {
+export function useAllChapters(seasonId?: number | null): {
   chapters: Chapter[];
   loading: boolean;
   error: string | null;
@@ -31,11 +31,17 @@ export function useAllChapters(): {
     setLoading(true);
     const today = new Date().toISOString().slice(0, 10);
 
-    const { data, error: chapterError } = await supabase
+    let query = supabase
       .from("chapters")
       .select("id, week_number, title, body, body_parts, body_slides, unlock_date")
       .lte("unlock_date", today)
       .order("unlock_date", { ascending: false });
+
+    if (seasonId != null) {
+      query = query.eq("season_id", seasonId);
+    }
+
+    const { data, error: chapterError } = await query;
 
     if (chapterError) {
       setError(chapterError.message ?? "Failed to load chapters");
@@ -44,7 +50,7 @@ export function useAllChapters(): {
       setChapters((data ?? []) as Chapter[]);
     }
     setLoading(false);
-  }, []);
+  }, [seasonId]);
 
   useEffect(() => {
     fetchData();

@@ -178,6 +178,7 @@ export default function TabLayout() {
             <TabIcon source={HOME_STORY} color={color} size={scaleW(24)} />
           ),
           href: currentPlayer ? undefined : null,
+          popToTopOnBlur: true,
         }}
       />
       <Tabs.Screen

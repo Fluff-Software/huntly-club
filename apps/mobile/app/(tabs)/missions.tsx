@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useCallback, useRef } from "react";
 import {
   View,
   ScrollView,
@@ -8,9 +8,11 @@ import {
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useChaptersWithActivities, type ChapterWithActivities } from "@/hooks/useAllChaptersActivities";
+import { usePlayer } from "@/contexts/PlayerContext";
 import { MissionCard } from "@/components/MissionCard";
 
 const MISSIONS_ORANGE = "#D2684B";
@@ -22,7 +24,16 @@ function chapterSectionTitle(chapter: ChapterWithActivities): string {
 
 export default function MissionsScreen() {
   const { scaleW } = useLayoutScale();
-  const { chapters, loading, error, refetch } = useChaptersWithActivities();
+  const { currentPlayer } = usePlayer();
+  const { chapters, completedActivityIds, loading, error, refetch } = useChaptersWithActivities(currentPlayer?.id ?? null);
+  const scrollRef = useRef<ScrollView>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, [refetch])
+  );
 
   const styles = useMemo(
     () =>
@@ -83,6 +94,7 @@ export default function MissionsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <ScrollView
+        ref={scrollRef}
         style={{ flex: 1 }}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -139,7 +151,12 @@ export default function MissionsScreen() {
                     >
                       {chapters[0].activities.map((card) => (
                         <View key={card.id} style={styles.cardWrap}>
-                          <MissionCard card={card} xp={card.xp} tiltDeg={0} />
+                          <MissionCard
+                            card={card}
+                            xp={card.xp}
+                            tiltDeg={0}
+                            completed={completedActivityIds.has(card.id)}
+                          />
                         </View>
                       ))}
                     </ScrollView>
@@ -173,7 +190,12 @@ export default function MissionsScreen() {
                           >
                             {chapter.activities.map((card) => (
                               <View key={card.id} style={styles.cardWrap}>
-                                <MissionCard card={card} xp={card.xp} tiltDeg={0} />
+                                <MissionCard
+                                  card={card}
+                                  xp={card.xp}
+                                  tiltDeg={0}
+                                  completed={completedActivityIds.has(card.id)}
+                                />
                               </View>
                             ))}
                           </ScrollView>

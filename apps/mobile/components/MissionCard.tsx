@@ -6,12 +6,14 @@ import {
   StyleSheet,
   type ImageSourcePropType,
 } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import type { MissionCardData } from "@/constants/missionCards";
 
 const HUNTLY_GREEN = "#7FAF8A";
+const COMPLETED_GREEN = "#2D5A27";
 
 type MissionCardProps = {
   card: MissionCardData;
@@ -20,6 +22,7 @@ type MissionCardProps = {
   marginTopOffset?: number;
   onStartPress?: () => void;
   showStartButton?: boolean;
+  completed?: boolean;
 };
 
 export function MissionCard({
@@ -29,6 +32,7 @@ export function MissionCard({
   marginTopOffset = 0,
   onStartPress,
   showStartButton = true,
+  completed = false,
 }: MissionCardProps) {
   const { scaleW } = useLayoutScale();
 
@@ -49,18 +53,36 @@ export function MissionCard({
           borderRadius: scaleW(24),
           padding: scaleW(12),
           borderWidth: 6,
-          borderColor: HUNTLY_GREEN,
+          borderColor: completed ? COMPLETED_GREEN : HUNTLY_GREEN,
           shadowColor: "#000",
           shadowOpacity: 0.3,
           shadowRadius: 2,
           shadowOffset: { width: 0, height: 2 },
           elevation: 2,
         },
+        completedBadge: {
+          position: "absolute" as const,
+          top: scaleW(16),
+          right: scaleW(16),
+          flexDirection: "row" as const,
+          alignItems: "center",
+          backgroundColor: COMPLETED_GREEN,
+          paddingHorizontal: scaleW(12),
+          paddingVertical: scaleW(8),
+          borderRadius: scaleW(20),
+          gap: scaleW(6),
+          zIndex: 1,
+        },
+        completedBadgeText: {
+          fontSize: scaleW(14),
+          fontWeight: "700" as const,
+          color: "#FFF",
+        },
         imageWrap: {
           width: "100%",
           height: scaleW(160),
           borderRadius: scaleW(14),
-          overflow: "hidden",
+          overflow: "hidden" as const,
           marginBottom: scaleW(12),
           backgroundColor: "#1a1a2e",
         },
@@ -102,7 +124,7 @@ export function MissionCard({
           flexShrink: 1,
         },
         startButton: {
-          backgroundColor: HUNTLY_GREEN,
+          backgroundColor: completed ? COMPLETED_GREEN : HUNTLY_GREEN,
           borderRadius: scaleW(24),
           paddingVertical: scaleW(12),
           marginHorizontal: scaleW(24),
@@ -115,7 +137,7 @@ export function MissionCard({
           elevation: 2,
         },
       }),
-    [scaleW, tiltDeg, marginTopOffset]
+    [scaleW, tiltDeg, marginTopOffset, completed]
   );
 
   const handleStart = () => {
@@ -138,6 +160,12 @@ export function MissionCard({
             style={styles.image}
             resizeMode="cover"
           />
+          {completed && (
+            <View style={styles.completedBadge}>
+              <MaterialIcons name="check-circle" size={scaleW(20)} color="#FFF" />
+              <ThemedText style={styles.completedBadgeText}>Completed</ThemedText>
+            </View>
+          )}
         </View>
         <View style={styles.titleRow}>
           <ThemedText type="heading" style={styles.title} numberOfLines={1} ellipsizeMode="tail">
@@ -162,7 +190,7 @@ export function MissionCard({
                 color: "#FFF",
               }}
             >
-              Start
+              {completed ? "View" : "Start"}
             </ThemedText>
           </Pressable>
         )}

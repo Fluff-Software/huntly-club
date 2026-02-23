@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useMemo } from "react";
+import React, { useRef, useState, useEffect, useMemo, useCallback } from "react";
 import {
   View,
   ScrollView,
@@ -19,7 +19,7 @@ import AnimatedReanimated, {
   withDelay,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { MissionCard } from "@/components/MissionCard";
 import { StatCard } from "@/components/StatCard";
@@ -59,7 +59,7 @@ export default function HomeScreen() {
   const { scaleW, width, height } = useLayoutScale();
   const { currentPlayer } = usePlayer();
   const { daysPlayed, pointsEarned } = useUserStats();
-  const { nextMission, loading: missionLoading } = useCurrentChapterActivities(currentPlayer?.id ?? null);
+  const { nextMission, loading: missionLoading, refetch: refetchMissions } = useCurrentChapterActivities(currentPlayer?.id ?? null);
   const [teamName, setTeamName] = useState<string | null>(null);
   const [clubCards, setClubCards] = useState<ClubPhotoCardItem[]>([]);
   const [clubCardsLoading, setClubCardsLoading] = useState(true);
@@ -156,6 +156,15 @@ export default function HomeScreen() {
     }, 0);
     return () => clearTimeout(timer);
   }, [width, initialIndex]);
+
+  useFocusEffect(
+    useCallback(() => {
+      refetchMissions();
+      if (width > 0) {
+        pagerRef.current?.scrollTo({ x: width * initialIndex, animated: false });
+      }
+    }, [refetchMissions, width, initialIndex])
+  );
 
   const pageAnimatedStyles = useMemo(() => {
     if (width <= 0) return [];

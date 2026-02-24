@@ -160,10 +160,10 @@ export default function PrivacyPolicyPage() {
             <section id="about" className="px-6 py-7 sm:px-8">
               <SectionHeading number={1}>About this policy</SectionHeading>
               <P>
-                This privacy policy explains how Fluff Software Limited ("we",
-                "us", "our") collects, uses, stores and protects personal data
+                This privacy policy explains how Fluff Software Limited (&quot;we&quot;,
+                &quot;us&quot;, &quot;our&quot;) collects, uses, stores and protects personal data
                 when you use the Huntly World mobile application and related
-                services ("the App").
+                services (&quot;the App&quot;).
               </P>
               <P className="mt-3">
                 Fluff Software Limited is the data controller for the personal

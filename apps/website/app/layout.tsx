@@ -83,6 +83,9 @@ export default function RootLayout({
                 <Link href="/contact" className="font-medium text-huntly-forest underline-offset-2 hover:underline">
                   Get in touch
                 </Link>
+                <Link href="/privacy" className="underline-offset-2 hover:underline">
+                  Privacy Policy
+                </Link>
                 <Link
                   href="https://www.huntly.app/"
                   className="underline-offset-2 hover:underline"

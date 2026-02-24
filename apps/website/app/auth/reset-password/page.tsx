@@ -80,7 +80,7 @@ export default function ResetPasswordPage() {
             Invalid or expired link
           </h1>
           <p className="text-sm leading-relaxed text-huntly-slate">
-            This link has expired or isn't valid. Request a new one from the app and try again.
+            This link has expired or isn&apos;t valid. Request a new one from the app and try again.
           </p>
         </div>
       </div>

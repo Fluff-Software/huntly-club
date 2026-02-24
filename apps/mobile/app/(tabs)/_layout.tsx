@@ -28,6 +28,10 @@ const TAB_BAR_COLORS: Record<string, string> = {
   social: "#F7A676",
 };
 
+const CREAM = "#F4F0EB";
+const HUNTLY_GREEN = "#4F6F52";
+const HUNTLY_CHARCOAL = "#3D3D3D";
+
 function TabIcon({
   source,
   color,
@@ -113,19 +117,23 @@ export default function TabLayout() {
             <ThemedText
               type="subtitle"
               style={{ marginBottom: scaleW(16), textAlign: "center" }}
+              lightColor={HUNTLY_GREEN}
+              darkColor={CREAM}
             >
               Would you like to be notified when new chapters are available?
             </ThemedText>
             <ThemedText
-              style={{ marginBottom: scaleW(24), textAlign: "center", fontSize: scaleW(14), opacity: 0.9 }}
+              style={{ marginBottom: scaleW(24), textAlign: "center", fontSize: scaleW(14) }}
+              lightColor={HUNTLY_CHARCOAL}
+              darkColor="rgba(244,240,235,0.9)"
             >
               Get notified when a new chapter is ready to read.
             </ThemedText>
             <View style={{ gap: scaleW(12) }}>
-              <Button variant="primary" onPress={handleNotificationPromptYes}>
+              <Button variant="secondary" onPress={handleNotificationPromptYes}>
                 Yes, notify me
               </Button>
-              <Button variant="cancel" onPress={handleNotificationPromptNotNow}>
+              <Button variant="white" onPress={handleNotificationPromptNotNow}>
                 Not now
               </Button>
             </View>
@@ -240,7 +248,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   notificationPromptCard: {
-    backgroundColor: "#F8F7F4",
+    backgroundColor: CREAM,
     maxWidth: 360,
     width: "100%",
   },

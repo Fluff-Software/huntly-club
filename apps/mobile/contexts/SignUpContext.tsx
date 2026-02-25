@@ -26,6 +26,34 @@ type SignUpContextValue = {
   /** True only once after completing sign-up; used to show welcome modal then dismiss. */
   showPostSignUpWelcome: boolean;
   setShowPostSignUpWelcome: (value: boolean) => void;
+  /** Tutorial step: intro → ... → team → wrap_up → done */
+  tutorialStep:
+    | "intro"
+    | "clubhouse"
+    | "click_story"
+    | "seasons"
+    | "click_missions"
+    | "missions"
+    | "click_team"
+    | "team"
+    | "wrap_up"
+    | "done";
+  setTutorialStep: (
+    step:
+      | "intro"
+      | "clubhouse"
+      | "click_story"
+      | "seasons"
+      | "click_missions"
+      | "missions"
+      | "click_team"
+      | "team"
+      | "wrap_up"
+      | "done"
+  ) => void;
+  /** When true, show tutorial even if user has completed it (e.g. "Show tutorial again" from Settings). */
+  replayTutorialRequested: boolean;
+  setReplayTutorialRequested: (value: boolean) => void;
 };
 
 const SignUpContext = createContext<SignUpContextValue | null>(null);
@@ -36,6 +64,10 @@ export function SignUpProvider({ children }: { children: React.ReactNode }) {
   const [players, setPlayers] = useState<SignUpPlayer[]>([]);
   const [selectedTeamName, setSelectedTeamName] = useState<string | null>(null);
   const [showPostSignUpWelcome, setShowPostSignUpWelcome] = useState(false);
+  const [tutorialStep, setTutorialStep] = useState<
+    "intro" | "clubhouse" | "click_story" | "seasons" | "click_missions" | "missions" | "click_team" | "team" | "wrap_up" | "done"
+  >("intro");
+  const [replayTutorialRequested, setReplayTutorialRequested] = useState(false);
 
   const addPlayer = useCallback((player: SignUpPlayer) => {
     setPlayers((prev) => [...prev, player]);
@@ -89,6 +121,10 @@ export function SignUpProvider({ children }: { children: React.ReactNode }) {
         clearSignUpData,
         showPostSignUpWelcome,
         setShowPostSignUpWelcome,
+        tutorialStep,
+        setTutorialStep,
+        replayTutorialRequested,
+        setReplayTutorialRequested,
       }}
     >
       {children}

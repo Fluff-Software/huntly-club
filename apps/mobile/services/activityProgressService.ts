@@ -340,6 +340,61 @@ export const insertUserAchievementsForMission = async (
   }
 };
 
+export const TUTORIAL_ACHIEVEMENT_XP = 5;
+
+/**
+ * Returns true if the profile has already completed the tutorial (has a "tutorial" achievement).
+ */
+export const getHasCompletedTutorial = async (profileId: number): Promise<boolean> => {
+  const { data, error } = await supabase
+    .from("user_achievements")
+    .select("id")
+    .eq("profile_id", profileId)
+    .eq("source", "tutorial")
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error checking tutorial achievement:", error);
+    return false;
+  }
+  return data != null;
+};
+
+/**
+ * Records a "completed the tutorial" achievement for the profile, once per profile.
+ * @returns true if a new achievement was inserted, false if they already had it.
+ */
+export const recordTutorialAchievement = async (
+  profileId: number,
+  teamId: number
+): Promise<boolean> => {
+  const { data: existing } = await supabase
+    .from("user_achievements")
+    .select("id")
+    .eq("profile_id", profileId)
+    .eq("source", "tutorial")
+    .limit(1)
+    .maybeSingle();
+
+  if (existing) return false;
+
+  const { error } = await supabase.from("user_achievements").insert({
+    profile_id: profileId,
+    team_id: teamId,
+    source: "tutorial",
+    source_id: 0,
+    message: "completed the tutorial",
+    xp: TUTORIAL_ACHIEVEMENT_XP,
+  });
+
+  if (error) {
+    console.error("Error recording tutorial achievement:", error);
+    return false;
+  }
+  return true;
+};
+
 export interface UserActivityPhotoInsert {
   profile_id: number;
   user_activity_id: number;

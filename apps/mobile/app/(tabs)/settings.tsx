@@ -21,6 +21,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as Device from "expo-device";
 import { ThemedText } from "@/components/ThemedText";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { useRouter } from "expo-router";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -47,6 +48,10 @@ export default function SettingsScreen() {
   const { user, signOut } = useAuth();
   const router = useRouter();
   const { scaleW } = useLayoutScale();
+  const signUpContext = useSignUpOptional();
+  const setShowPostSignUpWelcome = signUpContext?.setShowPostSignUpWelcome;
+  const setTutorialStep = signUpContext?.setTutorialStep;
+  const setReplayTutorialRequested = signUpContext?.setReplayTutorialRequested;
   const [weeklyEmail, setWeeklyEmail] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(false);
   const [pushNotificationsLoading, setPushNotificationsLoading] = useState(true);
@@ -61,6 +66,7 @@ export default function SettingsScreen() {
   const weeklyEmailScale = useSharedValue(1);
   const pushScale = useSharedValue(1);
   const privacyScale = useSharedValue(1);
+  const tutorialScale = useSharedValue(1);
   const signOutAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: signOutScale.value }],
   }));
@@ -72,6 +78,9 @@ export default function SettingsScreen() {
   }));
   const privacyAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: privacyScale.value }],
+  }));
+  const tutorialAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: tutorialScale.value }],
   }));
 
   const handleSignOut = () => {
@@ -164,6 +173,13 @@ export default function SettingsScreen() {
     } finally {
       setRemovalSubmitting(false);
     }
+  };
+
+  const handleShowTutorialAgain = () => {
+    setReplayTutorialRequested?.(true);
+    setTutorialStep?.("intro");
+    setShowPostSignUpWelcome?.(true);
+    router.replace("/(tabs)");
   };
 
   const handleCancelRemovalRequest = () => {
@@ -481,7 +497,24 @@ export default function SettingsScreen() {
           </Animated.View>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.duration(500).delay(200).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(200).springify().damping(18)} style={tutorialAnimatedStyle}>
+          <Pressable
+            style={styles.privacyButton}
+            onPress={handleShowTutorialAgain}
+            onPressIn={() => {
+              tutorialScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+            }}
+            onPressOut={() => {
+              tutorialScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+            }}
+          >
+            <ThemedText type="heading" style={styles.privacyButtonText}>
+              Show tutorial again
+            </ThemedText>
+          </Pressable>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.duration(500).delay(250).springify().damping(18)}>
           <ThemedText type="heading" style={styles.prefsTitle}>Legal</ThemedText>
           <Animated.View style={privacyAnimatedStyle}>
             <Pressable
@@ -501,7 +534,7 @@ export default function SettingsScreen() {
           </Animated.View>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.duration(500).delay(250).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(300).springify().damping(18)}>
           <Pressable
             style={styles.removalButton}
             onPress={pendingRemovalRequest && canCancelRemovalRequest(pendingRemovalRequest) ? handleCancelRemovalRequest : handleOpenRemovalModal}

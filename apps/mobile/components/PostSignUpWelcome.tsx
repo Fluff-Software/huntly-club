@@ -153,6 +153,10 @@ export function PostSignUpWelcome({ visible, onDismiss }: PostSignUpWelcomeProps
 
   if (!visible) return null;
 
+  // Tutorial replaced by NewPlayerTutorial (interactive step-by-step). Old welcome/season UI commented out below.
+  return null;
+
+  /* eslint-disable-next-line no-unreachable -- commented-out UI preserved for reference
   return (
     <Modal
       visible={visible}
@@ -223,6 +227,7 @@ export function PostSignUpWelcome({ visible, onDismiss }: PostSignUpWelcomeProps
       </View>
     </Modal>
   );
+  */
 }
 
 const styles = StyleSheet.create({

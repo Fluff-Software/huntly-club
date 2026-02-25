@@ -64,6 +64,7 @@ export default function SignUpTeamScreen() {
     setSelectedTeamName,
     clearSignUpData,
     setShowPostSignUpWelcome,
+    setTutorialStep,
   } = useSignUp();
   const { user } = useAuth();
   const { refreshProfiles } = usePlayer();
@@ -128,6 +129,7 @@ export default function SignUpTeamScreen() {
       }
       await refreshProfiles();
       clearSignUpData();
+      setTutorialStep("intro");
       setShowPostSignUpWelcome(true);
       router.replace("/(tabs)");
     } catch (error) {

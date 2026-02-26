@@ -802,6 +802,29 @@ export default function CompletionScreen() {
                 <ThemedText type="heading" style={styles.subtitle}>
                   Add your photo of this activity
                 </ThemedText>
+                <View
+                  style={{
+                    backgroundColor: "rgba(79, 111, 82, 0.12)",
+                    borderRadius: scaleW(12),
+                    paddingVertical: scaleW(12),
+                    paddingHorizontal: scaleW(16),
+                    marginBottom: scaleW(12),
+                    borderLeftWidth: scaleW(4),
+                    borderLeftColor: LIGHT_GREEN,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: scaleW(14),
+                      fontWeight: "600",
+                      color: TEXT_SECONDARY,
+                      lineHeight: scaleW(20),
+                      textAlign: "center",
+                    }}
+                  >
+                    Please don't include any faces or people in your photo. This keeps everyone safe and anonymous. Make sure your photo is of the mission activity - otherwise it may be rejected.
+                  </Text>
+                </View>
                 {hasPhotos ? (
                   <TouchableOpacity
                     onPress={() => openGalleryModal(profile.id)}

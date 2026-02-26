@@ -32,10 +32,10 @@ export default function ContactPage() {
             <p className="text-sm text-huntly-slate">
               Send us a note at{" "}
               <a
-                href="mailto:hello@huntly.app"
+                href="mailto:huntly@fluff.software"
                 className="font-medium text-huntly-moss underline-offset-2 hover:underline"
               >
-                hello@huntly.app
+                huntly@fluff.software
               </a>{" "}
               and we&apos;ll get back to you as soon as we can.
             </p>

@@ -46,7 +46,7 @@ const STORY_BLUE = "#4B9CD2";
 const STORY_CONTAINER_BG = "#1E2E28";
 const CREAM = "#F4F0EB";
 const DARK_GREEN = "#2D5A27";
-const AUTO_PLAY_INTERVAL_MS = 3000;
+const AUTO_PLAY_INTERVAL_MS = 4500;
 
 function imageSlideEntering() {
   "worklet";

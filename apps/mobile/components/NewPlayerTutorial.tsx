@@ -75,7 +75,7 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
     if (inTeamTab) setTutorialStep("team");
   }, [visible, tutorialStep, segments, setTutorialStep]);
 
-  if (!visible) return null;
+  if (!visible || tutorialStep === "done") return null;
 
   const isTabBarVisibleStep =
     tutorialStep === "click_story" ||
@@ -105,10 +105,10 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
             {tutorialStep === "intro" && (
               <View style={[styles.card, styles.cardWithImage, { padding: scaleW(24), borderRadius: scaleW(16), maxWidth: cardMaxWidth }]}>
                 <Image source={TUTORIAL_CHARACTER} style={[styles.characterImage, { width: scaleW(100), height: scaleW(80), marginBottom: scaleW(12) }]} resizeMode="contain" />
-                <ThemedText type="subtitle" style={{ fontSize: scaleW(22), fontWeight: "600", marginBottom: scaleW(8) }} lightColor={HUNTLY_GREEN} darkColor={CREAM}>
+                <ThemedText type="subtitle" style={{ fontSize: scaleW(22), fontWeight: "600", marginBottom: scaleW(8) }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
                   Welcome to Huntly World
                 </ThemedText>
-                <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(24), marginBottom: scaleW(24) }} lightColor={HUNTLY_CHARCOAL} darkColor="rgba(244,240,235,0.9)">
+                <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(24), marginBottom: scaleW(24) }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
                   Let's have a quick look around.
                 </ThemedText>
                 <Pressable
@@ -139,10 +139,10 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
 
             {tutorialStep === "clubhouse" && (
               <View style={[styles.card, { padding: scaleW(24), borderRadius: scaleW(16), maxWidth: cardMaxWidth }]}>
-                <ThemedText type="subtitle" style={{ fontSize: scaleW(22), fontWeight: "600", marginBottom: scaleW(12) }} lightColor={HUNTLY_GREEN} darkColor={CREAM}>
+                <ThemedText type="subtitle" style={{ fontSize: scaleW(22), fontWeight: "600", marginBottom: scaleW(12) }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
                   The Clubhouse
                 </ThemedText>
-                <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(24), marginBottom: scaleW(24) }} lightColor={HUNTLY_CHARCOAL} darkColor="rgba(244,240,235,0.9)">
+                <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(24), marginBottom: scaleW(24) }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
                   This is your home base. Scroll to see photos from around the club. Swipe to go to your profile or recommended mission, or tap the Profile and Missions buttons at the top corners.
                 </ThemedText>
                 <Pressable
@@ -173,10 +173,10 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
 
             {tutorialStep === "seasons" && (
               <View style={[styles.card, { padding: scaleW(24), borderRadius: scaleW(16), maxWidth: cardMaxWidth }]}>
-                <ThemedText type="subtitle" style={{ fontSize: scaleW(22), fontWeight: "600", marginBottom: scaleW(12) }} lightColor={HUNTLY_GREEN} darkColor={CREAM}>
+                <ThemedText type="subtitle" style={{ fontSize: scaleW(22), fontWeight: "600", marginBottom: scaleW(12) }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
                   Seasons and chapters
                 </ThemedText>
-                <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(24), marginBottom: scaleW(24) }} lightColor={HUNTLY_CHARCOAL} darkColor="rgba(244,240,235,0.9)">
+                <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(24), marginBottom: scaleW(24) }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
                   Each season has chapters that unlock by date. Every chapter has part of the story and missions to complete. Start by reading the story here, then choose some fun activities to take part in on the Missions screen.
                 </ThemedText>
                 <Pressable
@@ -207,10 +207,10 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
 
             {tutorialStep === "missions" && (
               <View style={[styles.card, { padding: scaleW(24), borderRadius: scaleW(16), maxWidth: cardMaxWidth }]}>
-                <ThemedText type="subtitle" style={{ fontSize: scaleW(22), fontWeight: "600", marginBottom: scaleW(12) }} lightColor={HUNTLY_GREEN} darkColor={CREAM}>
+                <ThemedText type="subtitle" style={{ fontSize: scaleW(22), fontWeight: "600", marginBottom: scaleW(12) }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
                   Missions
                 </ThemedText>
-                <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(24), marginBottom: scaleW(24) }} lightColor={HUNTLY_CHARCOAL} darkColor="rgba(244,240,235,0.9)">
+                <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(24), marginBottom: scaleW(24) }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
                   Your weekly activities live here. Tap one to see what to do and earn points. You can also go back and complete missions from earlier chapters if you've missed any.
                 </ThemedText>
                 <Pressable
@@ -241,10 +241,10 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
 
             {tutorialStep === "team" && (
               <View style={[styles.card, { padding: scaleW(24), borderRadius: scaleW(16), maxWidth: cardMaxWidth }]}>
-                <ThemedText type="subtitle" style={{ fontSize: scaleW(22), fontWeight: "600", marginBottom: scaleW(12) }} lightColor={HUNTLY_GREEN} darkColor={CREAM}>
+                <ThemedText type="subtitle" style={{ fontSize: scaleW(22), fontWeight: "600", marginBottom: scaleW(12) }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
                   Your team
                 </ThemedText>
-                <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(24), marginBottom: scaleW(24) }} lightColor={HUNTLY_CHARCOAL} darkColor="rgba(244,240,235,0.9)">
+                <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(24), marginBottom: scaleW(24) }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
                   See how your team's doing - compare points, see recent achievements and celebrate together.
                 </ThemedText>
                 <Pressable
@@ -276,10 +276,10 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
             {tutorialStep === "wrap_up" && (
               <View style={[styles.card, styles.cardWithImage, { padding: scaleW(24), borderRadius: scaleW(16), maxWidth: cardMaxWidth }]}>
                 <Image source={TUTORIAL_CHARACTER} style={[styles.characterImage, { width: scaleW(100), height: scaleW(80), marginBottom: scaleW(12) }]} resizeMode="contain" />
-                <ThemedText type="subtitle" style={{ fontSize: scaleW(22), fontWeight: "600", marginBottom: scaleW(12) }} lightColor={HUNTLY_GREEN} darkColor={CREAM}>
+                <ThemedText type="subtitle" style={{ fontSize: scaleW(22), fontWeight: "600", marginBottom: scaleW(12) }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
                   What to do next
                 </ThemedText>
-                <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(24), marginBottom: scaleW(24) }} lightColor={HUNTLY_CHARCOAL} darkColor="rgba(244,240,235,0.9)">
+                <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(24), marginBottom: scaleW(24) }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
                   Go to Story and read the latest. Then complete missions in the latest chapter. Have fun!
                 </ThemedText>
                 <Pressable
@@ -314,10 +314,10 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
         {tutorialStep === "click_story" && (
           <View style={[styles.tapTabStepContainer, { bottom: scaleW(24) }]}>
             <View style={[styles.card, styles.tapTabCard, { padding: scaleW(20), borderRadius: scaleW(16), maxWidth: scaleW(320) }]}>
-              <ThemedText type="subtitle" style={{ fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(4), textAlign: "center" }} lightColor={HUNTLY_GREEN} darkColor={CREAM}>
+              <ThemedText type="subtitle" style={{ fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(4), textAlign: "center" }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
                 Tap Story below
               </ThemedText>
-              <ThemedText style={{ fontSize: scaleW(14), lineHeight: scaleW(20), textAlign: "center" }} lightColor={HUNTLY_CHARCOAL} darkColor="rgba(244,240,235,0.9)">
+              <ThemedText style={{ fontSize: scaleW(14), lineHeight: scaleW(20), textAlign: "center" }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
                 to read the season's story.
               </ThemedText>
             </View>
@@ -327,10 +327,10 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
         {tutorialStep === "click_missions" && (
           <View style={[styles.tapTabStepContainer, { bottom: scaleW(24) }]}>
             <View style={[styles.card, styles.tapTabCard, { padding: scaleW(20), borderRadius: scaleW(16), maxWidth: scaleW(320) }]}>
-              <ThemedText type="subtitle" style={{ fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(4), textAlign: "center" }} lightColor={HUNTLY_GREEN} darkColor={CREAM}>
+              <ThemedText type="subtitle" style={{ fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(4), textAlign: "center" }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
                 Tap Missions below
               </ThemedText>
-              <ThemedText style={{ fontSize: scaleW(14), lineHeight: scaleW(20), textAlign: "center" }} lightColor={HUNTLY_CHARCOAL} darkColor="rgba(244,240,235,0.9)">
+              <ThemedText style={{ fontSize: scaleW(14), lineHeight: scaleW(20), textAlign: "center" }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
                 for your next adventure.
               </ThemedText>
             </View>
@@ -340,10 +340,10 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
         {tutorialStep === "click_team" && (
           <View style={[styles.tapTabStepContainer, { bottom: scaleW(24) }]}>
             <View style={[styles.card, styles.tapTabCard, { padding: scaleW(20), borderRadius: scaleW(16), maxWidth: scaleW(320) }]}>
-              <ThemedText type="subtitle" style={{ fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(4), textAlign: "center" }} lightColor={HUNTLY_GREEN} darkColor={CREAM}>
+              <ThemedText type="subtitle" style={{ fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(4), textAlign: "center" }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
                 Tap Team below
               </ThemedText>
-              <ThemedText style={{ fontSize: scaleW(14), lineHeight: scaleW(20), textAlign: "center" }} lightColor={HUNTLY_CHARCOAL} darkColor="rgba(244,240,235,0.9)">
+              <ThemedText style={{ fontSize: scaleW(14), lineHeight: scaleW(20), textAlign: "center" }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
                 to see how you're doing.
               </ThemedText>
             </View>

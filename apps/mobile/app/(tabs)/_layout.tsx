@@ -1,5 +1,5 @@
 import { Tabs, router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Image, Modal, Platform, StyleSheet, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
@@ -112,6 +112,7 @@ export default function TabLayout() {
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
   const [notificationPromptChecking, setNotificationPromptChecking] = useState(true);
   const [hasCompletedTutorial, setHasCompletedTutorial] = useState<boolean | null>(null);
+  const hasCheckedNotificationPromptRef = useRef(false);
 
   // On clubhouse/tabs load: if user has no tutorial achievement, show the tutorial
   useEffect(() => {
@@ -153,20 +154,42 @@ export default function TabLayout() {
     };
   }, [showPostSignUpWelcome, currentPlayer?.id, replayTutorialRequested, setShowPostSignUpWelcome]);
 
-  useEffect(() => {
-    if (!user?.id || showPostSignUpWelcome) {
+  // Only consider showing the notification prompt when the tutorial is not visible.
+  // After the tutorial is dismissed we wait a short moment so the user lands on the clubhouse first, then show the prompt.
+  const NOTIFICATION_PROMPT_DELAY_MS = 600;
+
+  const maybeShowNotificationPrompt = useCallback(() => {
+    if (!user?.id) {
       setNotificationPromptChecking(false);
       return;
     }
-    let cancelled = false;
-    hasAskedPushOptIn(user.id).then((asked) => {
-      if (!cancelled && !asked) setShowNotificationPrompt(true);
-      if (!cancelled) setNotificationPromptChecking(false);
-    });
+    if (hasCheckedNotificationPromptRef.current) return;
+    hasCheckedNotificationPromptRef.current = true;
+    setNotificationPromptChecking(false);
+    hasAskedPushOptIn(user.id)
+      .then((asked) => {
+        if (!asked) setShowNotificationPrompt(true);
+      })
+      .catch(() => {
+        // Don't block the UI if the check fails; user can still be prompted from settings
+      });
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setNotificationPromptChecking(false);
+      return;
+    }
+    if (showPostSignUpWelcome) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      maybeShowNotificationPrompt();
+    }, NOTIFICATION_PROMPT_DELAY_MS);
     return () => {
-      cancelled = true;
+      clearTimeout(timer);
     };
-  }, [user?.id, showPostSignUpWelcome]);
+  }, [user?.id, showPostSignUpWelcome, maybeShowNotificationPrompt]);
 
   const handleNotificationPromptYes = async () => {
     if (!user?.id) return;
@@ -200,49 +223,16 @@ export default function TabLayout() {
       recordTutorialAchievement(currentPlayer.id, currentPlayer.team).catch(() => {});
     }
     router.replace("/(tabs)");
+    setTimeout(() => {
+      maybeShowNotificationPrompt();
+    }, NOTIFICATION_PROMPT_DELAY_MS);
   };
+
+  const showNotificationUI =
+    showNotificationPrompt && !notificationPromptChecking;
 
   return (
     <View style={styles.layoutWrapper}>
-      <NewPlayerTutorial
-        visible={showPostSignUpWelcome && hasCompletedTutorial === false}
-        onDismiss={handleTutorialDismiss}
-        tabBarHeight={tabBarHeight}
-      />
-      <Modal
-        visible={showNotificationPrompt && !notificationPromptChecking}
-        transparent
-        animationType="fade"
-        onRequestClose={handleNotificationPromptNotNow}
-      >
-        <View style={styles.notificationPromptOverlay}>
-          <View style={[styles.notificationPromptCard, { padding: scaleW(24), borderRadius: scaleW(16) }]}>
-            <ThemedText
-              type="subtitle"
-              style={{ marginBottom: scaleW(16), textAlign: "center" }}
-              lightColor={HUNTLY_GREEN}
-              darkColor={CREAM}
-            >
-              Would you like to be notified when new chapters are available?
-            </ThemedText>
-            <ThemedText
-              style={{ marginBottom: scaleW(24), textAlign: "center", fontSize: scaleW(14) }}
-              lightColor={HUNTLY_CHARCOAL}
-              darkColor="rgba(244,240,235,0.9)"
-            >
-              Get notified when a new chapter is ready to read.
-            </ThemedText>
-            <View style={{ gap: scaleW(12) }}>
-              <Button variant="secondary" onPress={handleNotificationPromptYes}>
-                Yes, notify me
-              </Button>
-              <Button variant="white" onPress={handleNotificationPromptNotNow}>
-                Not now
-              </Button>
-            </View>
-          </View>
-        </View>
-      </Modal>
       <Tabs
       screenOptions={({ route }) => ({
         tabBarActiveTintColor: activeColor,
@@ -359,6 +349,113 @@ export default function TabLayout() {
         }}
       />
       </Tabs>
+      <NewPlayerTutorial
+        visible={showPostSignUpWelcome && hasCompletedTutorial === false}
+        onDismiss={handleTutorialDismiss}
+        tabBarHeight={tabBarHeight}
+      />
+      {Platform.OS === "ios" ? (
+        <Modal
+          visible={showNotificationUI}
+          transparent
+          animationType="fade"
+          onRequestClose={handleNotificationPromptNotNow}
+        >
+          <View style={styles.notificationPromptOverlay}>
+            <View
+              style={[
+                styles.notificationPromptCard,
+                { padding: scaleW(24), borderRadius: scaleW(16) },
+              ]}
+            >
+              <ThemedText
+                type="subtitle"
+                style={{ marginBottom: scaleW(16), textAlign: "center" }}
+                lightColor={HUNTLY_GREEN}
+                darkColor={CREAM}
+              >
+                Would you like to be notified when new chapters are available?
+              </ThemedText>
+              <ThemedText
+                style={{
+                  marginBottom: scaleW(24),
+                  textAlign: "center",
+                  fontSize: scaleW(14),
+                }}
+                lightColor={HUNTLY_CHARCOAL}
+                darkColor="rgba(244,240,235,0.9)"
+              >
+                Get notified when a new chapter is ready to read.
+              </ThemedText>
+              <View style={{ gap: scaleW(12) }}>
+                <Button
+                  variant="secondary"
+                  onPress={handleNotificationPromptYes}
+                >
+                  Yes, notify me
+                </Button>
+                <Button
+                  variant="white"
+                  onPress={handleNotificationPromptNotNow}
+                >
+                  Not now
+                </Button>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      ) : (
+        showNotificationUI && (
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              styles.notificationPromptOverlay,
+              { zIndex: 9999, elevation: 9999 },
+            ]}
+          >
+            <View
+              style={[
+                styles.notificationPromptCard,
+                { padding: scaleW(24), borderRadius: scaleW(16) },
+              ]}
+            >
+              <ThemedText
+                type="subtitle"
+                style={{ marginBottom: scaleW(16), textAlign: "center" }}
+                lightColor={HUNTLY_GREEN}
+                darkColor={CREAM}
+              >
+                Would you like to be notified when new chapters are available?
+              </ThemedText>
+              <ThemedText
+                style={{
+                  marginBottom: scaleW(24),
+                  textAlign: "center",
+                  fontSize: scaleW(14),
+                }}
+                lightColor={HUNTLY_CHARCOAL}
+                darkColor="rgba(244,240,235,0.9)"
+              >
+                Get notified when a new chapter is ready to read.
+              </ThemedText>
+              <View style={{ gap: scaleW(12) }}>
+                <Button
+                  variant="secondary"
+                  onPress={handleNotificationPromptYes}
+                >
+                  Yes, notify me
+                </Button>
+                <Button
+                  variant="white"
+                  onPress={handleNotificationPromptNotNow}
+                >
+                  Not now
+                </Button>
+              </View>
+            </View>
+          </View>
+        )
+      )}
     </View>
   );
 }

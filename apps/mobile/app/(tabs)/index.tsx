@@ -20,6 +20,7 @@ import AnimatedReanimated, {
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
+import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { MissionCard } from "@/components/MissionCard";
 import { StatCard } from "@/components/StatCard";
@@ -336,10 +337,12 @@ export default function HomeScreen() {
     </AnimatedReanimated.View>
   );
 
+  const navArrowColor = "#4F6F52";
+  const navArrowSize = scaleW(20);
+
   const renderNavigationButtons = () => {
     const navTextStyle = { fontSize: scaleW(14), color: "#4F6F52", fontWeight: "600" as const };
-    const arrowStyle = { fontSize: scaleW(14), color: "#4F6F52" };
-    
+
     if (currentMode === "profile") {
       return (
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: scaleW(24), paddingTop: scaleW(16) }}>
@@ -349,7 +352,7 @@ export default function HomeScreen() {
               <ThemedText type="body" style={navTextStyle}>
                 Activity
               </ThemedText>
-              <ThemedText style={[arrowStyle, { marginLeft: scaleW(8) }]}>→</ThemedText>
+              <MaterialIcons name="chevron-right" size={navArrowSize} color={navArrowColor} style={{ marginLeft: scaleW(4) }} />
             </>
           ))}
         </View>
@@ -359,7 +362,7 @@ export default function HomeScreen() {
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: scaleW(24), paddingTop: scaleW(16) }}>
           {wrapNavPressable(() => switchMode("profile"), (
             <>
-              <ThemedText style={[arrowStyle, { marginRight: scaleW(8) }]}>←</ThemedText>
+              <MaterialIcons name="chevron-left" size={navArrowSize} color={navArrowColor} style={{ marginRight: scaleW(4) }} />
               <ThemedText type="body" style={navTextStyle}>
                 Profile
               </ThemedText>
@@ -371,7 +374,7 @@ export default function HomeScreen() {
               <ThemedText type="body" style={navTextStyle}>
                 Missions
               </ThemedText>
-              <ThemedText style={[arrowStyle, { marginLeft: scaleW(8) }]}>→</ThemedText>
+              <MaterialIcons name="chevron-right" size={navArrowSize} color={navArrowColor} style={{ marginLeft: scaleW(4) }} />
             </>
           ))}
         </View>
@@ -381,7 +384,7 @@ export default function HomeScreen() {
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: scaleW(24), paddingTop: scaleW(16) }}>
           {wrapNavPressable(() => switchMode("activity"), (
             <>
-              <ThemedText style={[arrowStyle, { marginRight: scaleW(8) }]}>←</ThemedText>
+              <MaterialIcons name="chevron-left" size={navArrowSize} color={navArrowColor} style={{ marginRight: scaleW(4) }} />
               <ThemedText type="body" style={navTextStyle}>
                 Activity
               </ThemedText>

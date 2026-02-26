@@ -497,7 +497,8 @@ export default function SettingsScreen() {
           </Animated.View>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.duration(500).delay(200).springify().damping(18)} style={tutorialAnimatedStyle}>
+        {/* No entering animation here so the button is always visible in production (Reanimated entering can be unreliable in release builds) */}
+        <Animated.View style={tutorialAnimatedStyle}>
           <Pressable
             style={styles.privacyButton}
             onPress={handleShowTutorialAgain}

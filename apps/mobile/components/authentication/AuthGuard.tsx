@@ -37,11 +37,15 @@ export function AuthGuard({ children }: AuthGuardProps) {
       return;
     }
 
-    // Email verification state lives in Supabase Auth (session.user.email_confirmed_at), not in our DB
+    // Email verification state lives in Supabase Auth (session.user.email_confirmed_at), not in our DB.
+    // Only enforce this check once we actually have a session object; on cold start, session can be null
+    // even though the user is already fully verified, which would otherwise bounce them back into
+    // the verify-email flow every time they open the app.
     const emailConfirmed = session?.user?.email_confirmed_at != null;
     if (
       REQUIRE_EMAIL_VERIFICATION &&
       user &&
+      session &&
       !emailConfirmed &&
       segments[0] !== "sign-up"
     ) {
@@ -113,7 +117,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
     <View style={styles.wrapper}>
       {children}
       {showOverlay && (
-        <ThemedView style={styles.overlay}>
+        <ThemedView style={styles.overlay} pointerEvents="none">
           <ActivityIndicator size="large" />
         </ThemedView>
       )}

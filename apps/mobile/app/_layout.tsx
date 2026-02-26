@@ -1,8 +1,4 @@
-import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider,
-} from "@react-navigation/native";
+import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { useFonts } from "expo-font";
 import { Slot, router } from "expo-router";
 import * as Notifications from "expo-notifications";
@@ -21,7 +17,6 @@ import {
   ComicNeue_700Bold,
 } from "@expo-google-fonts/comic-neue";
 
-import { useColorScheme } from "@/hooks/useColorScheme";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { NetworkProvider } from "@/contexts/NetworkContext";
 import { PurchasesProvider } from "@/contexts/PurchasesContext";
@@ -60,7 +55,6 @@ Notifications.setNotificationHandler({
 });
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
   const [juaLoaded] = useJuaFonts({
     Jua_400Regular,
   });
@@ -125,14 +119,12 @@ export default function RootLayout() {
         <SignUpProvider>
           <PurchasesProvider>
             <PlayerProvider>
-              <ThemeProvider
-                value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
-              >
+              <ThemeProvider value={DefaultTheme}>
                 <OfflineBanner />
                 <AuthGuard>
                   <Slot />
                 </AuthGuard>
-                <StatusBar style="auto" />
+                <StatusBar style="dark" />
               </ThemeProvider>
             </PlayerProvider>
           </PurchasesProvider>

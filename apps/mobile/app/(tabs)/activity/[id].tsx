@@ -218,7 +218,7 @@ export default function ActivityDetailScreen() {
     return (
       <BaseLayout>
         <ThemedView className="flex-1 justify-center items-center">
-          <ThemedText type="defaultSemiBold">Loading activity...</ThemedText>
+          <ThemedText type="defaultSemiBold">Loading your mission…</ThemedText>
         </ThemedView>
       </BaseLayout>
     );

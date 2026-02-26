@@ -10,9 +10,7 @@ export default function VerifySuccessPage() {
           Email verified
         </h1>
         <p className="text-sm leading-relaxed text-huntly-slate">
-          Success! Your email has been verified.
-          <br />
-          Please return to the app to continue your adventure.
+          Success! Your email is verified. Return to the app to continue your adventure.
         </p>
       </div>
     </div>

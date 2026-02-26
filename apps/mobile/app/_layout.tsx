@@ -23,10 +23,12 @@ import {
 
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { NetworkProvider } from "@/contexts/NetworkContext";
 import { PurchasesProvider } from "@/contexts/PurchasesContext";
 import { PlayerProvider } from "@/contexts/PlayerContext";
 import { SignUpProvider } from "@/contexts/SignUpContext";
 import { AuthGuard } from "@/components/authentication/AuthGuard";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { supabase } from "@/services/supabase";
 
 import "../global.css";
@@ -118,21 +120,24 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <SignUpProvider>
-        <PurchasesProvider>
-          <PlayerProvider>
-            <ThemeProvider
-            value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
-          >
-            <AuthGuard>
-              <Slot />
-            </AuthGuard>
-            <StatusBar style="auto" />
-          </ThemeProvider>
-        </PlayerProvider>
-      </PurchasesProvider>
-      </SignUpProvider>
-    </AuthProvider>
+    <NetworkProvider>
+      <AuthProvider>
+        <SignUpProvider>
+          <PurchasesProvider>
+            <PlayerProvider>
+              <ThemeProvider
+                value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+              >
+                <OfflineBanner />
+                <AuthGuard>
+                  <Slot />
+                </AuthGuard>
+                <StatusBar style="auto" />
+              </ThemeProvider>
+            </PlayerProvider>
+          </PurchasesProvider>
+        </SignUpProvider>
+      </AuthProvider>
+    </NetworkProvider>
   );
 }

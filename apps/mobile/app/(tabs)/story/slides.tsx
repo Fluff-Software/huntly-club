@@ -24,7 +24,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { MaterialIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useFirstSeason } from "@/hooks/useFirstSeason";
 import { useAllChapters } from "@/hooks/useAllChapters";
@@ -376,7 +376,7 @@ function StoryLoadingScreen({ scaleW }: { scaleW: (n: number) => number }) {
           opacity: 0.8,
         }}
       >
-        Loading story
+        Getting your story ready…
       </Text>
       <View style={{ flexDirection: "row", alignItems: "center" }}>
         <BouncingDot delay={0} scaleW={scaleW} />
@@ -462,6 +462,14 @@ export default function StorySlidesScreen() {
   useEffect(() => {
     currentIndexRef.current = currentIndex;
   }, [currentIndex]);
+
+  useFocusEffect(
+    useCallback(() => {
+      setCurrentIndex(0);
+      currentIndexRef.current = 0;
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+    }, [])
+  );
 
   useEffect(() => {
     if (!autoPlay || !flatListRef.current) return;

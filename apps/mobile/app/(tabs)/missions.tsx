@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useCallback, useRef } from "react";
 import {
   View,
   ScrollView,
@@ -8,9 +8,11 @@ import {
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useChaptersWithActivities, type ChapterWithActivities } from "@/hooks/useAllChaptersActivities";
+import { usePlayer } from "@/contexts/PlayerContext";
 import { MissionCard } from "@/components/MissionCard";
 
 const MISSIONS_ORANGE = "#D2684B";
@@ -22,7 +24,16 @@ function chapterSectionTitle(chapter: ChapterWithActivities): string {
 
 export default function MissionsScreen() {
   const { scaleW } = useLayoutScale();
-  const { chapters, loading, error, refetch } = useChaptersWithActivities();
+  const { currentPlayer } = usePlayer();
+  const { chapters, completedActivityIds, loading, error, refetch } = useChaptersWithActivities(currentPlayer?.id ?? null);
+  const scrollRef = useRef<ScrollView>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, [refetch])
+  );
 
   const styles = useMemo(
     () =>
@@ -83,6 +94,7 @@ export default function MissionsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <ScrollView
+        ref={scrollRef}
         style={{ flex: 1 }}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -96,15 +108,15 @@ export default function MissionsScreen() {
         {loading && (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#FFF" />
-            <ThemedText style={[styles.emptyText, { marginTop: scaleW(16) }]}>Loading missions…</ThemedText>
+            <ThemedText style={[styles.emptyText, { marginTop: scaleW(16) }]}>Finding your missions…</ThemedText>
           </View>
         )}
         {error && !loading && (
           <View style={styles.errorContainer}>
-            <ThemedText style={styles.errorText}>{error}</ThemedText>
+            <ThemedText style={styles.errorText}>Something went wrong loading your missions.</ThemedText>
             <Pressable style={styles.retryButton} onPress={refetch}>
               <ThemedText type="heading" style={{ fontSize: scaleW(16), fontWeight: "600", color: "#2D5A27" }}>
-                Retry
+                Try again
               </ThemedText>
             </Pressable>
           </View>
@@ -114,7 +126,7 @@ export default function MissionsScreen() {
           <>
             {chapters.length === 0 ? (
               <View style={[styles.loadingContainer, { paddingVertical: scaleW(24) }]}>
-                <ThemedText style={styles.emptyText}>No chapters yet.</ThemedText>
+                <ThemedText style={styles.emptyText}>New adventures are on the way. Check back soon!</ThemedText>
               </View>
             ) : (
               <>
@@ -129,7 +141,7 @@ export default function MissionsScreen() {
                   </ThemedText>
                   {chapters[0].activities.length === 0 ? (
                     <View style={{ paddingHorizontal: scaleW(20), paddingVertical: scaleW(12) }}>
-                      <ThemedText style={styles.emptyText}>No missions for this chapter yet.</ThemedText>
+                      <ThemedText style={styles.emptyText}>No missions here yet—your next challenge is coming!</ThemedText>
                     </View>
                   ) : (
                     <ScrollView
@@ -139,7 +151,12 @@ export default function MissionsScreen() {
                     >
                       {chapters[0].activities.map((card) => (
                         <View key={card.id} style={styles.cardWrap}>
-                          <MissionCard card={card} xp={card.xp} tiltDeg={0} />
+                          <MissionCard
+                            card={card}
+                            xp={card.xp}
+                            tiltDeg={0}
+                            completed={completedActivityIds.has(card.id)}
+                          />
                         </View>
                       ))}
                     </ScrollView>
@@ -163,7 +180,7 @@ export default function MissionsScreen() {
                         </ThemedText>
                         {chapter.activities.length === 0 ? (
                           <View style={{ paddingHorizontal: scaleW(20), paddingVertical: scaleW(12) }}>
-                            <ThemedText style={styles.emptyText}>No missions for this chapter yet.</ThemedText>
+                            <ThemedText style={styles.emptyText}>No missions here yet—your next challenge is coming!</ThemedText>
                           </View>
                         ) : (
                           <ScrollView
@@ -173,7 +190,12 @@ export default function MissionsScreen() {
                           >
                             {chapter.activities.map((card) => (
                               <View key={card.id} style={styles.cardWrap}>
-                                <MissionCard card={card} xp={card.xp} tiltDeg={0} />
+                                <MissionCard
+                                  card={card}
+                                  xp={card.xp}
+                                  tiltDeg={0}
+                                  completed={completedActivityIds.has(card.id)}
+                                />
                               </View>
                             ))}
                           </ScrollView>

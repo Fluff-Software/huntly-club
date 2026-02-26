@@ -16,6 +16,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
+import { useFocusEffect } from "expo-router";
 import { BaseLayout } from "@/components/layout/BaseLayout";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import {
@@ -44,7 +45,16 @@ const CHART_BASELINE = "#4F6F52";
 const BAR_WHITE = "#FFFFFF";
 const BAR_BLUE = "#A8D5E5";
 const BAR_GREEN = "#B5D9B5";
-const CARD_GRAY = "#D9D9D9";
+
+const ACHIEVEMENT_CARD_COLORS = [
+  "#FFF5E8",
+  "#E8F5F0",
+  "#F0E8FF",
+  "#E8F0FF",
+  "#FFF0F0",
+];
+const ACHIEVEMENT_ICON_BG = ["#F7A676", "#7FAF8A", "#A8D5E5", "#D4A05A", "#C97B6C"];
+const POINTS_GREEN = "#2D5A27";
 
 type AchievementItem = {
   id: string;
@@ -76,6 +86,7 @@ export default function SocialScreen() {
 
   const bearSlideAnim = useRef(new RNAnimated.Value(400)).current;
   const chartProgress = useSharedValue(0);
+  const scrollRef = useRef<ScrollView>(null);
 
   const barHeights = useMemo(() => {
     const teamOrder = ["bears", "foxes", "otters"];
@@ -149,6 +160,13 @@ export default function SocialScreen() {
   useEffect(() => {
     fetchTeamActivities();
   }, [fetchTeamActivities]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchTeamActivities();
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, [fetchTeamActivities])
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -275,54 +293,62 @@ export default function SocialScreen() {
           opacity: 0.85,
         },
         achievementsTitle: {
-          fontSize: scaleW(20),
+          fontSize: scaleW(24),
           fontWeight: "700",
-          color: "#000",
+          color: "#2D5A27",
           marginTop: scaleW(40),
-          marginBottom: scaleW(20),
+          marginBottom: scaleW(24),
           marginLeft: scaleW(24),
         },
         timeline: {
-          paddingHorizontal: scaleW(24),
+          paddingHorizontal: scaleW(20),
           paddingBottom: scaleW(64),
           alignItems: "center",
-          gap: scaleW(24),
+          gap: scaleW(20),
         },
         achievementCard: {
-          backgroundColor: CARD_GRAY,
-          width: scaleW(240),
+          width: "100%",
+          maxWidth: scaleW(340),
           flexDirection: "row",
+          borderRadius: scaleW(20),
+          overflow: "hidden" as const,
+          padding: scaleW(16),
+          shadowColor: "#4F6F52",
+          shadowOpacity: 0.12,
+          shadowRadius: scaleW(12),
+          shadowOffset: { width: 0, height: 4 },
+          elevation: 3,
+          borderWidth: 3,
+          borderColor: "rgba(255,255,255,0.9)",
         },
         achievementIcon: {
-          width: scaleW(100),
-          height: scaleW(120),
-          borderTopRightRadius: "50%",
-          borderBottomRightRadius: "50%",
-          backgroundColor: "#FFF",
+          width: scaleW(56),
+          height: scaleW(56),
+          borderRadius: scaleW(28),
           alignItems: "center",
           justifyContent: "center",
-          marginRight: scaleW(14),
+          marginRight: scaleW(16),
         },
         achievementIconImage: {
-          width: scaleW(50),
-          height: scaleW(50),
+          width: scaleW(32),
+          height: scaleW(32),
         },
         achievementText: {
           flex: 1,
-          justifyContent: "space-between",
-          paddingHorizontal: scaleW(6),
-          paddingVertical: scaleW(16),
+          justifyContent: "center",
+          paddingVertical: scaleW(4),
         },
         achievementTitle: {
-          fontSize: scaleW(15),
+          fontSize: scaleW(16),
           fontWeight: "600",
-          color: "#000",
-          marginBottom: 2,
+          color: "#1a1a1a",
+          marginBottom: scaleW(4),
+          lineHeight: scaleW(22),
         },
         achievementPoints: {
-          fontSize: scaleW(13),
-          color: "#000",
-          opacity: 0.7,
+          fontSize: scaleW(15),
+          fontWeight: "700",
+          color: POINTS_GREEN,
         },
         emptyStateContainer: {
           flex: 1,
@@ -379,7 +405,7 @@ export default function SocialScreen() {
             Select Your Explorer
           </Text>
           <Text style={styles.emptyStateBody}>
-            Choose an explorer profile to view your team
+            Choose an explorer profile to view your team. Teams make exploring even more fun!
           </Text>
         </View>
       </BaseLayout>
@@ -394,7 +420,7 @@ export default function SocialScreen() {
             Join a Team
           </Text>
           <Text style={styles.emptyStateBody}>
-            Your explorer needs to join a team to view team activities
+            Your explorer needs to join a team to view team activities. Create an explorer in Clubhouse to get started!
           </Text>
         </View>
       </BaseLayout>
@@ -405,7 +431,7 @@ export default function SocialScreen() {
     return (
       <SafeAreaView style={[styles.page, { justifyContent: "center", alignItems: "center" }]} edges={["top", "left", "right"]}>
         <Text style={styles.loadingText}>
-          Loading...
+          Loading your team…
         </Text>
       </SafeAreaView>
     );
@@ -432,6 +458,7 @@ export default function SocialScreen() {
   return (
     <SafeAreaView style={styles.page} edges={["top", "left", "right"]}>
       <ScrollView
+        ref={scrollRef}
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         bounces={false}
@@ -503,43 +530,46 @@ export default function SocialScreen() {
           <Text style={styles.achievementsTitle}>Recent achievements</Text>
         </Animated.View>
         <View style={[styles.timeline, { position: "relative" }]}>
-          {visibleAchievements.map((item, index) => (
-            <Animated.View
-              key={item.id}
-              entering={FadeInDown.duration(400).delay(450 + index * 60).springify().damping(18)}
-              style={{ zIndex: 1 }}
-            >
-              <View
-                style={[
-                  styles.achievementCard,
-                  {
-                    transform: [{ rotate: index % 2 === 0 ? "-2deg" : "2deg" }],
-                    marginLeft: index % 2 === 0 ? scaleW(20) : 0,
-                    marginRight: index % 2 === 1 ? scaleW(20) : 0,
-                  },
-                ]}
+          {visibleAchievements.map((item, index) => {
+            const cardBg = ACHIEVEMENT_CARD_COLORS[index % ACHIEVEMENT_CARD_COLORS.length];
+            const iconBg = ACHIEVEMENT_ICON_BG[index % ACHIEVEMENT_ICON_BG.length];
+            return (
+              <Animated.View
+                key={item.id}
+                entering={FadeInDown.duration(400).delay(450 + index * 60).springify().damping(18)}
+                style={{ zIndex: 1, width: "100%", alignItems: "center" }}
               >
-                <View style={styles.achievementIcon}>
-                  <Image
-                    source={item.type === "badge" ? GET_STARTED_ICON_2_IMAGE : CELEBRATE_IMAGE}
-                    style={styles.achievementIconImage}
-                    resizeMode="contain"
-                  />
+                <View
+                  style={[
+                    styles.achievementCard,
+                    {
+                      backgroundColor: cardBg,
+                      transform: [{ rotate: index % 2 === 0 ? "-1.5deg" : "1.5deg" }],
+                    },
+                  ]}
+                >
+                  <View style={[styles.achievementIcon, { backgroundColor: iconBg }]}>
+                    <Image
+                      source={item.type === "badge" ? GET_STARTED_ICON_2_IMAGE : CELEBRATE_IMAGE}
+                      style={styles.achievementIconImage}
+                      resizeMode="contain"
+                    />
+                  </View>
+                  <View style={styles.achievementText}>
+                    <Text style={styles.achievementTitle}>{item.title}</Text>
+                    <Text style={styles.achievementPoints}>+ {item.points} points</Text>
+                  </View>
                 </View>
-                <View style={styles.achievementText}>
-                  <Text style={styles.achievementTitle}>{item.title}</Text>
-                  <Text style={styles.achievementPoints}>+ {item.points} points</Text>
-                </View>
-              </View>
-            </Animated.View>
-          ))}
+              </Animated.View>
+            );
+          })}
           {hasMoreAchievements && (
             <View style={styles.loadingMoreWrap}>
               <ActivityIndicator size="small" color={CHART_BASELINE} />
             </View>
           )}
           {showNoMoreMessage && (
-            <Text style={styles.noMoreAchievements}>No more achievements to load</Text>
+            <Text style={styles.noMoreAchievements}>You're all caught up! More achievements will appear as your team explores.</Text>
           )}
         </View>
       </ScrollView>

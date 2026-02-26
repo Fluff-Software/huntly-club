@@ -1,14 +1,25 @@
-import { Tabs } from "expo-router";
+import { Tabs, router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Image, Modal, Platform, StyleSheet, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
-import { PostSignUpWelcome } from "@/components/PostSignUpWelcome";
+import { NewPlayerTutorial } from "@/components/NewPlayerTutorial";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/ui/Button";
+import {
+  getHasCompletedTutorial,
+  recordTutorialAchievement,
+} from "@/services/activityProgressService";
 import {
   hasAskedPushOptIn,
   registerForPushNotificationsAsync,
@@ -28,6 +39,10 @@ const TAB_BAR_COLORS: Record<string, string> = {
   social: "#F7A676",
 };
 
+const CREAM = "#F4F0EB";
+const HUNTLY_GREEN = "#4F6F52";
+const HUNTLY_CHARCOAL = "#3D3D3D";
+
 function TabIcon({
   source,
   color,
@@ -46,6 +61,42 @@ function TabIcon({
   );
 }
 
+function StoryTabPulse({ size }: { size: number }) {
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(0.6);
+  useEffect(() => {
+    scale.value = withRepeat(
+      withSequence(withTiming(1.35, { duration: 600 }), withTiming(1, { duration: 600 })),
+      -1,
+      true
+    );
+    opacity.value = withRepeat(
+      withSequence(withTiming(0.2, { duration: 600 }), withTiming(0.6, { duration: 600 })),
+      -1,
+      true
+    );
+  }, []);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.tutorialPulseRing,
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: 3,
+        },
+        animatedStyle,
+      ]}
+    />
+  );
+}
+
 export default function TabLayout() {
   const { user } = useAuth();
   const { currentPlayer } = usePlayer();
@@ -54,8 +105,53 @@ export default function TabLayout() {
   const signUpContext = useSignUpOptional();
   const showPostSignUpWelcome = signUpContext?.showPostSignUpWelcome ?? false;
   const setShowPostSignUpWelcome = signUpContext?.setShowPostSignUpWelcome;
+  const tutorialStep = signUpContext?.tutorialStep ?? "done";
+  const setTutorialStep = signUpContext?.setTutorialStep;
+  const replayTutorialRequested = signUpContext?.replayTutorialRequested ?? false;
+  const setReplayTutorialRequested = signUpContext?.setReplayTutorialRequested;
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
   const [notificationPromptChecking, setNotificationPromptChecking] = useState(true);
+  const [hasCompletedTutorial, setHasCompletedTutorial] = useState<boolean | null>(null);
+
+  // On clubhouse/tabs load: if user has no tutorial achievement, show the tutorial
+  useEffect(() => {
+    if (!currentPlayer?.id) return;
+    let cancelled = false;
+    getHasCompletedTutorial(currentPlayer.id).then((completed) => {
+      if (cancelled) return;
+      setHasCompletedTutorial(completed);
+      if (completed) {
+        setShowPostSignUpWelcome?.(false);
+      } else {
+        setShowPostSignUpWelcome?.(true);
+        setTutorialStep?.("intro");
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentPlayer?.id, setShowPostSignUpWelcome, setTutorialStep]);
+
+  // When showPostSignUpWelcome was set (e.g. "Show tutorial again"): re-check and hide if they already have achievement (unless replay requested)
+  useEffect(() => {
+    if (!showPostSignUpWelcome || !currentPlayer?.id) {
+      if (!showPostSignUpWelcome) setHasCompletedTutorial(null);
+      return;
+    }
+    if (replayTutorialRequested) {
+      setHasCompletedTutorial(false);
+      return;
+    }
+    let cancelled = false;
+    getHasCompletedTutorial(currentPlayer.id).then((completed) => {
+      if (cancelled) return;
+      setHasCompletedTutorial(completed);
+      if (completed) setShowPostSignUpWelcome?.(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [showPostSignUpWelcome, currentPlayer?.id, replayTutorialRequested, setShowPostSignUpWelcome]);
 
   useEffect(() => {
     if (!user?.id || showPostSignUpWelcome) {
@@ -96,11 +192,22 @@ export default function TabLayout() {
   const tabBarPaddingBottom = scaleW(16) + bottomInset;
   const tabBarHeight = scaleW(72) + bottomInset;
 
+  const handleTutorialDismiss = () => {
+    setReplayTutorialRequested?.(false);
+    setTutorialStep?.("done");
+    setShowPostSignUpWelcome?.(false);
+    if (currentPlayer?.id != null && currentPlayer?.team != null) {
+      recordTutorialAchievement(currentPlayer.id, currentPlayer.team).catch(() => {});
+    }
+    router.replace("/(tabs)");
+  };
+
   return (
-    <>
-      <PostSignUpWelcome
-        visible={showPostSignUpWelcome}
-        onDismiss={() => setShowPostSignUpWelcome?.(false)}
+    <View style={styles.layoutWrapper}>
+      <NewPlayerTutorial
+        visible={showPostSignUpWelcome && hasCompletedTutorial === false}
+        onDismiss={handleTutorialDismiss}
+        tabBarHeight={tabBarHeight}
       />
       <Modal
         visible={showNotificationPrompt && !notificationPromptChecking}
@@ -113,19 +220,23 @@ export default function TabLayout() {
             <ThemedText
               type="subtitle"
               style={{ marginBottom: scaleW(16), textAlign: "center" }}
+              lightColor={HUNTLY_GREEN}
+              darkColor={CREAM}
             >
               Would you like to be notified when new chapters are available?
             </ThemedText>
             <ThemedText
-              style={{ marginBottom: scaleW(24), textAlign: "center", fontSize: scaleW(14), opacity: 0.9 }}
+              style={{ marginBottom: scaleW(24), textAlign: "center", fontSize: scaleW(14) }}
+              lightColor={HUNTLY_CHARCOAL}
+              darkColor="rgba(244,240,235,0.9)"
             >
               Get notified when a new chapter is ready to read.
             </ThemedText>
             <View style={{ gap: scaleW(12) }}>
-              <Button variant="primary" onPress={handleNotificationPromptYes}>
+              <Button variant="secondary" onPress={handleNotificationPromptYes}>
                 Yes, notify me
               </Button>
-              <Button variant="cancel" onPress={handleNotificationPromptNotNow}>
+              <Button variant="white" onPress={handleNotificationPromptNotNow}>
                 Not now
               </Button>
             </View>
@@ -136,6 +247,7 @@ export default function TabLayout() {
       screenOptions={({ route }) => ({
         tabBarActiveTintColor: activeColor,
         tabBarInactiveTintColor: inactiveColor,
+        tabBarLabelPosition: "below-icon",
         tabBarStyle: {
           borderTopWidth: 0,
           height: tabBarHeight,
@@ -152,7 +264,7 @@ export default function TabLayout() {
         tabBarLabelStyle: {
           fontSize: scaleW(12),
           fontWeight: "600",
-          marginTop: scaleW(4),
+          marginTop: scaleW(8),
         },
         tabBarIconStyle: {
           marginTop: 0,
@@ -175,9 +287,17 @@ export default function TabLayout() {
         options={{
           title: "Story",
           tabBarIcon: ({ color }) => (
-            <TabIcon source={HOME_STORY} color={color} size={scaleW(24)} />
+            <View style={[styles.storyIconWrapper, { width: scaleW(44), height: scaleW(44) }]}>
+              {tutorialStep === "click_story" && (
+                <View style={[styles.tutorialPulseContainer, { width: scaleW(44), height: scaleW(44) }]}>
+                  <StoryTabPulse size={scaleW(44)} />
+                </View>
+              )}
+              <TabIcon source={HOME_STORY} color={color} size={scaleW(24)} />
+            </View>
           ),
           href: currentPlayer ? undefined : null,
+          popToTopOnBlur: true,
         }}
       />
       <Tabs.Screen
@@ -185,7 +305,14 @@ export default function TabLayout() {
         options={{
           title: "Missions",
           tabBarIcon: ({ color }) => (
-            <TabIcon source={HOME_MISSIONS} color={color} size={scaleW(24)} />
+            <View style={[styles.storyIconWrapper, { width: scaleW(44), height: scaleW(44) }]}>
+              {tutorialStep === "click_missions" && (
+                <View style={[styles.tutorialPulseContainer, { width: scaleW(44), height: scaleW(44) }]}>
+                  <StoryTabPulse size={scaleW(44)} />
+                </View>
+              )}
+              <TabIcon source={HOME_MISSIONS} color={color} size={scaleW(24)} />
+            </View>
           ),
           href: currentPlayer ? undefined : null,
         }}
@@ -195,7 +322,14 @@ export default function TabLayout() {
         options={{
           title: "Team",
           tabBarIcon: ({ color }) => (
-            <TabIcon source={HOME_TEAM} color={color} size={scaleW(24)} />
+            <View style={[styles.storyIconWrapper, { width: scaleW(44), height: scaleW(44) }]}>
+              {tutorialStep === "click_team" && (
+                <View style={[styles.tutorialPulseContainer, { width: scaleW(44), height: scaleW(44) }]}>
+                  <StoryTabPulse size={scaleW(44)} />
+                </View>
+              )}
+              <TabIcon source={HOME_TEAM} color={color} size={scaleW(24)} />
+            </View>
           ),
           href: currentPlayer ? undefined : null,
         }}
@@ -225,12 +359,29 @@ export default function TabLayout() {
         }}
       />
       </Tabs>
-    </>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  layoutWrapper: {
+    flex: 1,
+  },
   tabIcon: {},
+  storyIconWrapper: {
+    position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tutorialPulseContainer: {
+    position: "absolute",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tutorialPulseRing: {
+    position: "absolute",
+    borderColor: "rgba(255,255,255,0.9)",
+  },
   notificationPromptOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",
@@ -239,7 +390,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   notificationPromptCard: {
-    backgroundColor: "#F8F7F4",
+    backgroundColor: CREAM,
     maxWidth: 360,
     width: "100%",
   },

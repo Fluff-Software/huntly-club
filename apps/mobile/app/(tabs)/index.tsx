@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useMemo } from "react";
+import React, { useRef, useState, useEffect, useMemo, useCallback } from "react";
 import {
   View,
   ScrollView,
@@ -19,7 +19,7 @@ import AnimatedReanimated, {
   withDelay,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { MissionCard } from "@/components/MissionCard";
 import { StatCard } from "@/components/StatCard";
@@ -59,7 +59,7 @@ export default function HomeScreen() {
   const { scaleW, width, height } = useLayoutScale();
   const { currentPlayer } = usePlayer();
   const { daysPlayed, pointsEarned } = useUserStats();
-  const { nextMission, loading: missionLoading } = useCurrentChapterActivities(currentPlayer?.id ?? null);
+  const { nextMission, loading: missionLoading, refetch: refetchMissions } = useCurrentChapterActivities(currentPlayer?.id ?? null);
   const [teamName, setTeamName] = useState<string | null>(null);
   const [clubCards, setClubCards] = useState<ClubPhotoCardItem[]>([]);
   const [clubCardsLoading, setClubCardsLoading] = useState(true);
@@ -156,6 +156,15 @@ export default function HomeScreen() {
     }, 0);
     return () => clearTimeout(timer);
   }, [width, initialIndex]);
+
+  useFocusEffect(
+    useCallback(() => {
+      refetchMissions();
+      if (width > 0) {
+        pagerRef.current?.scrollTo({ x: width * initialIndex, animated: false });
+      }
+    }, [refetchMissions, width, initialIndex])
+  );
 
   const pageAnimatedStyles = useMemo(() => {
     if (width <= 0) return [];
@@ -261,6 +270,9 @@ export default function HomeScreen() {
         bearsCard: {
           borderRadius: scaleW(15),
           marginBottom: scaleW(20),
+          paddingHorizontal: scaleW(14),
+          paddingVertical: scaleW(12),
+          overflow: "hidden" as const,
           shadowColor: "#000",
           shadowOpacity: 0.3,
           shadowRadius: 2,
@@ -269,9 +281,10 @@ export default function HomeScreen() {
         },
         bearImage: {
           position: "absolute",
-          width: scaleW(140),
-          height: scaleW(140),
-          bottom: scaleW(-95),
+          width: scaleW(110),
+          height: scaleW(110),
+          right: 0,
+          bottom: 0,
         },
         horizontalCardsContainer: {
           paddingLeft: clubCardsPaddingHorizontal,
@@ -496,14 +509,14 @@ export default function HomeScreen() {
         {teamCardConfig && (
           <AnimatedReanimated.View style={bearCardStyle}>
             <View style={[styles.bearsCard, { backgroundColor: teamCardConfig.backgroundColor, borderWidth: 4, borderColor: "#FFF" }]}>
-              <View className="flex-row items-center flex-1 overflow-hidden p-4">
+              <View className="flex-row items-center flex-1 p-4 overflow-hidden">
                 <View style={{ flex: 1, paddingRight: scaleW(8) }}>
                   <ThemedText type="heading" style={{ color: "#000", fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(12), lineHeight: scaleW(28) }}>{teamCardConfig.title}</ThemedText>
                   <ThemedText type="body" style={{ color: "#000", fontSize: scaleW(16), lineHeight: scaleW(24) }}>
                     {teamCardMessage}
                   </ThemedText>
                 </View>
-                <View style={{ width: scaleW(120) }}>
+                <View style={{ width: scaleW(110), height: scaleW(110) }}>
                   <Image
                     source={teamCardConfig.waveImage}
                     resizeMode="contain"

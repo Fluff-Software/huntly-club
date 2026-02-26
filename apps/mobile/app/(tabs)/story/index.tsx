@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, useRef } from "react";
 import {
   View,
   ScrollView,
@@ -19,7 +19,9 @@ import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useFirstSeason } from "@/hooks/useFirstSeason";
 import { useCurrentChapter } from "@/hooks/useCurrentChapter";
 import { useAllChapters } from "@/hooks/useAllChapters";
-import { useRouter } from "expo-router";
+import { useChapterProgress } from "@/hooks/useChapterProgress";
+import { usePlayer } from "@/contexts/PlayerContext";
+import { useRouter, useFocusEffect } from "expo-router";
 
 function formatReleaseDate(isoDate: string): string {
   const d = new Date(isoDate);
@@ -36,19 +38,33 @@ const DARK_GREEN = "#2D5A27";
 export default function StoryScreen() {
   const router = useRouter();
   const { scaleW, width } = useLayoutScale();
-  const { firstSeason, heroImageSource, loading: seasonLoading, error: seasonError, refetch: refetchSeason } = useFirstSeason();
+  const { currentPlayer } = usePlayer();
+  const { firstSeason, seasonNumber, heroImageSource, loading: seasonLoading, error: seasonError, refetch: refetchSeason } = useFirstSeason();
   const { nextChapterDate, loading: currentChapterLoading, error: chapterError, refetch: refetchChapter } = useCurrentChapter();
-  const { chapters, loading: chaptersLoading, error: chaptersError, refetch: refetchChapters } = useAllChapters();
+  const { chapters, loading: chaptersLoading, error: chaptersError, refetch: refetchChapters } = useAllChapters(firstSeason?.id ?? undefined);
+  const { progressByChapterId, loading: progressLoading, refetch: refetchProgress } = useChapterProgress(currentPlayer?.id ?? null);
   const completeButtonScale = useSharedValue(1);
+  const scrollRef = useRef<ScrollView>(null);
 
-  const loading = seasonLoading || currentChapterLoading || chaptersLoading;
+  useFocusEffect(
+    useCallback(() => {
+      refetchSeason();
+      refetchChapter();
+      refetchChapters();
+      refetchProgress();
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, [refetchSeason, refetchChapter, refetchChapters, refetchProgress])
+  );
+
+  const loading = seasonLoading || currentChapterLoading || chaptersLoading || progressLoading;
   const error = seasonError ?? chapterError ?? chaptersError;
 
   const handleRetry = useCallback(() => {
     refetchSeason();
     refetchChapter();
     refetchChapters();
-  }, [refetchSeason, refetchChapter, refetchChapters]);
+    refetchProgress();
+  }, [refetchSeason, refetchChapter, refetchChapters, refetchProgress]);
 
   const completeButtonAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: completeButtonScale.value }],
@@ -103,9 +119,16 @@ export default function StoryScreen() {
           marginBottom: scaleW(16),
         },
         chapterContainer: {
-          backgroundColor: "#438DBD",
-          paddingVertical: scaleW(48),
-          paddingHorizontal: scaleW(36),
+          backgroundColor: "rgba(255,255,255,0.12)",
+          marginHorizontal: scaleW(20),
+          marginTop: scaleW(16),
+          marginBottom: scaleW(16),
+          paddingVertical: scaleW(20),
+          paddingHorizontal: scaleW(24),
+          borderRadius: scaleW(16),
+          borderWidth: 1,
+          borderColor: "rgba(255,255,255,0.25)",
+          overflow: "hidden",
         },
         chapterTitle: {
           fontSize: scaleW(20),
@@ -124,26 +147,28 @@ export default function StoryScreen() {
           lineHeight: scaleW(24),
           marginBottom: scaleW(12),
         },
+        buttonsRow: {
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: scaleW(12),
+          marginTop: scaleW(16),
+          alignItems: "center",
+        },
         readChapterButton: {
           backgroundColor: "rgba(255,255,255,0.25)",
-          alignSelf: "flex-start",
           borderRadius: scaleW(28),
           paddingVertical: scaleW(12),
           paddingHorizontal: scaleW(24),
           alignItems: "center",
           justifyContent: "center",
-          marginTop: scaleW(16),
         },
         completeButton: {
           backgroundColor: "#7FAF8A",
-          alignSelf: "flex-start",
           borderRadius: scaleW(28),
-          paddingVertical: scaleW(14),
+          paddingVertical: scaleW(12),
           paddingHorizontal: scaleW(24),
           alignItems: "center",
           justifyContent: "center",
-          marginTop: scaleW(24),
-          marginBottom: scaleW(48),
           shadowColor: "#000",
           shadowOpacity: 0.3,
           shadowRadius: 2,
@@ -208,7 +233,7 @@ export default function StoryScreen() {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]} edges={["top", "left", "right"]}>
         <ActivityIndicator size="large" color="#FFF" />
-        <ThemedText style={styles.loadingText}>Loading story…</ThemedText>
+        <ThemedText style={styles.loadingText}>Getting your story ready…</ThemedText>
       </SafeAreaView>
     );
   }
@@ -216,7 +241,7 @@ export default function StoryScreen() {
   if (error) {
     return (
       <SafeAreaView style={[styles.container, styles.errorContainer]} edges={["top", "left", "right"]}>
-        <ThemedText style={styles.errorText}>{error}</ThemedText>
+        <ThemedText style={styles.errorText}>Something went wrong loading your story.</ThemedText>
         <Pressable
           onPress={handleRetry}
           style={styles.retryButton}
@@ -228,7 +253,7 @@ export default function StoryScreen() {
           }}
         >
           <ThemedText type="heading" style={styles.retryButtonText}>
-            Retry
+            Try again
           </ThemedText>
         </Pressable>
       </SafeAreaView>
@@ -238,6 +263,7 @@ export default function StoryScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <ScrollView
+        ref={scrollRef}
         style={{ flex: 1 }}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -257,7 +283,7 @@ export default function StoryScreen() {
               />
             </Animated.View>
             <Animated.View entering={FadeInDown.duration(500).delay(150).springify().damping(18)}>
-              <ThemedText type="heading" style={styles.seasonLabel}>Season 1</ThemedText>
+              <ThemedText type="heading" style={styles.seasonLabel}>Season {seasonNumber}</ThemedText>
               {firstSeason.name != null && firstSeason.name !== "" && (
                 <ThemedText type="heading" style={styles.seasonTitle}>
                   {firstSeason.name}
@@ -277,7 +303,10 @@ export default function StoryScreen() {
                 Released {formatReleaseDate(chapter.unlock_date)}
               </ThemedText>
             </Animated.View>
-            <Animated.View entering={FadeInDown.duration(500).delay(100 + index * 50).springify().damping(18)}>
+            <Animated.View
+              entering={FadeInDown.duration(500).delay(100 + index * 50).springify().damping(18)}
+              style={styles.buttonsRow}
+            >
               <Pressable
                 onPress={() =>
                   router.push({
@@ -291,35 +320,37 @@ export default function StoryScreen() {
                   Read this chapter →
                 </ThemedText>
               </Pressable>
+              {(() => {
+                const progress = progressByChapterId[chapter.id] ?? { total: 0, completed: 0 };
+                if (progress.total === 0) return null;
+                const missionLabel = progress.total === 1 ? "mission" : "missions";
+                return (
+                  <Animated.View entering={FadeInDown.duration(500).delay(200).springify().damping(18)} style={completeButtonAnimatedStyle}>
+                    <Pressable
+                      onPress={() => router.push("/(tabs)/missions")}
+                      onPressIn={() => {
+                        completeButtonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+                      }}
+                      onPressOut={() => {
+                        completeButtonScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+                      }}
+                      style={styles.completeButton}
+                    >
+                      <ThemedText
+                        type="heading"
+                        style={{
+                          fontSize: scaleW(15),
+                          fontWeight: "600",
+                          color: "#FFF",
+                        }}
+                      >
+                        {progress.completed} / {progress.total} {missionLabel} complete →
+                      </ThemedText>
+                    </Pressable>
+                  </Animated.View>
+                );
+              })()}
             </Animated.View>
-            {index === 0 && (
-              <Animated.View
-                entering={FadeInDown.duration(500).delay(200).springify().damping(18)}
-                style={completeButtonAnimatedStyle}
-              >
-                <Pressable
-                  onPress={() => router.push("/(tabs)/missions")}
-                  onPressIn={() => {
-                    completeButtonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-                  }}
-                  onPressOut={() => {
-                    completeButtonScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-                  }}
-                  style={styles.completeButton}
-                >
-                  <ThemedText
-                    type="heading"
-                    style={{
-                      fontSize: scaleW(15),
-                      fontWeight: "600",
-                      color: "#FFF",
-                    }}
-                  >
-                    1 / 2 missions complete →
-                  </ThemedText>
-                </Pressable>
-              </Animated.View>
-            )}
           </View>
         ))}
 
@@ -334,10 +365,18 @@ export default function StoryScreen() {
           </View>
         )}
 
+        {firstSeason && chapters.length === 0 && (
+          <View style={[styles.chapterContainer, styles.loadingContainer]}>
+            <ThemedText style={styles.errorText}>
+              No chapters in this season yet. Check back soon—new adventures are on the way!
+            </ThemedText>
+          </View>
+        )}
+
         {!firstSeason && chapters.length === 0 && (
           <View style={[styles.chapterContainer, styles.loadingContainer]}>
             <ThemedText style={styles.errorText}>
-              No story content available yet.
+              No story content available yet. Your next chapter is coming soon!
             </ThemedText>
           </View>
         )}

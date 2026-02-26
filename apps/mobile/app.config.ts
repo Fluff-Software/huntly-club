@@ -53,6 +53,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     output: "static",
     favicon: "./assets/images/favicon.png",
   },
+  runtimeVersion: {
+    policy: "appVersion",
+  },
+  updates: {
+    url: "https://u.expo.dev/" + (process.env.EXPO_PUBLIC_EAS_PROJECT_ID ?? ""),
+    fallbackToCacheTimeout: 0,
+  },
   plugins: [
     "expo-router",
     "expo-notifications",

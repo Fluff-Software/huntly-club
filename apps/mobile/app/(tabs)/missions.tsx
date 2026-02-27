@@ -14,6 +14,7 @@ import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useChaptersWithActivities, type ChapterWithActivities } from "@/hooks/useAllChaptersActivities";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { MissionCard } from "@/components/MissionCard";
+import { supabase } from "@/services/supabase";
 
 const MISSIONS_ORANGE = "#D2684B";
 
@@ -24,9 +25,10 @@ function chapterSectionTitle(chapter: ChapterWithActivities): string {
 
 export default function MissionsScreen() {
   const { scaleW } = useLayoutScale();
-  const { currentPlayer } = usePlayer();
+  const { currentPlayer, profiles } = usePlayer();
   const { chapters, completedActivityIds, loading, error, refetch } = useChaptersWithActivities(currentPlayer?.id ?? null);
   const scrollRef = useRef<ScrollView>(null);
+  const [completionCountByActivityId, setCompletionCountByActivityId] = React.useState<Record<string, number>>({});
 
   useFocusEffect(
     useCallback(() => {
@@ -34,6 +36,32 @@ export default function MissionsScreen() {
       scrollRef.current?.scrollTo({ y: 0, animated: false });
     }, [refetch])
   );
+
+  React.useEffect(() => {
+    const profileIds = profiles.map((p) => p.id);
+    const activityIds = chapters.flatMap((ch) => ch.activities.map((a) => parseInt(a.id, 10)));
+    if (profileIds.length === 0 || activityIds.length === 0) {
+      setCompletionCountByActivityId({});
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data, error: progressError } = await supabase
+        .from("user_activity_progress")
+        .select("activity_id, profile_id, completed_at")
+        .in("activity_id", activityIds)
+        .in("profile_id", profileIds)
+        .not("completed_at", "is", null);
+      if (cancelled || progressError) return;
+      const counts: Record<string, number> = {};
+      for (const row of data ?? []) {
+        const key = String(row.activity_id);
+        counts[key] = (counts[key] ?? 0) + 1;
+      }
+      setCompletionCountByActivityId(counts);
+    })();
+    return () => { cancelled = true; };
+  }, [chapters, profiles]);
 
   const styles = useMemo(
     () =>
@@ -156,6 +184,8 @@ export default function MissionsScreen() {
                             xp={card.xp}
                             tiltDeg={0}
                             completed={completedActivityIds.has(card.id)}
+                            completionCount={completionCountByActivityId[card.id] ?? 0}
+                            totalExplorers={profiles.length}
                           />
                         </View>
                       ))}
@@ -195,6 +225,8 @@ export default function MissionsScreen() {
                                   xp={card.xp}
                                   tiltDeg={0}
                                   completed={completedActivityIds.has(card.id)}
+                                  completionCount={completionCountByActivityId[card.id] ?? 0}
+                                  totalExplorers={profiles.length}
                                 />
                               </View>
                             ))}

@@ -89,39 +89,51 @@ export default function SocialScreen() {
   const scrollRef = useRef<ScrollView>(null);
 
   const TEAM_ORDER = ["bears", "foxes", "otters"] as const;
+  const TEAM_FACE_BY_NAME: Record<string, typeof BEAR_FACE_IMAGE> = {
+    bears: BEAR_FACE_IMAGE,
+    foxes: FOX_FACE_IMAGE,
+    otters: OTTER_FACE_IMAGE,
+  };
 
-  const barHeights = useMemo(() => {
+  /** Teams sorted by points (highest first) for the chart. */
+  const sortedTeamsForChart = useMemo(() => {
     const teamIdByName = Object.fromEntries(
       allTeams.map((t) => [t.name.toLowerCase(), t.id])
     );
-    const maxTotal = Math.max(
-      1,
-      ...TEAM_ORDER.map((name) => teamAchievementTotals[teamIdByName[name]] ?? 0)
-    );
-    const minDesign = 20;
-    const maxDesign = 220;
-    return TEAM_ORDER.map((name) => {
-      const total = teamAchievementTotals[teamIdByName[name]] ?? 0;
-      const designHeight = minDesign + (total / maxTotal) * (maxDesign - minDesign);
-      return scaleW(designHeight);
-    });
-  }, [scaleW, allTeams, teamAchievementTotals]);
-
-  const barColors = useMemo(() => {
     const colourByName: Record<string, string> = {};
     for (const team of allTeams) {
-      if (team.colour) {
-        colourByName[team.name.toLowerCase()] = team.colour;
-      }
+      if (team.colour) colourByName[team.name.toLowerCase()] = team.colour;
     }
-    return TEAM_ORDER.map((name, index) => {
-      const normalized = name.toLowerCase();
-      if (colourByName[normalized]) return colourByName[normalized];
-      if (index === 0) return BAR_WHITE;
-      if (index === 1) return BAR_BLUE;
-      return BAR_GREEN;
+    const withTotals = TEAM_ORDER.map((name) => {
+      const id = teamIdByName[name];
+      const total = teamAchievementTotals[id] ?? 0;
+      const color =
+        colourByName[name] ??
+        (name === "bears" ? BAR_WHITE : name === "foxes" ? BAR_BLUE : BAR_GREEN);
+      return {
+        name,
+        total,
+        face: TEAM_FACE_BY_NAME[name],
+        color,
+      };
     });
-  }, [allTeams]);
+    return withTotals.sort((a, b) => b.total - a.total);
+  }, [allTeams, teamAchievementTotals]);
+
+  const barHeights = useMemo(() => {
+    const maxTotal = Math.max(1, ...sortedTeamsForChart.map((t) => t.total));
+    const minDesign = 20;
+    const maxDesign = 220;
+    return sortedTeamsForChart.map((t) => {
+      const designHeight = minDesign + (t.total / maxTotal) * (maxDesign - minDesign);
+      return scaleW(designHeight);
+    });
+  }, [scaleW, sortedTeamsForChart]);
+
+  const barColors = useMemo(
+    () => sortedTeamsForChart.map((t) => t.color),
+    [sortedTeamsForChart]
+  );
 
   const bar1Style = useAnimatedStyle(() => ({
     height: chartProgress.value * barHeights[0],
@@ -467,12 +479,6 @@ export default function SocialScreen() {
     );
   }
 
-  const chartBars = [
-    { face: BEAR_FACE_IMAGE, color: BAR_WHITE, height: scaleW(100) },
-    { face: FOX_FACE_IMAGE, color: BAR_BLUE, height: scaleW(160) },
-    { face: OTTER_FACE_IMAGE, color: BAR_GREEN, height: scaleW(88) },
-  ];
-
   return (
     <SafeAreaView style={styles.page} edges={["top", "left", "right"]}>
       <ScrollView
@@ -522,10 +528,10 @@ export default function SocialScreen() {
           entering={FadeInDown.duration(500).delay(280).springify().damping(18)}
           style={styles.chartRow}
         >
-          {chartBars.map((bar, index) => {
+          {sortedTeamsForChart.map((bar, index) => {
             const barStyle = index === 0 ? bar1Style : index === 1 ? bar2Style : bar3Style;
             return (
-              <View key={index} style={styles.chartBarWrap}>
+              <View key={bar.name} style={styles.chartBarWrap}>
                 <Animated.View style={[styles.chartBar, barStyle]}>
                   <View style={styles.chartFace}>
                     <Image

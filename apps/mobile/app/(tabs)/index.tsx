@@ -484,7 +484,7 @@ export default function HomeScreen() {
     >
       <View style={{
         paddingHorizontal: scaleW(24),
-        paddingTop: scaleW(24),
+        paddingTop: scaleW(8),
         paddingBottom: scaleW(24),
       }}>
         <ThemedText
@@ -499,7 +499,7 @@ export default function HomeScreen() {
               lineHeight: scaleW(32),
               fontWeight: "600",
               textAlign: "center",
-              marginTop: scaleW(16),
+              marginTop: 0,
               marginBottom: scaleW(24),
               textShadowColor: "#000",
               textShadowRadius: 3,

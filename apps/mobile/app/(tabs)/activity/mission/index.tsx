@@ -11,9 +11,11 @@ import Animated, {
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { usePlayer } from "@/contexts/PlayerContext";
 import { getActivityById, getActivityImageSource } from "@/services/packService";
 import { getRandomActivityPhotos, type ActivityPhotoItem } from "@/services/activityProgressService";
 import { getCategories, getCategoryById, type Category } from "@/services/categoriesService";
+import { supabase } from "@/services/supabase";
 import type { Activity } from "@/types/activity";
 
 const TEXT_SECONDARY = "#2F3336";
@@ -37,11 +39,13 @@ export default function InstructionScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { scaleW } = useLayoutScale();
+  const { profiles } = usePlayer();
   const [activity, setActivity] = useState<Activity | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [clubPhotos, setClubPhotos] = useState<ActivityPhotoItem[]>([]);
+  const [completedByNames, setCompletedByNames] = useState<string[]>([]);
 
   const nextScale = useSharedValue(1);
   const nextAnimatedStyle = useAnimatedStyle(() => ({
@@ -80,6 +84,33 @@ export default function InstructionScreen() {
   useEffect(() => {
     loadActivity();
   }, [loadActivity]);
+
+  useEffect(() => {
+    const activityId = activity?.id;
+    const profileIds = profiles.map((p) => p.id);
+    if (!activityId || profileIds.length === 0) {
+      setCompletedByNames([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data, error: progressError } = await supabase
+        .from("user_activity_progress")
+        .select("profile_id")
+        .eq("activity_id", activityId)
+        .in("profile_id", profileIds)
+        .not("completed_at", "is", null);
+      if (cancelled || progressError) return;
+      const names = (data ?? [])
+        .map((row) => {
+          const p = profiles.find((x) => x.id === row.profile_id);
+          return (p?.nickname || p?.name || "Explorer").trim() || "Explorer";
+        })
+        .filter((name, i, arr) => arr.indexOf(name) === i);
+      setCompletedByNames(names);
+    })();
+    return () => { cancelled = true; };
+  }, [activity?.id, profiles]);
 
   const styles = useMemo(
     () =>
@@ -214,6 +245,22 @@ export default function InstructionScreen() {
           fontSize: scaleW(16),
           fontWeight: "700",
           color: "#FFF",
+        },
+        completedByWrap: {
+          marginTop: scaleW(12),
+          marginHorizontal: scaleW(32),
+          marginBottom: scaleW(16),
+        },
+        completedByLabel: {
+          fontSize: scaleW(14),
+          fontWeight: "600",
+          color: TEXT_SECONDARY,
+          marginBottom: scaleW(4),
+        },
+        completedByNames: {
+          fontSize: scaleW(14),
+          color: TEXT_SECONDARY,
+          lineHeight: scaleW(20),
         },
       }),
     [scaleW]
@@ -407,6 +454,14 @@ export default function InstructionScreen() {
               Complete Challenge
             </ThemedText>
           </Pressable>
+          {completedByNames.length > 0 && (
+            <View style={styles.completedByWrap}>
+              <ThemedText style={styles.completedByLabel}>Completed by</ThemedText>
+              <ThemedText style={styles.completedByNames}>
+                {completedByNames.join(", ")}
+              </ThemedText>
+            </View>
+          )}
         </Animated.View>
       </ScrollView>
     </SafeAreaView>

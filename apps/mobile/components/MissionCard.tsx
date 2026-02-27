@@ -23,6 +23,10 @@ type MissionCardProps = {
   onStartPress?: () => void;
   showStartButton?: boolean;
   completed?: boolean;
+  /** Number of this user's explorers who have completed this mission. */
+  completionCount?: number;
+  /** Total number of explorers (profiles) for this user. */
+  totalExplorers?: number;
 };
 
 export function MissionCard({
@@ -33,8 +37,15 @@ export function MissionCard({
   onStartPress,
   showStartButton = true,
   completed = false,
+  completionCount = 0,
+  totalExplorers = 0,
 }: MissionCardProps) {
   const { scaleW } = useLayoutScale();
+  const showCompletedBadge = completionCount > 0;
+  const badgeText =
+    totalExplorers > 0
+      ? `Completed by ${completionCount}/${totalExplorers} Explorer${totalExplorers === 1 ? "" : "s"}`
+      : `Completed by ${completionCount} Explorer${completionCount === 1 ? "" : "s"}`;
 
   const styles = useMemo(
     () =>
@@ -60,21 +71,26 @@ export function MissionCard({
           shadowOffset: { width: 0, height: 2 },
           elevation: 2,
         },
-        completedBadge: {
+        completedBadgeWrap: {
           position: "absolute" as const,
-          top: scaleW(16),
-          right: scaleW(16),
+          top: scaleW(12),
+          left: 0,
+          right: 0,
+          alignItems: "center" as const,
+          zIndex: 1,
+        },
+        completedBadge: {
           flexDirection: "row" as const,
-          alignItems: "center",
+          alignItems: "center" as const,
+          justifyContent: "center" as const,
           backgroundColor: COMPLETED_GREEN,
-          paddingHorizontal: scaleW(12),
+          paddingHorizontal: scaleW(14),
           paddingVertical: scaleW(8),
           borderRadius: scaleW(20),
           gap: scaleW(6),
-          zIndex: 1,
         },
         completedBadgeText: {
-          fontSize: scaleW(14),
+          fontSize: scaleW(13),
           fontWeight: "700" as const,
           color: "#FFF",
         },
@@ -160,10 +176,12 @@ export function MissionCard({
             style={styles.image}
             resizeMode="cover"
           />
-          {completed && (
-            <View style={styles.completedBadge}>
-              <MaterialIcons name="check-circle" size={scaleW(20)} color="#FFF" />
-              <ThemedText style={styles.completedBadgeText}>Completed</ThemedText>
+          {showCompletedBadge && (
+            <View style={styles.completedBadgeWrap}>
+              <View style={styles.completedBadge}>
+                <MaterialIcons name="check-circle" size={scaleW(18)} color="#FFF" />
+                <ThemedText style={styles.completedBadgeText}>{badgeText}</ThemedText>
+              </View>
             </View>
           )}
         </View>

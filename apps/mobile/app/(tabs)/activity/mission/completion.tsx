@@ -384,12 +384,12 @@ export default function CompletionScreen() {
       }));
 
       router.push({
-        pathname: "/(tabs)/activity/mission/reward",
+        pathname: "/(tabs)/activity/mission/reward" as const,
         params: {
           activityId: String(activity.id),
           achievements: JSON.stringify(achievementsForReward),
         },
-      } as { pathname: string; params: Record<string, string> });
+      });
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Something went wrong.";
@@ -422,6 +422,20 @@ export default function CompletionScreen() {
           color: TEXT_SECONDARY,
           textAlign: "center",
           marginBottom: scaleW(12),
+        },
+        pointsHint: {
+          marginHorizontal: scaleW(12),
+          marginBottom: scaleW(16),
+          paddingVertical: scaleW(8),
+          paddingHorizontal: scaleW(12),
+          backgroundColor: "rgba(255,255,255,0.7)",
+          borderRadius: scaleW(12),
+        },
+        pointsHintText: {
+          fontSize: scaleW(13),
+          color: TEXT_SECONDARY,
+          textAlign: "center",
+          flex: 1,
         },
         photoStackContainer: {
           marginBottom: scaleW(16),
@@ -759,6 +773,12 @@ export default function CompletionScreen() {
             Who did this activity?
           </ThemedText>
         </Animated.View>
+
+        <View style={styles.pointsHint}>
+          <Text style={styles.pointsHintText}>
+            Points are awarded once per user, even if you replay this mission. Select all explorers who should earn points for this activity.
+          </Text>
+        </View>
 
         {displayProfiles.map((profile, profileIndex) => {
           const isSelected = selectedPlayerIds.includes(profile.id);

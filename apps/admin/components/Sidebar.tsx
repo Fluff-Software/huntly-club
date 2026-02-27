@@ -13,6 +13,7 @@ const nav = [
   { href: "/categories", label: "Categories" },
   { href: "/resources", label: "Resources" },
   { href: "/photos", label: "Photos" },
+  { href: "/waitlist", label: "Waitlist" },
   { href: "/account-removal", label: "Account Removal" },
   { href: "/admins", label: "Admins" },
   { href: "/account", label: "Account" },

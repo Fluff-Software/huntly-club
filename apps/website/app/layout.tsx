@@ -62,10 +62,10 @@ export default function RootLayout({
                   </Link>
                 ))}
                 <Link
-                  href="/contact"
+                  href="/waitlist"
                   className="btn-primary whitespace-nowrap px-4 py-2 text-sm sm:px-5 sm:py-2.5 sm:text-sm"
                 >
-                  Get in touch
+                  Join the waitlist
                 </Link>
               </nav>
             </div>

@@ -60,10 +60,10 @@ export default function HomePage() {
             </p>
             <div className="mt-6">
               <Link
-                href="/contact"
+                href="/waitlist"
                 className="inline-flex cursor-pointer items-center justify-center rounded-full bg-white px-6 py-3 text-base font-semibold text-huntly-moss shadow-lg transition hover:bg-huntly-parchment focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-huntly-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-white/20"
               >
-                Get in touch
+                Join the waitlist
               </Link>
             </div>
           </div>

@@ -173,7 +173,7 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
         label="Image"
         uploadKind="activity"
         defaultValue={initial?.image}
-        help="Upload to Supabase Storage or paste a URL."
+        help="Upload to Supabase Storage."
       />
 
       <div className="grid gap-6 sm:grid-cols-2">

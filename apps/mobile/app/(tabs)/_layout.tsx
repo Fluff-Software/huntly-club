@@ -99,7 +99,7 @@ function StoryTabPulse({ size }: { size: number }) {
 
 export default function TabLayout() {
   const { user } = useAuth();
-  const { currentPlayer } = usePlayer();
+  const { currentPlayer, profiles } = usePlayer();
   const { scaleW } = useLayoutScale();
   const insets = useSafeAreaInsets();
   const signUpContext = useSignUpOptional();
@@ -226,8 +226,12 @@ export default function TabLayout() {
     setReplayTutorialRequested?.(false);
     setTutorialStep?.("done");
     setShowPostSignUpWelcome?.(false);
-    if (currentPlayer?.id != null && currentPlayer?.team != null) {
-      recordTutorialAchievement(currentPlayer.id, currentPlayer.team).catch(() => {});
+    if (profiles.length > 0) {
+      profiles.forEach((profile) => {
+        if (profile.id != null && profile.team != null) {
+          recordTutorialAchievement(profile.id, profile.team).catch(() => {});
+        }
+      });
     }
     router.replace("/(tabs)");
     setTimeout(() => {

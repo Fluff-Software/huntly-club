@@ -193,16 +193,6 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleSelectPlayer = (profile: Profile) => {
-    if (isEditing) return;
-    setCurrentPlayer(profile);
-    Alert.alert(
-      "Explorer Selected! 🎉",
-      `${profile.name} is now your active explorer!`,
-      [{ text: "OK", onPress: () => router.replace("/") }],
-    );
-  };
-
   const handleExpandEdit = (profile: Profile) => {
     setShowAddForm(false);
     setEditingProfileId(profile.id);
@@ -721,13 +711,12 @@ export default function ProfileScreen() {
                   .springify()
                   .damping(18)}
               >
-                <Pressable
+                <View
                   style={[
                     styles.playerCard,
                     currentPlayer?.id === profile.id &&
                       styles.playerCardSelected,
                   ]}
-                  onPress={() => handleSelectPlayer(profile)}
                 >
                   <View
                     style={[
@@ -747,7 +736,7 @@ export default function ProfileScreen() {
                       {profile.nickname || "Explorer"}
                     </ThemedText>
                   </View>
-                </Pressable>
+                </View>
               </Animated.View>
             ))}
 

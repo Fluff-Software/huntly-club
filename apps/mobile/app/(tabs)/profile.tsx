@@ -968,24 +968,6 @@ export default function ProfileScreen() {
           )}
         </Animated.View>
 
-        {/* Your progress */}
-        <Animated.View
-          entering={FadeInDown.duration(500).delay(150).springify().damping(18)}
-          style={styles.section}
-        >
-          <ThemedText type="heading" style={styles.sectionTitle}>
-            Your progress
-          </ThemedText>
-          <View style={styles.progressRow}>
-            <StatCard value={daysPlayed} label="Days since started" color="pink" />
-            <StatCard
-              value={pointsEarned}
-              label="Points earned"
-              color="green"
-            />
-          </View>
-        </Animated.View>
-
         {/* Top Skills — commented out
         <Animated.View
           entering={FadeInDown.duration(500).delay(280).springify().damping(18)}

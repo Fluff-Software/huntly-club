@@ -149,14 +149,6 @@ export default function RewardScreen() {
     return () => clearTimeout(t);
   }, []);
 
-  const handleReplay = () => {
-    confettiRef.current?.stop?.();
-    setTimeout(() => {
-      confettiRef.current?.start?.();
-    }, 80);
-    runStampAnimation();
-  };
-
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -304,21 +296,6 @@ export default function RewardScreen() {
           fontWeight: "600",
           color: HUNTLY_GREEN,
         },
-        replayButton: {
-          position: "absolute",
-          top: scaleW(56),
-          right: scaleW(12),
-          zIndex: 10000,
-          paddingVertical: scaleW(8),
-          paddingHorizontal: scaleW(14),
-          backgroundColor: "rgba(0,0,0,0.5)",
-          borderRadius: scaleW(8),
-        },
-        replayButtonText: {
-          fontSize: scaleW(13),
-          fontWeight: "600",
-          color: "#FFF",
-        },
       }),
     [scaleW]
   );
@@ -444,9 +421,6 @@ export default function RewardScreen() {
           </Pressable>
         </Animated.View>
       </ScrollView>
-      <Pressable style={styles.replayButton} onPress={handleReplay}>
-        <Text style={styles.replayButtonText}>Replay</Text>
-      </Pressable>
       <View
         style={[StyleSheet.absoluteFill, { zIndex: 9999, elevation: 9999 }]}
         pointerEvents="none"

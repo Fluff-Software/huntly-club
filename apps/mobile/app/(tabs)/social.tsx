@@ -39,12 +39,12 @@ const ACHIEVEMENTS_INITIAL = 4;
 const ACHIEVEMENTS_PAGE_SIZE = 4;
 const LOAD_MORE_THRESHOLD = 40;
 
-const HEADER_ORANGE = "#F7A676";
-const PAGE_BG = "#EBCDBB";
-const CHART_BASELINE = "#4F6F52";
+const HEADER_PURPLE = "#C3A4FF";
+const PAGE_BG = "#F3ECFF";
+const CHART_BASELINE = "#6B4BB6";
 const BAR_WHITE = "#FFFFFF";
-const BAR_BLUE = "#A8D5E5";
-const BAR_GREEN = "#B5D9B5";
+const BAR_BLUE = "#D3C2FF";
+const BAR_GREEN = "#B6A0F5";
 
 const ACHIEVEMENT_CARD_COLORS = [
   "#FFF5E8",
@@ -54,7 +54,7 @@ const ACHIEVEMENT_CARD_COLORS = [
   "#FFF0F0",
 ];
 const ACHIEVEMENT_ICON_BG = ["#F7A676", "#7FAF8A", "#A8D5E5", "#D4A05A", "#C97B6C"];
-const POINTS_GREEN = "#2D5A27";
+const POINTS_PURPLE = "#5B3AAE";
 
 type AchievementItem = {
   id: string;
@@ -88,34 +88,52 @@ export default function SocialScreen() {
   const chartProgress = useSharedValue(0);
   const scrollRef = useRef<ScrollView>(null);
 
+  const TEAM_ORDER = ["bears", "foxes", "otters"] as const;
+
   const barHeights = useMemo(() => {
-    const teamOrder = ["bears", "foxes", "otters"];
     const teamIdByName = Object.fromEntries(
       allTeams.map((t) => [t.name.toLowerCase(), t.id])
     );
     const maxTotal = Math.max(
       1,
-      ...teamOrder.map((name) => teamAchievementTotals[teamIdByName[name]] ?? 0)
+      ...TEAM_ORDER.map((name) => teamAchievementTotals[teamIdByName[name]] ?? 0)
     );
     const minDesign = 20;
     const maxDesign = 220;
-    return teamOrder.map((name) => {
+    return TEAM_ORDER.map((name) => {
       const total = teamAchievementTotals[teamIdByName[name]] ?? 0;
       const designHeight = minDesign + (total / maxTotal) * (maxDesign - minDesign);
       return scaleW(designHeight);
     });
   }, [scaleW, allTeams, teamAchievementTotals]);
+
+  const barColors = useMemo(() => {
+    const colourByName: Record<string, string> = {};
+    for (const team of allTeams) {
+      if (team.colour) {
+        colourByName[team.name.toLowerCase()] = team.colour;
+      }
+    }
+    return TEAM_ORDER.map((name, index) => {
+      const normalized = name.toLowerCase();
+      if (colourByName[normalized]) return colourByName[normalized];
+      if (index === 0) return BAR_WHITE;
+      if (index === 1) return BAR_BLUE;
+      return BAR_GREEN;
+    });
+  }, [allTeams]);
+
   const bar1Style = useAnimatedStyle(() => ({
     height: chartProgress.value * barHeights[0],
-    backgroundColor: BAR_WHITE,
+    backgroundColor: barColors[0],
   }));
   const bar2Style = useAnimatedStyle(() => ({
     height: chartProgress.value * barHeights[1],
-    backgroundColor: BAR_BLUE,
+    backgroundColor: barColors[1],
   }));
   const bar3Style = useAnimatedStyle(() => ({
     height: chartProgress.value * barHeights[2],
-    backgroundColor: BAR_GREEN,
+    backgroundColor: barColors[2],
   }));
 
   useEffect(() => {
@@ -211,7 +229,7 @@ export default function SocialScreen() {
       StyleSheet.create({
         page: { flex: 1, backgroundColor: PAGE_BG },
         header: {
-          backgroundColor: HEADER_ORANGE,
+          backgroundColor: HEADER_PURPLE,
           paddingHorizontal: scaleW(24),
           overflow: "hidden",
         },
@@ -295,7 +313,7 @@ export default function SocialScreen() {
         achievementsTitle: {
           fontSize: scaleW(24),
           fontWeight: "700",
-          color: "#2D5A27",
+          color: POINTS_PURPLE,
           marginTop: scaleW(40),
           marginBottom: scaleW(24),
           marginLeft: scaleW(24),
@@ -348,7 +366,7 @@ export default function SocialScreen() {
         achievementPoints: {
           fontSize: scaleW(15),
           fontWeight: "700",
-          color: POINTS_GREEN,
+          color: POINTS_PURPLE,
         },
         emptyStateContainer: {
           flex: 1,
@@ -359,7 +377,7 @@ export default function SocialScreen() {
         emptyStateTitle: {
           fontSize: scaleW(24),
           fontWeight: "700",
-          color: "#2D5A27",
+          color: POINTS_PURPLE,
           textAlign: "center",
           marginBottom: scaleW(16),
         },
@@ -371,7 +389,7 @@ export default function SocialScreen() {
         loadingText: {
           fontSize: scaleW(18),
           fontWeight: "600",
-          color: "#2D5A27",
+          color: POINTS_PURPLE,
         },
         errorText: {
           fontSize: scaleW(18),

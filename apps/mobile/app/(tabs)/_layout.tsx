@@ -36,7 +36,7 @@ const TAB_BAR_COLORS: Record<string, string> = {
   index: "#4F6F52",
   story: "#1E2E28",
   missions: "#D2684B",
-  social: "#F7A676",
+  social: "#C3A4FF",
 };
 
 const CREAM = "#F4F0EB";

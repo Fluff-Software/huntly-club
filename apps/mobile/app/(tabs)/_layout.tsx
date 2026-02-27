@@ -1,6 +1,6 @@
 import { Tabs, router } from "expo-router";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Image, Modal, Platform, StyleSheet, View } from "react-native";
+import { Image, Modal, Platform, Pressable, StyleSheet, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -215,6 +215,13 @@ export default function TabLayout() {
   const tabBarPaddingBottom = scaleW(16) + bottomInset;
   const tabBarHeight = scaleW(72) + bottomInset;
 
+  const isTabDisabled = (routeName: string) => {
+    if (tutorialStep === "click_story") return routeName !== "story";
+    if (tutorialStep === "click_missions") return routeName !== "missions";
+    if (tutorialStep === "click_team") return routeName !== "social";
+    return false;
+  };
+
   const handleTutorialDismiss = () => {
     setReplayTutorialRequested?.(false);
     setTutorialStep?.("done");
@@ -260,6 +267,9 @@ export default function TabLayout() {
           marginTop: 0,
         },
         headerShown: false,
+        tabBarButton: (props) => (
+          <Pressable {...props} disabled={isTabDisabled(route.name)} />
+        ),
       })}
     >
       <Tabs.Screen

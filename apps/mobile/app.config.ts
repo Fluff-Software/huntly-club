@@ -10,7 +10,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   icon: "./assets/images/ios-light.png",
   scheme: "huntlyclub",
   userInterfaceStyle: "automatic",
-  newArchEnabled: true,
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'software.fluff.huntly-club',

@@ -5,7 +5,7 @@ import * as Notifications from "expo-notifications";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import "react-native-reanimated";
+import { LayoutAnimationConfig } from "react-native-reanimated";
 import * as Linking from "expo-linking";
 import {
   useFonts as useJuaFonts,
@@ -121,9 +121,11 @@ export default function RootLayout() {
             <PlayerProvider>
               <ThemeProvider value={DefaultTheme}>
                 <OfflineBanner />
-                <AuthGuard>
-                  <Slot />
-                </AuthGuard>
+                <LayoutAnimationConfig skipEntering>
+                  <AuthGuard>
+                    <Slot />
+                  </AuthGuard>
+                </LayoutAnimationConfig>
                 <StatusBar style="dark" />
               </ThemeProvider>
             </PlayerProvider>

@@ -144,7 +144,7 @@ function ImageSlide({
       <BlurView
         intensity={80}
         tint="dark"
-        experimentalBlurMethod={Platform.OS === "android" ? "dimezisBlurView" : undefined}
+        blurMethod={Platform.OS === "android" ? "dimezisBlurView" : undefined}
         style={[StyleSheet.absoluteFill, slideStyles.slideImageBgLayer, { opacity: isActive ? 1 : 0 }]}
       />
       <View style={slideStyles.slideInner}>
@@ -218,7 +218,7 @@ function TextImageSlide({
       <BlurView
         intensity={80}
         tint="dark"
-        experimentalBlurMethod={Platform.OS === "android" ? "dimezisBlurView" : undefined}
+        blurMethod={Platform.OS === "android" ? "dimezisBlurView" : undefined}
         style={[StyleSheet.absoluteFill, slideStyles.slideImageBgLayer, { opacity: isActive ? 1 : 0 }]}
       />
       <View style={slideStyles.slideInner}>

@@ -21,7 +21,7 @@ import { usePlayer } from "@/contexts/PlayerContext";
 import { BadgePopupModal } from "@/components/BadgePopupModal";
 import { Badge } from "@/services/badgeService";
 import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system";
+import { File, Paths } from "expo-file-system";
 
 export default function ActivityDetailScreen() {
   const router = useRouter();
@@ -124,16 +124,16 @@ export default function ActivityDetailScreen() {
     if (!currentPlayer?.id) return null;
 
     try {
-      const fileInfo = await FileSystem.getInfoAsync(photoUri);
-      if (!fileInfo.exists) return null;
+      const sourceFile = new File(photoUri);
+      if (!sourceFile.exists) return null;
 
       const tempFileName = `temp_${Date.now()}.jpg`;
-      const tempUri = `${FileSystem.cacheDirectory}${tempFileName}`;
-      await FileSystem.copyAsync({ from: photoUri, to: tempUri });
+      const tempFile = new File(Paths.cache.uri + tempFileName);
+      sourceFile.copy(tempFile);
 
       const fileName = `activity-${activity?.id}-${Date.now()}.jpg`;
       const fileObject = {
-        uri: tempUri,
+        uri: tempFile.uri,
         type: "image/jpeg",
         name: tempFileName,
       };
@@ -145,7 +145,7 @@ export default function ActivityDetailScreen() {
       );
 
       try {
-        await FileSystem.deleteAsync(tempUri);
+        tempFile.delete();
       } catch {
         // ignore
       }

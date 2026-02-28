@@ -38,7 +38,7 @@ import {
 } from "@/services/activityProgressService";
 import { uploadUserActivityPhoto } from "@/services/storageService";
 import type { Activity } from "@/types/activity";
-import * as FileSystem from "expo-file-system";
+import { File, Paths } from "expo-file-system";
 
 const TEXT_SECONDARY = "#2F3336";
 const LIGHT_GREEN = "#7FAF8A";
@@ -339,11 +339,11 @@ export default function CompletionScreen() {
         for (let i = 0; i < uris.length; i++) {
           const photoUri = uris[i];
           const tempFileName = `mission_${activity.id}_${profileId}_${Date.now()}_${i}.jpg`;
-          const tempUri = `${FileSystem.cacheDirectory}${tempFileName}`;
+          const tempFile = new File(Paths.cache.uri + tempFileName);
           try {
-            await FileSystem.copyAsync({ from: photoUri, to: tempUri });
+            new File(photoUri).copy(tempFile);
             const fileObject = {
-              uri: tempUri,
+              uri: tempFile.uri,
               type: "image/jpeg",
               name: tempFileName,
             };
@@ -357,7 +357,7 @@ export default function CompletionScreen() {
             }
           } finally {
             try {
-              await FileSystem.deleteAsync(tempUri);
+              tempFile.delete();
             } catch {
               // ignore
             }

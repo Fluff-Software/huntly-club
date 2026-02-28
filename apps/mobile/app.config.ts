@@ -34,6 +34,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // },
     package: 'software.fluff.huntlyclub',
     googleServicesFile: "./google-services.json",
+    edgeToEdgeEnabled: true,
     intentFilters: [
       {
         action: "VIEW",

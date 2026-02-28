@@ -642,7 +642,7 @@ export default function ProfileScreen() {
       >
         {/* Your players */}
         <Animated.View
-          entering={FadeInDown.duration(500).delay(0).springify().damping(18)}
+          entering={FadeInDown.duration(500).delay(0)}
           style={styles.section}
         >
           <View style={styles.sectionHeader}>
@@ -706,10 +706,7 @@ export default function ProfileScreen() {
             sortedProfiles.map((profile, index) => (
               <Animated.View
                 key={profile.id}
-                entering={FadeInDown.duration(400)
-                  .delay(80 + index * 60)
-                  .springify()
-                  .damping(18)}
+                entering={FadeInDown.duration(400).delay(80 + index * 60)}
               >
                 <View
                   style={[
@@ -970,7 +967,7 @@ export default function ProfileScreen() {
 
         {/* Top Skills — commented out
         <Animated.View
-          entering={FadeInDown.duration(500).delay(280).springify().damping(18)}
+          entering={FadeInDown.duration(500).delay(280)}
           style={styles.section}
         >
           <View style={styles.skillsCard}>
@@ -1007,7 +1004,7 @@ export default function ProfileScreen() {
 
         {/* Your badges — commented out
         <Animated.View
-          entering={FadeInDown.duration(500).delay(380).springify().damping(18)}
+          entering={FadeInDown.duration(500).delay(380)}
           style={styles.section}
         >
           <ThemedText type="heading" style={styles.sectionTitle}>Your badges</ThemedText>
@@ -1033,7 +1030,7 @@ export default function ProfileScreen() {
 
         {/* Recent activities */}
         <Animated.View
-          entering={FadeInDown.duration(500).delay(480).springify().damping(18)}
+          entering={FadeInDown.duration(500).delay(480)}
           style={styles.section}
         >
           <ThemedText type="heading" style={styles.sectionTitle}>
@@ -1088,7 +1085,7 @@ export default function ProfileScreen() {
 
         {/* Parent Zone */}
         <Animated.View
-          entering={FadeInDown.duration(500).delay(580).springify().damping(18)}
+          entering={FadeInDown.duration(500).delay(580)}
           style={parentZoneAnimatedStyle}
         >
           <Pressable
@@ -1115,7 +1112,7 @@ export default function ProfileScreen() {
 
         {/* Log out */}
         <Animated.View
-          entering={FadeInDown.duration(500).delay(620).springify().damping(18)}
+          entering={FadeInDown.duration(500).delay(620)}
           style={[logOutAnimatedStyle, styles.logOutButtonWrap]}
         >
           <Pressable

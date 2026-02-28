@@ -95,8 +95,6 @@ function AnimatedSentence({
           key={`${index}-${word}`}
           entering={FadeInUp.duration(WORD_DURATION)
             .delay(40 + index * WORD_DELAY_MS)
-            .springify()
-            .damping(22)
             .withInitialValues({ transform: [{ translateY: -8 }] })}
           style={wordStyle}
         >

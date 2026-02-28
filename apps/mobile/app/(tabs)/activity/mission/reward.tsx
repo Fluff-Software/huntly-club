@@ -310,7 +310,7 @@ export default function RewardScreen() {
         overScrollMode="never"
       >
         <Animated.View
-          entering={FadeInDown.duration(500).delay(0).springify().damping(18)}
+          entering={FadeInDown.duration(500).delay(0)}
           style={[styles.cardWrap, cardCelebrateStyle]}
         >
           {activityCard && (
@@ -354,13 +354,13 @@ export default function RewardScreen() {
           )}
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.duration(500).delay(200).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(200)}>
           <Text style={styles.wellDoneHeading}>{wellDoneHeadline}</Text>
         </Animated.View>
 
         {achievements.length > 0 && (
           <Animated.View
-            entering={FadeInDown.duration(500).delay(350).springify().damping(18)}
+            entering={FadeInDown.duration(500).delay(350)}
             style={styles.achievementTimeline}
           >
             {achievements.map((item, index) => {
@@ -369,7 +369,7 @@ export default function RewardScreen() {
               return (
                 <Animated.View
                   key={`${item.profile_name}-${index}`}
-                  entering={FadeInDown.duration(400).delay(450 + index * 60).springify().damping(18)}
+                  entering={FadeInDown.duration(400).delay(450 + index * 60)}
                   style={{ zIndex: 1, width: "100%", alignItems: "center" }}
                 >
                   <View
@@ -402,7 +402,7 @@ export default function RewardScreen() {
         )}
 
         <Animated.View
-          entering={FadeInDown.duration(500).delay(550).springify().damping(18)}
+          entering={FadeInDown.duration(500).delay(550)}
           style={goHomeAnimatedStyle}
         >
           <Pressable

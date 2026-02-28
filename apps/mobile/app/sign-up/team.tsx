@@ -156,7 +156,7 @@ export default function SignUpTeamScreen() {
           }}
           showsVerticalScrollIndicator={false}
         >
-          <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
+          <Animated.View entering={FadeInDown.duration(500).delay(0)}>
             <ThemedText
               type="heading"
               lightColor="#FFFFFF"
@@ -269,7 +269,7 @@ export default function SignUpTeamScreen() {
               </Animated.View>
             );
           })}
-          <Animated.View entering={FadeInDown.duration(500).delay(380).springify().damping(18)}>
+          <Animated.View entering={FadeInDown.duration(500).delay(380)}>
             <Animated.View style={enterAnimatedStyle}>
               <Pressable
                 onPress={handleEnterHuntlyWorld}

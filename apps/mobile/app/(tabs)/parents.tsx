@@ -530,7 +530,7 @@ export default function ParentsScreen() {
         overScrollMode="never"
       >
         {/* Progress – summary stats */}
-        <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(0)}>
           <ThemedText type="heading" style={styles.sectionTitle}>Progress</ThemedText>
           <View style={styles.progressGrid}>
             {summaryStats.map((stat, i) => (
@@ -545,7 +545,7 @@ export default function ParentsScreen() {
         </Animated.View>
 
         {/* Progress – by category */}
-        <Animated.View entering={FadeInDown.duration(500).delay(150).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(150)}>
           <ThemedText type="heading" style={styles.sectionTitle}>Progress</ThemedText>
           {categoryAnalytics.length === 0 ? (
             <View style={styles.activityCard}>
@@ -558,7 +558,7 @@ export default function ParentsScreen() {
               {(showAllProgress ? categoryAnalytics : categoryAnalytics.slice(0, 4)).map((cat, i) => (
                 <Animated.View
                   key={cat.categoryId}
-                  entering={FadeInDown.duration(400).delay(200 + i * 50).springify().damping(18)}
+                  entering={FadeInDown.duration(400).delay(200 + i * 50)}
                 >
                   <View style={styles.activityCard}>
                     <View style={styles.activityCardLeft}>
@@ -607,7 +607,7 @@ export default function ParentsScreen() {
         </Animated.View>
 
         {/* Resources */}
-        <Animated.View entering={FadeInDown.duration(500).delay(280).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(280)}>
           <ThemedText type="heading" style={[styles.sectionTitle, { marginTop: scaleW(24) }]}>
             Resources
           </ThemedText>
@@ -650,7 +650,7 @@ export default function ParentsScreen() {
         </Animated.View>
 
         {/* Settings */}
-        <Animated.View entering={FadeInDown.duration(500).delay(480).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(480)}>
           <ThemedText type="heading" style={[styles.sectionTitle, { marginTop: scaleW(24) }]}>
             Settings
           </ThemedText>

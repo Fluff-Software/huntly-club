@@ -129,7 +129,7 @@ export default function GetStartedScreen() {
     return (
       <View style={{ width, flex: 1, backgroundColor: item.background, paddingHorizontal: scaleW(24) }}>
         <AnimatedReanimated.View
-          entering={isFirstSlide ? FadeInDown.duration(500).delay(0).springify().damping(18) : undefined}
+          entering={isFirstSlide ? FadeInDown.duration(500).delay(0) : undefined}
           style={[slideContentStyle, { flex: 1 }]}
         >
         {/* Pagination: dots connected by lines */}

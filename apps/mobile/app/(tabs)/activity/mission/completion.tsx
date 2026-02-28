@@ -762,13 +762,13 @@ export default function CompletionScreen() {
         bounces={false}
         overScrollMode="never"
       >
-        <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(0)}>
           <ThemedText type="heading" style={styles.title}>
             {activity?.title ?? "Activity"}
           </ThemedText>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.duration(500).delay(100).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(100)}>
           <ThemedText type="heading" style={styles.whoHeading}>
             Who did this activity?
           </ThemedText>
@@ -787,7 +787,7 @@ export default function CompletionScreen() {
           return (
             <Animated.View
               key={profile.id}
-              entering={FadeInDown.duration(400).delay(150 + profileIndex * 80).springify().damping(18)}
+              entering={FadeInDown.duration(400).delay(150 + profileIndex * 80)}
             >
               <View style={styles.playerCardContainer}>
                 <Pressable
@@ -944,7 +944,7 @@ export default function CompletionScreen() {
         })}
 
         <Animated.View
-          entering={FadeInDown.duration(500).delay(580).springify().damping(18)}
+          entering={FadeInDown.duration(500).delay(580)}
           style={completeAnimatedStyle}
         >
           <Pressable

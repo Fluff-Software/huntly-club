@@ -141,7 +141,7 @@ export default function SignUpPlayersScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
+          <Animated.View entering={FadeInDown.duration(500).delay(0)}>
             <ThemedText
               type="heading"
               lightColor="#FFFFFF"
@@ -170,7 +170,7 @@ export default function SignUpPlayersScreen() {
             </ThemedText>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.duration(500).delay(150).springify().damping(18)}>
+          <Animated.View entering={FadeInDown.duration(500).delay(150)}>
           {/* Player cards: compact or expanded in place */}
           {players.map((player, index) => {
             const isExpanded = editingIndex === index;
@@ -415,7 +415,7 @@ export default function SignUpPlayersScreen() {
           {/* Add-new form card: only when not editing any player */}
           {editingIndex === null && (
             <Animated.View
-              entering={FadeInDown.duration(500).delay(280).springify().damping(18)}
+              entering={FadeInDown.duration(500).delay(280)}
               style={{
                 backgroundColor: CREAM,
                 borderRadius: scaleW(24),
@@ -628,7 +628,7 @@ export default function SignUpPlayersScreen() {
 
           {/* Continue: on scroll page */}
           <Animated.View
-            entering={FadeInDown.duration(500).delay(380).springify().damping(18)}
+            entering={FadeInDown.duration(500).delay(380)}
             style={{
               paddingTop: scaleW(16),
               paddingBottom: scaleW(24),

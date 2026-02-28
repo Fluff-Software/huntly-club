@@ -129,7 +129,7 @@ export default function MissionsScreen() {
         bounces={false}
         overScrollMode="never"
       >
-        <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(0)}>
           <ThemedText type="heading" style={styles.title}>Current Missions</ThemedText>
         </Animated.View>
 
@@ -161,7 +161,7 @@ export default function MissionsScreen() {
                 {/* Current missions (latest chapter) */}
                 <Animated.View
                   key={chapters[0].id}
-                  entering={FadeInDown.duration(400).delay(80).springify().damping(18)}
+                  entering={FadeInDown.duration(400).delay(80)}
                   style={styles.sectionBlock}
                 >
                   <ThemedText type="heading" style={styles.sectionTitle}>
@@ -202,7 +202,7 @@ export default function MissionsScreen() {
                     {chapters.slice(1).map((chapter, index) => (
                       <Animated.View
                         key={chapter.id}
-                        entering={FadeInDown.duration(400).delay(140 + index * 60).springify().damping(18)}
+                        entering={FadeInDown.duration(400).delay(140 + index * 60)}
                         style={styles.sectionBlock}
                       >
                         <ThemedText type="heading" style={styles.sectionTitle}>

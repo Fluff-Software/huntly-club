@@ -140,7 +140,7 @@ export default function SignUpParentEmailScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
+          <Animated.View entering={FadeInDown.duration(500).delay(0)}>
             <ThemedText
               type="heading"
               lightColor="#FFFFFF"
@@ -168,7 +168,7 @@ export default function SignUpParentEmailScreen() {
             </ThemedText>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.duration(500).delay(150).springify().damping(18)}>
+          <Animated.View entering={FadeInDown.duration(500).delay(150)}>
           <ThemedText
             type="subtitle"
             lightColor="#FFFFFF"
@@ -286,7 +286,7 @@ export default function SignUpParentEmailScreen() {
           />
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.duration(500).delay(280).springify().damping(18)}>
+          <Animated.View entering={FadeInDown.duration(500).delay(280)}>
             <Animated.View style={privacyAnimatedStyle}>
               <Pressable
                 onPress={openPrivacyPolicy}

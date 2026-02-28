@@ -273,7 +273,7 @@ export default function StoryScreen() {
         {firstSeason && (
           <View style={styles.seasonContainer}>
             <Animated.View
-              entering={FadeInDown.duration(600).delay(0).springify().damping(18)}
+              entering={FadeInDown.duration(600).delay(0)}
               style={styles.imageCircleWrap}
             >
               <Image
@@ -282,7 +282,7 @@ export default function StoryScreen() {
                 style={styles.imageCircleImage}
               />
             </Animated.View>
-            <Animated.View entering={FadeInDown.duration(500).delay(150).springify().damping(18)}>
+            <Animated.View entering={FadeInDown.duration(500).delay(150)}>
               <ThemedText type="heading" style={styles.seasonLabel}>Season {seasonNumber}</ThemedText>
               {firstSeason.name != null && firstSeason.name !== "" && (
                 <ThemedText type="heading" style={styles.seasonTitle}>
@@ -295,7 +295,7 @@ export default function StoryScreen() {
 
         {chapters.length > 0 && chapters.map((chapter, index) => (
           <View key={chapter.id} style={styles.chapterContainer}>
-            <Animated.View entering={FadeInDown.duration(500).delay(index * 50).springify().damping(18)}>
+            <Animated.View entering={FadeInDown.duration(500).delay(index * 50)}>
               <ThemedText type="heading" style={styles.chapterTitle}>
                 Chapter {chapter.week_number}: {chapter.title ?? ""}
               </ThemedText>
@@ -304,7 +304,7 @@ export default function StoryScreen() {
               </ThemedText>
             </Animated.View>
             <Animated.View
-              entering={FadeInDown.duration(500).delay(100 + index * 50).springify().damping(18)}
+              entering={FadeInDown.duration(500).delay(100 + index * 50)}
               style={styles.buttonsRow}
             >
               <Pressable
@@ -325,7 +325,7 @@ export default function StoryScreen() {
                 if (progress.total === 0) return null;
                 const missionLabel = progress.total === 1 ? "mission" : "missions";
                 return (
-                  <Animated.View entering={FadeInDown.duration(500).delay(200).springify().damping(18)} style={completeButtonAnimatedStyle}>
+                  <Animated.View entering={FadeInDown.duration(500).delay(200)} style={completeButtonAnimatedStyle}>
                     <Pressable
                       onPress={() => router.push("/(tabs)/missions")}
                       onPressIn={() => {
@@ -356,7 +356,7 @@ export default function StoryScreen() {
 
         {nextChapterDate && chapters.length > 0 && (
           <View style={styles.chapterContainer}>
-            <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
+            <Animated.View entering={FadeInDown.duration(500).delay(0)}>
               <ThemedText type="heading" style={styles.nextLabel}>Next chapter coming on</ThemedText>
               <ThemedText type="heading" style={styles.nextDate}>
                 {formatReleaseDate(nextChapterDate)}

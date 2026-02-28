@@ -494,7 +494,7 @@ export default function SocialScreen() {
         }
       >
         <Animated.View
-          entering={FadeInDown.duration(600).delay(0).springify().damping(18)}
+          entering={FadeInDown.duration(600).delay(0)}
           style={styles.header}
         >
           <View style={styles.headerRow}>
@@ -520,12 +520,12 @@ export default function SocialScreen() {
           </View>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.duration(500).delay(150).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(150)}>
           <Text style={styles.sectionTitle}>This month</Text>
         </Animated.View>
 
         <Animated.View
-          entering={FadeInDown.duration(500).delay(280).springify().damping(18)}
+          entering={FadeInDown.duration(500).delay(280)}
           style={styles.chartRow}
         >
           {sortedTeamsForChart.map((bar, index) => {
@@ -550,7 +550,7 @@ export default function SocialScreen() {
           {teamCardConfig.title} are exploring brilliantly this month
         </Text>
 
-        <Animated.View entering={FadeInDown.duration(500).delay(380).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(380)}>
           <Text style={styles.achievementsTitle}>Recent achievements</Text>
         </Animated.View>
         <View style={[styles.timeline, { position: "relative" }]}>
@@ -560,7 +560,7 @@ export default function SocialScreen() {
             return (
               <Animated.View
                 key={item.id}
-                entering={FadeInDown.duration(400).delay(450 + index * 60).springify().damping(18)}
+                entering={FadeInDown.duration(400).delay(450 + index * 60)}
                 style={{ zIndex: 1, width: "100%", alignItems: "center" }}
               >
                 <View

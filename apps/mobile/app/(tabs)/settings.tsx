@@ -412,7 +412,7 @@ export default function SettingsScreen() {
         bounces={false}
         overScrollMode="never"
       >
-        <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(0)}>
           <ThemedText type="heading" style={styles.sectionTitle}>Your account</ThemedText>
           <ThemedText style={styles.email} numberOfLines={1}>
             {user?.email ?? "parentemail@somewhere.com"}
@@ -433,7 +433,7 @@ export default function SettingsScreen() {
           </Animated.View>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.duration(500).delay(150).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(150)}>
           <ThemedText type="heading" style={styles.prefsTitle}>Your preferences</ThemedText>
           <Animated.View style={weeklyEmailAnimatedStyle}>
             <Pressable
@@ -515,7 +515,7 @@ export default function SettingsScreen() {
           </Pressable>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.duration(500).delay(250).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(250)}>
           <ThemedText type="heading" style={styles.prefsTitle}>Legal</ThemedText>
           <Animated.View style={privacyAnimatedStyle}>
             <Pressable
@@ -535,7 +535,7 @@ export default function SettingsScreen() {
           </Animated.View>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.duration(500).delay(300).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(300)}>
           <Pressable
             style={styles.removalButton}
             onPress={pendingRemovalRequest && canCancelRemovalRequest(pendingRemovalRequest) ? handleCancelRemovalRequest : handleOpenRemovalModal}

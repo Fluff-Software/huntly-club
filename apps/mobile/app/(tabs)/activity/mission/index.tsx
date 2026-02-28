@@ -306,7 +306,7 @@ export default function InstructionScreen() {
         overScrollMode="never"
       >
         <Animated.View
-          entering={FadeInDown.duration(500).delay(0).springify().damping(18)}
+          entering={FadeInDown.duration(500).delay(0)}
           style={styles.titleContainer}
         >
           <ThemedText type="heading" style={styles.titleText}>
@@ -344,7 +344,7 @@ export default function InstructionScreen() {
 
         {(activity.long_description != null && activity.long_description.trim() !== "") && (
           <Animated.View
-            entering={FadeInDown.duration(500).delay(150).springify().damping(18)}
+            entering={FadeInDown.duration(500).delay(150)}
             style={styles.section}
           >
             <ThemedText type="heading" style={styles.sectionTitle}>
@@ -356,7 +356,7 @@ export default function InstructionScreen() {
 
         {tipLines.length > 0 && (
           <Animated.View
-            entering={FadeInDown.duration(500).delay(280).springify().damping(18)}
+            entering={FadeInDown.duration(500).delay(280)}
             style={styles.section}
           >
             <ThemedText type="heading" style={styles.sectionTitle}>
@@ -374,7 +374,7 @@ export default function InstructionScreen() {
 
         {hintLines.length > 0 && (
           <Animated.View
-            entering={FadeInDown.duration(500).delay(380).springify().damping(18)}
+            entering={FadeInDown.duration(500).delay(380)}
             style={styles.section}
           >
             <ThemedText type="heading" style={styles.sectionTitle}>
@@ -392,7 +392,7 @@ export default function InstructionScreen() {
 
         {triviaBlocks.length > 0 && (
           <Animated.View
-            entering={FadeInDown.duration(500).delay(480).springify().damping(18)}
+            entering={FadeInDown.duration(500).delay(480)}
             style={styles.section}
           >
             <ThemedText type="heading" style={styles.sectionTitle}>
@@ -408,7 +408,7 @@ export default function InstructionScreen() {
 
         {clubPhotos.length > 0 && (
           <Animated.View
-            entering={FadeInDown.duration(500).delay(580).springify().damping(18)}
+            entering={FadeInDown.duration(500).delay(580)}
             style={styles.section}
           >
             <View>
@@ -437,7 +437,7 @@ export default function InstructionScreen() {
         )}
 
         <Animated.View
-          entering={FadeInDown.duration(500).delay(580).springify().damping(18)}
+          entering={FadeInDown.duration(500).delay(580)}
           style={nextAnimatedStyle}
         >
           <Pressable

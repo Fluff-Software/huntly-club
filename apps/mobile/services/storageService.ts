@@ -1,4 +1,6 @@
 import { supabase } from "./supabase";
+import * as FileSystem from "expo-file-system/legacy";
+import { decode as decodeBase64 } from "base64-arraybuffer";
 
 const ACTIVITY_IMAGES_BUCKET = "activity-images";
 const USER_PHOTOS_BUCKET = "user-activity-photos";
@@ -102,18 +104,35 @@ export const uploadUserActivityPhoto = async (
       // Let fetch set the multipart/form-data content type with boundary
       shouldSetContentType = false;
     } else if (file && typeof file === "object" && "uri" in file) {
-      // React Native file object - fetch the URI and convert to Blob
+      // React Native file object - follow Supabase RN recommendation:
+      // read as base64 and upload ArrayBuffer
       const rnFile = file as { uri: string; type?: string; name?: string };
-      console.log("Uploading React Native file object, fetching blob:", rnFile);
-
-      const response = await fetch(rnFile.uri);
-      const blob = await response.blob();
-
-      uploadData = blob;
-      contentType = rnFile.type || blob.type || "image/jpeg";
       console.log(
-        "React Native file blob ready:",
-        rnFile.uri,
+        "Uploading React Native file object via base64 -> ArrayBuffer:",
+        rnFile.uri
+      );
+
+      const base64 = await FileSystem.readAsStringAsync(rnFile.uri, {
+        encoding: "base64",
+      });
+
+      if (!base64 || base64.length === 0) {
+        console.error(
+          "Expo FileSystem returned empty base64 for uri:",
+          rnFile.uri
+        );
+        return {
+          success: false,
+          error: "Could not read photo data from device",
+        };
+      }
+
+      const arrayBuffer = decodeBase64(base64);
+      uploadData = arrayBuffer;
+      contentType = rnFile.type || "image/jpeg";
+      console.log(
+        "React Native photo ArrayBuffer ready for upload. Bytes length:",
+        (arrayBuffer as ArrayBuffer).byteLength,
         "contentType:",
         contentType
       );

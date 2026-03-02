@@ -236,6 +236,20 @@ export default function SocialScreen() {
     [teamInfo?.name]
   );
 
+  const teamScore = useMemo(() => {
+    if (!teamInfo) return 0;
+    return teamAchievementTotals[teamInfo.id] ?? 0;
+  }, [teamInfo, teamAchievementTotals]);
+
+  const explorerScore = useMemo(() => {
+    if (!currentPlayer) return 0;
+    return teamAchievements.reduce(
+      (sum, ach) =>
+        ach.profile_id === currentPlayer.id ? sum + (ach.xp ?? 0) : sum,
+      0
+    );
+  }, [currentPlayer?.id, teamAchievements]);
+
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -265,6 +279,41 @@ export default function SocialScreen() {
           flex: 1,
           marginLeft: scaleW(16),
           paddingBottom: scaleW(8),
+        },
+        summaryWrap: {
+          paddingHorizontal: scaleW(24),
+          paddingTop: scaleW(24),
+          marginTop: scaleW(8),
+        },
+        summaryCard: {
+          backgroundColor: "#EFE4FF",
+          borderRadius: scaleW(20),
+          paddingVertical: scaleW(14),
+          paddingHorizontal: scaleW(18),
+          borderWidth: 3,
+          borderColor: "rgba(255,255,255,0.9)",
+        },
+        summaryRow: {
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: scaleW(8),
+        },
+        summaryLabel: {
+          fontSize: scaleW(14),
+          fontWeight: "600",
+          color: "#333",
+        },
+        summaryValue: {
+          fontSize: scaleW(20),
+          fontWeight: "700",
+          color: POINTS_PURPLE,
+        },
+        summarySubLabel: {
+          fontSize: scaleW(13),
+          color: "#333",
+          opacity: 0.85,
+          marginTop: scaleW(4),
         },
         headerTitle: {
           marginHorizontal: scaleW(12),
@@ -546,11 +595,26 @@ export default function SocialScreen() {
           })}
         </Animated.View>
         <View style={styles.chartBaseline} />
-        <Text style={styles.chartSubtitle}>
-          {teamCardConfig.title} are exploring brilliantly this month
-        </Text>
 
-        <Animated.View entering={FadeInDown.duration(500).delay(380)}>
+        <Animated.View
+          entering={FadeInDown.duration(500).delay(380)}
+          style={styles.summaryWrap}
+        >
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>
+                Total {teamCardConfig.title} score
+              </Text>
+              <Text style={styles.summaryValue}>{teamScore}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Your contribution</Text>
+              <Text style={styles.summaryValue}>{explorerScore}</Text>
+            </View>
+          </View>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.duration(500).delay(450)}>
           <Text style={styles.achievementsTitle}>Recent achievements</Text>
         </Animated.View>
         <View style={[styles.timeline, { position: "relative" }]}>

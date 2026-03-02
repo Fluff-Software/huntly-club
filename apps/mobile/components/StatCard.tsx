@@ -27,26 +27,28 @@ export function StatCard({
     () =>
       StyleSheet.create({
         card: {
-          paddingVertical: scaleW(32),
+          paddingVertical: scaleW(24),
           paddingHorizontal: scaleW(16),
           borderRadius: scaleW(20),
           alignItems: "center",
-          justifyContent: "center",
-          height: scaleW(150),
+          justifyContent: "flex-start",
+          height: scaleW(140),
           width: scaleW(150),
         },
         valueText: {
           fontSize: scaleW(44),
           lineHeight: scaleW(52),
-          marginBottom: scaleW(24),
+          marginBottom: scaleW(12),
           fontWeight: "600",
           color: "#000",
+          textAlign: "center",
         },
         labelText: {
           fontSize: scaleW(16),
           lineHeight: scaleW(18),
           fontWeight: "600",
           color: "#000",
+          textAlign: "center",
         },
       }),
     [scaleW]

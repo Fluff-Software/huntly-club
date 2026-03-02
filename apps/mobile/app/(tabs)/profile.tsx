@@ -38,6 +38,7 @@ import {
   getRecentCompletedActivities,
   type RecentCompletedActivity,
 } from "@/services/activityProgressService";
+import { getXpByProfileIds } from "@/services/teamActivityService";
 import { useUserStats } from "@/hooks/useUserStats";
 import { MaterialIcons } from "@expo/vector-icons";
 
@@ -74,6 +75,7 @@ export default function ProfileScreen() {
   const [recentActivities, setRecentActivities] = useState<
     RecentCompletedActivity[]
   >([]);
+  const [xpByProfileId, setXpByProfileId] = useState<Record<number, number>>({});
   const { user, signOut } = useAuth();
   const { currentPlayer, profiles, setCurrentPlayer, refreshProfiles } =
     usePlayer();
@@ -116,6 +118,16 @@ export default function ProfileScreen() {
     }, [refreshProfiles]),
   );
 
+  useFocusEffect(
+    React.useCallback(() => {
+      const ids = profiles.map((p) => p.id);
+      if (ids.length === 0) return;
+      getXpByProfileIds(ids)
+        .then((byId) => setXpByProfileId(byId))
+        .catch(() => {});
+    }, [profiles]),
+  );
+
   useEffect(() => {
     let isMounted = true;
     const fetchTeams = async () => {
@@ -145,6 +157,17 @@ export default function ProfileScreen() {
       setRecentActivities([]);
     }
   }, [currentPlayer?.id, user?.id]);
+
+  useEffect(() => {
+    const ids = profiles.map((p) => p.id);
+    if (ids.length === 0) {
+      setXpByProfileId({});
+      return;
+    }
+    getXpByProfileIds(ids)
+      .then(setXpByProfileId)
+      .catch(() => setXpByProfileId({}));
+  }, [profiles]);
 
   useEffect(() => {
     const profile =
@@ -386,6 +409,22 @@ export default function ProfileScreen() {
           fontSize: scaleW(14),
           color: COLORS.charcoal,
           marginTop: scaleW(2),
+        },
+        playerScoreWrap: {
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          paddingHorizontal: scaleW(12),
+        },
+        playerScore: {
+          fontSize: scaleW(18),
+          fontWeight: "700",
+          color: COLORS.darkGreen,
+        },
+        playerScoreLabel: {
+          fontSize: scaleW(12),
+          color: COLORS.charcoal,
+          marginLeft: scaleW(4),
         },
         addNewPlayerCard: {
           marginTop: scaleW(4),
@@ -731,6 +770,14 @@ export default function ProfileScreen() {
                     </ThemedText>
                     <ThemedText style={styles.playerNickname}>
                       {profile.nickname || "Explorer"}
+                    </ThemedText>
+                  </View>
+                  <View style={styles.playerScoreWrap}>
+                    <ThemedText type="heading" style={styles.playerScore}>
+                      {xpByProfileId[profile.id] ?? profile.xp ?? 0}
+                    </ThemedText>
+                    <ThemedText style={styles.playerScoreLabel}>
+                      points
                     </ThemedText>
                   </View>
                 </View>

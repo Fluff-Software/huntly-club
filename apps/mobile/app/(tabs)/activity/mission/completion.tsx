@@ -38,7 +38,6 @@ import {
 } from "@/services/activityProgressService";
 import { uploadUserActivityPhoto } from "@/services/storageService";
 import type { Activity } from "@/types/activity";
-import { File, Paths } from "expo-file-system";
 
 const TEXT_SECONDARY = "#2F3336";
 const LIGHT_GREEN = "#7FAF8A";
@@ -339,28 +338,18 @@ export default function CompletionScreen() {
         for (let i = 0; i < uris.length; i++) {
           const photoUri = uris[i];
           const tempFileName = `mission_${activity.id}_${profileId}_${Date.now()}_${i}.jpg`;
-          const tempFile = new File(Paths.cache.uri + tempFileName);
-          try {
-            new File(photoUri).copy(tempFile);
-            const fileObject = {
-              uri: tempFile.uri,
-              type: "image/jpeg",
-              name: tempFileName,
-            };
-            const result = await uploadUserActivityPhoto(
-              fileObject,
-              tempFileName,
-              profileId.toString()
-            );
-            if (result.success && result.url) {
-              uploaded.push({ profileId, photoUrl: result.url });
-            }
-          } finally {
-            try {
-              tempFile.delete();
-            } catch {
-              // ignore
-            }
+          const fileObject = {
+            uri: photoUri,
+            type: "image/jpeg",
+            name: tempFileName,
+          };
+          const result = await uploadUserActivityPhoto(
+            fileObject,
+            tempFileName,
+            profileId.toString()
+          );
+          if (result.success && result.url) {
+            uploaded.push({ profileId, photoUrl: result.url });
           }
         }
       }

@@ -6,6 +6,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Stack, router } from "expo-router";
@@ -15,6 +16,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useSignUp } from "@/contexts/SignUpContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { generateNickname } from "@/services/nicknameGenerator";
 import {
@@ -29,6 +31,7 @@ const LIGHT_GREEN = "#A8D5BA";
 export default function SignUpPlayersScreen() {
   const { scaleW } = useLayoutScale();
   const { players, addPlayer, removePlayer, replacePlayer } = useSignUp();
+  const { signOut } = useAuth();
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [name, setName] = useState("");
   const [nickname, setNickname] = useState(() => generateNickname());
@@ -660,6 +663,44 @@ export default function SignUpPlayersScreen() {
                 style={{ fontSize: scaleW(16), fontWeight: "600" }}
               >
                 Continue
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                Alert.alert("Log out", "Return to sign in? You can finish setting up explorers later.", [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Log out",
+                    style: "destructive",
+                    onPress: async () => {
+                      try {
+                        await signOut();
+                        router.replace("/auth");
+                      } catch {
+                        router.replace("/auth");
+                      }
+                    },
+                  },
+                ]);
+              }}
+              style={{
+                alignSelf: "center",
+                marginTop: scaleW(20),
+                paddingVertical: scaleW(10),
+                paddingHorizontal: scaleW(20),
+              }}
+            >
+              <ThemedText
+                lightColor="#FFFFFF"
+                darkColor="#FFFFFF"
+                style={{
+                  fontSize: scaleW(15),
+                  fontWeight: "600",
+                  textDecorationLine: "underline",
+                  opacity: 0.9,
+                }}
+              >
+                Log out
               </ThemedText>
             </Pressable>
           </Animated.View>

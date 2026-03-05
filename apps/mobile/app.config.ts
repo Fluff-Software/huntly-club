@@ -4,7 +4,7 @@ import { ExpoConfig, ConfigContext } from 'expo/config';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   name: "Huntly World",
-  slug: "huntly-world",
+  slug: "huntly-club",
   version: "1.0.0",
   orientation: "portrait",
   icon: "./assets/images/ios-light.png",

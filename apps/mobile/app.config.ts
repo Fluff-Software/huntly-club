@@ -3,8 +3,8 @@ import 'dotenv/config';
 import { ExpoConfig, ConfigContext } from 'expo/config';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
-  name: "huntly-club",
-  slug: "huntly-club",
+  name: "Huntly World",
+  slug: "huntly-world",
   version: "1.0.0",
   orientation: "portrait",
   icon: "./assets/images/ios-light.png",
@@ -27,10 +27,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       }
   },
   android: {
-    // adaptiveIcon: {
-    //   foregroundImage: "./assets/images/adaptive-icon.png",
-    //   backgroundColor: "#ffffff",
-    // },
+    adaptiveIcon: {
+      foregroundImage: "./assets/images/adaptive-icon.png",
+      backgroundColor: "#1A62A3",
+    },
     package: 'software.fluff.huntlyclub',
     googleServicesFile: "./google-services.json",
     edgeToEdgeEnabled: true,

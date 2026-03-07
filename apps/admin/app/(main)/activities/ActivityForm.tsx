@@ -26,6 +26,9 @@ type ActivityFormProps = {
     xp: number | null;
     photo_required: boolean | null;
     categories: number[] | null;
+    instructions: string[] | null;
+    alternative_approaches: string[] | null;
+    images: string[] | null;
   };
 };
 
@@ -82,6 +85,21 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
   );
   const [tipsList, setTipsList] = useState<string[]>(() =>
     normalizeStringArray(initial?.tips).length > 0 ? normalizeStringArray(initial?.tips) : [""]
+  );
+  const [instructionsList, setInstructionsList] = useState<string[]>(() =>
+    Array.isArray(initial?.instructions) && initial.instructions.length > 0
+      ? initial.instructions.filter(Boolean)
+      : [""]
+  );
+  const [alternativeApproachesList, setAlternativeApproachesList] = useState<string[]>(() =>
+    Array.isArray(initial?.alternative_approaches) && initial.alternative_approaches.length > 0
+      ? initial.alternative_approaches.filter(Boolean)
+      : [""]
+  );
+  const [imagesList, setImagesList] = useState<string[]>(() =>
+    Array.isArray(initial?.images) && initial.images.length > 0
+      ? initial.images.filter((u): u is string => typeof u === "string" && u.trim() !== "")
+      : [""]
   );
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>(() =>
     initial && Array.isArray(initial.categories) ? initial.categories : []
@@ -166,6 +184,117 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
           defaultValue={initial?.long_description ?? ""}
           className="w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
         />
+        <p className="mt-1 text-xs text-stone-500">
+          Shown as &quot;What to do&quot; when no instruction steps are set.
+        </p>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm font-medium text-stone-700">Instructions (steps)</label>
+        <p className="mb-2 text-xs text-stone-500">
+          Numbered steps shown on the mission page. If set, they replace the long description block.
+        </p>
+        <div className="space-y-2">
+          {instructionsList.map((step, index) => (
+            <div key={index} className="flex gap-2">
+              <span className="flex h-10 w-8 shrink-0 items-center justify-center rounded-lg border border-stone-200 bg-stone-50 text-sm font-medium text-stone-600">
+                {index + 1}
+              </span>
+              <input
+                name="instructions"
+                type="text"
+                defaultValue={step}
+                placeholder="e.g. Find a quiet spot outdoors"
+                className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+              />
+              <button
+                type="button"
+                onClick={() => setInstructionsList((prev) => prev.filter((_, i) => i !== index))}
+                className="rounded-lg border border-stone-300 p-2 text-stone-600 hover:bg-stone-100 focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+                aria-label="Delete step"
+              >
+                <TrashIcon />
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => setInstructionsList((prev) => [...prev, ""])}
+            className="flex items-center gap-1 rounded-lg border border-dashed border-stone-400 px-3 py-2 text-sm text-stone-600 hover:border-huntly-sage hover:text-huntly-forest focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+          >
+            + Add step
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm font-medium text-stone-700">Alternative approaches</label>
+        <p className="mb-2 text-xs text-stone-500">
+          Other ways to complete this activity (e.g. indoor version, solo vs group).
+        </p>
+        <div className="space-y-2">
+          {alternativeApproachesList.map((alt, index) => (
+            <div key={index} className="flex gap-2">
+              <input
+                name="alternative_approaches"
+                type="text"
+                defaultValue={alt}
+                placeholder="e.g. Try this indoors with houseplants"
+                className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+              />
+              <button
+                type="button"
+                onClick={() => setAlternativeApproachesList((prev) => prev.filter((_, i) => i !== index))}
+                className="rounded-lg border border-stone-300 p-2 text-stone-600 hover:bg-stone-100 focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+                aria-label="Delete alternative"
+              >
+                <TrashIcon />
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => setAlternativeApproachesList((prev) => [...prev, ""])}
+            className="flex items-center gap-1 rounded-lg border border-dashed border-stone-400 px-3 py-2 text-sm text-stone-600 hover:border-huntly-sage hover:text-huntly-forest focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+          >
+            + Add alternative
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm font-medium text-stone-700">Extra images</label>
+        <p className="mb-2 text-xs text-stone-500">
+          Optional image URLs shown throughout the mission page (between description, steps, etc.).
+        </p>
+        <div className="space-y-2">
+          {imagesList.map((url, index) => (
+            <div key={index} className="flex gap-2">
+              <input
+                name="images"
+                type="url"
+                defaultValue={url}
+                placeholder="https://..."
+                className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+              />
+              <button
+                type="button"
+                onClick={() => setImagesList((prev) => prev.filter((_, i) => i !== index))}
+                className="rounded-lg border border-stone-300 p-2 text-stone-600 hover:bg-stone-100 focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+                aria-label="Delete image URL"
+              >
+                <TrashIcon />
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => setImagesList((prev) => [...prev, ""])}
+            className="flex items-center gap-1 rounded-lg border border-dashed border-stone-400 px-3 py-2 text-sm text-stone-600 hover:border-huntly-sage hover:text-huntly-forest focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+          >
+            + Add image URL
+          </button>
+        </div>
       </div>
 
       <ImageUploadField

@@ -41,6 +41,9 @@ export type Database = {
           hints: string[] | null
           id: number
           image: string | null
+          instructions: string[] | null
+          alternative_approaches: string[] | null
+          images: string[] | null
           long_description: string | null
           name: string
           photo_required: boolean | null
@@ -56,6 +59,9 @@ export type Database = {
           hints?: string[] | null
           id?: number
           image?: string | null
+          instructions?: string[] | null
+          alternative_approaches?: string[] | null
+          images?: string[] | null
           long_description?: string | null
           name: string
           photo_required?: boolean | null
@@ -71,6 +77,9 @@ export type Database = {
           hints?: string[] | null
           id?: number
           image?: string | null
+          instructions?: string[] | null
+          alternative_approaches?: string[] | null
+          images?: string[] | null
           long_description?: string | null
           name?: string
           photo_required?: boolean | null

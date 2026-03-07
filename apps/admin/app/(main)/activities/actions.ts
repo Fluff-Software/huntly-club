@@ -37,6 +37,15 @@ export async function createActivity(
   const xp = parseInt(String(formData.get("xp")), 10);
   const photoRequired = formData.get("photo_required") === "on";
   const categoryIds = parseCategoryIds(formData);
+  const instructions = (formData.getAll("instructions") as string[])
+    .map((s) => s?.trim())
+    .filter(Boolean);
+  const alternativeApproaches = (formData.getAll("alternative_approaches") as string[])
+    .map((s) => s?.trim())
+    .filter(Boolean);
+  const images = (formData.getAll("images") as string[])
+    .map((s) => s?.trim())
+    .filter(Boolean);
 
   try {
     const supabase = createServerSupabaseClient();
@@ -47,6 +56,9 @@ export async function createActivity(
       long_description: longDescription,
       hints: hints.length ? hints : null,
       tips: tips.length ? tips : null,
+      instructions: instructions.length ? instructions : null,
+      alternative_approaches: alternativeApproaches.length ? alternativeApproaches : null,
+      images: images.length ? images : null,
       trivia,
       image: image || null,
       xp: Number.isNaN(xp) ? 10 : xp,
@@ -87,6 +99,15 @@ export async function updateActivity(
   const xp = parseInt(String(formData.get("xp")), 10);
   const photoRequired = formData.get("photo_required") === "on";
   const categoryIds = parseCategoryIds(formData);
+  const instructions = (formData.getAll("instructions") as string[])
+    .map((s) => s?.trim())
+    .filter(Boolean);
+  const alternativeApproaches = (formData.getAll("alternative_approaches") as string[])
+    .map((s) => s?.trim())
+    .filter(Boolean);
+  const images = (formData.getAll("images") as string[])
+    .map((s) => s?.trim())
+    .filter(Boolean);
 
   try {
     const supabase = createServerSupabaseClient();
@@ -99,6 +120,9 @@ export async function updateActivity(
         long_description: longDescription,
         hints: hints.length ? hints : null,
         tips: tips.length ? tips : null,
+        instructions: instructions.length ? instructions : null,
+        alternative_approaches: alternativeApproaches.length ? alternativeApproaches : null,
+        images: images.length ? images : null,
         trivia,
         image: image || null,
         xp: Number.isNaN(xp) ? 10 : xp,

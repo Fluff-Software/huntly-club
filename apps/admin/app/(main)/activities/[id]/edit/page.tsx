@@ -68,6 +68,9 @@ export default async function EditActivityPage({
           xp: activity.xp,
           photo_required: activity.photo_required,
           categories: toCategoryIds(activity.categories),
+          instructions: activity.instructions ?? null,
+          alternative_approaches: activity.alternative_approaches ?? null,
+          images: activity.images ?? null,
         }}
       />
       <p className="mt-4">

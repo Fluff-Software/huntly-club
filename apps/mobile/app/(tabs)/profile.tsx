@@ -26,6 +26,7 @@ import { StatCard } from "@/components/StatCard";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import {
   createProfile,
+  deleteProfile as deleteProfileService,
   getTeams,
   updateProfile,
   type Profile,
@@ -72,6 +73,8 @@ export default function ProfileScreen() {
   const [addNickname, setAddNickname] = useState(() => generateNickname());
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAddExplorer, setShowAddExplorer] = useState(false);
+  const [profileToDelete, setProfileToDelete] = useState<Profile | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [recentActivities, setRecentActivities] = useState<
     RecentCompletedActivity[]
   >([]);
@@ -256,6 +259,29 @@ export default function ProfileScreen() {
 
   const handleCancelEdit = () => {
     setEditingProfileId(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!profileToDelete) return;
+    setDeleting(true);
+    try {
+      await deleteProfileService(profileToDelete.id);
+      if (currentPlayer?.id === profileToDelete.id) {
+        const remaining = profiles.filter((p) => p.id !== profileToDelete.id);
+        setCurrentPlayer(remaining[0] ?? null);
+      }
+      await refreshProfiles();
+      setProfileToDelete(null);
+      if (editingProfileId === profileToDelete.id) {
+        setEditingProfileId(null);
+      }
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Failed to delete explorer";
+      Alert.alert("Error", msg);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleDoneEditing = () => {
@@ -882,8 +908,7 @@ export default function ProfileScreen() {
                           </View>
                         </View>
                       ) : (
-                        <Pressable
-                          onPress={() => handleExpandEdit(profile)}
+                        <View
                           style={{
                             flexDirection: "row",
                             alignItems: "center",
@@ -891,7 +916,10 @@ export default function ProfileScreen() {
                             paddingHorizontal: scaleW(20),
                           }}
                         >
-                          <View style={{ flex: 1 }}>
+                          <Pressable
+                            onPress={() => handleExpandEdit(profile)}
+                            style={{ flex: 1 }}
+                          >
                             <ThemedText
                               type="heading"
                               style={styles.playerName}
@@ -901,13 +929,23 @@ export default function ProfileScreen() {
                             <ThemedText style={styles.playerNickname}>
                               {profile.nickname || "Explorer"}
                             </ThemedText>
-                          </View>
+                          </Pressable>
                           <MaterialIcons
                             name="edit"
                             size={scaleW(22)}
                             color={COLORS.darkGreen}
                           />
-                        </Pressable>
+                          <Pressable
+                            onPress={() => setProfileToDelete(profile)}
+                            style={{ padding: scaleW(8), marginLeft: scaleW(4) }}
+                          >
+                            <MaterialIcons
+                              name="delete"
+                              size={scaleW(22)}
+                              color="#DC2626"
+                            />
+                          </Pressable>
+                        </View>
                       )}
                     </View>
                   </View>
@@ -1199,6 +1237,58 @@ export default function ProfileScreen() {
           </Pressable>
         </Animated.View>
       </ScrollView>
+
+      {/* Delete profile confirmation modal */}
+      <Modal
+        visible={profileToDelete !== null}
+        animationType="fade"
+        transparent
+        onRequestClose={() => !deleting && setProfileToDelete(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <ThemedText style={styles.modalTitle}>Delete explorer?</ThemedText>
+            <ThemedText
+              style={{
+                fontSize: scaleW(15),
+                color: COLORS.charcoal,
+                marginBottom: scaleW(24),
+                lineHeight: scaleW(22),
+              }}
+            >
+              This will permanently delete{" "}
+              {profileToDelete ? profileToDelete.name : ""} and all their data:
+              activity progress, uploaded photos, achievements, and public
+              profile. This cannot be undone.
+            </ThemedText>
+            <View style={styles.modalActions}>
+              <Pressable
+                style={[styles.modalButton, styles.modalButtonCancel]}
+                onPress={() => !deleting && setProfileToDelete(null)}
+                disabled={deleting}
+              >
+                <ThemedText style={styles.modalButtonCancelText}>Cancel</ThemedText>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.modalButton,
+                  { backgroundColor: "#B91C1C" },
+                ]}
+                onPress={handleConfirmDelete}
+                disabled={deleting}
+              >
+                {deleting ? (
+                  <ActivityIndicator color={COLORS.white} />
+                ) : (
+                  <ThemedText style={styles.modalButtonSaveText}>
+                    Delete
+                  </ThemedText>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Add explorer modal */}
       <Modal

@@ -33,6 +33,7 @@ export default function SignUpPlayersScreen() {
   const { players, addPlayer, removePlayer, replacePlayer } = useSignUp();
   const { signOut } = useAuth();
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [showAddForm, setShowAddForm] = useState(true);
   const [name, setName] = useState("");
   const [nickname, setNickname] = useState(() => generateNickname());
   const [selectedColor, setSelectedColor] = useState(() =>
@@ -51,6 +52,7 @@ export default function SignUpPlayersScreen() {
   };
 
   const handleEditPlayer = (index: number) => {
+    setShowAddForm(false);
     if (editingIndex !== null && name.trim()) {
       replacePlayer(editingIndex, {
         name: name.trim(),
@@ -74,6 +76,7 @@ export default function SignUpPlayersScreen() {
   const handleDeleteInForm = () => {
     if (editingIndex !== null) {
       removePlayer(editingIndex);
+      if (players.length <= 1) setShowAddForm(false);
     }
     resetForm();
   };
@@ -89,6 +92,7 @@ export default function SignUpPlayersScreen() {
       replacePlayer(editingIndex, playerData);
     } else {
       addPlayer(playerData);
+      setShowAddForm(false);
     }
     resetForm();
   };
@@ -105,6 +109,7 @@ export default function SignUpPlayersScreen() {
         replacePlayer(editingIndex, playerData);
       } else {
         addPlayer(playerData);
+        setShowAddForm(false);
       }
     }
     const totalPlayers = currentName ? players.length + 1 : players.length;
@@ -119,8 +124,6 @@ export default function SignUpPlayersScreen() {
 
   const canAddPlayer = name.trim().length > 0;
   const showTrash = name.trim().length > 0 || editingIndex !== null;
-  const hasAnyPlayers = players.length > 0;
-  const showAddAnotherPlayer = hasAnyPlayers;
 
   const containerStyle = { flex: 1, backgroundColor: HUNTLY_GREEN };
   const Wrapper = Platform.OS === "ios" ? KeyboardAvoidingView : View;
@@ -415,8 +418,73 @@ export default function SignUpPlayersScreen() {
           })}
           </Animated.View>
 
-          {/* Add-new form card: only when not editing any player */}
-          {editingIndex === null && (
+          {/* "Add a new player" card: same structure as profile — show when form is hidden or when editing another player */}
+          {(editingIndex !== null ||
+            (editingIndex === null && !showAddForm)) && (
+            <Animated.View
+              entering={FadeInDown.duration(500).delay(280)}
+              style={{ marginTop: scaleW(4) }}
+            >
+              <Pressable
+                onPress={() => {
+                  setEditingIndex(null);
+                  setShowAddForm(true);
+                }}
+                style={{
+                  flexDirection: "row",
+                  backgroundColor: CREAM,
+                  borderRadius: scaleW(16),
+                  marginBottom: scaleW(12),
+                  overflow: "hidden",
+                  minHeight: scaleW(64),
+                }}
+              >
+                <View
+                  style={{
+                    width: scaleW(20),
+                    alignSelf: "stretch",
+                    backgroundColor: LIGHT_GREEN,
+                  }}
+                />
+                <View
+                  style={{
+                    flex: 1,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingVertical: scaleW(16),
+                    paddingHorizontal: scaleW(20),
+                  }}
+                >
+                  <ThemedText
+                    type="heading"
+                    lightColor="#111827"
+                    darkColor="#111827"
+                    style={{
+                      fontWeight: "700",
+                      fontSize: scaleW(18),
+                    }}
+                  >
+                    Add a new player
+                  </ThemedText>
+                </View>
+                <View
+                  style={{
+                    justifyContent: "center",
+                    marginRight: scaleW(16),
+                  }}
+                >
+                  <MaterialIcons
+                    name="add"
+                    size={scaleW(24)}
+                    color={HUNTLY_GREEN}
+                  />
+                </View>
+              </Pressable>
+            </Animated.View>
+          )}
+
+          {/* Add-new form card: only when not editing any player and form is shown */}
+          {editingIndex === null && showAddForm && (
             <Animated.View
               entering={FadeInDown.duration(500).delay(280)}
               style={{
@@ -623,7 +691,7 @@ export default function SignUpPlayersScreen() {
                   darkColor="#FFFFFF"
                   style={{ fontSize: scaleW(16), fontWeight: "600" }}
                 >
-                  {showAddAnotherPlayer ? "Add another player" : "Add player"}
+                  Add player
                 </ThemedText>
               </Pressable>
             </Animated.View>

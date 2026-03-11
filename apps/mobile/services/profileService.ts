@@ -87,6 +87,22 @@ export const getTeams = async (): Promise<Team[]> => {
   return data || [];
 };
 
+/** Get user_data for the given user (includes team, which may be null). */
+export const getUserData = async (userId: string): Promise<{ user_id: string; team: number | null } | null> => {
+  const { data, error } = await supabase
+    .from("user_data")
+    .select("user_id, team")
+    .eq("user_id", userId)
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") return null; // no row
+    console.error("Error fetching user_data:", error);
+    throw new Error(`Failed to fetch user data: ${error.message}`);
+  }
+  return data;
+};
+
 /** Update the authenticated user's team in user_data (e.g. when they choose a team at sign-up). */
 export const updateUserDataTeam = async (userId: string, teamId: number): Promise<void> => {
   const { error } = await supabase

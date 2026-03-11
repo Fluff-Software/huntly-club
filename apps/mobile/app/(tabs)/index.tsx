@@ -29,7 +29,8 @@ import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useCurrentChapterActivities } from "@/hooks/useCurrentChapterActivities";
 import { useUserStats } from "@/hooks/useUserStats";
 import { usePlayer } from "@/contexts/PlayerContext";
-import { getTeamById } from "@/services/profileService";
+import { useAuth } from "@/contexts/AuthContext";
+import { getTeamById, getUserData } from "@/services/profileService";
 import { getRandomClubPhotos, type ClubPhotoCardItem } from "@/services/activityProgressService";
 import { getTeamCardConfig } from "@/utils/teamUtils";
 
@@ -63,6 +64,7 @@ const TEAM_CARD_MESSAGES = [
 
 export default function HomeScreen() {
   const { scaleW, width, height } = useLayoutScale();
+  const { user } = useAuth();
   const { currentPlayer } = usePlayer();
   const { daysPlayed, pointsEarned } = useUserStats();
   const { nextMission, loading: missionLoading, refetch: refetchMissions } = useCurrentChapterActivities(currentPlayer?.id ?? null);
@@ -110,16 +112,28 @@ export default function HomeScreen() {
   };
 
   useEffect(() => {
-    if (!currentPlayer?.team) {
+    if (!user?.id) {
       setTeamName(null);
       return;
     }
     let cancelled = false;
-    getTeamById(currentPlayer.team).then((team) => {
-      if (!cancelled && team) setTeamName(team.name);
-    });
+    getUserData(user.id)
+      .then((userData) => {
+        if (cancelled) return;
+        if (!userData?.team) {
+          setTeamName(null);
+          return;
+        }
+        return getTeamById(userData.team);
+      })
+      .then((team) => {
+        if (!cancelled && team) setTeamName(team.name);
+      })
+      .catch(() => {
+        if (!cancelled) setTeamName(null);
+      });
     return () => { cancelled = true; };
-  }, [currentPlayer?.team]);
+  }, [user?.id]);
 
   const teamCardConfig = teamName ? getTeamCardConfig(teamName) : null;
 

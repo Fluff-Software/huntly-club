@@ -13,6 +13,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'software.fluff.huntly-club',
+    requireFullScreen: true,
     associatedDomains: [
       'applinks:huntly.app',
       'applinks:*.huntly.app'
@@ -33,7 +34,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     package: 'software.fluff.huntlyclub',
     googleServicesFile: "./google-services.json",
-    edgeToEdgeEnabled: true,
     intentFilters: [
       {
         action: "VIEW",

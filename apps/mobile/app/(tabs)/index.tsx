@@ -281,6 +281,7 @@ export default function HomeScreen() {
           marginBottom: scaleW(20),
           paddingHorizontal: scaleW(14),
           paddingVertical: scaleW(12),
+          minHeight: scaleW(180),
           width: "100%",
           overflow: "hidden" as const,
           shadowColor: "#000",

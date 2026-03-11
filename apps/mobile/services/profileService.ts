@@ -87,6 +87,19 @@ export const getTeams = async (): Promise<Team[]> => {
   return data || [];
 };
 
+/** Update the authenticated user's team in user_data (e.g. when they choose a team at sign-up). */
+export const updateUserDataTeam = async (userId: string, teamId: number): Promise<void> => {
+  const { error } = await supabase
+    .from("user_data")
+    .update({ team: teamId })
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("Error updating user_data team:", error);
+    throw new Error(`Failed to update user data: ${error.message}`);
+  }
+};
+
 export const getTeamById = async (teamId: number): Promise<Team | null> => {
   const { data, error } = await supabase
     .from("teams")

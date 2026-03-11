@@ -22,7 +22,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { useSignUp } from "@/contexts/SignUpContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
-import { getTeams, createProfile } from "@/services/profileService";
+import { getTeams, createProfile, updateUserDataTeam } from "@/services/profileService";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 
 const HUNTLY_GREEN = "#4F6F52";
@@ -117,6 +117,8 @@ export default function SignUpTeamScreen() {
         );
         return;
       }
+
+      await updateUserDataTeam(user.id, teamId);
 
       for (const player of players) {
         await createProfile({

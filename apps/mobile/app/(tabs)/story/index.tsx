@@ -80,11 +80,6 @@ export default function StoryScreen() {
         },
         seasonContainer: {
           backgroundColor: STORY_BLUE,
-          shadowColor: "#000",
-          shadowOpacity: 0.3,
-          shadowRadius: 4,
-          shadowOffset: { width: 0, height: 4 },
-          elevation: 4,
           zIndex: 1,
         },
         imageCircleWrap: {
@@ -119,7 +114,7 @@ export default function StoryScreen() {
           marginBottom: scaleW(16),
         },
         chapterContainer: {
-          backgroundColor: "rgba(255,255,255,0.12)",
+          backgroundColor: "rgba(255,255,255,0.28)",
           marginHorizontal: scaleW(20),
           marginTop: scaleW(16),
           marginBottom: scaleW(16),
@@ -127,7 +122,7 @@ export default function StoryScreen() {
           paddingHorizontal: scaleW(24),
           borderRadius: scaleW(16),
           borderWidth: 1,
-          borderColor: "rgba(255,255,255,0.25)",
+          borderColor: "rgba(255,255,255,0.65)",
           overflow: "hidden",
         },
         chapterTitle: {
@@ -155,7 +150,7 @@ export default function StoryScreen() {
           alignItems: "center",
         },
         readChapterButton: {
-          backgroundColor: "rgba(255,255,255,0.25)",
+          backgroundColor: "rgba(255,255,255,0.9)",
           borderRadius: scaleW(28),
           paddingVertical: scaleW(12),
           paddingHorizontal: scaleW(24),
@@ -316,7 +311,7 @@ export default function StoryScreen() {
                 }
                 style={styles.readChapterButton}
               >
-                <ThemedText style={{ fontSize: scaleW(15), fontWeight: "600", color: "#FFF" }}>
+                <ThemedText style={{ fontSize: scaleW(15), fontWeight: "700", color: DARK_GREEN }}>
                   Read this chapter →
                 </ThemedText>
               </Pressable>

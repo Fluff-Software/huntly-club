@@ -122,7 +122,7 @@ export default function SocialScreen() {
 
   const barHeights = useMemo(() => {
     const maxTotal = Math.max(1, ...sortedTeamsForChart.map((t) => t.total));
-    const minDesign = 20;
+    const minDesign = 60;
     const maxDesign = 220;
     return sortedTeamsForChart.map((t) => {
       const designHeight = minDesign + (t.total / maxTotal) * (maxDesign - minDesign);

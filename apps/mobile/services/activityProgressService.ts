@@ -459,9 +459,22 @@ export const getRandomActivityPhotos = async (
 
 export interface ClubPhotoCardItem {
   id: string;
+  /** Thumbnail-sized URL optimised for cards. */
+  thumb_url: string;
+  /** Original or larger image URL. */
   photo_url: string;
   title: string;
   author: string;
+}
+
+function buildThumbnailUrl(originalUrl: string): string {
+  if (!originalUrl) return originalUrl;
+  // Append basic resize/quality params; for Supabase Storage this will
+  // request a resized variant, and for other providers it degrades to
+  // a cached full-size URL with harmless query params.
+  const separator = originalUrl.includes("?") ? "&" : "?";
+  const params = "width=600&quality=75&resize=cover";
+  return `${originalUrl}${separator}${params}`;
 }
 
 /**
@@ -512,9 +525,11 @@ export const getRandomClubPhotos = async (
     const title = Array.isArray(activity) ? activity[0]?.title : (activity as { title?: string } | null)?.title;
     const profileId = row.profile_id as number | undefined;
     const nickname = profileId != null ? nicknamesByProfileId[profileId] ?? "" : "";
+    const photoUrl = String(row.photo_url ?? "");
     return {
       id: String(row.photo_id ?? Math.random()),
-      photo_url: String(row.photo_url ?? ""),
+      thumb_url: buildThumbnailUrl(photoUrl),
+      photo_url: photoUrl,
       title: typeof title === "string" ? title : "",
       author: typeof nickname === "string" ? nickname : "",
     };

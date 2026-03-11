@@ -12,6 +12,7 @@ import {
   type NativeSyntheticEvent,
   type NativeScrollEvent,
 } from "react-native";
+import { Image as ExpoImage } from "expo-image";
 import AnimatedReanimated, {
   useAnimatedStyle,
   useSharedValue,
@@ -38,6 +39,10 @@ const HOME_MODES: HomeMode[] = ["profile", "activity", "missions"];
 const BG_IMAGE = require("@/assets/images/bg.png");
 
 const CREAM = "#F4F0EB";
+const HUNTLY_GREEN = "#4F6F52";
+
+const CLUB_CARDS_PAGE_SIZE = 6;
+const CLUB_CARDS_MAX = 24;
 
 /** Pastel/bright author badge colors (white text) for club cards */
 const CLUB_CARD_AUTHOR_COLORS = [
@@ -65,6 +70,7 @@ export default function HomeScreen() {
   const [clubCards, setClubCards] = useState<ClubPhotoCardItem[]>([]);
   const [clubCardsLoading, setClubCardsLoading] = useState(true);
   const [loadingMoreClubCards, setLoadingMoreClubCards] = useState(false);
+  const [clubImageStatus, setClubImageStatus] = useState<Record<string, "loading" | "loaded" | "error">>({});
   const initialIndex = 1; // activity (Welcome back)
   const [currentIndex, setCurrentIndex] = useState<number>(initialIndex);
   const currentMode = HOME_MODES[currentIndex] ?? "activity";
@@ -73,7 +79,7 @@ export default function HomeScreen() {
   useEffect(() => {
     let cancelled = false;
     setClubCardsLoading(true);
-    getRandomClubPhotos(5).then((cards) => {
+    getRandomClubPhotos(CLUB_CARDS_PAGE_SIZE).then((cards) => {
       if (!cancelled) setClubCards(cards);
     }).catch(() => {
       if (!cancelled) setClubCards([]);
@@ -84,11 +90,13 @@ export default function HomeScreen() {
   }, []);
 
   const loadMoreClubCards = async () => {
-    if (loadingMoreClubCards || clubCards.length === 0) return;
+    if (loadingMoreClubCards || clubCards.length === 0 || clubCards.length >= CLUB_CARDS_MAX) return;
     setLoadingMoreClubCards(true);
     try {
       const excludeIds = clubCards.map((c) => c.id);
-      const more = await getRandomClubPhotos(5, excludeIds);
+      const remaining = CLUB_CARDS_MAX - clubCards.length;
+      const pageSize = Math.min(CLUB_CARDS_PAGE_SIZE, remaining);
+      const more = await getRandomClubPhotos(pageSize, excludeIds);
       if (more.length > 0) {
         const existingIds = new Set(clubCards.map((c) => c.id));
         const newCards = more.filter((c) => !existingIds.has(c.id));
@@ -309,6 +317,12 @@ export default function HomeScreen() {
           elevation: 2,
         },
         clubCardImage: { width: "100%", height: "100%" },
+        clubCardPlaceholder: {
+          ...StyleSheet.absoluteFillObject,
+          backgroundColor: HUNTLY_GREEN,
+          justifyContent: "center",
+          alignItems: "center",
+        },
         horizontalMissionCardsContainer: {
           paddingLeft: missionCardsPaddingHorizontal,
           paddingRight: missionCardsPaddingHorizontal,
@@ -554,8 +568,43 @@ export default function HomeScreen() {
               From around the club
             </ThemedText>
             {clubCardsLoading && clubCards.length === 0 ? (
-              <View style={{ minHeight: scaleW(200), justifyContent: "center", alignItems: "center", paddingVertical: scaleW(32) }}>
-                <ActivityIndicator size="large" color="#5B8A9E" />
+              <View
+                style={{
+                  minHeight: scaleW(220),
+                  justifyContent: "center",
+                  alignItems: "center",
+                  paddingVertical: scaleW(32),
+                }}
+              >
+                <View
+                  style={{
+                    backgroundColor: HUNTLY_GREEN,
+                    borderRadius: scaleW(24),
+                    paddingVertical: scaleW(18),
+                    paddingHorizontal: scaleW(24),
+                    alignItems: "center",
+                    justifyContent: "center",
+                    shadowColor: "#000",
+                    shadowOpacity: 0.35,
+                    shadowRadius: 4,
+                    shadowOffset: { width: 0, height: 3 },
+                    elevation: 3,
+                  }}
+                >
+                  <ActivityIndicator size="large" color="#FFFFFF" />
+                  <ThemedText
+                    type="body"
+                    style={{
+                      marginTop: scaleW(12),
+                      color: "#FFFFFF",
+                      fontSize: scaleW(14),
+                      fontWeight: "600",
+                      textAlign: "center",
+                    }}
+                  >
+                    Loading photos from around the club…
+                  </ThemedText>
+                </View>
               </View>
             ) : (
             <>
@@ -581,6 +630,7 @@ export default function HomeScreen() {
               decelerationRate="fast"
             >
               {clubCards.map((card, index) => {
+                const status = clubImageStatus[card.id] ?? "loading";
                 const centerScrollX = index === 0 ? 0 : getCenterScrollX(index);
                 const rotation = clubCardsScrollX.interpolate({
                   inputRange: [
@@ -603,7 +653,22 @@ export default function HomeScreen() {
                   >
                     <Pressable style={{ flex: 1 }}>
                       <View style={styles.clubCardImageWrap}>
-                        <Image source={{ uri: card.photo_url }} style={styles.clubCardImage} resizeMode="cover" />
+                        <ExpoImage
+                          source={{ uri: card.thumb_url || card.photo_url }}
+                          style={styles.clubCardImage}
+                          contentFit="cover"
+                          onLoadEnd={() => {
+                            setClubImageStatus((prev) => ({ ...prev, [card.id]: "loaded" }));
+                          }}
+                          onError={() => {
+                            setClubImageStatus((prev) => ({ ...prev, [card.id]: "error" }));
+                          }}
+                        />
+                        {status !== "loaded" && (
+                          <View style={styles.clubCardPlaceholder}>
+                            <ActivityIndicator size="small" color="#FFFFFF" />
+                          </View>
+                        )}
                       <ThemedText type="heading" style={{
                         position: "absolute",
                         bottom: scaleW(40),

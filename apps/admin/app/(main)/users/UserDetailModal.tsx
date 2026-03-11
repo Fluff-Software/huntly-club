@@ -102,7 +102,7 @@ export function UserDetailModal({ userId, open, onClose }: Props) {
                       ? "border-huntly-forest text-huntly-forest"
                       : "border-transparent text-stone-500 hover:border-stone-300 hover:text-stone-700"
                   }`}
-                  aria-current={activeTab === t.value ? "tab" : undefined}
+                  aria-current={activeTab === t.value ? true : undefined}
                 >
                   {t.label}
                 </button>

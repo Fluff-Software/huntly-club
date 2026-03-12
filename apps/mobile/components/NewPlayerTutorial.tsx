@@ -280,7 +280,7 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
                   What to do next
                 </ThemedText>
                 <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(24), marginBottom: scaleW(24) }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
-                  Go to Story and read the latest. Then complete missions in the latest chapter. Have fun!
+                  Go to Story and read the latest. Then complete missions in the latest chapter. If you spot anything or have ideas, tap the Testing tab to share feedback. Have fun!
                 </ThemedText>
                 <Pressable
                   onPress={handleNext}

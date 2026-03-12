@@ -14,6 +14,7 @@ const nav = [
   { href: "/resources", label: "Resources" },
   { href: "/photos", label: "Photos" },
   { href: "/waitlist", label: "Waitlist" },
+  { href: "/feedback", label: "Feedback" },
   { href: "/users", label: "Users" },
   { href: "/account-removal", label: "Account Removal" },
   { href: "/admins", label: "Admins" },

@@ -18,6 +18,7 @@ import {
 } from "@/services/activityProgressService";
 import { uploadUserActivityPhoto } from "@/services/storageService";
 import { usePlayer } from "@/contexts/PlayerContext";
+import type { Profile } from "@/services/profileService";
 import { BadgePopupModal } from "@/components/BadgePopupModal";
 import { Badge } from "@/services/badgeService";
 import * as ImagePicker from "expo-image-picker";
@@ -26,7 +27,8 @@ import { File, Paths } from "expo-file-system";
 export default function ActivityDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  const { currentPlayer, refreshProfiles } = usePlayer();
+  const { profiles, refreshProfiles } = usePlayer();
+  const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null);
   const [activity, setActivity] = useState<Activity | null>(null);
   const [categories, setCategories] = useState<Awaited<ReturnType<typeof getCategories>>>([]);
   const [activityProgress, setActivityProgress] =
@@ -38,38 +40,50 @@ export default function ActivityDetailScreen() {
   const [showBadgePopup, setShowBadgePopup] = useState(false);
   const [earnedBadge, setEarnedBadge] = useState<Badge | null>(null);
 
+  // Keep selected profile in sync with profiles list (default to first profile)
+  useEffect(() => {
+    if (profiles.length === 0) {
+      setSelectedProfileId(null);
+      return;
+    }
+    setSelectedProfileId((prev) => {
+      if (prev != null && profiles.some((p) => p.id === prev)) return prev;
+      return profiles[0]?.id ?? null;
+    });
+  }, [profiles]);
+
   useEffect(() => {
     let isMounted = true;
 
     const fetchActivity = async () => {
       try {
-        if (!id || !currentPlayer?.id) return;
+        if (!id) return;
         const [activityData, categoriesList] = await Promise.all([
           getActivityById(Number(id)),
           getCategories(),
         ]);
-        const progressData = await getActivityProgress(
-          currentPlayer.id,
-          Number(id)
-        );
 
         if (isMounted) {
           setActivity(activityData);
           setCategories(categoriesList);
-          setActivityProgress(progressData);
+        }
 
-          // If activity hasn't been started yet, start it
-          if (!progressData && activityData) {
-            try {
-              const startedProgress = await startActivity(
-                currentPlayer.id,
-                activityData.id
-              );
-              setActivityProgress(startedProgress);
-            } catch (err) {
-              console.error("Failed to start activity:", err);
+        // Load progress (and start activity) only for the selected profile
+        if (selectedProfileId != null && activityData) {
+          let progressData: ActivityProgress | null = null;
+          try {
+            progressData = await getActivityProgress(selectedProfileId, Number(id));
+            if (isMounted) setActivityProgress(progressData);
+            if (!progressData && isMounted) {
+              const startedProgress = await startActivity(selectedProfileId, activityData.id);
+              if (isMounted) setActivityProgress(startedProgress);
             }
+          } catch (err) {
+            console.error("Failed to load/start activity progress:", err);
+            if (isMounted) setActivityProgress(null);
           }
+        } else {
+          if (isMounted) setActivityProgress(null);
         }
       } catch (err) {
         if (isMounted) {
@@ -88,7 +102,7 @@ export default function ActivityDetailScreen() {
     return () => {
       isMounted = false;
     };
-  }, [id, currentPlayer?.id]);
+  }, [id, selectedProfileId]);
 
   const pickImage = async () => {
     try {
@@ -121,7 +135,7 @@ export default function ActivityDetailScreen() {
   const uploadPhotoToStorage = async (
     photoUri: string
   ): Promise<string | null> => {
-    if (!currentPlayer?.id) return null;
+    if (selectedProfileId == null) return null;
 
     try {
       const sourceFile = new File(photoUri);
@@ -141,7 +155,7 @@ export default function ActivityDetailScreen() {
       const result = await uploadUserActivityPhoto(
         fileObject,
         fileName,
-        currentPlayer.id.toString()
+        selectedProfileId.toString()
       );
 
       try {
@@ -158,9 +172,12 @@ export default function ActivityDetailScreen() {
   };
 
   const handleComplete = async () => {
-    if (!currentPlayer?.id || !activity) return;
+    if (selectedProfileId == null || !activity) {
+      Alert.alert("Select an explorer", "Choose an explorer above to complete this activity.");
+      return;
+    }
     if (activityProgress?.status === "completed") {
-      Alert.alert("Already Completed", "This activity has already been completed!");
+      Alert.alert("Already Completed", "This activity has already been completed for the selected explorer!");
       return;
     }
     if (activity.photo_required && !uploadedPhoto) {
@@ -180,11 +197,11 @@ export default function ActivityDetailScreen() {
       }
 
       await completeActivityProgress(
-        currentPlayer.id,
+        selectedProfileId,
         activity.id,
         photoUrl
       );
-      const result = await completeActivityService(activity.id, currentPlayer.id);
+      const result = await completeActivityService(activity.id, selectedProfileId);
 
       if (result.success) {
         setActivityProgress((prev) =>
@@ -248,6 +265,42 @@ export default function ActivityDetailScreen() {
               +{activity.xp} XP
             </ThemedText>
           </View>
+          {profiles.length > 0 && (
+            <View className="mb-4">
+              <ThemedText type="defaultSemiBold" className="text-huntly-charcoal mb-2 text-sm">
+                Complete as
+              </ThemedText>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ flexDirection: "row", gap: 8 }}
+              >
+                {profiles.map((profile: Profile) => (
+                  <TouchableOpacity
+                    key={profile.id}
+                    onPress={() => setSelectedProfileId(profile.id)}
+                    className={`px-4 py-2 rounded-full border-2 ${
+                      selectedProfileId === profile.id
+                        ? "bg-huntly-leaf border-huntly-leaf"
+                        : "bg-transparent border-huntly-charcoal/30"
+                    }`}
+                  >
+                    <ThemedText
+                      type="caption"
+                      className={selectedProfileId === profile.id ? "text-white font-bold" : "text-huntly-charcoal"}
+                    >
+                      {profile.nickname || profile.name}
+                    </ThemedText>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+          {profiles.length === 0 && (
+            <ThemedText type="caption" className="text-huntly-charcoal/70 mb-4">
+              Add an explorer in Profile to complete activities.
+            </ThemedText>
+          )}
           {activity.categories && activity.categories.length > 0 && (
             <View className="mb-4">
               <CategoryTags
@@ -387,6 +440,7 @@ export default function ActivityDetailScreen() {
             onPress={handleComplete}
             disabled={
               completing ||
+              selectedProfileId == null ||
               (activity.photo_required && !uploadedPhoto) ||
               activityProgress?.status === "completed"
             }
@@ -394,6 +448,8 @@ export default function ActivityDetailScreen() {
           >
             {completing
               ? "Completing..."
+              : selectedProfileId == null
+              ? "Select an explorer to complete"
               : activityProgress?.status === "completed"
               ? "✓ Completed"
               : "Complete Activity"}

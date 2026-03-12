@@ -19,8 +19,6 @@ import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useFirstSeason } from "@/hooks/useFirstSeason";
 import { useCurrentChapter } from "@/hooks/useCurrentChapter";
 import { useAllChapters } from "@/hooks/useAllChapters";
-import { useChapterProgress } from "@/hooks/useChapterProgress";
-import { usePlayer } from "@/contexts/PlayerContext";
 import { useRouter, useFocusEffect } from "expo-router";
 
 function formatReleaseDate(isoDate: string): string {
@@ -38,11 +36,9 @@ const DARK_GREEN = "#2D5A27";
 export default function StoryScreen() {
   const router = useRouter();
   const { scaleW, width } = useLayoutScale();
-  const { currentPlayer } = usePlayer();
   const { firstSeason, seasonNumber, heroImageSource, loading: seasonLoading, error: seasonError, refetch: refetchSeason } = useFirstSeason();
   const { nextChapterDate, loading: currentChapterLoading, error: chapterError, refetch: refetchChapter } = useCurrentChapter();
   const { chapters, loading: chaptersLoading, error: chaptersError, refetch: refetchChapters } = useAllChapters(firstSeason?.id ?? undefined);
-  const { progressByChapterId, loading: progressLoading, refetch: refetchProgress } = useChapterProgress(currentPlayer?.id ?? null);
   const completeButtonScale = useSharedValue(1);
   const scrollRef = useRef<ScrollView>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
@@ -52,12 +48,11 @@ export default function StoryScreen() {
       refetchSeason();
       refetchChapter();
       refetchChapters();
-      refetchProgress();
       scrollRef.current?.scrollTo({ y: 0, animated: false });
-    }, [refetchSeason, refetchChapter, refetchChapters, refetchProgress])
+    }, [refetchSeason, refetchChapter, refetchChapters])
   );
 
-  const loading = seasonLoading || currentChapterLoading || chaptersLoading || progressLoading;
+  const loading = seasonLoading || currentChapterLoading || chaptersLoading;
   const error = seasonError ?? chapterError ?? chaptersError;
 
   useEffect(() => {
@@ -70,8 +65,7 @@ export default function StoryScreen() {
     refetchSeason();
     refetchChapter();
     refetchChapters();
-    refetchProgress();
-  }, [refetchSeason, refetchChapter, refetchChapters, refetchProgress]);
+  }, [refetchSeason, refetchChapter, refetchChapters]);
 
   const completeButtonAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: completeButtonScale.value }],
@@ -324,36 +318,29 @@ export default function StoryScreen() {
                   Read this chapter →
                 </ThemedText>
               </Pressable>
-              {(() => {
-                const progress = progressByChapterId[chapter.id] ?? { total: 0, completed: 0 };
-                if (progress.total === 0) return null;
-                const missionLabel = progress.total === 1 ? "mission" : "missions";
-                return (
-                  <Animated.View entering={FadeInDown.duration(500).delay(200)} style={completeButtonAnimatedStyle}>
-                    <Pressable
-                      onPress={() => router.push("/(tabs)/missions")}
-                      onPressIn={() => {
-                        completeButtonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-                      }}
-                      onPressOut={() => {
-                        completeButtonScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-                      }}
-                      style={styles.completeButton}
-                    >
-                      <ThemedText
-                        type="heading"
-                        style={{
-                          fontSize: scaleW(15),
-                          fontWeight: "600",
-                          color: "#FFF",
-                        }}
-                      >
-                        {progress.completed} / {progress.total} {missionLabel} complete →
-                      </ThemedText>
-                    </Pressable>
-                  </Animated.View>
-                );
-              })()}
+              <Animated.View entering={FadeInDown.duration(500).delay(200)} style={completeButtonAnimatedStyle}>
+                <Pressable
+                  onPress={() => router.push("/(tabs)/missions")}
+                  onPressIn={() => {
+                    completeButtonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+                  }}
+                  onPressOut={() => {
+                    completeButtonScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+                  }}
+                  style={styles.completeButton}
+                >
+                  <ThemedText
+                    type="heading"
+                    style={{
+                      fontSize: scaleW(15),
+                      fontWeight: "600",
+                      color: "#FFF",
+                    }}
+                  >
+                    View missions →
+                  </ThemedText>
+                </Pressable>
+              </Animated.View>
             </Animated.View>
           </View>
         ))}

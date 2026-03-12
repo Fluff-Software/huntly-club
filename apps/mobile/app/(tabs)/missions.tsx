@@ -25,8 +25,8 @@ function chapterSectionTitle(chapter: ChapterWithActivities): string {
 
 export default function MissionsScreen() {
   const { scaleW } = useLayoutScale();
-  const { currentPlayer, profiles } = usePlayer();
-  const { chapters, completedActivityIds, loading, error, refetch } = useChaptersWithActivities(currentPlayer?.id ?? null);
+  const { profiles } = usePlayer();
+  const { chapters, completedActivityIds, loading, error, refetch } = useChaptersWithActivities(null);
   const scrollRef = useRef<ScrollView>(null);
   const [completionCountByActivityId, setCompletionCountByActivityId] = React.useState<Record<string, number>>({});
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);

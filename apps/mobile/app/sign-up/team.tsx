@@ -22,6 +22,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { useSignUp } from "@/contexts/SignUpContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { useUser } from "@/contexts/UserContext";
 import { getTeams, createProfile, updateUserDataTeam } from "@/services/profileService";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 
@@ -68,6 +69,7 @@ export default function SignUpTeamScreen() {
   } = useSignUp();
   const { user } = useAuth();
   const { refreshProfiles } = usePlayer();
+  const { refreshUserData } = useUser();
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
@@ -119,6 +121,7 @@ export default function SignUpTeamScreen() {
       }
 
       await updateUserDataTeam(user.id, teamId);
+      await refreshUserData();
 
       for (const player of players) {
         await createProfile({

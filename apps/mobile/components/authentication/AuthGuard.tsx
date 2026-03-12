@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePurchases } from "@/contexts/PurchasesContext";
 import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { ThemedView } from "@/components/ThemedView";
-import { getProfiles } from "@/services/profileService";
+import { getProfiles, getUserData } from "@/services/profileService";
 import { REQUIRE_EMAIL_VERIFICATION } from "@/constants/auth";
 
 type AuthGuardProps = {
@@ -54,16 +54,18 @@ export function AuthGuard({ children }: AuthGuardProps) {
     if (user && (inAuthGroup || inGetStarted || inSignUp)) {
       if (!inSignUp) {
         setCheckingProfiles(true);
-        getProfiles(user.id)
-          .then((profiles) => {
+        Promise.all([getProfiles(user.id), getUserData(user.id)])
+          .then(([profiles, userData]) => {
             if (profiles.length === 0) {
               router.replace("/sign-up/players");
+            } else if (userData?.team == null) {
+              router.replace("/sign-up/team");
             } else {
               router.replace("/(tabs)");
             }
           })
           .catch((error) => {
-            console.error("Error checking profiles:", error);
+            console.error("Error checking profiles/user data:", error);
             router.replace("/(tabs)");
           })
           .finally(() => setCheckingProfiles(false));

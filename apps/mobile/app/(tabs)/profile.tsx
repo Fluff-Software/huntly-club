@@ -19,6 +19,7 @@ import Animated, {
 import { useRouter, useFocusEffect } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { useUser } from "@/contexts/UserContext";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/ui/Button";
@@ -80,6 +81,7 @@ export default function ProfileScreen() {
   >([]);
   const [xpByProfileId, setXpByProfileId] = useState<Record<number, number>>({});
   const { user, signOut } = useAuth();
+  const { teamId } = useUser();
   const { currentPlayer, profiles, setCurrentPlayer, refreshProfiles } =
     usePlayer();
   const { daysPlayed, pointsEarned } = useUserStats();
@@ -295,7 +297,7 @@ export default function ProfileScreen() {
       Alert.alert("Error", "Please fill in name");
       return;
     }
-    const defaultTeam = currentPlayer?.team ?? teams[0]?.id;
+    const defaultTeam = teamId ?? teams[0]?.id;
     if (defaultTeam == null) {
       Alert.alert("Error", "No team available. Please try again later.");
       return;

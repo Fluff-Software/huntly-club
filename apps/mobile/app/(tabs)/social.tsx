@@ -26,7 +26,6 @@ import {
   getTeamAchievementTotals,
   TeamInfo,
 } from "@/services/teamActivityService";
-import { usePlayer } from "@/contexts/PlayerContext";
 import { useUser } from "@/contexts/UserContext";
 import { getTeamCardConfig } from "@/utils/teamUtils";
 
@@ -75,7 +74,6 @@ function mapAchievementsToItems(achievements: { id: number; profile_name: string
 
 export default function SocialScreen() {
   const { scaleW, width } = useLayoutScale();
-  const { currentPlayer } = usePlayer();
   const { teamId } = useUser();
   const [teamAchievements, setTeamAchievements] = useState<Awaited<ReturnType<typeof getTeamAchievements>>>([]);
   const [teamAchievementTotals, setTeamAchievementTotals] = useState<Record<number, number>>({});
@@ -429,21 +427,6 @@ export default function SocialScreen() {
     [scaleW]
   );
 
-  if (!currentPlayer) {
-    return (
-      <BaseLayout>
-        <View style={styles.emptyStateContainer}>
-          <Text style={styles.emptyStateTitle}>
-            Select Your Explorer
-          </Text>
-          <Text style={styles.emptyStateBody}>
-            Choose an explorer profile to view your team. Teams make exploring even more fun!
-          </Text>
-        </View>
-      </BaseLayout>
-    );
-  }
-
   if (!teamId) {
     return (
       <BaseLayout>
@@ -452,7 +435,7 @@ export default function SocialScreen() {
             Join a Team
           </Text>
           <Text style={styles.emptyStateBody}>
-            Your explorer needs to join a team to view team activities. Create an explorer in Clubhouse to get started!
+            Your account needs a team to view team activities. Create an explorer in Clubhouse to get started!
           </Text>
         </View>
       </BaseLayout>

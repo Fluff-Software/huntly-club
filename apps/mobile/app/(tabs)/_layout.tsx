@@ -11,6 +11,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { useUser } from "@/contexts/UserContext";
 import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { NewPlayerTutorial } from "@/components/NewPlayerTutorial";
@@ -100,6 +101,7 @@ function StoryTabPulse({ size }: { size: number }) {
 export default function TabLayout() {
   const { user } = useAuth();
   const { currentPlayer, profiles } = usePlayer();
+  const { teamId } = useUser();
   const { scaleW } = useLayoutScale();
   const insets = useSafeAreaInsets();
   const signUpContext = useSignUpOptional();
@@ -335,7 +337,7 @@ export default function TabLayout() {
               <TabIcon source={HOME_TEAM} color={color} size={scaleW(24)} />
             </View>
           ),
-          href: currentPlayer ? undefined : null,
+          href: teamId != null ? undefined : null,
         }}
       />
       <Tabs.Screen

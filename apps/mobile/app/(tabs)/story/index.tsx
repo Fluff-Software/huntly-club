@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useRef } from "react";
+import React, { useMemo, useCallback, useRef, useState, useEffect } from "react";
 import {
   View,
   ScrollView,
@@ -41,6 +41,7 @@ export default function StoryScreen() {
   const { chapters, loading: chaptersLoading, error: chaptersError, refetch: refetchChapters } = useAllChapters(firstSeason?.id ?? undefined);
   const completeButtonScale = useSharedValue(1);
   const scrollRef = useRef<ScrollView>(null);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -53,6 +54,12 @@ export default function StoryScreen() {
 
   const loading = seasonLoading || currentChapterLoading || chaptersLoading;
   const error = seasonError ?? chapterError ?? chaptersError;
+
+  useEffect(() => {
+    if (!hasLoadedOnce && !loading && !error) {
+      setHasLoadedOnce(true);
+    }
+  }, [loading, error, hasLoadedOnce]);
 
   const handleRetry = useCallback(() => {
     refetchSeason();
@@ -218,7 +225,9 @@ export default function StoryScreen() {
     [scaleW, width]
   );
 
-  if (loading) {
+  const showInitialLoading = !hasLoadedOnce && loading;
+
+  if (showInitialLoading) {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]} edges={["top", "left", "right"]}>
         <ActivityIndicator size="large" color="#FFF" />

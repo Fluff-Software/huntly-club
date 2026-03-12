@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useRef } from "react";
+import React, { useMemo, useCallback, useRef, useState, useEffect } from "react";
 import {
   View,
   ScrollView,
@@ -29,6 +29,7 @@ export default function MissionsScreen() {
   const { chapters, completedActivityIds, loading, error, refetch } = useChaptersWithActivities(null);
   const scrollRef = useRef<ScrollView>(null);
   const [completionCountByActivityId, setCompletionCountByActivityId] = React.useState<Record<string, number>>({});
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -62,6 +63,12 @@ export default function MissionsScreen() {
     })();
     return () => { cancelled = true; };
   }, [chapters, profiles]);
+
+  useEffect(() => {
+    if (!hasLoadedOnce && !loading && !error) {
+      setHasLoadedOnce(true);
+    }
+  }, [loading, error, hasLoadedOnce]);
 
   const styles = useMemo(
     () =>
@@ -133,7 +140,7 @@ export default function MissionsScreen() {
           <ThemedText type="heading" style={styles.title}>Current Missions</ThemedText>
         </Animated.View>
 
-        {loading && (
+        {(!hasLoadedOnce && loading) && (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#FFF" />
             <ThemedText style={[styles.emptyText, { marginTop: scaleW(16) }]}>Finding your missions…</ThemedText>
@@ -150,7 +157,7 @@ export default function MissionsScreen() {
           </View>
         )}
 
-        {!loading && !error && (
+        {(!loading || hasLoadedOnce) && !error && (
           <>
             {chapters.length === 0 ? (
               <View style={[styles.loadingContainer, { paddingVertical: scaleW(24) }]}>

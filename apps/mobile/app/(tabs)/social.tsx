@@ -27,6 +27,7 @@ import {
   TeamInfo,
 } from "@/services/teamActivityService";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { useUser } from "@/contexts/UserContext";
 import { getTeamCardConfig } from "@/utils/teamUtils";
 
 const BEAR_FACE_IMAGE = require("@/assets/images/bear-face.png");
@@ -75,6 +76,7 @@ function mapAchievementsToItems(achievements: { id: number; profile_name: string
 export default function SocialScreen() {
   const { scaleW, width } = useLayoutScale();
   const { currentPlayer } = usePlayer();
+  const { teamId } = useUser();
   const [teamAchievements, setTeamAchievements] = useState<Awaited<ReturnType<typeof getTeamAchievements>>>([]);
   const [teamAchievementTotals, setTeamAchievementTotals] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(true);
@@ -164,16 +166,16 @@ export default function SocialScreen() {
   }, []);
 
   const fetchTeamActivities = useCallback(async () => {
-    if (!currentPlayer?.team) {
+    if (!teamId) {
       setLoading(false);
       return;
     }
     try {
       setError(null);
       const [teamData, teamsData, achievements, totals] = await Promise.all([
-        getTeamInfo(currentPlayer.team),
+        getTeamInfo(teamId),
         getAllTeamsWithXp(),
-        getTeamAchievements(currentPlayer.team),
+        getTeamAchievements(teamId),
         getTeamAchievementTotals(),
       ]);
       setTeamInfo(teamData);
@@ -185,7 +187,7 @@ export default function SocialScreen() {
     } finally {
       setLoading(false);
     }
-  }, [currentPlayer?.team]);
+  }, [teamId]);
 
   useEffect(() => {
     fetchTeamActivities();
@@ -236,20 +238,6 @@ export default function SocialScreen() {
     [teamInfo?.name]
   );
 
-  const teamScore = useMemo(() => {
-    if (!teamInfo) return 0;
-    return teamAchievementTotals[teamInfo.id] ?? 0;
-  }, [teamInfo, teamAchievementTotals]);
-
-  const explorerScore = useMemo(() => {
-    if (!currentPlayer) return 0;
-    return teamAchievements.reduce(
-      (sum, ach) =>
-        ach.profile_id === currentPlayer.id ? sum + (ach.xp ?? 0) : sum,
-      0
-    );
-  }, [currentPlayer?.id, teamAchievements]);
-
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -279,41 +267,6 @@ export default function SocialScreen() {
           flex: 1,
           marginLeft: scaleW(16),
           paddingBottom: scaleW(8),
-        },
-        summaryWrap: {
-          paddingHorizontal: scaleW(24),
-          paddingTop: scaleW(24),
-          marginTop: scaleW(8),
-        },
-        summaryCard: {
-          backgroundColor: "#EFE4FF",
-          borderRadius: scaleW(20),
-          paddingVertical: scaleW(14),
-          paddingHorizontal: scaleW(18),
-          borderWidth: 3,
-          borderColor: "rgba(255,255,255,0.9)",
-        },
-        summaryRow: {
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: scaleW(8),
-        },
-        summaryLabel: {
-          fontSize: scaleW(14),
-          fontWeight: "600",
-          color: "#333",
-        },
-        summaryValue: {
-          fontSize: scaleW(20),
-          fontWeight: "700",
-          color: POINTS_PURPLE,
-        },
-        summarySubLabel: {
-          fontSize: scaleW(13),
-          color: "#333",
-          opacity: 0.85,
-          marginTop: scaleW(4),
         },
         headerTitle: {
           marginHorizontal: scaleW(12),
@@ -491,7 +444,7 @@ export default function SocialScreen() {
     );
   }
 
-  if (!currentPlayer.team) {
+  if (!teamId) {
     return (
       <BaseLayout>
         <View style={styles.emptyStateContainer}>
@@ -596,25 +549,7 @@ export default function SocialScreen() {
         </Animated.View>
         <View style={styles.chartBaseline} />
 
-        <Animated.View
-          entering={FadeInDown.duration(500).delay(380)}
-          style={styles.summaryWrap}
-        >
-          <View style={styles.summaryCard}>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>
-                Total {teamCardConfig.title} score
-              </Text>
-              <Text style={styles.summaryValue}>{teamScore}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Your contribution</Text>
-              <Text style={styles.summaryValue}>{explorerScore}</Text>
-            </View>
-          </View>
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.duration(500).delay(450)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(380)}>
           <Text style={styles.achievementsTitle}>Recent achievements</Text>
         </Animated.View>
         <View style={[styles.timeline, { position: "relative" }]}>

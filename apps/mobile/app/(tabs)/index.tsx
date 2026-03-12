@@ -29,8 +29,7 @@ import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useCurrentChapterActivities } from "@/hooks/useCurrentChapterActivities";
 import { useUserStats } from "@/hooks/useUserStats";
 import { usePlayer } from "@/contexts/PlayerContext";
-import { useAuth } from "@/contexts/AuthContext";
-import { getTeamById, getUserData } from "@/services/profileService";
+import { useUser } from "@/contexts/UserContext";
 import { getRandomClubPhotos, type ClubPhotoCardItem } from "@/services/activityProgressService";
 import { getTeamCardConfig } from "@/utils/teamUtils";
 
@@ -64,11 +63,10 @@ const TEAM_CARD_MESSAGES = [
 
 export default function HomeScreen() {
   const { scaleW, width, height } = useLayoutScale();
-  const { user } = useAuth();
   const { currentPlayer } = usePlayer();
+  const { team, loading: userLoading } = useUser();
   const { daysPlayed, pointsEarned } = useUserStats();
   const { nextMission, loading: missionLoading, refetch: refetchMissions } = useCurrentChapterActivities(currentPlayer?.id ?? null);
-  const [teamName, setTeamName] = useState<string | null>(null);
   const [clubCards, setClubCards] = useState<ClubPhotoCardItem[]>([]);
   const [clubCardsLoading, setClubCardsLoading] = useState(true);
   const [loadingMoreClubCards, setLoadingMoreClubCards] = useState(false);
@@ -111,31 +109,7 @@ export default function HomeScreen() {
     }
   };
 
-  useEffect(() => {
-    if (!user?.id) {
-      setTeamName(null);
-      return;
-    }
-    let cancelled = false;
-    getUserData(user.id)
-      .then((userData) => {
-        if (cancelled) return;
-        if (!userData?.team) {
-          setTeamName(null);
-          return;
-        }
-        return getTeamById(userData.team);
-      })
-      .then((team) => {
-        if (!cancelled && team) setTeamName(team.name);
-      })
-      .catch(() => {
-        if (!cancelled) setTeamName(null);
-      });
-    return () => { cancelled = true; };
-  }, [user?.id]);
-
-  const teamCardConfig = teamName ? getTeamCardConfig(teamName) : null;
+  const teamCardConfig = team ? getTeamCardConfig(team.name) : null;
 
   const pagerRef = useRef<ScrollView>(null);
   const pagerX = useRef(new Animated.Value(width * initialIndex)).current;
@@ -167,11 +141,11 @@ export default function HomeScreen() {
   const bearCardStyle = useAnimatedStyle(() => ({ transform: [{ translateX: bearCardTranslateX.value }] }));
 
   useEffect(() => {
-    if (width > 0 && teamName) {
+    if (width > 0 && teamCardConfig) {
       bearCardTranslateX.value = width;
       bearCardTranslateX.value = withDelay(100, withSpring(0, springLessBouncy));
     }
-  }, [width, teamName]);
+  }, [width, teamCardConfig]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

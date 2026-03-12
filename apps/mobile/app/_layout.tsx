@@ -22,6 +22,7 @@ import { NetworkProvider } from "@/contexts/NetworkContext";
 import { PurchasesProvider } from "@/contexts/PurchasesContext";
 import { PlayerProvider } from "@/contexts/PlayerContext";
 import { SignUpProvider } from "@/contexts/SignUpContext";
+import { UserProvider } from "@/contexts/UserContext";
 import { AuthGuard } from "@/components/authentication/AuthGuard";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { supabase } from "@/services/supabase";
@@ -118,17 +119,19 @@ export default function RootLayout() {
       <AuthProvider>
         <SignUpProvider>
           <PurchasesProvider>
-            <PlayerProvider>
-              <ThemeProvider value={DefaultTheme}>
-                <OfflineBanner />
-                <LayoutAnimationConfig skipEntering>
-                  <AuthGuard>
-                    <Slot />
-                  </AuthGuard>
-                </LayoutAnimationConfig>
-                <StatusBar style="dark" />
-              </ThemeProvider>
-            </PlayerProvider>
+            <UserProvider>
+              <PlayerProvider>
+                <ThemeProvider value={DefaultTheme}>
+                  <OfflineBanner />
+                  <LayoutAnimationConfig skipEntering>
+                    <AuthGuard>
+                      <Slot />
+                    </AuthGuard>
+                  </LayoutAnimationConfig>
+                  <StatusBar style="dark" />
+                </ThemeProvider>
+              </PlayerProvider>
+            </UserProvider>
           </PurchasesProvider>
         </SignUpProvider>
       </AuthProvider>

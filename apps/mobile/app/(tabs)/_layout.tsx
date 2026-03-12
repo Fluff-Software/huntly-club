@@ -1,6 +1,7 @@
 import { Tabs, router } from "expo-router";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Image, Modal, Platform, Pressable, StyleSheet, View } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -38,6 +39,7 @@ const TAB_BAR_COLORS: Record<string, string> = {
   story: "#1E2E28",
   missions: "#D2684B",
   social: "#C3A4FF",
+  testing: "#5B8A9E",
 };
 
 const CREAM = "#F4F0EB";
@@ -342,6 +344,20 @@ export default function TabLayout() {
             </View>
           ),
           href: teamId != null ? undefined : null,
+        }}
+      />
+      <Tabs.Screen
+        name="testing"
+        options={{
+          title: "Testing",
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons
+              name="chat-bubble-outline"
+              size={size}
+              color={color}
+            />
+          ),
+          href: profiles.length > 0 ? undefined : null,
         }}
       />
       <Tabs.Screen

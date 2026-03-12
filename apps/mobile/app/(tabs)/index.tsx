@@ -27,7 +27,6 @@ import { MissionCard } from "@/components/MissionCard";
 import { StatCard } from "@/components/StatCard";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useCurrentChapterActivities } from "@/hooks/useCurrentChapterActivities";
-import { usePlayer } from "@/contexts/PlayerContext";
 import { useUser } from "@/contexts/UserContext";
 import { getRandomClubPhotos, type ClubPhotoCardItem } from "@/services/activityProgressService";
 import { getTeamCardConfig } from "@/utils/teamUtils";
@@ -62,9 +61,8 @@ const TEAM_CARD_MESSAGES = [
 
 export default function HomeScreen() {
   const { scaleW, width, height } = useLayoutScale();
-  const { currentPlayer } = usePlayer();
   const { team, daysPlayed, pointsEarned } = useUser();
-  const { nextMission, loading: missionLoading, refetch: refetchMissions } = useCurrentChapterActivities(currentPlayer?.id ?? null);
+  const { latestMission, loading: missionLoading, refetch: refetchMissions } = useCurrentChapterActivities(null);
   const [clubCards, setClubCards] = useState<ClubPhotoCardItem[]>([]);
   const [clubCardsLoading, setClubCardsLoading] = useState(true);
   const [loadingMoreClubCards, setLoadingMoreClubCards] = useState(false);
@@ -730,7 +728,7 @@ export default function HomeScreen() {
               textShadowOffset: { width: 0, height: 0 },
             }}
         >
-          Current Mission
+          Latest Mission
         </ThemedText>
 
         <View collapsable={Platform.OS !== "android"} style={{ alignItems: "center", marginBottom: scaleW(24) }}>
@@ -738,8 +736,8 @@ export default function HomeScreen() {
             <View style={{ paddingVertical: scaleW(48), alignItems: "center" }}>
               <ActivityIndicator size="large" color="#FFF" />
             </View>
-          ) : nextMission ? (
-            <MissionCard card={nextMission} tiltDeg={0} />
+          ) : latestMission ? (
+            <MissionCard card={latestMission} tiltDeg={0} />
           ) : null}
         </View>
 

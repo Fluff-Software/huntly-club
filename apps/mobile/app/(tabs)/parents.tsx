@@ -36,21 +36,6 @@ const COLORS = {
   cardGray: "#E8E8E8",
 };
 
-interface ExplorerStats {
-  id: number;
-  name: string;
-  nickname: string;
-  colour: string;
-  xp: number;
-  team: string;
-  totalActivities: number;
-  completedActivities: number;
-  recentActivities: any[];
-  categoryStats: {
-    [categoryId: number]: { count: number; xp: number };
-  };
-}
-
 interface CategoryAnalytics {
   categoryId: number;
   label: string;
@@ -65,7 +50,7 @@ export default function ParentsScreen() {
   const { daysPlayed, pointsEarned } = useUser();
   const router = useRouter();
   const { scaleW } = useLayoutScale();
-  const [explorers, setExplorers] = useState<ExplorerStats[]>([]);
+  const [hasExplorers, setHasExplorers] = useState(false);
   const [categoryAnalytics, setCategoryAnalytics] = useState<
     CategoryAnalytics[]
   >([]);
@@ -106,23 +91,12 @@ export default function ParentsScreen() {
 
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
-        .select(
-          `
-          id,
-          name,
-          nickname,
-          colour,
-          xp,
-          team,
-          teams(name)
-        `
-        )
+        .select("id")
         .eq("user_id", user!.id);
 
       if (profilesError) throw profilesError;
 
       const categoriesList = await getCategories();
-      const explorerStats: ExplorerStats[] = [];
       let totalActivitiesSum = 0;
       const categoryStatsMap: {
         [categoryId: number]: {
@@ -156,14 +130,7 @@ export default function ParentsScreen() {
         }
 
         const completedActivities = activities ?? [];
-        const completedCount = completedActivities.length;
-        const explorerXp = profile.xp || 0;
-
-        totalActivitiesSum += completedCount;
-
-        const explorerCategoryStats: {
-          [categoryId: number]: { count: number; xp: number };
-        } = {};
+        totalActivitiesSum += completedActivities.length;
 
         completedActivities.forEach((activity) => {
           const activityData = Array.isArray(activity.activities)
@@ -181,26 +148,7 @@ export default function ParentsScreen() {
             categoryStatsMap[categoryId].count += 1;
             categoryStatsMap[categoryId].xp += activityXp;
             categoryStatsMap[categoryId].explorers.add(profile.id);
-            if (!explorerCategoryStats[categoryId]) {
-              explorerCategoryStats[categoryId] = { count: 0, xp: 0 };
-            }
-            explorerCategoryStats[categoryId].count += 1;
-            explorerCategoryStats[categoryId].xp += activityXp;
           });
-        });
-
-        const recentFive = (activities || []).slice(0, 5);
-        explorerStats.push({
-          id: profile.id,
-          name: profile.name,
-          nickname: profile.nickname || profile.name,
-          colour: profile.colour,
-          xp: explorerXp,
-          team: (profile.teams as any)?.name || "No Team",
-          totalActivities: activities?.length || 0,
-          completedActivities: completedCount,
-          recentActivities: recentFive,
-          categoryStats: explorerCategoryStats,
         });
       }
 
@@ -221,7 +169,7 @@ export default function ParentsScreen() {
         0
       );
 
-      setExplorers(explorerStats);
+      setHasExplorers((profiles?.length ?? 0) > 0);
       setCategoryAnalytics(analytics);
       setTotalActivities(totalActivitiesSum);
       setSkillAreasTotal(skillTotal);
@@ -483,7 +431,7 @@ export default function ParentsScreen() {
     );
   }
 
-  if (explorers.length === 0) {
+  if (!hasExplorers) {
     return (
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         <View style={[styles.scrollContent, { flex: 1 }]}>

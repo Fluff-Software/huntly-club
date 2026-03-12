@@ -46,7 +46,8 @@ async function getFeedback(): Promise<FeedbackRow[]> {
     throw new Error(error.message);
   }
 
-  return (data as FeedbackRow[]) ?? [];
+  const rows = (data ?? []) as unknown as FeedbackRow[];
+  return rows;
 }
 
 export const dynamic = "force-dynamic";

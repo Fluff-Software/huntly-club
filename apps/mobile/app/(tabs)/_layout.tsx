@@ -221,9 +221,11 @@ export default function TabLayout() {
   const tabBarHeight = scaleW(72) + bottomInset;
 
   const isTabDisabled = (routeName: string) => {
-    if (tutorialStep === "click_story") return routeName !== "story";
-    if (tutorialStep === "click_missions") return routeName !== "missions";
-    if (tutorialStep === "click_team") return routeName !== "social";
+    const step = tutorialStep as string;
+    if (step === "click_story") return routeName !== "story";
+    if (step === "click_missions") return routeName !== "missions";
+    if (step === "click_team") return routeName !== "social";
+    if (step === "click_testing") return routeName !== "testing";
     return false;
   };
 
@@ -343,19 +345,28 @@ export default function TabLayout() {
               <TabIcon source={HOME_TEAM} color={color} size={scaleW(24)} />
             </View>
           ),
-          href: teamId != null ? undefined : null,
+          // Always show the Team tab; the screen itself already handles
+          // the “no team yet” state.
+          href: undefined,
         }}
       />
       <Tabs.Screen
         name="testing"
         options={{
-          title: "Testing",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons
-              name="chat-bubble-outline"
-              size={size}
-              color={color}
-            />
+          title: "Feedback",
+          tabBarIcon: ({ color }) => (
+            <View style={[styles.storyIconWrapper, { width: scaleW(44), height: scaleW(44) }]}>
+              {(tutorialStep as string) === "click_testing" && (
+                <View style={[styles.tutorialPulseContainer, { width: scaleW(44), height: scaleW(44) }]}>
+                  <StoryTabPulse size={scaleW(44)} />
+                </View>
+              )}
+              <MaterialIcons
+                name="chat-bubble-outline"
+                size={scaleW(24)}
+                color={color}
+              />
+            </View>
           ),
           href: profiles.length > 0 ? undefined : null,
         }}

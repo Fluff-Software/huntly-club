@@ -22,8 +22,6 @@ import { usePlayer } from "@/contexts/PlayerContext";
 import { useUser } from "@/contexts/UserContext";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
-import { Button } from "@/components/ui/Button";
-import { StatCard } from "@/components/StatCard";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import {
   createProfile,
@@ -69,7 +67,6 @@ export default function ProfileScreen() {
   const [editName, setEditName] = useState("");
   const [editNickname, setEditNickname] = useState("");
   const [editColor, setEditColor] = useState<string>("#FF6B35");
-  const [editTeam, setEditTeam] = useState<number | null>(null);
   const [addNickname, setAddNickname] = useState(() => generateNickname());
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAddExplorer, setShowAddExplorer] = useState(false);
@@ -119,16 +116,6 @@ export default function ProfileScreen() {
         isMounted = false;
       };
     }, [refreshProfiles]),
-  );
-
-  useFocusEffect(
-    React.useCallback(() => {
-      const ids = profiles.map((p) => p.id);
-      if (ids.length === 0) return;
-      getXpByProfileIds(ids)
-        .then((byId) => setXpByProfileId(byId))
-        .catch(() => {});
-    }, [profiles]),
   );
 
   useEffect(() => {
@@ -198,7 +185,6 @@ export default function ProfileScreen() {
       setEditName(profile.name);
       setEditNickname(profile.nickname || generateNickname());
       setEditColor(profile.colour);
-      setEditTeam(profile.team);
     }
   }, [editingProfileId, profiles]);
 
@@ -242,7 +228,6 @@ export default function ProfileScreen() {
     setEditName(profile.name);
     setEditNickname(profile.nickname || generateNickname());
     setEditColor(profile.colour);
-    setEditTeam(profile.team);
   };
 
   const handleSaveEdit = async () => {
@@ -250,15 +235,12 @@ export default function ProfileScreen() {
       Alert.alert("Error", "Please fill in all fields");
       return;
     }
-    const profile = profiles.find((p) => p.id === editingProfileId);
-    if (!profile) return;
     setLoading(true);
     try {
-      const updatedProfile = await updateProfile(editingProfileId, {
+      await updateProfile(editingProfileId, {
         name: editName.trim(),
         nickname: editNickname.trim(),
         colour: editColor,
-        team: profile.team,
       });
       await refreshProfiles();
       setEditingProfileId(null);

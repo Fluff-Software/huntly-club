@@ -19,6 +19,7 @@ import Animated, {
 import { useFocusEffect } from "expo-router";
 import { BaseLayout } from "@/components/layout/BaseLayout";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { useTablet } from "@/hooks/useTablet";
 import {
   getTeamInfo,
   getAllTeamsWithXp,
@@ -74,6 +75,7 @@ function mapAchievementsToItems(achievements: { id: number; profile_name: string
 
 export default function SocialScreen() {
   const { scaleW, width } = useLayoutScale();
+  const { isTablet } = useTablet();
   const { teamId } = useUser();
   const [teamAchievements, setTeamAchievements] = useState<Awaited<ReturnType<typeof getTeamAchievements>>>([]);
   const [teamAchievementTotals, setTeamAchievementTotals] = useState<Record<number, number>>({});
@@ -248,10 +250,10 @@ export default function SocialScreen() {
         headerRow: {
           flexDirection: "row",
           alignItems: "flex-end",
-          paddingVertical: scaleW(70),
+          paddingVertical: scaleW(isTablet ? 70 : 40),
         },
         headerBearWrap: {
-          bottom: scaleW(-27),
+          bottom: scaleW(isTablet ? -27 : 0),
           width: scaleW(140),
           alignItems: "center",
           justifyContent: "center",
@@ -424,7 +426,7 @@ export default function SocialScreen() {
           marginBottom: scaleW(8),
         },
       }),
-    [scaleW]
+    [scaleW, isTablet]
   );
 
   if (!teamId) {

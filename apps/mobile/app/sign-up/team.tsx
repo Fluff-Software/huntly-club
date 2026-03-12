@@ -23,7 +23,7 @@ import { useSignUp } from "@/contexts/SignUpContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useUser } from "@/contexts/UserContext";
-import { getTeams, createProfile, updateUserDataTeam } from "@/services/profileService";
+import { getTeams, getProfiles, createProfile, updateUserDataTeam } from "@/services/profileService";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 
 const HUNTLY_GREEN = "#4F6F52";
@@ -104,7 +104,8 @@ export default function SignUpTeamScreen() {
     setCreating(true);
 
     try {
-      if (players.length === 0) {
+      const profiles = await getProfiles(user.id);
+      if (players.length === 0 && profiles.length === 0) {
         Alert.alert("Add explorers", "Please go back and add at least one explorer.");
         return;
       }

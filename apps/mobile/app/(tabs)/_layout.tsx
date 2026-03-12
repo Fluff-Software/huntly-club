@@ -103,7 +103,7 @@ function StoryTabPulse({ size }: { size: number }) {
 export default function TabLayout() {
   const { user } = useAuth();
   const { profiles } = usePlayer();
-  const { teamId } = useUser();
+  const { teamId, loading: userLoading } = useUser();
   const { scaleW } = useLayoutScale();
   const insets = useSafeAreaInsets();
   const signUpContext = useSignUpOptional();
@@ -117,6 +117,12 @@ export default function TabLayout() {
   const [notificationPromptChecking, setNotificationPromptChecking] = useState(true);
   const [hasCompletedTutorial, setHasCompletedTutorial] = useState<boolean | null>(null);
   const hasCheckedNotificationPromptRef = useRef(false);
+
+  // If user has no team set, redirect to team selection
+  useEffect(() => {
+    if (!user?.id || userLoading || teamId != null) return;
+    router.replace("/sign-up/team");
+  }, [user?.id, userLoading, teamId]);
 
   // On clubhouse/tabs load: if user has no tutorial achievement (check first profile), show the tutorial
   const firstProfileId = profiles[0]?.id ?? null;
@@ -233,10 +239,10 @@ export default function TabLayout() {
     setReplayTutorialRequested?.(false);
     setTutorialStep?.("done");
     setShowPostSignUpWelcome?.(false);
-    if (profiles.length > 0) {
+    if (profiles.length > 0 && teamId != null) {
       profiles.forEach((profile) => {
-        if (profile.id != null && profile.team != null) {
-          recordTutorialAchievement(profile.id, profile.team).catch(() => {});
+        if (profile.id != null) {
+          recordTutorialAchievement(profile.id, teamId).catch(() => {});
         }
       });
     }

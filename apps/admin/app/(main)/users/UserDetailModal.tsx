@@ -146,6 +146,7 @@ function DetailsTab({ result }: { result: UserDetailsResult | null }) {
     <dl className="space-y-3 text-sm">
       <Row label="User ID" value={u.id} className="break-all" />
       <Row label="Email" value={u.email ?? "—"} />
+      <Row label="Team" value={result.teamName ?? "—"} />
       <Row label="Created at" value={formatDate(u.created_at)} />
       <Row label="Email confirmed at" value={formatDate(u.email_confirmed_at)} />
       <Row label="Last sign in" value={formatDate(u.last_sign_in_at)} />
@@ -217,7 +218,6 @@ function ProfilesTab({ result }: { result: UserProfilesResult | null }) {
 }
 
 function ProfileCard({ profile }: { profile: ProfileWithTeam }) {
-  const t = profile.teams;
   return (
     <section className="rounded-xl border border-stone-200 bg-stone-50/50 p-4">
       <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-500">
@@ -228,7 +228,6 @@ function ProfileCard({ profile }: { profile: ProfileWithTeam }) {
         <Row label="Nickname" value={profile.nickname ?? "—"} />
         <Row label="Colour" value={profile.colour} />
         <Row label="XP" value={String(profile.total_achievement_xp)} />
-        {t && <Row label="Team" value={t.name} />}
         <Row label="Created at" value={new Date(profile.created_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })} />
       </dl>
     </section>

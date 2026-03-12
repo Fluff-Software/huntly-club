@@ -84,6 +84,7 @@ export type UserDetailsResult = {
     raw_app_meta_data?: Record<string, unknown>;
     raw_user_meta_data?: Record<string, unknown>;
   };
+  teamName?: string | null;
 };
 
 export async function getUserDetails(
@@ -95,6 +96,22 @@ export async function getUserDetails(
     if (error) return { error: error.message };
     const user = data?.user;
     if (!user) return { error: "User not found" };
+
+    let teamName: string | null = null;
+    const { data: userData } = await supabase
+      .from("user_data")
+      .select("team")
+      .eq("user_id", userId)
+      .single();
+    if (userData?.team != null) {
+      const { data: team } = await supabase
+        .from("teams")
+        .select("name")
+        .eq("id", userData.team)
+        .single();
+      teamName = team?.name ?? null;
+    }
+
     return {
       user: {
         id: user.id,
@@ -106,6 +123,7 @@ export async function getUserDetails(
         raw_app_meta_data: user.app_metadata as Record<string, unknown> | undefined,
         raw_user_meta_data: user.user_metadata as Record<string, unknown> | undefined,
       },
+      teamName,
     };
   } catch (e) {
     return {
@@ -120,10 +138,8 @@ export type ProfileWithTeam = {
   created_at: string;
   name: string;
   nickname: string | null;
-  team: number;
   user_id: string;
   total_achievement_xp: number;
-  teams: { id: number; name: string } | null;
 };
 
 export type UserProfilesResult = {
@@ -145,16 +161,14 @@ export async function getUserProfiles(
         created_at,
         name,
         nickname,
-        team,
-        user_id,
-        teams ( id, name )
+        user_id
       `
       )
       .eq("user_id", userId)
       .order("created_at", { ascending: true });
 
     if (error) return { error: error.message };
-    const rows = (profileRows ?? []) as unknown as (Omit<ProfileWithTeam, "total_achievement_xp"> & { teams: unknown })[];
+    const rows = (profileRows ?? []) as unknown as Omit<ProfileWithTeam, "total_achievement_xp">[];
     const profileIds = rows.map((r) => r.id);
 
     const xpByProfile: Record<number, number> = {};
@@ -172,7 +186,6 @@ export async function getUserProfiles(
     const profiles: ProfileWithTeam[] = rows.map((r) => ({
       ...r,
       total_achievement_xp: xpByProfile[r.id] ?? 0,
-      teams: r.teams as ProfileWithTeam["teams"],
     }));
     return { profiles };
   } catch (e) {

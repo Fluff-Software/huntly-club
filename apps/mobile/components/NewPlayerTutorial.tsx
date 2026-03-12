@@ -20,6 +20,7 @@ export type TutorialStep =
   | "missions"
   | "click_team"
   | "team"
+  | "click_testing"
   | "wrap_up"
   | "done";
 
@@ -47,6 +48,8 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
     } else if (tutorialStep === "missions") {
       setTutorialStep?.("click_team");
     } else if (tutorialStep === "team") {
+      setTutorialStep?.("click_testing");
+    } else if (tutorialStep === "click_testing") {
       setTutorialStep?.("wrap_up");
     } else if (tutorialStep === "wrap_up") {
       setTutorialStep?.("done");
@@ -75,12 +78,20 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
     if (inTeamTab) setTutorialStep("team");
   }, [visible, tutorialStep, segments, setTutorialStep]);
 
+  // When on "click_testing" and user navigates to testing tab, advance to wrap_up
+  useEffect(() => {
+    if (!visible || tutorialStep !== "click_testing" || !setTutorialStep) return;
+    const inTestingTab = segments[0] === "(tabs)" && segments[1] === "testing";
+    if (inTestingTab) setTutorialStep("wrap_up");
+  }, [visible, tutorialStep, segments, setTutorialStep]);
+
   if (!visible || tutorialStep === "done") return null;
 
   const isTabBarVisibleStep =
     tutorialStep === "click_story" ||
     tutorialStep === "click_missions" ||
-    tutorialStep === "click_team";
+    tutorialStep === "click_team" ||
+    tutorialStep === "click_testing";
 
   // Rendered as absolute overlay (not Modal) so the tab bar stays in the same
   // view hierarchy and remains tappable when overlay has bottom: tabBarHeight.
@@ -280,7 +291,7 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
                   What to do next
                 </ThemedText>
                 <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(24), marginBottom: scaleW(24) }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
-                  Go to Story and read the latest. Then complete missions in the latest chapter. If you spot anything or have ideas, tap the Testing tab to share feedback. Have fun!
+                  Go to Story and read the latest. Then complete missions in the latest chapter. Have fun!
                 </ThemedText>
                 <Pressable
                   onPress={handleNext}
@@ -345,6 +356,19 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
               </ThemedText>
               <ThemedText style={{ fontSize: scaleW(14), lineHeight: scaleW(20), textAlign: "center" }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
                 to see how you're doing.
+              </ThemedText>
+            </View>
+          </View>
+        )}
+
+        {tutorialStep === "click_testing" && (
+          <View style={[styles.tapTabStepContainer, { bottom: scaleW(24) }]}>
+            <View style={[styles.card, styles.tapTabCard, { padding: scaleW(20), borderRadius: scaleW(16), maxWidth: scaleW(320) }]}>
+              <ThemedText type="subtitle" style={{ fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(4), textAlign: "center" }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
+                Tap Feedback below
+              </ThemedText>
+              <ThemedText style={{ fontSize: scaleW(14), lineHeight: scaleW(20), textAlign: "center" }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
+                to share your thoughts during beta.
               </ThemedText>
             </View>
           </View>

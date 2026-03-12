@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { getUserData } from "./profileService";
 
 export interface Badge {
   id: number;
@@ -160,16 +161,19 @@ export const checkAndAwardBadges = async (
   teamXpGained: number = 0
 ): Promise<Badge[]> => {
   try {
-    // Get current user stats
+    // Get current user stats (team from user_data)
     const { data: profile } = await supabase
       .from("profiles")
-      .select("xp, team, team_contribution")
+      .select("xp, user_id, team_contribution")
       .eq("id", profileId)
       .single();
 
     if (!profile) {
       throw new Error("Profile not found");
     }
+
+    const userData = await getUserData(profile.user_id);
+    const teamId = userData?.team ?? null;
 
     // Get profile's existing badges
     const existingBadges = await getUserBadges(userId, profileId);
@@ -195,15 +199,17 @@ export const checkAndAwardBadges = async (
           break;
 
         case "team_xp":
-          // Get team XP
-          const { data: team } = await supabase
-            .from("teams")
-            .select("team_xp")
-            .eq("id", profile.team)
-            .single();
+          // Get team XP (team from user_data)
+          if (teamId != null) {
+            const { data: team } = await supabase
+              .from("teams")
+              .select("team_xp")
+              .eq("id", teamId)
+              .single();
 
-          if (team && team.team_xp >= badge.requirement_value) {
-            shouldAward = true;
+            if (team && team.team_xp >= badge.requirement_value) {
+              shouldAward = true;
+            }
           }
           break;
 
@@ -314,13 +320,16 @@ export const getBadgeProgress = async (
   try {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("xp, team")
+      .select("xp, user_id")
       .eq("id", profileId)
       .single();
 
     if (!profile) {
       return {};
     }
+
+    const userData = await getUserData(profile.user_id);
+    const teamId = userData?.team ?? null;
 
     const allBadges = await getBadges();
     const progress: Record<number, number> = {};
@@ -334,12 +343,14 @@ export const getBadgeProgress = async (
           break;
 
         case "team_xp":
-          const { data: team } = await supabase
-            .from("teams")
-            .select("team_xp")
-            .eq("id", profile.team)
-            .single();
-          currentValue = team?.team_xp || 0;
+          if (teamId != null) {
+            const { data: team } = await supabase
+              .from("teams")
+              .select("team_xp")
+              .eq("id", teamId)
+              .single();
+            currentValue = team?.team_xp || 0;
+          }
           break;
 
         case "activities_completed":

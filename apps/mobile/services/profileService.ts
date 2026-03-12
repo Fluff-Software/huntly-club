@@ -45,7 +45,7 @@ export const getProfiles = async (userId: string): Promise<Profile[]> => {
 };
 
 export const createProfile = async (
-  profile: Omit<ProfileInsert, "id" | "xp">
+  profile: Omit<ProfileInsert, "id" | "xp" | "team">
 ): Promise<Profile> => {
   const profileData = {
     ...profile,

@@ -30,6 +30,7 @@ import * as ImagePicker from "expo-image-picker";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { useUser } from "@/contexts/UserContext";
 import { getActivityById } from "@/services/packService";
 import {
   ensureProgressRows,
@@ -121,6 +122,7 @@ export default function CompletionScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { scaleW } = useLayoutScale();
   const { profiles } = usePlayer();
+  const { teamId } = useUser();
   const [activity, setActivity] = useState<Activity | null>(null);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<number[]>([]);
   const [playerPhotos, setPlayerPhotos] = useState<Record<number, string[]>>({});
@@ -320,15 +322,12 @@ export default function CompletionScreen() {
       if (insertedProgress.length > 0) {
         const activityXp = activity.xp ?? 0;
         await insertUserAchievementsForMission(
-          insertedProgress.map((row) => {
-            const profile = profiles.find((p) => p.id === row.profile_id);
-            return {
-              profile_id: row.profile_id,
-              team_id: profile?.team ?? 0,
-              source_id: row.id,
-              xp: activityXp,
-            };
-          })
+          insertedProgress.map((row) => ({
+            profile_id: row.profile_id,
+            team_id: teamId ?? 0,
+            source_id: row.id,
+            xp: activityXp,
+          }))
         );
       }
 

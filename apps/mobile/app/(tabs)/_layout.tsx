@@ -231,10 +231,10 @@ export default function TabLayout() {
     setReplayTutorialRequested?.(false);
     setTutorialStep?.("done");
     setShowPostSignUpWelcome?.(false);
-    if (profiles.length > 0) {
+    if (profiles.length > 0 && teamId != null) {
       profiles.forEach((profile) => {
-        if (profile.id != null && profile.team != null) {
-          recordTutorialAchievement(profile.id, profile.team).catch(() => {});
+        if (profile.id != null) {
+          recordTutorialAchievement(profile.id, teamId).catch(() => {});
         }
       });
     }

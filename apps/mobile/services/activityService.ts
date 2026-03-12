@@ -1,6 +1,7 @@
 import { supabase } from "./supabase";
 import { Activity } from "@/types/activity";
 import { checkAndAwardBadges } from "./badgeService";
+import { getUserData } from "./profileService";
 
 export const completeActivity = async (
   activityId: number,
@@ -23,16 +24,19 @@ export const completeActivity = async (
       throw new Error("Activity not found");
     }
 
-    // Get the profile to know which team they belong to
+    // Get the profile (and resolve team from user_data)
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("xp, team, user_id, team_contribution")
+      .select("xp, user_id, team_contribution")
       .eq("id", profileId)
       .single();
 
     if (profileError || !profile) {
       throw new Error("Profile not found");
     }
+
+    const userData = await getUserData(profile.user_id);
+    const teamId = userData?.team ?? null;
 
     const newXp = (profile.xp || 0) + activity.xp;
     const teamXpGained = Math.floor(activity.xp * 0.5); // Team gets 50% of individual XP
@@ -51,15 +55,17 @@ export const completeActivity = async (
       throw new Error("Failed to update profile XP");
     }
 
-    // Add XP to the team
-    const { error: teamXpError } = await supabase.rpc("add_team_xp", {
-      team_id: profile.team,
-      xp_amount: teamXpGained,
-    });
+    // Add XP to the team (user's team from user_data)
+    if (teamId != null) {
+      const { error: teamXpError } = await supabase.rpc("add_team_xp", {
+        team_id: teamId,
+        xp_amount: teamXpGained,
+      });
 
-    if (teamXpError) {
-      console.error("Failed to update team XP:", teamXpError);
-      // Don't fail the entire operation if team XP update fails
+      if (teamXpError) {
+        console.error("Failed to update team XP:", teamXpError);
+        // Don't fail the entire operation if team XP update fails
+      }
     }
 
     // Check for new badges

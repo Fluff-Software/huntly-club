@@ -42,6 +42,30 @@ export const getTeamActivityLogs = async (
   teamId: number,
   limit: number = 20
 ): Promise<TeamActivityLogEntry[]> => {
+  // Get user_ids whose user_data.team = teamId
+  const { data: userDataRows, error: userDataError } = await supabase
+    .from("user_data")
+    .select("user_id")
+    .eq("team", teamId);
+
+  if (userDataError || !userDataRows?.length) {
+    return [];
+  }
+
+  const userIds = userDataRows.map((r) => r.user_id);
+
+  // Get profile IDs for those users
+  const { data: profiles, error: profilesError } = await supabase
+    .from("profiles")
+    .select("id")
+    .in("user_id", userIds);
+
+  if (profilesError || !profiles?.length) {
+    return [];
+  }
+
+  const profileIds = profiles.map((p) => p.id);
+
   const { data, error } = await supabase
     .from("user_activity_progress")
     .select(
@@ -55,8 +79,7 @@ export const getTeamActivityLogs = async (
         id,
         name,
         nickname,
-        colour,
-        team
+        colour
       ),
       activity:activities!inner(
         id,
@@ -67,7 +90,7 @@ export const getTeamActivityLogs = async (
       )
     `
     )
-    .eq("profile.team", teamId)
+    .in("profile_id", profileIds)
     .not("completed_at", "is", null)
     .order("completed_at", { ascending: false, nullsFirst: false })
     .limit(limit);
@@ -77,7 +100,19 @@ export const getTeamActivityLogs = async (
     throw new Error(`Failed to fetch team activity logs: ${error.message}`);
   }
 
-  return (data ?? []).map((row) => ({ ...row, status: "completed" as const }));
+  // Add team to profile for response shape (we filtered by user_data.team = teamId)
+  return (data ?? []).map((row: any) => {
+    const profile = row.profile
+      ? { ...row.profile, team: teamId }
+      : { id: 0, name: "", nickname: null, colour: "", team: teamId };
+    const activity = Array.isArray(row.activity) ? row.activity[0] : row.activity;
+    return {
+      ...row,
+      profile,
+      activity,
+      status: "completed" as const,
+    } as TeamActivityLogEntry;
+  });
 };
 
 export const getTeamActivityLogsByStatus = async (

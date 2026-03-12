@@ -189,7 +189,7 @@ export default function ProfileScreen() {
   }, [editingProfileId, profiles]);
 
   const handleCreateProfile = async () => {
-    if (!name.trim() || !selectedTeam) {
+    if (!name.trim()) {
       Alert.alert("Error", "Please fill in all fields");
       return;
     }
@@ -203,7 +203,6 @@ export default function ProfileScreen() {
         user_id: user.id,
         name: name.trim(),
         colour: selectedColor,
-        team: selectedTeam,
       });
       await refreshProfiles();
       setName("");
@@ -288,11 +287,6 @@ export default function ProfileScreen() {
       Alert.alert("Error", "Please fill in name");
       return;
     }
-    const defaultTeam = teamId ?? teams[0]?.id;
-    if (defaultTeam == null) {
-      Alert.alert("Error", "No team available. Please try again later.");
-      return;
-    }
     setLoading(true);
     try {
       await createProfile({
@@ -300,7 +294,6 @@ export default function ProfileScreen() {
         name: name.trim(),
         nickname: addNickname.trim() || generateNickname(),
         colour: selectedColor,
-        team: defaultTeam,
       });
       await refreshProfiles();
       setName("");

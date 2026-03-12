@@ -125,7 +125,6 @@ export default function SignUpTeamScreen() {
           user_id: user.id,
           name: player.name,
           colour: player.colour,
-          team: teamId,
           nickname: player.nickname,
         });
       }

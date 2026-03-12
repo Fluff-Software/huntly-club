@@ -41,7 +41,6 @@ import {
   type RecentCompletedActivity,
 } from "@/services/activityProgressService";
 import { getXpByProfileIds } from "@/services/teamActivityService";
-import { useUserStats } from "@/hooks/useUserStats";
 import { MaterialIcons } from "@expo/vector-icons";
 
 // Design colors from reference
@@ -84,7 +83,6 @@ export default function ProfileScreen() {
   const { teamId } = useUser();
   const { currentPlayer, profiles, setCurrentPlayer, refreshProfiles } =
     usePlayer();
-  const { daysPlayed, pointsEarned } = useUserStats();
   const router = useRouter();
   const { scaleW } = useLayoutScale();
 

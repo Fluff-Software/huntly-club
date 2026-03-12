@@ -19,11 +19,11 @@ import { ThemedText } from "@/components/ThemedText";
 import { StatCard } from "@/components/StatCard";
 import { ParentPinModal } from "@/components/ParentPinModal";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUser } from "@/contexts/UserContext";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useParentResources } from "@/hooks/useParentResources";
 import { supabase } from "@/services/supabase";
-import { getTotalXpForProfileIds } from "@/services/teamActivityService";
 import { getCategories } from "@/services/categoriesService";
 import { MaterialIcons } from "@expo/vector-icons";
 
@@ -62,6 +62,7 @@ interface CategoryAnalytics {
 
 export default function ParentsScreen() {
   const { user } = useAuth();
+  const { daysPlayed, pointsEarned } = useUser();
   const router = useRouter();
   const { scaleW } = useLayoutScale();
   const [explorers, setExplorers] = useState<ExplorerStats[]>([]);
@@ -69,7 +70,6 @@ export default function ParentsScreen() {
     CategoryAnalytics[]
   >([]);
   const [loading, setLoading] = useState(true);
-  const [totalXp, setTotalXp] = useState(0);
   const [totalActivities, setTotalActivities] = useState(0);
   const [skillAreasTotal, setSkillAreasTotal] = useState(0);
   const [showAllProgress, setShowAllProgress] = useState(false);
@@ -225,8 +225,6 @@ export default function ParentsScreen() {
       setCategoryAnalytics(analytics);
       setTotalActivities(totalActivitiesSum);
       setSkillAreasTotal(skillTotal);
-      const profileIds = (profiles || []).map((p: { id: number }) => p.id);
-      getTotalXpForProfileIds(profileIds).then(setTotalXp).catch(() => setTotalXp(0));
     } catch (error) {
       console.error("Error fetching explorers data:", error);
     } finally {
@@ -503,21 +501,11 @@ export default function ParentsScreen() {
     );
   }
 
-  const daysPlayed = user?.created_at != null
-    ? Math.max(
-        0,
-        Math.floor(
-          (Date.now() - new Date(user.created_at).getTime()) /
-            (24 * 60 * 60 * 1000)
-        )
-      )
-    : 0;
-
   const summaryStats: { value: number; label: string; color: "pink" | "green" | "purple" | "cream" }[] = [
     { value: totalActivities, label: "Activities completed", color: "purple" },
     { value: skillAreasTotal, label: "Skill areas", color: "cream" },
     { value: daysPlayed, label: "Days since started", color: "pink" },
-    { value: totalXp, label: "Points earned", color: "green" },
+    { value: pointsEarned, label: "Points earned", color: "green" },
   ];
 
   return (

@@ -9,9 +9,11 @@ import React, {
 import { useAuth } from "./AuthContext";
 import {
   getTeamById,
+  getProfiles,
   getUserData,
   Team,
 } from "@/services/profileService";
+import { getTotalXpForProfileIds } from "@/services/teamActivityService";
 
 type UserData = {
   user_id: string;
@@ -23,6 +25,10 @@ type UserContextType = {
   team: Team | null;
   teamId: number | null;
   loading: boolean;
+  /** Days since auth user account was created (matches parents summary). */
+  daysPlayed: number;
+  /** Total XP across all of the user's profiles (matches parents summary). */
+  pointsEarned: number;
   refreshUserData: () => Promise<void>;
 };
 
@@ -35,6 +41,18 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   const [userData, setUserData] = useState<UserData | null>(null);
   const [team, setTeam] = useState<Team | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [pointsEarned, setPointsEarned] = useState<number>(0);
+
+  const daysPlayed =
+    user?.created_at != null
+      ? Math.max(
+          0,
+          Math.floor(
+            (Date.now() - new Date(user.created_at).getTime()) /
+              (24 * 60 * 60 * 1000)
+          )
+        )
+      : 0;
 
   const loadUserAndTeam = useCallback(
     async (userId: string | null) => {
@@ -76,9 +94,29 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     void loadUserAndTeam(user?.id ?? null);
   }, [user?.id, loadUserAndTeam]);
 
+  const loadPointsEarned = useCallback(async (userId: string) => {
+    try {
+      const profiles = await getProfiles(userId);
+      const profileIds = profiles.map((p) => p.id);
+      const total = await getTotalXpForProfileIds(profileIds);
+      setPointsEarned(total);
+    } catch {
+      setPointsEarned(0);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setPointsEarned(0);
+      return;
+    }
+    void loadPointsEarned(user.id);
+  }, [user?.id, loadPointsEarned]);
+
   const refreshUserData = useCallback(async () => {
     await loadUserAndTeam(user?.id ?? null);
-  }, [loadUserAndTeam, user?.id]);
+    if (user?.id) void loadPointsEarned(user.id);
+  }, [loadUserAndTeam, user?.id, loadPointsEarned]);
 
   const value = useMemo<UserContextType>(
     () => ({
@@ -86,9 +124,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       team,
       teamId: userData?.team ?? team?.id ?? null,
       loading,
+      daysPlayed,
+      pointsEarned,
       refreshUserData,
     }),
-    [userData, team, loading, refreshUserData]
+    [userData, team, loading, daysPlayed, pointsEarned, refreshUserData]
   );
 
   return (

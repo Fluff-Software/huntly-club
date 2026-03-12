@@ -27,7 +27,6 @@ import { MissionCard } from "@/components/MissionCard";
 import { StatCard } from "@/components/StatCard";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useCurrentChapterActivities } from "@/hooks/useCurrentChapterActivities";
-import { useUserStats } from "@/hooks/useUserStats";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useUser } from "@/contexts/UserContext";
 import { getRandomClubPhotos, type ClubPhotoCardItem } from "@/services/activityProgressService";
@@ -64,8 +63,7 @@ const TEAM_CARD_MESSAGES = [
 export default function HomeScreen() {
   const { scaleW, width, height } = useLayoutScale();
   const { currentPlayer } = usePlayer();
-  const { team, loading: userLoading } = useUser();
-  const { daysPlayed, pointsEarned } = useUserStats();
+  const { team, daysPlayed, pointsEarned } = useUser();
   const { nextMission, loading: missionLoading, refetch: refetchMissions } = useCurrentChapterActivities(currentPlayer?.id ?? null);
   const [clubCards, setClubCards] = useState<ClubPhotoCardItem[]>([]);
   const [clubCardsLoading, setClubCardsLoading] = useState(true);

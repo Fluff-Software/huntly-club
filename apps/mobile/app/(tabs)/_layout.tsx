@@ -273,9 +273,12 @@ export default function TabLayout() {
           marginTop: 0,
         },
         headerShown: false,
-        tabBarButton: (props) => (
-          <Pressable {...props} disabled={isTabDisabled(route.name)} />
-        ),
+        tabBarButton: (props) => {
+          const { ref: _ref, ...rest } = props;
+          return (
+            <Pressable {...rest} disabled={isTabDisabled(route.name)} />
+          );
+        },
       })}
     >
       <Tabs.Screen

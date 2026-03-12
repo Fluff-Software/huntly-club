@@ -36,6 +36,7 @@ import {
   insertUserActivityPhotos,
   insertUserAchievementsForMission,
 } from "@/services/activityProgressService";
+import { compressImageAsync } from "@/utils/imageCompression";
 import { uploadUserActivityPhoto } from "@/services/storageService";
 import type { Activity } from "@/types/activity";
 
@@ -338,8 +339,17 @@ export default function CompletionScreen() {
         for (let i = 0; i < uris.length; i++) {
           const photoUri = uris[i];
           const tempFileName = `mission_${activity.id}_${profileId}_${Date.now()}_${i}.jpg`;
+          let uploadUri = photoUri;
+          try {
+            const compressed = await compressImageAsync(photoUri);
+            if (compressed?.uri) {
+              uploadUri = compressed.uri;
+            }
+          } catch {
+            // If compression fails for any reason, fall back to original URI.
+          }
           const fileObject = {
-            uri: photoUri,
+            uri: uploadUri,
             type: "image/jpeg",
             name: tempFileName,
           };

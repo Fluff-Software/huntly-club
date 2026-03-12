@@ -61,7 +61,7 @@ export default async function FeedbackPage() {
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold text-stone-900">Feedback</h1>
           <p className="mt-1 text-sm text-stone-500">
-            Feedback sent from the Testing tab in the Huntly World mobile app.
+            Feedback sent from the Feedback tab in the Huntly World mobile app.
           </p>
         </div>
       </div>

@@ -215,7 +215,6 @@ export type Database = {
           id: number
           name: string
           nickname: string | null
-          team: number
           user_id: string
           xp: number
         }
@@ -225,7 +224,6 @@ export type Database = {
           id?: number
           name: string
           nickname?: string | null
-          team: number
           user_id: string
           xp?: number
         }
@@ -235,19 +233,10 @@ export type Database = {
           id?: number
           name?: string
           nickname?: string | null
-          team?: number
           user_id?: string
           xp?: number
         }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_team_fkey"
-            columns: ["team"]
-            isOneToOne: false
-            referencedRelation: "teams"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       teams: {
         Row: {

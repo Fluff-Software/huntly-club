@@ -100,7 +100,7 @@ function StoryTabPulse({ size }: { size: number }) {
 
 export default function TabLayout() {
   const { user } = useAuth();
-  const { currentPlayer, profiles } = usePlayer();
+  const { profiles } = usePlayer();
   const { teamId } = useUser();
   const { scaleW } = useLayoutScale();
   const insets = useSafeAreaInsets();
@@ -116,11 +116,12 @@ export default function TabLayout() {
   const [hasCompletedTutorial, setHasCompletedTutorial] = useState<boolean | null>(null);
   const hasCheckedNotificationPromptRef = useRef(false);
 
-  // On clubhouse/tabs load: if user has no tutorial achievement, show the tutorial
+  // On clubhouse/tabs load: if user has no tutorial achievement (check first profile), show the tutorial
+  const firstProfileId = profiles[0]?.id ?? null;
   useEffect(() => {
-    if (!currentPlayer?.id) return;
+    if (firstProfileId == null) return;
     let cancelled = false;
-    getHasCompletedTutorial(currentPlayer.id).then((completed) => {
+    getHasCompletedTutorial(firstProfileId).then((completed) => {
       if (cancelled) return;
       setHasCompletedTutorial(completed);
       if (completed) {
@@ -133,11 +134,11 @@ export default function TabLayout() {
     return () => {
       cancelled = true;
     };
-  }, [currentPlayer?.id, setShowPostSignUpWelcome, setTutorialStep]);
+  }, [firstProfileId, setShowPostSignUpWelcome, setTutorialStep]);
 
   // When showPostSignUpWelcome was set (e.g. "Show tutorial again"): re-check and hide if they already have achievement (unless replay requested)
   useEffect(() => {
-    if (!showPostSignUpWelcome || !currentPlayer?.id) {
+    if (!showPostSignUpWelcome || firstProfileId == null) {
       if (!showPostSignUpWelcome) setHasCompletedTutorial(null);
       return;
     }
@@ -146,7 +147,7 @@ export default function TabLayout() {
       return;
     }
     let cancelled = false;
-    getHasCompletedTutorial(currentPlayer.id).then((completed) => {
+    getHasCompletedTutorial(firstProfileId).then((completed) => {
       if (cancelled) return;
       setHasCompletedTutorial(completed);
       if (completed) setShowPostSignUpWelcome?.(false);
@@ -154,7 +155,7 @@ export default function TabLayout() {
     return () => {
       cancelled = true;
     };
-  }, [showPostSignUpWelcome, currentPlayer?.id, replayTutorialRequested, setShowPostSignUpWelcome]);
+  }, [showPostSignUpWelcome, firstProfileId, replayTutorialRequested, setShowPostSignUpWelcome]);
 
   // Only consider showing the notification prompt when the tutorial is not visible.
   // After the tutorial is dismissed we wait a short moment so the user lands on the clubhouse first, then show the prompt.
@@ -288,7 +289,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <TabIcon source={HOME_CLUBHOUSE} color={color} size={scaleW(24)} />
           ),
-          href: currentPlayer ? undefined : null,
+          href: profiles.length > 0 ? undefined : null,
         }}
       />
       <Tabs.Screen
@@ -305,7 +306,7 @@ export default function TabLayout() {
               <TabIcon source={HOME_STORY} color={color} size={scaleW(24)} />
             </View>
           ),
-          href: currentPlayer ? undefined : null,
+          href: profiles.length > 0 ? undefined : null,
           popToTopOnBlur: true,
         }}
       />
@@ -323,7 +324,7 @@ export default function TabLayout() {
               <TabIcon source={HOME_MISSIONS} color={color} size={scaleW(24)} />
             </View>
           ),
-          href: currentPlayer ? undefined : null,
+          href: profiles.length > 0 ? undefined : null,
         }}
       />
       <Tabs.Screen

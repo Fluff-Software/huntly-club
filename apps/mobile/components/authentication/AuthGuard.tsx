@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useRouter, useSegments } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
-import { usePlayer } from "@/contexts/PlayerContext";
 import { usePurchases } from "@/contexts/PurchasesContext";
 import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { ThemedView } from "@/components/ThemedView";
@@ -15,7 +14,6 @@ type AuthGuardProps = {
 
 export function AuthGuard({ children }: AuthGuardProps) {
   const { user, session, loading } = useAuth();
-  const { currentPlayer } = usePlayer();
   const { subscriptionInfo, isLoading: purchasesLoading } = usePurchases();
   const segments = useSegments();
   const router = useRouter();
@@ -30,7 +28,6 @@ export function AuthGuard({ children }: AuthGuardProps) {
     const inSignUp = segments[0] === "sign-up";
     const inPrivacy = segments[0] === "privacy";
     const inUnauthFlow = inAuthGroup || inGetStarted || inSignUp || inPrivacy;
-    const inTabsGroup = segments[0] === "(tabs)";
 
     if (!user && !inUnauthFlow) {
       router.replace("/auth");
@@ -74,29 +71,6 @@ export function AuthGuard({ children }: AuthGuardProps) {
       return;
     }
 
-    if (
-      user &&
-      inTabsGroup &&
-      !currentPlayer &&
-      segments[1] !== "profile" &&
-      segments[1] !== "parents"
-    ) {
-      setCheckingProfiles(true);
-      getProfiles(user.id)
-        .then((profiles) => {
-          if (profiles.length === 0) {
-            router.replace("/sign-up/players");
-          } else {
-            // Stay on current tab (e.g. dashboard); PlayerContext will auto-select first profile
-          }
-        })
-        .catch((error) => {
-          console.error("Error checking profiles:", error);
-          router.replace("/(tabs)");
-        })
-        .finally(() => setCheckingProfiles(false));
-    }
-
     // Require active subscription for signed-in users to access the app
     const inSubscriptionRequired = segments[0] === "subscription-required";
     if (
@@ -109,7 +83,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
       router.replace("/subscription-required");
       return;
     }
-  }, [user, session, loading, segments, checkingProfiles, currentPlayer, subscriptionInfo.isSubscribed, purchasesLoading]);
+  }, [user, session, loading, segments, checkingProfiles, subscriptionInfo.isSubscribed, purchasesLoading]);
 
   const showOverlay = loading || checkingProfiles;
 

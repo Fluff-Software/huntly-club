@@ -5,7 +5,6 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { BaseLayout } from "@/components/layout/BaseLayout";
 import { CategoryTags } from "@/components/CategoryTags";
-import { usePlayer } from "@/contexts/PlayerContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/services/supabase";
 import { getCategories, getCategoryById } from "@/services/categoriesService";
@@ -38,7 +37,6 @@ interface CategoryAnalytics {
 }
 
 export default function ParentsScreen() {
-  const { currentPlayer } = usePlayer();
   const { user } = useAuth();
   const [explorers, setExplorers] = useState<ExplorerStats[]>([]);
   const [categoryAnalytics, setCategoryAnalytics] = useState<

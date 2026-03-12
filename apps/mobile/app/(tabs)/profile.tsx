@@ -75,14 +75,14 @@ export default function ProfileScreen() {
   const [showAddExplorer, setShowAddExplorer] = useState(false);
   const [profileToDelete, setProfileToDelete] = useState<Profile | null>(null);
   const [deleting, setDeleting] = useState(false);
+  type RecentActivityWithProfile = RecentCompletedActivity & { profileName: string };
   const [recentActivities, setRecentActivities] = useState<
-    RecentCompletedActivity[]
+    RecentActivityWithProfile[]
   >([]);
   const [xpByProfileId, setXpByProfileId] = useState<Record<number, number>>({});
   const { user, signOut } = useAuth();
   const { teamId } = useUser();
-  const { currentPlayer, profiles, setCurrentPlayer, refreshProfiles } =
-    usePlayer();
+  const { profiles, refreshProfiles } = usePlayer();
   const router = useRouter();
   const { scaleW } = useLayoutScale();
 
@@ -152,14 +152,31 @@ export default function ProfileScreen() {
   }, []);
 
   useEffect(() => {
-    if (currentPlayer && user) {
-      getRecentCompletedActivities(currentPlayer.id)
-        .then(setRecentActivities)
-        .catch(() => setRecentActivities([]));
-    } else {
+    if (!user || profiles.length === 0) {
       setRecentActivities([]);
+      return;
     }
-  }, [currentPlayer?.id, user?.id]);
+    const limitPerProfile = 8;
+    Promise.all(
+      profiles.map((p) => getRecentCompletedActivities(p.id, limitPerProfile))
+    )
+      .then((results) => {
+        const withProfile: RecentActivityWithProfile[] = results.flatMap(
+          (activities, i) =>
+            activities.map((a) => ({
+              ...a,
+              profileName: profiles[i].name,
+            }))
+        );
+        const sorted = withProfile.sort(
+          (a, b) =>
+            new Date(b.completed_at ?? 0).getTime() -
+            new Date(a.completed_at ?? 0).getTime()
+        );
+        setRecentActivities(sorted.slice(0, 5));
+      })
+      .catch(() => setRecentActivities([]));
+  }, [profiles, user?.id]);
 
   useEffect(() => {
     const ids = profiles.map((p) => p.id);
@@ -243,8 +260,6 @@ export default function ProfileScreen() {
         colour: editColor,
         team: profile.team,
       });
-      if (currentPlayer?.id === editingProfileId)
-        setCurrentPlayer(updatedProfile);
       await refreshProfiles();
       setEditingProfileId(null);
       Alert.alert("Success", "Explorer updated successfully!");
@@ -266,10 +281,6 @@ export default function ProfileScreen() {
     setDeleting(true);
     try {
       await deleteProfileService(profileToDelete.id);
-      if (currentPlayer?.id === profileToDelete.id) {
-        const remaining = profiles.filter((p) => p.id !== profileToDelete.id);
-        setCurrentPlayer(remaining[0] ?? null);
-      }
       await refreshProfiles();
       setProfileToDelete(null);
       if (editingProfileId === profileToDelete.id) {
@@ -412,9 +423,6 @@ export default function ProfileScreen() {
           minHeight: scaleW(64),
           borderWidth: 3,
           borderColor: "#FFF",
-        },
-        playerCardSelected: {
-          borderColor: "#333",
         },
         playerAccent: {
           width: scaleW(20),
@@ -773,13 +781,7 @@ export default function ProfileScreen() {
                 key={profile.id}
                 entering={FadeInDown.duration(400).delay(80 + index * 60)}
               >
-                <View
-                  style={[
-                    styles.playerCard,
-                    currentPlayer?.id === profile.id &&
-                      styles.playerCardSelected,
-                  ]}
-                >
+                <View style={styles.playerCard}>
                   <View
                     style={[
                       styles.playerAccent,
@@ -1154,7 +1156,7 @@ export default function ProfileScreen() {
                     {act.activity?.title ?? "Activity"}
                   </ThemedText>
                   <ThemedText style={styles.activityDate}>
-                    {formatActivityDate(act.completed_at)}
+                    {act.profileName} · {formatActivityDate(act.completed_at)}
                   </ThemedText>
                 </View>
                 <MaterialIcons

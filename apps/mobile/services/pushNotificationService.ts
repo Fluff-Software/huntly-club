@@ -97,7 +97,8 @@ export async function setPushEnabled(
 }
 
 /**
- * Returns true if a row exists for this device and enabled is true; otherwise false.
+ * Returns true only if (1) a row exists for this device with enabled true, and (2) device notification permission is granted.
+ * So the toggle shows unchecked when the user disabled notifications in device settings.
  */
 export async function getPushEnabled(): Promise<boolean> {
   const deviceId = await getDeviceId();
@@ -106,8 +107,10 @@ export async function getPushEnabled(): Promise<boolean> {
   const { data, error } = await supabase.rpc("get_push_enabled", {
     p_device_id: deviceId,
   });
-  if (error) return false;
-  return data === true;
+  if (error || data !== true) return false;
+
+  const { status } = await Notifications.getPermissionsAsync();
+  return status === "granted";
 }
 
 export async function hasAskedPushOptIn(userId: string): Promise<boolean> {

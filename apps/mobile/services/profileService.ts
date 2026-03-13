@@ -87,11 +87,11 @@ export const getTeams = async (): Promise<Team[]> => {
   return data || [];
 };
 
-/** Get user_data for the given user (includes team, which may be null). */
-export const getUserData = async (userId: string): Promise<{ user_id: string; team: number | null } | null> => {
+/** Get user_data for the given user (includes team, weekly_email; team may be null). */
+export const getUserData = async (userId: string): Promise<{ user_id: string; team: number | null; weekly_email: boolean } | null> => {
   const { data, error } = await supabase
     .from("user_data")
-    .select("user_id, team")
+    .select("user_id, team, weekly_email")
     .eq("user_id", userId)
     .single();
 
@@ -113,6 +113,19 @@ export const updateUserDataTeam = async (userId: string, teamId: number): Promis
   if (error) {
     console.error("Error updating user_data team:", error);
     throw new Error(`Failed to update user data: ${error.message}`);
+  }
+};
+
+/** Update the authenticated user's weekly_email preference in user_data. */
+export const updateUserDataWeeklyEmail = async (userId: string, weeklyEmail: boolean): Promise<void> => {
+  const { error } = await supabase
+    .from("user_data")
+    .update({ weekly_email: weeklyEmail })
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("Error updating user_data weekly_email:", error);
+    throw new Error(`Failed to update weekly email preference: ${error.message}`);
   }
 };
 

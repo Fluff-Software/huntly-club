@@ -11,6 +11,7 @@ import {
   getTeamById,
   getProfiles,
   getUserData,
+  updateUserDataWeeklyEmail,
   Team,
 } from "@/services/profileService";
 import { getTotalXpForProfileIds } from "@/services/teamActivityService";
@@ -18,6 +19,7 @@ import { getTotalXpForProfileIds } from "@/services/teamActivityService";
 type UserData = {
   user_id: string;
   team: number | null;
+  weekly_email: boolean;
 };
 
 type UserContextType = {
@@ -30,6 +32,8 @@ type UserContextType = {
   /** Total XP across all of the user's profiles (matches parents summary). */
   pointsEarned: number;
   refreshUserData: () => Promise<void>;
+  /** Update weekly email preference and refresh user data. */
+  updateWeeklyEmail: (enabled: boolean) => Promise<void>;
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -118,6 +122,15 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     if (user?.id) void loadPointsEarned(user.id);
   }, [loadUserAndTeam, user?.id, loadPointsEarned]);
 
+  const updateWeeklyEmail = useCallback(
+    async (enabled: boolean) => {
+      if (!user?.id) return;
+      await updateUserDataWeeklyEmail(user.id, enabled);
+      await refreshUserData();
+    },
+    [user?.id, refreshUserData]
+  );
+
   const value = useMemo<UserContextType>(
     () => ({
       userData,
@@ -127,8 +140,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       daysPlayed,
       pointsEarned,
       refreshUserData,
+      updateWeeklyEmail,
     }),
-    [userData, team, loading, daysPlayed, pointsEarned, refreshUserData]
+    [userData, team, loading, daysPlayed, pointsEarned, refreshUserData, updateWeeklyEmail]
   );
 
   return (

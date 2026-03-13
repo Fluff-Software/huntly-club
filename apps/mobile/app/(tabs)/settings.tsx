@@ -21,6 +21,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as Device from "expo-device";
 import { ThemedText } from "@/components/ThemedText";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUser } from "@/contexts/UserContext";
 import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { useRouter } from "expo-router";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
@@ -46,13 +47,15 @@ const COLORS = {
 
 export default function SettingsScreen() {
   const { user, signOut } = useAuth();
+  const { userData, updateWeeklyEmail } = useUser();
   const router = useRouter();
   const { scaleW } = useLayoutScale();
   const signUpContext = useSignUpOptional();
   const setShowPostSignUpWelcome = signUpContext?.setShowPostSignUpWelcome;
   const setTutorialStep = signUpContext?.setTutorialStep;
   const setReplayTutorialRequested = signUpContext?.setReplayTutorialRequested;
-  const [weeklyEmail, setWeeklyEmail] = useState(true);
+  const weeklyEmail = userData?.weekly_email ?? true;
+  const [weeklyEmailToggling, setWeeklyEmailToggling] = useState(false);
   const [pushNotifications, setPushNotifications] = useState(false);
   const [pushNotificationsLoading, setPushNotificationsLoading] = useState(true);
   const [pushNotificationsToggling, setPushNotificationsToggling] = useState(false);
@@ -438,7 +441,18 @@ export default function SettingsScreen() {
           <Animated.View style={weeklyEmailAnimatedStyle}>
             <Pressable
               style={styles.prefRow}
-              onPress={() => setWeeklyEmail((v) => !v)}
+              onPress={async () => {
+                if (weeklyEmailToggling) return;
+                setWeeklyEmailToggling(true);
+                try {
+                  await updateWeeklyEmail(!weeklyEmail);
+                } catch {
+                  Alert.alert("Error", "Failed to update weekly email preference");
+                } finally {
+                  setWeeklyEmailToggling(false);
+                }
+              }}
+              disabled={weeklyEmailToggling}
               onPressIn={() => {
                 weeklyEmailScale.value = withSpring(0.98, { damping: 15, stiffness: 400 });
               }}
@@ -447,15 +461,19 @@ export default function SettingsScreen() {
               }}
             >
               <ThemedText style={styles.prefLabel}>Receive weekly email</ThemedText>
-              <View style={styles.checkbox}>
-                {weeklyEmail ? (
-                  <MaterialIcons
-                    name="check"
-                    size={scaleW(18)}
-                    color={COLORS.darkGreen}
-                  />
-                ) : null}
-              </View>
+              {weeklyEmailToggling ? (
+                <ActivityIndicator size="small" color={COLORS.darkGreen} />
+              ) : (
+                <View style={styles.checkbox}>
+                  {weeklyEmail ? (
+                    <MaterialIcons
+                      name="check"
+                      size={scaleW(18)}
+                      color={COLORS.darkGreen}
+                    />
+                  ) : null}
+                </View>
+              )}
             </Pressable>
           </Animated.View>
           <Animated.View style={pushAnimatedStyle}>

@@ -25,7 +25,7 @@ import {
 import {
   hasAskedPushOptIn,
   registerForPushNotificationsAsync,
-  savePushToken,
+  setPushEnabled,
   setPushOptInAsked,
 } from "@/services/pushNotificationService";
 
@@ -205,7 +205,7 @@ export default function TabLayout() {
   const handleNotificationPromptYes = async () => {
     if (!user?.id) return;
     const token = await registerForPushNotificationsAsync();
-    if (token) await savePushToken(user.id, token);
+    if (token) await setPushEnabled(true, token);
     await setPushOptInAsked(user.id);
     setShowNotificationPrompt(false);
   };

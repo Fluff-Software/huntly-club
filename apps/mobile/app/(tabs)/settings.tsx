@@ -115,18 +115,18 @@ export default function SettingsScreen() {
       setPushNotificationsLoading(false);
       return;
     }
-    getPushEnabled(user.id).then((enabled) => {
+    getPushEnabled().then((enabled) => {
       setPushNotifications(enabled);
       setPushNotificationsLoading(false);
     });
   }, [user?.id]);
 
   const handlePushToggle = async () => {
-    if (!user?.id || pushNotificationsToggling) return;
+    if (pushNotificationsToggling) return;
     const next = !pushNotifications;
     setPushNotificationsToggling(true);
     try {
-      const ok = await setPushEnabled(user.id, next);
+      const ok = await setPushEnabled(next);
       if (next && !ok) {
         Alert.alert(
           "Notifications unavailable",

@@ -1,8 +1,34 @@
+import * as Application from "expo-application";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
+import * as SecureStore from "expo-secure-store";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 import { supabase } from "./supabase";
+
+const DEVICE_ID_STORE_KEY = "push_device_id";
+
+/**
+ * Returns a stable device identifier: Android ID on Android, IDFV on iOS (or a stored UUID fallback).
+ */
+export async function getDeviceId(): Promise<string | null> {
+  if (!Device.isDevice) return null;
+  try {
+    if (Platform.OS === "android") {
+      return Application.getAndroidId() ?? null;
+    }
+    const idfv = await Application.getIosIdForVendorAsync();
+    if (idfv) return idfv;
+    let stored = await SecureStore.getItemAsync(DEVICE_ID_STORE_KEY);
+    if (!stored) {
+      stored = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 15)}`;
+      await SecureStore.setItemAsync(DEVICE_ID_STORE_KEY, stored);
+    }
+    return stored;
+  } catch {
+    return null;
+  }
+}
 
 export async function registerForPushNotificationsAsync(): Promise<string | null> {
   if (!Device.isDevice) return null;
@@ -38,41 +64,50 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
   }
 }
 
-export async function savePushToken(userId: string, token: string): Promise<void> {
-  const now = new Date().toISOString();
-  await supabase.from("push_tokens").upsert(
-    {
-      user_id: userId,
-      expo_push_token: token,
-      enabled: true,
-      updated_at: now,
-    },
-    { onConflict: "user_id,expo_push_token" }
-  );
-}
+/**
+ * Enable: creates or updates the row for this device with the given token and enabled=true.
+ * Disable: sets enabled=false for this device if a row exists.
+ * @param enabled - whether push should be enabled
+ * @param token - when enabling, the Expo push token (if not provided, will be requested)
+ */
+export async function setPushEnabled(
+  enabled: boolean,
+  token?: string | null
+): Promise<boolean> {
+  const deviceId = await getDeviceId();
+  if (!deviceId) return false;
 
-export async function setPushEnabled(userId: string, enabled: boolean): Promise<boolean> {
   if (enabled) {
-    const token = await registerForPushNotificationsAsync();
-    if (!token) return false;
-    await savePushToken(userId, token);
-    return true;
+    const pushToken = token ?? (await registerForPushNotificationsAsync());
+    if (!pushToken) return false;
+    const { error } = await supabase.rpc("set_push_enabled", {
+      p_device_id: deviceId,
+      p_enabled: true,
+      p_expo_push_token: pushToken,
+    });
+    return !error;
   }
-  await supabase
-    .from("push_tokens")
-    .update({ enabled: false, updated_at: new Date().toISOString() })
-    .eq("user_id", userId);
-  return true;
+
+  const { error } = await supabase.rpc("set_push_enabled", {
+    p_device_id: deviceId,
+    p_enabled: false,
+    p_expo_push_token: null,
+  });
+  return !error;
 }
 
-export async function getPushEnabled(userId: string): Promise<boolean> {
-  const { data } = await supabase
-    .from("push_tokens")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("enabled", true)
-    .limit(1);
-  return (data?.length ?? 0) > 0;
+/**
+ * Returns true if a row exists for this device and enabled is true; otherwise false.
+ */
+export async function getPushEnabled(): Promise<boolean> {
+  const deviceId = await getDeviceId();
+  if (!deviceId) return false;
+
+  const { data, error } = await supabase.rpc("get_push_enabled", {
+    p_device_id: deviceId,
+  });
+  if (error) return false;
+  return data === true;
 }
 
 export async function hasAskedPushOptIn(userId: string): Promise<boolean> {

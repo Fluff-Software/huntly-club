@@ -108,6 +108,28 @@ export default function InstructionScreen() {
     loadActivity();
   }, [loadActivity]);
 
+  useEffect(() => {
+    if (!activity?.id || !id) return;
+    const hasIntro =
+      (activity.intro_dialogue != null && activity.intro_dialogue.trim() !== "") ||
+      (activity.intro_character_name != null && activity.intro_character_name.trim() !== "");
+    const hasPrep = activity.prep_checklist != null && activity.prep_checklist.length > 0;
+    const hasSteps = activity.steps != null && activity.steps.length > 0;
+    if (hasIntro) {
+      router.replace({
+        pathname: "/(tabs)/activity/mission/intro",
+        params: { id: String(activity.id) },
+      } as Parameters<typeof router.replace>[0]);
+      return;
+    }
+    if (hasPrep || hasSteps) {
+      router.replace({
+        pathname: "/(tabs)/activity/mission/prep",
+        params: { id: String(activity.id) },
+      } as Parameters<typeof router.replace>[0]);
+    }
+  }, [activity?.id, activity?.intro_dialogue, activity?.intro_character_name, activity?.prep_checklist, activity?.steps, id, router]);
+
   const styles = useMemo(
     () =>
       StyleSheet.create({

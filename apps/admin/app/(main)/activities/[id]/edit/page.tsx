@@ -71,6 +71,18 @@ export default async function EditActivityPage({
           instructions: activity.instructions ?? null,
           alternative_approaches: activity.alternative_approaches ?? null,
           images: activity.images ?? null,
+          intro_urgent_message: activity.intro_urgent_message ?? null,
+          intro_character_name: activity.intro_character_name ?? null,
+          intro_character_avatar_url: activity.intro_character_avatar_url ?? null,
+          intro_dialogue: activity.intro_dialogue ?? null,
+          estimated_duration: activity.estimated_duration ?? null,
+          optional_items: activity.optional_items ?? null,
+          prep_checklist: Array.isArray(activity.prep_checklist) ? activity.prep_checklist : null,
+          steps: Array.isArray(activity.steps) ? activity.steps : null,
+          debrief_heading: activity.debrief_heading ?? null,
+          debrief_photo_label: activity.debrief_photo_label ?? null,
+          debrief_question_1: activity.debrief_question_1 ?? null,
+          debrief_question_2: activity.debrief_question_2 ?? null,
         }}
       />
       <p className="mt-4">

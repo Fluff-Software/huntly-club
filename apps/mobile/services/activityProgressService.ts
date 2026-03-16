@@ -307,6 +307,28 @@ export const ensureProgressRows = async (
   };
 };
 
+/**
+ * Updates user_activity_progress rows with debrief answers (e.g. base name, trickiest part).
+ */
+export const updateProgressDebrief = async (
+  progressIds: number[],
+  debriefAnswer1: string | null,
+  debriefAnswer2: string | null
+): Promise<void> => {
+  if (progressIds.length === 0) return;
+  const { error } = await supabase
+    .from("user_activity_progress")
+    .update({
+      debrief_answer_1: debriefAnswer1 || null,
+      debrief_answer_2: debriefAnswer2 || null,
+    })
+    .in("id", progressIds);
+  if (error) {
+    console.error("Error updating progress debrief:", error);
+    throw new Error(`Failed to save debrief: ${error.message}`);
+  }
+};
+
 export interface UserAchievementInsert {
   profile_id: number;
   team_id: number;

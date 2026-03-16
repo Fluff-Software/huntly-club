@@ -5,6 +5,7 @@ import {
   Image,
   Pressable,
   Text,
+  TextInput,
   StyleSheet,
   Alert,
   Modal,
@@ -35,11 +36,14 @@ import {
   ensureProgressRows,
   insertUserActivityPhotos,
   insertUserAchievementsForMission,
+  updateProgressDebrief,
 } from "@/services/activityProgressService";
 import { compressImageAsync } from "@/utils/imageCompression";
 import { uploadUserActivityPhoto } from "@/services/storageService";
 import type { Activity } from "@/types/activity";
 
+const DARK_BROWN = "#4A2C1B";
+const LIGHT_BROWN = "#7E5C44";
 const TEXT_SECONDARY = "#2F3336";
 const LIGHT_GREEN = "#7FAF8A";
 const CREAM = "#F6F5F1";
@@ -132,6 +136,8 @@ export default function CompletionScreen() {
     number | null
   >(null);
   const [completing, setCompleting] = useState(false);
+  const [debriefAnswer1, setDebriefAnswer1] = useState("");
+  const [debriefAnswer2, setDebriefAnswer2] = useState("");
 
   const getPlayerPhotos = (playerId: number) => playerPhotos[playerId] ?? [];
 
@@ -316,6 +322,15 @@ export default function CompletionScreen() {
       const { progressIdByProfile, inserted: insertedProgress } =
         await ensureProgressRows(selectedPlayerIds, activity.id);
 
+      const progressIds = Object.values(progressIdByProfile);
+      if (progressIds.length > 0) {
+        await updateProgressDebrief(
+          progressIds,
+          debriefAnswer1.trim() || null,
+          debriefAnswer2.trim() || null
+        );
+      }
+
       // When new progress rows were created, record achievements
       if (insertedProgress.length > 0) {
         const activityXp = activity.xp ?? 0;
@@ -401,17 +416,77 @@ export default function CompletionScreen() {
   const styles = useMemo(
     () =>
       StyleSheet.create({
-        container: { flex: 1, backgroundColor: LIGHT_GREEN },
+        container: { flex: 1, backgroundColor: DARK_BROWN },
         scroll: {
           flex: 1,
           paddingHorizontal: scaleW(24),
-          paddingTop: scaleW(60),
+          paddingTop: scaleW(24),
           paddingBottom: scaleW(32),
+        },
+        debriefHeaderLabel: {
+          fontSize: scaleW(12),
+          fontWeight: "600",
+          color: "rgba(255,255,255,0.7)",
+          letterSpacing: 1,
+          marginBottom: scaleW(4),
+        },
+        debriefHeading: {
+          fontSize: scaleW(24),
+          fontWeight: "700",
+          color: "#FFF",
+          marginBottom: scaleW(24),
+        },
+        photoUploadCard: {
+          backgroundColor: LIGHT_BROWN,
+          borderRadius: scaleW(20),
+          borderWidth: 2,
+          borderStyle: "dashed",
+          borderColor: "rgba(255,255,255,0.4)",
+          paddingVertical: scaleW(32),
+          paddingHorizontal: scaleW(24),
+          alignItems: "center",
+          marginBottom: scaleW(20),
+        },
+        photoUploadCardLabel: {
+          fontSize: scaleW(16),
+          fontWeight: "700",
+          color: "#FFF",
+          marginTop: scaleW(12),
+          marginBottom: scaleW(4),
+        },
+        photoUploadCardHint: {
+          fontSize: scaleW(14),
+          color: "rgba(255,255,255,0.8)",
+        },
+        debriefInputCard: {
+          backgroundColor: LIGHT_BROWN,
+          borderRadius: scaleW(16),
+          padding: scaleW(16),
+          marginBottom: scaleW(16),
+        },
+        debriefInputLabel: {
+          fontSize: scaleW(15),
+          fontWeight: "600",
+          color: "#FFF",
+          marginBottom: scaleW(8),
+        },
+        debriefInput: {
+          backgroundColor: "rgba(0,0,0,0.2)",
+          borderRadius: scaleW(12),
+          paddingVertical: scaleW(12),
+          paddingHorizontal: scaleW(16),
+          fontSize: scaleW(16),
+          color: "#FFF",
+          minHeight: scaleW(44),
+        },
+        debriefInputMultiline: {
+          minHeight: scaleW(80),
+          textAlignVertical: "top",
         },
         title: {
           fontSize: scaleW(20),
           fontWeight: "600",
-          color: TEXT_SECONDARY,
+          color: "#FFF",
           textAlign: "center",
           marginBottom: scaleW(32),
         },
@@ -427,12 +502,12 @@ export default function CompletionScreen() {
           marginBottom: scaleW(16),
           paddingVertical: scaleW(8),
           paddingHorizontal: scaleW(12),
-          backgroundColor: "rgba(255,255,255,0.7)",
+          backgroundColor: "rgba(255,255,255,0.15)",
           borderRadius: scaleW(12),
         },
         pointsHintText: {
           fontSize: scaleW(13),
-          color: TEXT_SECONDARY,
+          color: "rgba(255,255,255,0.85)",
           textAlign: "center",
           flex: 1,
         },
@@ -512,14 +587,14 @@ export default function CompletionScreen() {
         whoHeading: {
           fontSize: scaleW(16),
           fontWeight: "600",
-          color: TEXT_SECONDARY,
+          color: "rgba(255,255,255,0.95)",
           textAlign: "center",
           marginBottom: scaleW(16),
         },
         playerSectionHeading: {
           fontSize: scaleW(16),
           fontWeight: "600",
-          color: TEXT_SECONDARY,
+          color: "rgba(255,255,255,0.95)",
           marginBottom: scaleW(12),
           marginTop: scaleW(24),
         },
@@ -566,13 +641,13 @@ export default function CompletionScreen() {
         },
         checkboxChecked: { backgroundColor: TEXT_SECONDARY },
         completeButton: {
-          backgroundColor: CREAM,
+          backgroundColor: LIGHT_BROWN,
           paddingVertical: scaleW(16),
           borderRadius: scaleW(32),
           alignItems: "center",
           marginTop: scaleW(24),
           marginBottom: scaleW(64),
-          marginHorizontal: scaleW(52),
+          marginHorizontal: scaleW(24),
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.3,
@@ -762,12 +837,52 @@ export default function CompletionScreen() {
         overScrollMode="never"
       >
         <Animated.View entering={FadeInDown.duration(500).delay(0)}>
-          <ThemedText type="heading" style={styles.title}>
-            {activity?.title ?? "Activity"}
+          <ThemedText style={styles.debriefHeaderLabel}>MISSION DEBRIEF</ThemedText>
+          <ThemedText type="heading" style={styles.debriefHeading}>
+            {activity?.debrief_heading?.trim() || "Report back"}
           </ThemedText>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.duration(500).delay(100)}>
+        {activity?.debrief_photo_label != null && activity.debrief_photo_label.trim() !== "" && (
+          <Animated.View entering={FadeInDown.duration(500).delay(50)}>
+            <ThemedText style={[styles.photoUploadCardHint, { marginBottom: scaleW(16) }]}>
+              {activity.debrief_photo_label.trim()}
+            </ThemedText>
+          </Animated.View>
+        )}
+
+        {(activity?.debrief_question_1 != null && activity.debrief_question_1.trim() !== "") && (
+          <Animated.View entering={FadeInDown.duration(500).delay(100)} style={styles.debriefInputCard}>
+            <ThemedText style={styles.debriefInputLabel}>
+              {activity.debrief_question_1}
+            </ThemedText>
+            <TextInput
+              style={styles.debriefInput}
+              value={debriefAnswer1}
+              onChangeText={setDebriefAnswer1}
+              placeholder="Write the name here..."
+              placeholderTextColor="rgba(255,255,255,0.5)"
+            />
+          </Animated.View>
+        )}
+
+        {(activity?.debrief_question_2 != null && activity.debrief_question_2.trim() !== "") && (
+          <Animated.View entering={FadeInDown.duration(500).delay(150)} style={styles.debriefInputCard}>
+            <ThemedText style={styles.debriefInputLabel}>
+              {activity.debrief_question_2}
+            </ThemedText>
+            <TextInput
+              style={[styles.debriefInput, styles.debriefInputMultiline]}
+              value={debriefAnswer2}
+              onChangeText={setDebriefAnswer2}
+              placeholder="Write a few words..."
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              multiline
+            />
+          </Animated.View>
+        )}
+
+        <Animated.View entering={FadeInDown.duration(500).delay(200)}>
           <ThemedText type="heading" style={styles.whoHeading}>
             Who did this activity?
           </ThemedText>
@@ -963,7 +1078,7 @@ export default function CompletionScreen() {
             }}
           >
             <ThemedText type="heading" style={styles.completeButtonText}>
-              {completing ? "Completing…" : "Complete"}
+              {completing ? "Sending…" : "Send — mission done!"}
             </ThemedText>
           </Pressable>
         </Animated.View>

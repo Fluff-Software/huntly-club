@@ -14,6 +14,36 @@ function toCategoryIds(raw: unknown): number[] {
   return raw.filter((x): x is number => typeof x === "number" && x > 0);
 }
 
+export function parsePrepChecklist(raw: unknown): Activity["prep_checklist"] {
+  if (!Array.isArray(raw)) return null;
+  const out: { title: string; description: string }[] = [];
+  for (const item of raw) {
+    if (item && typeof item === "object" && "title" in item && "description" in item) {
+      out.push({
+        title: String((item as { title: unknown }).title),
+        description: String((item as { description: unknown }).description),
+      });
+    }
+  }
+  return out.length ? out : null;
+}
+
+export function parseSteps(raw: unknown): Activity["steps"] {
+  if (!Array.isArray(raw)) return null;
+  const out: { instruction: string; tip: string | null; media_url: string | null }[] = [];
+  for (const item of raw) {
+    if (item && typeof item === "object" && "instruction" in item) {
+      const o = item as { instruction: unknown; tip?: unknown; media_url?: unknown };
+      out.push({
+        instruction: String(o.instruction),
+        tip: o.tip != null ? String(o.tip) : null,
+        media_url: o.media_url != null ? String(o.media_url) : null,
+      });
+    }
+  }
+  return out.length ? out : null;
+}
+
 function transformActivity(activityData: any): Activity {
   return {
     id: activityData.id,
@@ -32,6 +62,18 @@ function transformActivity(activityData: any): Activity {
     xp: activityData.xp,
     categories: toCategoryIds(activityData.categories),
     created_at: activityData.created_at,
+    intro_urgent_message: activityData.intro_urgent_message ?? null,
+    intro_character_name: activityData.intro_character_name ?? null,
+    intro_character_avatar_url: activityData.intro_character_avatar_url ?? null,
+    intro_dialogue: activityData.intro_dialogue ?? null,
+    estimated_duration: activityData.estimated_duration ?? null,
+    optional_items: activityData.optional_items ?? null,
+    prep_checklist: parsePrepChecklist(activityData.prep_checklist),
+    steps: parseSteps(activityData.steps),
+    debrief_heading: activityData.debrief_heading ?? null,
+    debrief_photo_label: activityData.debrief_photo_label ?? null,
+    debrief_question_1: activityData.debrief_question_1 ?? null,
+    debrief_question_2: activityData.debrief_question_2 ?? null,
   };
 }
 

@@ -52,6 +52,18 @@ export type Database = {
           trivia: string | null
           xp: number | null
           categories: number[]
+          intro_urgent_message: string | null
+          intro_character_name: string | null
+          intro_character_avatar_url: string | null
+          intro_dialogue: string | null
+          estimated_duration: string | null
+          optional_items: string | null
+          prep_checklist: Json | null
+          steps: Json | null
+          debrief_heading: string | null
+          debrief_photo_label: string | null
+          debrief_question_1: string | null
+          debrief_question_2: string | null
         }
         Insert: {
           created_at?: string
@@ -70,6 +82,18 @@ export type Database = {
           trivia?: string | null
           xp?: number | null
           categories?: number[]
+          intro_urgent_message?: string | null
+          intro_character_name?: string | null
+          intro_character_avatar_url?: string | null
+          intro_dialogue?: string | null
+          estimated_duration?: string | null
+          optional_items?: string | null
+          prep_checklist?: Json | null
+          steps?: Json | null
+          debrief_heading?: string | null
+          debrief_photo_label?: string | null
+          debrief_question_1?: string | null
+          debrief_question_2?: string | null
         }
         Update: {
           created_at?: string
@@ -88,6 +112,18 @@ export type Database = {
           trivia?: string | null
           xp?: number | null
           categories?: number[]
+          intro_urgent_message?: string | null
+          intro_character_name?: string | null
+          intro_character_avatar_url?: string | null
+          intro_dialogue?: string | null
+          estimated_duration?: string | null
+          optional_items?: string | null
+          prep_checklist?: Json | null
+          steps?: Json | null
+          debrief_heading?: string | null
+          debrief_photo_label?: string | null
+          debrief_question_1?: string | null
+          debrief_question_2?: string | null
         }
         Relationships: []
       }
@@ -272,6 +308,8 @@ export type Database = {
           id: number
           notes: string | null
           profile_id: number
+          debrief_answer_1: string | null
+          debrief_answer_2: string | null
         }
         Insert: {
           activity_id: number
@@ -279,6 +317,8 @@ export type Database = {
           id?: number
           notes?: string | null
           profile_id: number
+          debrief_answer_1?: string | null
+          debrief_answer_2?: string | null
         }
         Update: {
           activity_id?: number
@@ -286,6 +326,8 @@ export type Database = {
           id?: number
           notes?: string | null
           profile_id?: number
+          debrief_answer_1?: string | null
+          debrief_answer_2?: string | null
         }
         Relationships: [
           {

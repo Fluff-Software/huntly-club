@@ -30,6 +30,7 @@ import type { MissionCardData } from "@/constants/missionCards";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
+const DARK_BROWN = "#4A2C1B";
 const HUNTLY_GREEN = "#4F6F52";
 const LIGHT_GREEN = "#7FAF8A";
 const POINTS_GREEN = "#2D5A27";
@@ -152,7 +153,7 @@ export default function RewardScreen() {
   const styles = useMemo(
     () =>
       StyleSheet.create({
-        container: { flex: 1, backgroundColor: LIGHT_GREEN },
+        container: { flex: 1, backgroundColor: DARK_BROWN },
         scroll: {
           flex: 1,
           paddingHorizontal: scaleW(24),
@@ -222,7 +223,7 @@ export default function RewardScreen() {
         wellDoneHeading: {
           fontSize: scaleW(26),
           fontWeight: "700",
-          color: POINTS_GREEN,
+          color: "#FFF",
           textAlign: "center",
           marginBottom: scaleW(28),
         },

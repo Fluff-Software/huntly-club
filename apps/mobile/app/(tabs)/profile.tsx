@@ -1108,12 +1108,6 @@ export default function ProfileScreen() {
                   Complete missions to see them here
                 </ThemedText>
               </View>
-              <MaterialIcons
-                name="chevron-right"
-                size={24}
-                color={COLORS.arrow}
-                style={styles.activityArrow}
-              />
             </View>
           ) : (
             recentActivities.map((act) => (

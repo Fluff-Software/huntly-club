@@ -11,12 +11,31 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { useCurrentChapter } from "@/hooks/useCurrentChapter";
+import { useCountdownToUtcDate } from "@/hooks/useCountdownToUtcDate";
 import { useChaptersWithActivities, type ChapterWithActivities } from "@/hooks/useAllChaptersActivities";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { MissionCard } from "@/components/MissionCard";
 import { supabase } from "@/services/supabase";
 
 const MISSIONS_ORANGE = "#D2684B";
+
+function formatReleaseDate(isoDate: string): string {
+  // `unlock_date` comes from a DB `date` column (YYYY-MM-DD).
+  // Formatting from the raw string avoids JS timezone parsing differences.
+  const parts = isoDate.split("-");
+  if (parts.length === 3) {
+    const [yyyy, mm, dd] = parts;
+    return `${dd}/${mm}/${yyyy.slice(-2)}`;
+  }
+
+  // Fallback for unexpected values.
+  const d = new Date(isoDate);
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yy = String(d.getFullYear()).slice(-2);
+  return `${dd}/${mm}/${yy}`;
+}
 
 function chapterSectionTitle(chapter: ChapterWithActivities): string {
   const title = chapter.title?.trim() || "Missions";
@@ -27,6 +46,19 @@ export default function MissionsScreen() {
   const { scaleW } = useLayoutScale();
   const { profiles } = usePlayer();
   const { chapters, completedActivityIds, loading, error, refetch } = useChaptersWithActivities(null);
+  const { nextChapterDate, loading: currentChapterLoading, refetch: refetchCurrentChapter } = useCurrentChapter();
+
+  const handleCountdownComplete = React.useCallback(async () => {
+    // Refresh both: the missions list depends on unlocked chapters,
+    // and `nextChapterDate` depends on the unlock gate logic.
+    await refetch();
+    await refetchCurrentChapter();
+  }, [refetch, refetchCurrentChapter]);
+
+  const { label: countdownLabel } = useCountdownToUtcDate(nextChapterDate, {
+    onComplete: handleCountdownComplete,
+  });
+
   const scrollRef = useRef<ScrollView>(null);
   const [completionCountByActivityId, setCompletionCountByActivityId] = React.useState<Record<string, number>>({});
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
@@ -34,8 +66,9 @@ export default function MissionsScreen() {
   useFocusEffect(
     useCallback(() => {
       refetch();
+      refetchCurrentChapter();
       scrollRef.current?.scrollTo({ y: 0, animated: false });
-    }, [refetch])
+    }, [refetch, refetchCurrentChapter])
   );
 
   React.useEffect(() => {
@@ -88,6 +121,35 @@ export default function MissionsScreen() {
           textAlign: "center" as const,
           marginBottom: scaleW(12),
         },
+        countdownContainer: {
+          alignItems: "center" as const,
+          marginBottom: scaleW(10),
+          alignSelf: "stretch",
+          paddingHorizontal: scaleW(20),
+          paddingVertical: scaleW(8),
+          backgroundColor: "rgba(244, 240, 235, 0.18)",
+          borderRadius: 0,
+        },
+        countdownTitle: {
+          fontSize: scaleW(16),
+          fontWeight: "600",
+          color: "#FFF",
+          opacity: 0.95,
+          textAlign: "center" as const,
+          marginBottom: scaleW(4),
+        },
+        countdownValue: {
+          fontSize: scaleW(18),
+          fontWeight: "700",
+          color: "#FFF",
+          textAlign: "center" as const,
+          marginBottom: 0,
+        },
+        countdownDate: {
+          fontSize: scaleW(13),
+          color: "rgba(255,255,255,0.75)",
+          textAlign: "center" as const,
+        },
         sectionTitle: {
           fontSize: scaleW(18),
           fontWeight: "600",
@@ -136,6 +198,12 @@ export default function MissionsScreen() {
         bounces={false}
         overScrollMode="never"
       >
+        {!!nextChapterDate && !currentChapterLoading && countdownLabel != null && (
+          <View style={styles.countdownContainer}>
+            <ThemedText style={styles.countdownValue}>Next chapter unlocks in {countdownLabel}</ThemedText>
+          </View>
+        )}
+
         <Animated.View entering={FadeInDown.duration(500).delay(0)}>
           <ThemedText type="heading" style={styles.title}>Current Missions</ThemedText>
         </Animated.View>

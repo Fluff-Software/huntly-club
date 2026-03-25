@@ -505,7 +505,7 @@ export default function HomeScreen() {
               textShadowOffset: { width: 0, height: 0 },
             }}
         >
-          Welcome back, explorer!
+          Welcome back, Explorer!
         </ThemedText>
 
         {teamCardConfig && (

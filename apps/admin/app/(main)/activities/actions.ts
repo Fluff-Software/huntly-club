@@ -25,27 +25,9 @@ export async function createActivity(
   if (!name || !title) return { error: "Name and title are required" };
 
   const description = (formData.get("description") as string)?.trim() || null;
-  const longDescription = (formData.get("long_description") as string)?.trim() || null;
-  const hints = (formData.getAll("hints") as string[])
-    .map((s) => s?.trim())
-    .filter(Boolean);
-  const tips = (formData.getAll("tips") as string[])
-    .map((s) => s?.trim())
-    .filter(Boolean);
-  const trivia = (formData.get("trivia") as string)?.trim() || null;
   const image = (formData.get("image") as string)?.trim() || null;
   const xp = parseInt(String(formData.get("xp")), 10);
-  const photoRequired = formData.get("photo_required") === "on";
   const categoryIds = parseCategoryIds(formData);
-  const instructions = (formData.getAll("instructions") as string[])
-    .map((s) => s?.trim())
-    .filter(Boolean);
-  const alternativeApproaches = (formData.getAll("alternative_approaches") as string[])
-    .map((s) => s?.trim())
-    .filter(Boolean);
-  const images = (formData.getAll("images") as string[])
-    .map((s) => s?.trim())
-    .filter(Boolean);
 
   const introUrgentMessage = (formData.get("intro_urgent_message") as string)?.trim() || null;
   const introCharacterName = (formData.get("intro_character_name") as string)?.trim() || null;
@@ -85,16 +67,8 @@ export async function createActivity(
       name,
       title,
       description,
-      long_description: longDescription,
-      hints: hints.length ? hints : null,
-      tips: tips.length ? tips : null,
-      instructions: instructions.length ? instructions : null,
-      alternative_approaches: alternativeApproaches.length ? alternativeApproaches : null,
-      images: images.length ? images : null,
-      trivia,
       image: image || null,
       xp: Number.isNaN(xp) ? 10 : xp,
-      photo_required: photoRequired,
       categories: categoryIds.length ? categoryIds : [],
       intro_urgent_message: introUrgentMessage,
       intro_character_name: introCharacterName,
@@ -131,27 +105,9 @@ export async function updateActivity(
   if (!name || !title) return { error: "Name and title are required" };
 
   const description = (formData.get("description") as string)?.trim() || null;
-  const longDescription = (formData.get("long_description") as string)?.trim() || null;
-  const hints = (formData.getAll("hints") as string[])
-    .map((s) => s?.trim())
-    .filter(Boolean);
-  const tips = (formData.getAll("tips") as string[])
-    .map((s) => s?.trim())
-    .filter(Boolean);
-  const trivia = (formData.get("trivia") as string)?.trim() || null;
   const image = (formData.get("image") as string)?.trim() || null;
   const xp = parseInt(String(formData.get("xp")), 10);
-  const photoRequired = formData.get("photo_required") === "on";
   const categoryIds = parseCategoryIds(formData);
-  const instructions = (formData.getAll("instructions") as string[])
-    .map((s) => s?.trim())
-    .filter(Boolean);
-  const alternativeApproaches = (formData.getAll("alternative_approaches") as string[])
-    .map((s) => s?.trim())
-    .filter(Boolean);
-  const images = (formData.getAll("images") as string[])
-    .map((s) => s?.trim())
-    .filter(Boolean);
 
   const introUrgentMessage = (formData.get("intro_urgent_message") as string)?.trim() || null;
   const introCharacterName = (formData.get("intro_character_name") as string)?.trim() || null;
@@ -193,16 +149,8 @@ export async function updateActivity(
         name,
         title,
         description,
-        long_description: longDescription,
-        hints: hints.length ? hints : null,
-        tips: tips.length ? tips : null,
-        instructions: instructions.length ? instructions : null,
-        alternative_approaches: alternativeApproaches.length ? alternativeApproaches : null,
-        images: images.length ? images : null,
-        trivia,
         image: image || null,
         xp: Number.isNaN(xp) ? 10 : xp,
-        photo_required: photoRequired,
         categories: categoryIds.length ? categoryIds : [],
         intro_urgent_message: introUrgentMessage,
         intro_character_name: introCharacterName,

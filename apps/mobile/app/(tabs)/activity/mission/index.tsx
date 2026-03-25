@@ -11,7 +11,6 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
   FadeInDown,
-  FadeIn,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -35,30 +34,6 @@ const HUNTLY_GREEN = "#4F6F52";
 const STEP_ACCENT = "#5a7d5e";
 const TIP_BG = "rgba(127, 175, 138, 0.12)";
 const ALT_BG = "rgba(79, 111, 82, 0.08)";
-
-function splitBlocks(text: string | null): string[] {
-  if (!text || !text.trim()) return [];
-  return text
-    .split(/\n\n+/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-}
-
-function splitBulletLines(text: string | null): string[] {
-  if (!text || !text.trim()) return [];
-  return text
-    .split(/\n+/)
-    .map((s) => s.replace(/^\s*•\s*/, "").trim())
-    .filter(Boolean);
-}
-
-function normalizeStringArray(
-  val: string[] | string | null | undefined
-): string[] {
-  if (val == null) return [];
-  if (Array.isArray(val)) return val.filter(Boolean);
-  return splitBulletLines(typeof val === "string" ? val : null);
-}
 
 export default function InstructionScreen() {
   const router = useRouter();
@@ -417,30 +392,6 @@ export default function InstructionScreen() {
   const categoryInfos = categoryIds
     .map((cid) => getCategoryById(categories, cid))
     .filter((c): c is NonNullable<typeof c> => c != null);
-  const hintLines = normalizeStringArray(activity.hints);
-  const tipLines = normalizeStringArray(activity.tips);
-  const triviaBlocks = splitBlocks(activity.trivia);
-  const instructionSteps = Array.isArray(activity.instructions)
-    ? activity.instructions.filter(Boolean)
-    : [];
-  const alternativeLines = Array.isArray(activity.alternative_approaches)
-    ? activity.alternative_approaches.filter(Boolean)
-    : [];
-  const extraImages = Array.isArray(activity.images)
-    ? activity.images.filter((url): url is string => typeof url === "string" && url.length > 0)
-    : [];
-  const hasSteps = instructionSteps.length > 0;
-  const showLongDescription =
-    !hasSteps &&
-    activity.long_description != null &&
-    activity.long_description.trim() !== "";
-
-  let imageIndex = 0;
-  const nextInlineImage = () => {
-    if (imageIndex >= extraImages.length) return null;
-    return extraImages[imageIndex++];
-  };
-
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <ScrollView
@@ -502,175 +453,6 @@ export default function InstructionScreen() {
             </View>
           )}
         </Animated.View>
-
-        {(() => {
-          const img = nextInlineImage();
-          if (!img) return null;
-          return (
-            <Animated.View
-              key="img-0"
-              entering={FadeIn.duration(400).delay(80)}
-              style={styles.section}
-            >
-              <Image
-                source={{ uri: img }}
-                style={styles.inlineImage}
-                resizeMode="cover"
-              />
-            </Animated.View>
-          );
-        })()}
-
-        {hasSteps && (
-          <Animated.View
-            entering={FadeInDown.duration(420).delay(120).springify().damping(18)}
-            style={styles.section}
-          >
-            <View style={styles.sectionTitleRow}>
-              <MaterialIcons name="format-list-numbered" size={scaleW(24)} color={HUNTLY_GREEN} />
-              <ThemedText type="heading" style={styles.sectionTitle}>Steps</ThemedText>
-            </View>
-            {instructionSteps.map((step, idx) => (
-              <React.Fragment key={idx}>
-                <Animated.View
-                  entering={FadeInDown.duration(380)
-                    .delay(160 + idx * 70)
-                    .springify()
-                    .damping(18)}
-                  style={styles.stepCard}
-                >
-                  <View style={styles.stepNumber}>
-                    <ThemedText style={styles.stepNumberText}>
-                      {idx + 1}
-                    </ThemedText>
-                  </View>
-                  <View style={styles.stepBody}>
-                    <ThemedText style={styles.stepText}>{step}</ThemedText>
-                  </View>
-                </Animated.View>
-                {(() => {
-                  const img = nextInlineImage();
-                  if (!img) return null;
-                  return (
-                    <Animated.View
-                      key={`step-img-${idx}`}
-                      entering={FadeIn.duration(400).delay(200 + idx * 70)}
-                    >
-                      <Image
-                        source={{ uri: img }}
-                        style={styles.inlineImage}
-                        resizeMode="cover"
-                      />
-                    </Animated.View>
-                  );
-                })()}
-              </React.Fragment>
-            ))}
-          </Animated.View>
-        )}
-
-        {showLongDescription && (
-          <Animated.View
-            entering={FadeInDown.duration(420).delay(180).springify().damping(18)}
-            style={styles.section}
-          >
-            <View style={styles.sectionTitleRow}>
-              <MaterialIcons name="checklist" size={scaleW(24)} color={HUNTLY_GREEN} />
-              <ThemedText type="heading" style={styles.sectionTitle}>What to do</ThemedText>
-            </View>
-            <View style={styles.longDescBlock}>
-              <ThemedText style={styles.taskText}>
-                {activity.long_description!.trim()}
-              </ThemedText>
-            </View>
-          </Animated.View>
-        )}
-
-        {tipLines.length > 0 && (
-          <Animated.View
-            entering={FadeInDown.duration(420).delay(hasSteps ? 220 : 200).springify().damping(18)}
-            style={styles.section}
-          >
-            <View style={styles.sectionTitleRow}>
-              <MaterialIcons name="lightbulb-outline" size={scaleW(24)} color={HUNTLY_GREEN} />
-              <ThemedText type="heading" style={styles.sectionTitle}>Tips</ThemedText>
-            </View>
-            {tipLines.map((line, i) => (
-              <Animated.View
-                key={i}
-                entering={FadeInDown.duration(350).delay(260 + i * 50)}
-                style={styles.tipCard}
-              >
-                <ThemedText style={styles.tipBullet}>• {line}</ThemedText>
-              </Animated.View>
-            ))}
-          </Animated.View>
-        )}
-
-        {hintLines.length > 0 && (
-          <Animated.View
-            entering={FadeInDown.duration(420).delay(300).springify().damping(18)}
-            style={styles.section}
-          >
-            <View style={styles.sectionTitleRow}>
-              <MaterialIcons name="psychology" size={scaleW(24)} color={HUNTLY_GREEN} />
-              <ThemedText type="heading" style={styles.sectionTitle}>Hints</ThemedText>
-            </View>
-            {hintLines.map((line, i) => (
-              <Animated.View
-                key={i}
-                entering={FadeInDown.duration(350).delay(320 + i * 50)}
-                style={styles.tipCard}
-              >
-                <ThemedText style={styles.tipBullet}>• {line}</ThemedText>
-              </Animated.View>
-            ))}
-          </Animated.View>
-        )}
-
-        {alternativeLines.length > 0 && (
-          <Animated.View
-            entering={FadeInDown.duration(420).delay(340).springify().damping(18)}
-            style={styles.section}
-          >
-            <View style={styles.sectionTitleRow}>
-              <MaterialIcons name="explore" size={scaleW(24)} color={HUNTLY_GREEN} />
-              <ThemedText type="heading" style={styles.sectionTitle}>Alternative approaches</ThemedText>
-            </View>
-            {alternativeLines.map((line, i) => (
-              <Animated.View
-                key={i}
-                entering={FadeInDown.duration(350).delay(360 + i * 50)}
-                style={styles.altCard}
-              >
-                <ThemedText style={styles.altText}>{line}</ThemedText>
-              </Animated.View>
-            ))}
-          </Animated.View>
-        )}
-
-        {triviaBlocks.length > 0 && (
-          <Animated.View
-            entering={FadeInDown.duration(420).delay(380).springify().damping(18)}
-            style={styles.section}
-          >
-            <View style={styles.sectionTitleRow}>
-              <MaterialIcons name="auto-stories" size={scaleW(24)} color={HUNTLY_GREEN} />
-              <ThemedText type="heading" style={styles.sectionTitle}>Did you know?</ThemedText>
-            </View>
-            {triviaBlocks.map((block, i) => (
-              <Animated.View
-                key={i}
-                entering={FadeInDown.duration(350).delay(400 + i * 40)}
-                style={styles.triviaCard}
-              >
-                <ThemedText style={[styles.taskText, { fontStyle: "italic" }]}>
-                  {block}
-                </ThemedText>
-              </Animated.View>
-            ))}
-          </Animated.View>
-        )}
 
         {clubPhotos.length > 0 && (
           <Animated.View

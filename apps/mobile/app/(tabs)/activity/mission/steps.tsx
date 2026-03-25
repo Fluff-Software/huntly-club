@@ -27,18 +27,7 @@ const TIP_BG = "rgba(127, 175, 138, 0.12)";
 const HUNTLY_GREEN = "#4F6F52";
 
 function buildSteps(activity: Activity): MissionStep[] {
-  if (activity.steps && activity.steps.length > 0) {
-    return activity.steps;
-  }
-  const instructions = Array.isArray(activity.instructions)
-    ? activity.instructions.filter(Boolean)
-    : [];
-  const tips = Array.isArray(activity.tips) ? activity.tips : [];
-  return instructions.map((instruction, i) => ({
-    instruction,
-    tip: tips[i] != null ? tips[i] : null,
-    media_url: null as string | null,
-  }));
+  return activity.steps ?? [];
 }
 
 export default function StepsScreen() {

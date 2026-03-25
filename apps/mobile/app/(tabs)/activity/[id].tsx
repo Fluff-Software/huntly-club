@@ -16,13 +16,10 @@ import {
   completeActivity as completeActivityProgress,
   ActivityProgress,
 } from "@/services/activityProgressService";
-import { uploadUserActivityPhoto } from "@/services/storageService";
 import { usePlayer } from "@/contexts/PlayerContext";
 import type { Profile } from "@/services/profileService";
 import { BadgePopupModal } from "@/components/BadgePopupModal";
 import { Badge } from "@/services/badgeService";
-import * as ImagePicker from "expo-image-picker";
-import { File, Paths } from "expo-file-system";
 
 export default function ActivityDetailScreen() {
   const router = useRouter();
@@ -35,7 +32,6 @@ export default function ActivityDetailScreen() {
     useState<ActivityProgress | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [uploadedPhoto, setUploadedPhoto] = useState<string | null>(null);
   const [completing, setCompleting] = useState(false);
   const [showBadgePopup, setShowBadgePopup] = useState(false);
   const [earnedBadge, setEarnedBadge] = useState<Badge | null>(null);
@@ -104,73 +100,6 @@ export default function ActivityDetailScreen() {
     };
   }, [id, selectedProfileId]);
 
-  const pickImage = async () => {
-    try {
-      const { status } =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(
-          "Permission Required",
-          "Sorry, we need camera roll permissions to upload photos for activities."
-        );
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        setUploadedPhoto(result.assets[0].uri);
-      }
-    } catch (error) {
-      console.error("Image picker error:", error);
-      Alert.alert("Error", "Failed to pick image. Please try again.");
-    }
-  };
-
-  const uploadPhotoToStorage = async (
-    photoUri: string
-  ): Promise<string | null> => {
-    if (selectedProfileId == null) return null;
-
-    try {
-      const sourceFile = new File(photoUri);
-      if (!sourceFile.exists) return null;
-
-      const tempFileName = `temp_${Date.now()}.jpg`;
-      const tempFile = new File(Paths.cache.uri + tempFileName);
-      sourceFile.copy(tempFile);
-
-      const fileName = `activity-${activity?.id}-${Date.now()}.jpg`;
-      const fileObject = {
-        uri: tempFile.uri,
-        type: "image/jpeg",
-        name: tempFileName,
-      };
-
-      const result = await uploadUserActivityPhoto(
-        fileObject,
-        fileName,
-        selectedProfileId.toString()
-      );
-
-      try {
-        tempFile.delete();
-      } catch {
-        // ignore
-      }
-
-      return result.success && result.url ? result.url : null;
-    } catch (error) {
-      console.error("Photo upload error:", error);
-      return null;
-    }
-  };
-
   const handleComplete = async () => {
     if (selectedProfileId == null || !activity) {
       Alert.alert("Select an explorer", "Choose an explorer above to complete this activity.");
@@ -180,26 +109,13 @@ export default function ActivityDetailScreen() {
       Alert.alert("Already Completed", "This activity has already been completed for the selected explorer!");
       return;
     }
-    if (activity.photo_required && !uploadedPhoto) {
-      Alert.alert("Photo Required", "Please upload a photo to complete this activity.");
-      return;
-    }
 
     setCompleting(true);
     try {
-      let photoUrl: string | undefined;
-      if (uploadedPhoto) {
-        photoUrl = await uploadPhotoToStorage(uploadedPhoto) ?? undefined;
-        if (activity.photo_required && !photoUrl) {
-          Alert.alert("Upload Error", "Failed to upload photo. Please try again.");
-          return;
-        }
-      }
-
       await completeActivityProgress(
         selectedProfileId,
         activity.id,
-        photoUrl
+        undefined
       );
       const result = await completeActivityService(activity.id, selectedProfileId);
 
@@ -325,114 +241,6 @@ export default function ActivityDetailScreen() {
           </View>
         )}
 
-        {activity.long_description && (
-          <View className="mb-6">
-            <ThemedText type="defaultSemiBold" className="text-huntly-forest mb-3 text-lg">
-              About This Activity
-            </ThemedText>
-            <ThemedText type="body" className="text-huntly-charcoal leading-6">
-              {activity.long_description}
-            </ThemedText>
-          </View>
-        )}
-
-        {activity.hints && activity.hints.length > 0 && (
-          <View className="mb-6">
-            <ThemedText type="defaultSemiBold" className="text-huntly-forest mb-3 text-lg">
-              💡 Hints
-            </ThemedText>
-            <View className="bg-huntly-sky/20 p-4 rounded-2xl">
-              {Array.isArray(activity.hints) ? (
-                activity.hints.map((hint, i) => (
-                  <ThemedText
-                    key={i}
-                    type="body"
-                    className="text-huntly-charcoal leading-6 mb-2 last:mb-0"
-                  >
-                    • {hint}
-                  </ThemedText>
-                ))
-              ) : (
-                <ThemedText type="body" className="text-huntly-charcoal leading-6">
-                  {activity.hints}
-                </ThemedText>
-              )}
-            </View>
-          </View>
-        )}
-
-        {activity.tips && activity.tips.length > 0 && (
-          <View className="mb-6">
-            <ThemedText type="defaultSemiBold" className="text-huntly-forest mb-3 text-lg">
-              🎯 Tips
-            </ThemedText>
-            <View className="bg-huntly-mint/20 p-4 rounded-2xl">
-              {Array.isArray(activity.tips) ? (
-                activity.tips.map((tip, i) => (
-                  <ThemedText
-                    key={i}
-                    type="body"
-                    className="text-huntly-charcoal leading-6 mb-2 last:mb-0"
-                  >
-                    • {tip}
-                  </ThemedText>
-                ))
-              ) : (
-                <ThemedText type="body" className="text-huntly-charcoal leading-6">
-                  {activity.tips}
-                </ThemedText>
-              )}
-            </View>
-          </View>
-        )}
-
-        {activity.trivia && (
-          <View className="mb-6">
-            <ThemedText type="defaultSemiBold" className="text-huntly-forest mb-3 text-lg">
-              🧠 Fun Fact
-            </ThemedText>
-            <View className="bg-huntly-sky/10 p-4 rounded-2xl border border-huntly-sky/30">
-              <ThemedText type="body" className="text-huntly-charcoal leading-6 italic">
-                {activity.trivia}
-              </ThemedText>
-            </View>
-          </View>
-        )}
-
-        {activity.photo_required && (
-          <View className="mb-6">
-            <ThemedText type="defaultSemiBold" className="text-huntly-forest mb-3 text-lg">
-              📸 Photo Required
-            </ThemedText>
-            <TouchableOpacity
-              onPress={pickImage}
-              className={`border-2 border-dashed rounded-2xl p-6 items-center justify-center ${
-                uploadedPhoto ? "border-huntly-leaf bg-huntly-leaf/10" : "border-huntly-charcoal/30"
-              }`}
-            >
-              {uploadedPhoto ? (
-                <View className="items-center">
-                  <Image
-                    source={{ uri: uploadedPhoto as string }}
-                    className="w-32 h-32 rounded-xl mb-3"
-                    resizeMode="cover"
-                  />
-                  <ThemedText type="body" className="text-huntly-leaf font-semibold">
-                    Photo uploaded! Tap to change
-                  </ThemedText>
-                </View>
-              ) : (
-                <View className="items-center">
-                  <ThemedText className="text-4xl mb-2">📷</ThemedText>
-                  <ThemedText type="body" className="text-huntly-charcoal text-center">
-                    Tap to upload a photo{"\n"}for this activity
-                  </ThemedText>
-                </View>
-              )}
-            </TouchableOpacity>
-          </View>
-        )}
-
         <View className="mb-6">
           <Button
             variant="primary"
@@ -441,7 +249,6 @@ export default function ActivityDetailScreen() {
             disabled={
               completing ||
               selectedProfileId == null ||
-              (activity.photo_required && !uploadedPhoto) ||
               activityProgress?.status === "completed"
             }
             className="w-full py-4"
@@ -454,11 +261,6 @@ export default function ActivityDetailScreen() {
               ? "✓ Completed"
               : "Complete Activity"}
           </Button>
-          {activity.photo_required && !uploadedPhoto && (
-            <ThemedText type="caption" className="text-huntly-charcoal/70 text-center mt-2">
-              Please upload a photo to complete this activity
-            </ThemedText>
-          )}
         </View>
 
         <View className="h-6" />

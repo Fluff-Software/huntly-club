@@ -21,17 +21,9 @@ type ActivityFormProps = {
     name: string;
     title: string;
     description: string | null;
-    long_description: string | null;
-    hints: string[] | string | null;
-    tips: string[] | string | null;
-    trivia: string | null;
     image: string | null;
     xp: number | null;
-    photo_required: boolean | null;
     categories: number[] | null;
-    instructions: string[] | null;
-    alternative_approaches: string[] | null;
-    images: string[] | null;
     intro_urgent_message?: string | null;
     intro_character_name?: string | null;
     intro_character_avatar_url?: string | null;
@@ -46,20 +38,6 @@ type ActivityFormProps = {
     debrief_question_2?: string | null;
   };
 };
-
-function normalizeStringArray(value: string[] | string | null | undefined): string[] {
-  if (value == null) return [];
-  if (Array.isArray(value)) return value;
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (!trimmed) return [];
-    return trimmed
-      .split(/\n/)
-      .map((s) => s.replace(/^\s*•\s*/, "").trim())
-      .filter(Boolean);
-  }
-  return [];
-}
 
 const TrashIcon = () => (
   <svg
@@ -94,27 +72,6 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
   const [state, formAction] = useActionState(
     async (_: { error?: string }, formData: FormData) => action(formData),
     { error: undefined }
-  );
-  const [hintsList, setHintsList] = useState<string[]>(() =>
-    normalizeStringArray(initial?.hints).length > 0 ? normalizeStringArray(initial?.hints) : [""]
-  );
-  const [tipsList, setTipsList] = useState<string[]>(() =>
-    normalizeStringArray(initial?.tips).length > 0 ? normalizeStringArray(initial?.tips) : [""]
-  );
-  const [instructionsList, setInstructionsList] = useState<string[]>(() =>
-    Array.isArray(initial?.instructions) && initial.instructions.length > 0
-      ? initial.instructions.filter(Boolean)
-      : [""]
-  );
-  const [alternativeApproachesList, setAlternativeApproachesList] = useState<string[]>(() =>
-    Array.isArray(initial?.alternative_approaches) && initial.alternative_approaches.length > 0
-      ? initial.alternative_approaches.filter(Boolean)
-      : [""]
-  );
-  const [imagesList, setImagesList] = useState<string[]>(() =>
-    Array.isArray(initial?.images) && initial.images.length > 0
-      ? initial.images.filter((u): u is string => typeof u === "string" && u.trim() !== "")
-      : [""]
   );
   const [prepChecklistList, setPrepChecklistList] = useState<PrepItem[]>(() =>
     Array.isArray(initial?.prep_checklist) && initial.prep_checklist.length > 0
@@ -200,22 +157,6 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
           defaultValue={initial?.description ?? ""}
           className="w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
         />
-      </div>
-
-      <div>
-        <label htmlFor="long_description" className="mb-1 block text-sm font-medium text-stone-700">
-          Long description
-        </label>
-        <textarea
-          id="long_description"
-          name="long_description"
-          rows={4}
-          defaultValue={initial?.long_description ?? ""}
-          className="w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-        />
-        <p className="mt-1 text-xs text-stone-500">
-          Shown as &quot;What to do&quot; when no instruction steps are set.
-        </p>
       </div>
 
       <div className="space-y-4 rounded-lg border border-stone-200 bg-stone-50/50 p-4">
@@ -486,114 +427,6 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
         </div>
       </div>
 
-      <div>
-        <label className="mb-1 block text-sm font-medium text-stone-700">Instructions (steps)</label>
-        <p className="mb-2 text-xs text-stone-500">
-          Numbered steps shown on the mission page. If set, they replace the long description block.
-        </p>
-        <div className="space-y-2">
-          {instructionsList.map((step, index) => (
-            <div key={index} className="flex gap-2">
-              <span className="flex h-10 w-8 shrink-0 items-center justify-center rounded-lg border border-stone-200 bg-stone-50 text-sm font-medium text-stone-600">
-                {index + 1}
-              </span>
-              <input
-                name="instructions"
-                type="text"
-                defaultValue={step}
-                placeholder="e.g. Find a quiet spot outdoors"
-                className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-              />
-              <button
-                type="button"
-                onClick={() => setInstructionsList((prev) => prev.filter((_, i) => i !== index))}
-                className="rounded-lg border border-stone-300 p-2 text-stone-600 hover:bg-stone-100 focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-                aria-label="Delete step"
-              >
-                <TrashIcon />
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => setInstructionsList((prev) => [...prev, ""])}
-            className="flex items-center gap-1 rounded-lg border border-dashed border-stone-400 px-3 py-2 text-sm text-stone-600 hover:border-huntly-sage hover:text-huntly-forest focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-          >
-            + Add step
-          </button>
-        </div>
-      </div>
-
-      <div>
-        <label className="mb-1 block text-sm font-medium text-stone-700">Alternative approaches</label>
-        <p className="mb-2 text-xs text-stone-500">
-          Other ways to complete this activity (e.g. indoor version, solo vs group).
-        </p>
-        <div className="space-y-2">
-          {alternativeApproachesList.map((alt, index) => (
-            <div key={index} className="flex gap-2">
-              <input
-                name="alternative_approaches"
-                type="text"
-                defaultValue={alt}
-                placeholder="e.g. Try this indoors with houseplants"
-                className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-              />
-              <button
-                type="button"
-                onClick={() => setAlternativeApproachesList((prev) => prev.filter((_, i) => i !== index))}
-                className="rounded-lg border border-stone-300 p-2 text-stone-600 hover:bg-stone-100 focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-                aria-label="Delete alternative"
-              >
-                <TrashIcon />
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => setAlternativeApproachesList((prev) => [...prev, ""])}
-            className="flex items-center gap-1 rounded-lg border border-dashed border-stone-400 px-3 py-2 text-sm text-stone-600 hover:border-huntly-sage hover:text-huntly-forest focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-          >
-            + Add alternative
-          </button>
-        </div>
-      </div>
-
-      <div>
-        <label className="mb-1 block text-sm font-medium text-stone-700">Extra images</label>
-        <p className="mb-2 text-xs text-stone-500">
-          Optional image URLs shown throughout the mission page (between description, steps, etc.).
-        </p>
-        <div className="space-y-2">
-          {imagesList.map((url, index) => (
-            <div key={index} className="flex gap-2">
-              <input
-                name="images"
-                type="url"
-                defaultValue={url}
-                placeholder="https://..."
-                className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-              />
-              <button
-                type="button"
-                onClick={() => setImagesList((prev) => prev.filter((_, i) => i !== index))}
-                className="rounded-lg border border-stone-300 p-2 text-stone-600 hover:bg-stone-100 focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-                aria-label="Delete image URL"
-              >
-                <TrashIcon />
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => setImagesList((prev) => [...prev, ""])}
-            className="flex items-center gap-1 rounded-lg border border-dashed border-stone-400 px-3 py-2 text-sm text-stone-600 hover:border-huntly-sage hover:text-huntly-forest focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-          >
-            + Add image URL
-          </button>
-        </div>
-      </div>
-
       <ImageUploadField
         name="image"
         label="Image"
@@ -602,32 +435,18 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
         help="Upload to Supabase Storage."
       />
 
-      <div className="grid gap-6 sm:grid-cols-2">
-        <div>
-          <label htmlFor="xp" className="mb-1 block text-sm font-medium text-stone-700">
-            XP
-          </label>
-          <input
-            id="xp"
-            name="xp"
-            type="number"
-            min={0}
-            defaultValue={initial?.xp ?? 10}
-            className="w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-          />
-        </div>
-        <div className="flex items-center gap-2 pt-8">
-          <input
-            id="photo_required"
-            name="photo_required"
-            type="checkbox"
-            defaultChecked={initial?.photo_required ?? false}
-            className="h-4 w-4 rounded border-stone-300 text-huntly-forest focus:ring-huntly-sage"
-          />
-          <label htmlFor="photo_required" className="text-sm font-medium text-stone-700">
-            Photo required
-          </label>
-        </div>
+      <div>
+        <label htmlFor="xp" className="mb-1 block text-sm font-medium text-stone-700">
+          XP
+        </label>
+        <input
+          id="xp"
+          name="xp"
+          type="number"
+          min={0}
+          defaultValue={initial?.xp ?? 10}
+          className="w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+        />
       </div>
 
       <div ref={categoriesDropdownRef} className="relative">
@@ -727,83 +546,6 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
         {selectedCategoryIds.map((id) => (
           <input key={id} type="hidden" name="categories" value={id} />
         ))}
-      </div>
-
-      <div>
-        <label className="mb-1 block text-sm font-medium text-stone-700">Hints</label>
-        <div className="space-y-2">
-          {hintsList.map((hint, index) => (
-            <div key={index} className="flex gap-2">
-              <input
-                name="hints"
-                type="text"
-                defaultValue={hint}
-                placeholder="e.g. Look for movement in trees and bushes"
-                className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-              />
-              <button
-                type="button"
-                onClick={() => setHintsList((prev) => prev.filter((_, i) => i !== index))}
-                className="rounded-lg border border-stone-300 p-2 text-stone-600 hover:bg-stone-100 focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-                aria-label="Delete hint"
-              >
-                <TrashIcon />
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => setHintsList((prev) => [...prev, ""])}
-            className="flex items-center gap-1 rounded-lg border border-dashed border-stone-400 px-3 py-2 text-sm text-stone-600 hover:border-huntly-sage hover:text-huntly-forest focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-          >
-            + Add hint
-          </button>
-        </div>
-      </div>
-
-      <div>
-        <label className="mb-1 block text-sm font-medium text-stone-700">Tips</label>
-        <div className="space-y-2">
-          {tipsList.map((tip, index) => (
-            <div key={index} className="flex gap-2">
-              <input
-                name="tips"
-                type="text"
-                defaultValue={tip}
-                placeholder="e.g. Stay quiet and move slowly"
-                className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-              />
-              <button
-                type="button"
-                onClick={() => setTipsList((prev) => prev.filter((_, i) => i !== index))}
-                className="rounded-lg border border-stone-300 p-2 text-stone-600 hover:bg-stone-100 focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-                aria-label="Delete tip"
-              >
-                <TrashIcon />
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => setTipsList((prev) => [...prev, ""])}
-            className="flex items-center gap-1 rounded-lg border border-dashed border-stone-400 px-3 py-2 text-sm text-stone-600 hover:border-huntly-sage hover:text-huntly-forest focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-          >
-            + Add tip
-          </button>
-        </div>
-      </div>
-
-      <div>
-        <label htmlFor="trivia" className="mb-1 block text-sm font-medium text-stone-700">
-          Trivia
-        </label>
-        <textarea
-          id="trivia"
-          name="trivia"
-          rows={2}
-          defaultValue={initial?.trivia ?? ""}
-          className="w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-        />
       </div>
 
       <Button type="submit" size="lg">

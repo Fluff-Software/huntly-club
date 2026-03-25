@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'apps/mobile/**'
+      - '.github/workflows/eas-update.yml'
 
 jobs:
   update:

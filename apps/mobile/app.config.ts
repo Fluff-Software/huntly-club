@@ -58,7 +58,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   updates: {
     url: "https://u.expo.dev/" + (process.env.EXPO_PUBLIC_EAS_PROJECT_ID ?? ""),
-    fallbackToCacheTimeout: 0,
+    checkAutomatically: "NEVER",
   },
   plugins: [
     "expo-router",

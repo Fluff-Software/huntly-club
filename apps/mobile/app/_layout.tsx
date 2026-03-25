@@ -17,6 +17,7 @@ import {
   ComicNeue_700Bold,
 } from "@expo-google-fonts/comic-neue";
 
+import { useAppUpdate } from "@/hooks/useAppUpdate";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { NetworkProvider } from "@/contexts/NetworkContext";
 import { PurchasesProvider } from "@/contexts/PurchasesContext";
@@ -56,6 +57,8 @@ Notifications.setNotificationHandler({
 });
 
 export default function RootLayout() {
+  useAppUpdate();
+
   const [juaLoaded] = useJuaFonts({
     Jua_400Regular,
   });

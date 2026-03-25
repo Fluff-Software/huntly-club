@@ -21,6 +21,7 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withDelay,
+  cancelAnimation,
 } from "react-native-reanimated";
 import { MaterialIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
@@ -319,6 +320,71 @@ function SlideItem({
         )}
       </View>
     </Pressable>
+  );
+}
+
+function ProgressDot({
+  isActive,
+  autoPlay,
+  duration,
+  dotSize,
+  pillWidth,
+}: {
+  isActive: boolean;
+  autoPlay: boolean;
+  duration: number;
+  dotSize: number;
+  pillWidth: number;
+}) {
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    if (isActive && autoPlay) {
+      progress.value = 0;
+      progress.value = withTiming(1, { duration });
+    } else {
+      cancelAnimation(progress);
+    }
+  }, [isActive, autoPlay, duration]);
+
+  const fillStyle = useAnimatedStyle(() => ({
+    width: progress.value * pillWidth,
+  }));
+
+  if (isActive && autoPlay) {
+    return (
+      <View
+        style={{
+          width: pillWidth,
+          height: dotSize,
+          borderRadius: dotSize / 2,
+          backgroundColor: "rgba(255,255,255,0.4)",
+          overflow: "hidden",
+        }}
+      >
+        <Animated.View
+          style={[
+            {
+              height: dotSize,
+              backgroundColor: CREAM,
+              borderRadius: dotSize / 2,
+            },
+            fillStyle,
+          ]}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <View
+      style={{
+        width: dotSize,
+        height: dotSize,
+        borderRadius: dotSize / 2,
+        backgroundColor: isActive ? CREAM : "rgba(255,255,255,0.4)",
+      }}
+    />
   );
 }
 
@@ -680,12 +746,13 @@ export default function StorySlidesScreen() {
           )}
           <View style={styles.dotsRow}>
             {slides.map((_, i) => (
-              <View
+              <ProgressDot
                 key={i}
-                style={[
-                  styles.dot,
-                  { backgroundColor: i === currentIndex ? CREAM : "rgba(255,255,255,0.4)" },
-                ]}
+                isActive={i === currentIndex}
+                autoPlay={autoPlay}
+                duration={AUTO_PLAY_INTERVAL_MS}
+                dotSize={scaleW(8)}
+                pillWidth={scaleW(24)}
               />
             ))}
           </View>

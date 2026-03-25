@@ -4,6 +4,7 @@ import { updateActivity } from "../../actions";
 import { getCategories } from "@/app/(main)/categories/actions";
 import { Button } from "@/components/Button";
 import { ActivityForm } from "../../ActivityForm";
+import { DeleteMissionButton } from "../../DeleteMissionButton";
 
 async function getActivity(id: number) {
   const supabase = createServerSupabaseClient();
@@ -77,11 +78,12 @@ export default async function EditActivityPage({
           debrief_question_2: activity.debrief_question_2 ?? null,
         }}
       />
-      <p className="mt-4">
+      <div className="mt-4 flex items-center justify-between">
         <Button href="/activities" variant="ghost" size="md">
           Back to missions
         </Button>
-      </p>
+        <DeleteMissionButton id={activityId} />
+      </div>
     </div>
   );
 }

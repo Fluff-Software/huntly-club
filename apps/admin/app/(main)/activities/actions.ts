@@ -2,6 +2,7 @@
 
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 function parseCategoryIds(formData: FormData): number[] {
   const raw = formData.getAll("categories");
@@ -15,6 +16,14 @@ function parseCategoryIds(formData: FormData): number[] {
 }
 
 export type ActivityFormState = { error?: string };
+
+export async function deleteActivity(id: number): Promise<void> {
+  const supabase = createServerSupabaseClient();
+  const { error } = await supabase.from("activities").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/activities");
+  redirect("/activities");
+}
 
 export async function createActivity(
   _prev: ActivityFormState,

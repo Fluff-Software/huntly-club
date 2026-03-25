@@ -42,8 +42,8 @@ import { compressImageAsync } from "@/utils/imageCompression";
 import { uploadUserActivityPhoto } from "@/services/storageService";
 import type { Activity } from "@/types/activity";
 
-const DARK_BROWN = "#4A2C1B";
-const LIGHT_BROWN = "#7E5C44";
+const FOREST_DARK = "#2D4A35";
+const HUNTLY_GREEN = "#4F6F52";
 const TEXT_SECONDARY = "#2F3336";
 const LIGHT_GREEN = "#7FAF8A";
 const CREAM = "#F6F5F1";
@@ -416,7 +416,7 @@ export default function CompletionScreen() {
   const styles = useMemo(
     () =>
       StyleSheet.create({
-        container: { flex: 1, backgroundColor: DARK_BROWN },
+        container: { flex: 1, backgroundColor: FOREST_DARK },
         scroll: {
           flex: 1,
           paddingHorizontal: scaleW(24),
@@ -437,7 +437,7 @@ export default function CompletionScreen() {
           marginBottom: scaleW(24),
         },
         photoUploadCard: {
-          backgroundColor: LIGHT_BROWN,
+          backgroundColor: HUNTLY_GREEN,
           borderRadius: scaleW(20),
           borderWidth: 2,
           borderStyle: "dashed",
@@ -459,7 +459,7 @@ export default function CompletionScreen() {
           color: "rgba(255,255,255,0.8)",
         },
         debriefInputCard: {
-          backgroundColor: LIGHT_BROWN,
+          backgroundColor: HUNTLY_GREEN,
           borderRadius: scaleW(16),
           padding: scaleW(16),
           marginBottom: scaleW(16),
@@ -641,7 +641,7 @@ export default function CompletionScreen() {
         },
         checkboxChecked: { backgroundColor: TEXT_SECONDARY },
         completeButton: {
-          backgroundColor: LIGHT_BROWN,
+          backgroundColor: HUNTLY_GREEN,
           paddingVertical: scaleW(16),
           borderRadius: scaleW(32),
           alignItems: "center",

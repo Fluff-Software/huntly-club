@@ -111,7 +111,7 @@ export default function StepsScreen() {
   const styles = useMemo(
     () =>
       StyleSheet.create({
-        container: { flex: 1, backgroundColor: DARK_BG },
+        container: { flex: 1, backgroundColor: LIGHT_GREEN_HEADER },
         loadingContainer: {
           flex: 1,
           justifyContent: "center",
@@ -150,7 +150,7 @@ export default function StepsScreen() {
           backgroundColor: "rgba(255,255,255,0.5)",
         },
         progressLineDone: { backgroundColor: "#FFF" },
-        scroll: { flex: 1 },
+        scroll: { flex: 1, backgroundColor: DARK_BG },
         scrollContent: { padding: scaleW(20), paddingBottom: scaleW(120) },
         mediaPlaceholder: {
           width: "100%",
@@ -193,8 +193,9 @@ export default function StepsScreen() {
           bottom: 0,
           left: 0,
           right: 0,
+          paddingTop: scaleW(12),
           paddingHorizontal: scaleW(20),
-          paddingBottom: scaleW(24),
+          paddingBottom: scaleW(8),
         },
         backButton: {
           flex: 1,
@@ -301,7 +302,7 @@ export default function StepsScreen() {
         </Animated.View>
       </ScrollView>
       <View style={styles.footer} pointerEvents="box-none">
-        <SafeAreaView edges={["bottom"]} style={{ flexDirection: "row", gap: scaleW(12), flex: 1 }}>
+        <View style={{ flexDirection: "row", gap: scaleW(12), flex: 1 }}>
           <Animated.View style={[backStyle, { flex: 1 }]}>
             <Pressable
               onPress={handleBack}
@@ -332,7 +333,7 @@ export default function StepsScreen() {
               </ThemedText>
             </Pressable>
           </Animated.View>
-        </SafeAreaView>
+        </View>
       </View>
     </SafeAreaView>
   );

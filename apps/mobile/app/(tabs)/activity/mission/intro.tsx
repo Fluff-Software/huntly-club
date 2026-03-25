@@ -20,8 +20,19 @@ import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { getActivityById, getActivityImageSource } from "@/services/packService";
 import type { Activity } from "@/types/activity";
 
-const DARK_BROWN = "#4A2C1B";
-const LIGHT_BROWN = "#7E5C44";
+const BEAR_FACE = require("@/assets/images/bear-face.png");
+const FOX_FACE = require("@/assets/images/fox-face.png");
+const OTTER_FACE = require("@/assets/images/otter-face.png");
+
+function getFaceImage(name: string) {
+  const lower = name.toLowerCase();
+  if (lower.includes("fox")) return FOX_FACE;
+  if (lower.includes("otter")) return OTTER_FACE;
+  return BEAR_FACE;
+}
+
+const FOREST_DARK = "#2D4A35";
+const HUNTLY_GREEN = "#4F6F52";
 const URGENT_RED = "#E04434";
 const CREAM = "#F6F5F1";
 
@@ -73,7 +84,7 @@ export default function IntroScreen() {
   const styles = useMemo(
     () =>
       StyleSheet.create({
-        container: { flex: 1, backgroundColor: DARK_BROWN },
+        container: { flex: 1, backgroundColor: FOREST_DARK },
         loadingContainer: {
           flex: 1,
           justifyContent: "center",
@@ -83,17 +94,19 @@ export default function IntroScreen() {
         errorText: { fontSize: scaleW(17), color: "#FFF", textAlign: "center" },
         scroll: { flex: 1 },
         scrollContent: { paddingHorizontal: scaleW(20), paddingBottom: scaleW(120) },
+        urgentBannerWrap: {
+          marginHorizontal: -scaleW(28),
+          marginTop: scaleW(8),
+          marginBottom: scaleW(28),
+        },
         urgentBanner: {
           backgroundColor: URGENT_RED,
-          paddingVertical: scaleW(12),
-          paddingHorizontal: scaleW(20),
-          borderBottomLeftRadius: scaleW(16),
-          borderBottomRightRadius: scaleW(16),
-          marginBottom: scaleW(20),
+          paddingVertical: scaleW(16),
+          transform: [{ rotate: "-1deg" }],
         },
         urgentText: {
-          fontSize: scaleW(14),
-          fontWeight: "700",
+          fontSize: scaleW(17),
+          fontWeight: "800",
           color: "#FFF",
           textAlign: "center",
           letterSpacing: 0.5,
@@ -108,14 +121,21 @@ export default function IntroScreen() {
           width: scaleW(48),
           height: scaleW(48),
           borderRadius: scaleW(24),
-          backgroundColor: LIGHT_BROWN,
+          backgroundColor: "#FFF",
+          overflow: "hidden",
+          padding: scaleW(6),
           alignItems: "center",
           justifyContent: "center",
         },
-        avatarImage: { width: scaleW(48), height: scaleW(48), borderRadius: scaleW(24) },
+        avatarImage: {
+          width: scaleW(48),
+          height: scaleW(48),
+          borderRadius: scaleW(24),
+          overflow: "hidden",
+        },
         characterName: { fontSize: scaleW(18), fontWeight: "600", color: "#FFF" },
         speechBubble: {
-          backgroundColor: LIGHT_BROWN,
+          backgroundColor: HUNTLY_GREEN,
           borderRadius: scaleW(20),
           padding: scaleW(20),
           marginBottom: scaleW(20),
@@ -126,7 +146,7 @@ export default function IntroScreen() {
           lineHeight: scaleW(24),
         },
         missionCard: {
-          backgroundColor: LIGHT_BROWN,
+          backgroundColor: HUNTLY_GREEN,
           borderRadius: scaleW(20),
           padding: scaleW(24),
           marginBottom: scaleW(24),
@@ -142,7 +162,7 @@ export default function IntroScreen() {
         missionDesc: { fontSize: scaleW(15), color: "rgba(255,255,255,0.9)", marginBottom: scaleW(8) },
         metaRow: { fontSize: scaleW(13), color: "rgba(255,255,255,0.75)" },
         acceptButton: {
-          backgroundColor: LIGHT_BROWN,
+          backgroundColor: HUNTLY_GREEN,
           borderRadius: scaleW(28),
           paddingVertical: scaleW(16),
           paddingHorizontal: scaleW(32),
@@ -165,7 +185,7 @@ export default function IntroScreen() {
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]} edges={["top", "left", "right"]}>
-        <ActivityIndicator size="large" color={LIGHT_BROWN} />
+        <ActivityIndicator size="large" color={HUNTLY_GREEN} />
         <ThemedText style={[styles.errorText, { marginTop: scaleW(16) }]}>
           Loading your mission…
         </ThemedText>
@@ -194,8 +214,10 @@ export default function IntroScreen() {
         bounces={false}
       >
         {hasUrgent && (
-          <Animated.View entering={FadeInDown.duration(400)} style={styles.urgentBanner}>
-            <ThemedText style={styles.urgentText}>{activity.intro_urgent_message}</ThemedText>
+          <Animated.View entering={FadeInDown.duration(400)} style={styles.urgentBannerWrap}>
+            <View style={styles.urgentBanner}>
+              <ThemedText style={styles.urgentText}>{activity.intro_urgent_message}</ThemedText>
+            </View>
           </Animated.View>
         )}
         <Animated.View entering={FadeInDown.duration(420).delay(80)} style={styles.characterRow}>
@@ -207,7 +229,11 @@ export default function IntroScreen() {
             />
           ) : (
             <View style={styles.avatar}>
-              <ThemedText style={{ fontSize: scaleW(24) }}>🐻</ThemedText>
+              <Image
+                source={getFaceImage(characterName)}
+                style={{ width: "100%", height: "100%" }}
+                resizeMode="contain"
+              />
             </View>
           )}
           <ThemedText style={styles.characterName}>{characterName}</ThemedText>

@@ -21,9 +21,10 @@ import { getActivityById } from "@/services/packService";
 import type { Activity } from "@/types/activity";
 import type { PrepChecklistItem } from "@/types/activity";
 
-const DARK_HEADER = "#5D4E37";
-const LIGHT_GREEN_BG = "#E8F0E8";
-const CARD_GREEN = "#C5D9C5";
+const FOREST_DARK = "#2D4A35";
+const LIGHT_GREEN_BG = "#EEF5EE";
+const CARD_BG = "#FFF";
+const CARD_CHECKED_BG = "#D8EDD8";
 const HUNTLY_GREEN = "#4F6F52";
 const CHECK_GREEN = "#2D5A27";
 
@@ -86,7 +87,7 @@ export default function PrepScreen() {
   const styles = useMemo(
     () =>
       StyleSheet.create({
-        container: { flex: 1 },
+        container: { flex: 1, backgroundColor: FOREST_DARK },
         loadingContainer: {
           flex: 1,
           justifyContent: "center",
@@ -95,53 +96,70 @@ export default function PrepScreen() {
         },
         errorText: { fontSize: scaleW(17), color: "#2F3336", textAlign: "center" },
         header: {
-          backgroundColor: DARK_HEADER,
-          paddingVertical: scaleW(24),
+          backgroundColor: FOREST_DARK,
+          paddingTop: scaleW(32),
+          paddingBottom: scaleW(28),
           paddingHorizontal: scaleW(24),
-          borderBottomLeftRadius: scaleW(24),
-          borderBottomRightRadius: scaleW(24),
+          borderBottomLeftRadius: scaleW(28),
+          borderBottomRightRadius: scaleW(28),
         },
         headerTitle: {
           fontSize: scaleW(24),
           fontWeight: "700",
           color: "#FFF",
           textAlign: "center",
-          marginBottom: scaleW(8),
+          marginBottom: scaleW(6),
         },
         headerSubtext: {
           fontSize: scaleW(15),
-          color: "rgba(255,255,255,0.85)",
+          color: "rgba(255,255,255,0.75)",
           textAlign: "center",
         },
         scroll: { flex: 1, backgroundColor: LIGHT_GREEN_BG },
-        scrollContent: { padding: scaleW(20), paddingBottom: scaleW(120) },
+        scrollContent: { padding: scaleW(16), paddingBottom: scaleW(120) },
         card: {
-          backgroundColor: CARD_GREEN,
+          backgroundColor: CARD_BG,
           borderRadius: scaleW(16),
-          padding: scaleW(16),
-          marginBottom: scaleW(14),
+          padding: scaleW(18),
+          marginBottom: scaleW(10),
           flexDirection: "row",
-          alignItems: "flex-start",
+          alignItems: "center",
           gap: scaleW(14),
-          shadowColor: "#000",
+          shadowColor: "#2D4A35",
           shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 6,
+          shadowOpacity: 0.08,
+          shadowRadius: 8,
           elevation: 2,
+        },
+        cardChecked: {
+          backgroundColor: CARD_CHECKED_BG,
         },
         checkbox: {
           width: scaleW(28),
           height: scaleW(28),
-          borderRadius: scaleW(6),
+          borderRadius: scaleW(14),
           borderWidth: 2,
-          borderColor: CHECK_GREEN,
+          borderColor: HUNTLY_GREEN,
           alignItems: "center",
           justifyContent: "center",
+          flexShrink: 0,
         },
-        checkboxChecked: { backgroundColor: CHECK_GREEN },
+        checkboxChecked: {
+          backgroundColor: CHECK_GREEN,
+          borderColor: CHECK_GREEN,
+        },
         cardBody: { flex: 1 },
-        cardTitle: { fontSize: scaleW(17), fontWeight: "700", color: "#2F3336", marginBottom: scaleW(4) },
-        cardDesc: { fontSize: scaleW(14), color: "#5a5a5a", lineHeight: scaleW(20) },
+        cardTitle: {
+          fontSize: scaleW(16),
+          fontWeight: "600",
+          color: "#1A2E1E",
+          marginBottom: scaleW(2),
+        },
+        cardTitleChecked: {
+          color: "#4F6F52",
+          textDecorationLine: "line-through",
+        },
+        cardDesc: { fontSize: scaleW(14), color: "#5a6e5a", lineHeight: scaleW(20) },
         footerText: {
           fontSize: scaleW(14),
           color: "#5a5a5a",
@@ -162,9 +180,12 @@ export default function PrepScreen() {
           bottom: 0,
           left: 0,
           right: 0,
+          paddingTop: scaleW(12),
           paddingHorizontal: scaleW(20),
-          paddingBottom: scaleW(24),
+          paddingBottom: scaleW(8),
           backgroundColor: LIGHT_GREEN_BG,
+          borderTopWidth: 1,
+          borderTopColor: "rgba(79,111,82,0.1)",
         },
       }),
     [scaleW]
@@ -194,7 +215,7 @@ export default function PrepScreen() {
           Before you start…
         </ThemedText>
         <ThemedText style={styles.headerSubtext}>
-          Check off what you&apos;ve got. Bella won&apos;t send you in unprepared.
+          Here's what you'll need.
         </ThemedText>
       </View>
       <ScrollView
@@ -212,30 +233,33 @@ export default function PrepScreen() {
             <Animated.View
               key={index}
               entering={FadeInDown.duration(380).delay(80 + index * 60)}
-              style={styles.card}
             >
               <Pressable
                 onPress={() => toggleCheck(index)}
-                style={[styles.checkbox, checked[index] && styles.checkboxChecked]}
+                style={[styles.card, checked[index] && styles.cardChecked]}
               >
-                {checked[index] && (
-                  <MaterialIcons name="check" size={scaleW(18)} color="#FFF" />
-                )}
+                <View style={[styles.checkbox, checked[index] && styles.checkboxChecked]}>
+                  {checked[index] && (
+                    <MaterialIcons name="check" size={scaleW(16)} color="#FFF" />
+                  )}
+                </View>
+                <View style={styles.cardBody}>
+                  <ThemedText
+                    style={[styles.cardTitle, checked[index] && styles.cardTitleChecked]}
+                  >
+                    {item.title}
+                  </ThemedText>
+                  {item.description ? (
+                    <ThemedText style={styles.cardDesc}>{item.description}</ThemedText>
+                  ) : null}
+                </View>
               </Pressable>
-              <View style={styles.cardBody}>
-                <ThemedText type="heading" style={styles.cardTitle}>
-                  {item.title}
-                </ThemedText>
-                {item.description ? (
-                  <ThemedText style={styles.cardDesc}>{item.description}</ThemedText>
-                ) : null}
-              </View>
             </Animated.View>
           ))
         )}
       </ScrollView>
       <View style={styles.footer} pointerEvents="box-none">
-        <SafeAreaView edges={["bottom"]}>
+        <View>
           {allChecked && (
             <ThemedText style={styles.footerText}>Looking good — ready to go!</ThemedText>
           )}
@@ -255,7 +279,7 @@ export default function PrepScreen() {
               </ThemedText>
             </Pressable>
           </Animated.View>
-        </SafeAreaView>
+        </View>
       </View>
     </SafeAreaView>
   );

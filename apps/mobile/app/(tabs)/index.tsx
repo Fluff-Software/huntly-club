@@ -138,8 +138,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (width > 0 && teamCardConfig) {
-      bearCardTranslateX.value = width;
-      bearCardTranslateX.value = withDelay(100, withSpring(0, springLessBouncy));
+      bearCardTranslateX.value = 0;
     }
   }, [width, teamCardConfig]);
 

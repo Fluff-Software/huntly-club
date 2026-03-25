@@ -229,7 +229,7 @@ export default function StoryScreen() {
 
   if (showInitialLoading) {
     return (
-      <SafeAreaView style={[styles.container, styles.loadingContainer]} edges={["top", "left", "right"]}>
+      <SafeAreaView style={[styles.container, styles.loadingContainer]} edges={["left", "right"]}>
         <ActivityIndicator size="large" color="#FFF" />
         <ThemedText style={styles.loadingText}>Getting your story ready…</ThemedText>
       </SafeAreaView>
@@ -238,7 +238,7 @@ export default function StoryScreen() {
 
   if (error) {
     return (
-      <SafeAreaView style={[styles.container, styles.errorContainer]} edges={["top", "left", "right"]}>
+      <SafeAreaView style={[styles.container, styles.errorContainer]} edges={["left", "right"]}>
         <ThemedText style={styles.errorText}>Something went wrong loading your story.</ThemedText>
         <Pressable
           onPress={handleRetry}
@@ -259,7 +259,7 @@ export default function StoryScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+    <SafeAreaView style={styles.container} edges={["left", "right"]}>
       <ScrollView
         ref={scrollRef}
         style={{ flex: 1 }}

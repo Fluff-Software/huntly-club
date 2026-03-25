@@ -758,25 +758,25 @@ export default function HomeScreen() {
   );
 
   return (
-    <SafeAreaView edges={["top", "left", "right"]} style={styles.container}>
-      <View className="flex-1" style={styles.container}>
-        <Animated.View
-          style={[
-            styles.backgroundContainer,
-            {
-              transform: [{ translateX: backgroundTranslateX }],
-            },
-          ]}
+    <View style={styles.container}>
+      <Animated.View
+        style={[
+          styles.backgroundContainer,
+          {
+            transform: [{ translateX: backgroundTranslateX }],
+          },
+        ]}
+      >
+        <ImageBackground
+          source={BG_IMAGE}
+          style={styles.backgroundImage}
+          resizeMode="cover"
         >
-          <ImageBackground
-            source={BG_IMAGE}
-            style={styles.backgroundImage}
-            resizeMode="cover"
-          >
-            <View style={styles.backgroundOverlay} />
-          </ImageBackground>
-        </Animated.View>
-
+          <View style={styles.backgroundOverlay} />
+        </ImageBackground>
+      </Animated.View>
+      <SafeAreaView edges={["top", "left", "right"]} style={styles.container}>
+        <View className="flex-1" style={styles.container}>
         <View className="flex-1">
         {renderNavigationButtons()}
         <Animated.ScrollView
@@ -815,7 +815,8 @@ export default function HomeScreen() {
           </Animated.View>
         </Animated.ScrollView>
         </View>
-      </View>
-    </SafeAreaView>
+        </View>
+      </SafeAreaView>
+    </View>
   );
 }

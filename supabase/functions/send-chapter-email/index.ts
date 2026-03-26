@@ -1,7 +1,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+// @ts-ignore Deno npm specifier is resolved in Supabase Edge runtime.
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { sendEmail } from "../_shared/mailjet.ts";
-import { ctaButton, wrapEmailBody } from "../_shared/emailTemplate.ts";
+import { sendEmail } from "../_shared/mailjet";
+import { wrapEmailBody } from "../_shared/emailTemplate";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,12 +20,13 @@ type Payload = { chapterId?: number };
 type ChapterRow = { id: number; title: string | null; season_id: number; week_number: number | null };
 type SeasonRow = { id: number; name: string | null };
 type UserDataRow = { user_id: string };
+type DenoLike = {
+  env: { get: (key: string) => string | undefined };
+  serve: (handler: (req: Request) => Response | Promise<Response>) => void;
+};
+const deno = (globalThis as typeof globalThis & { Deno: DenoLike }).Deno;
 
-function appLinkForChapter(chapterId: number): string {
-  return `https://huntly.app/(tabs)/story/slides?source=chapter&chapterId=${chapterId}`;
-}
-
-Deno.serve(async (req) => {
+deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -42,8 +44,8 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "chapterId is required and must be a number." }, 400);
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseUrl = deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
@@ -70,7 +72,6 @@ Deno.serve(async (req) => {
     const chapterLabel =
       typeof weekNumber === "number" ? `Week ${weekNumber}: ${chapterTitle}` : chapterTitle;
 
-    const chapterUrl = appLinkForChapter(chapterId);
     const subject = "A new Huntly World chapter is ready";
     const bodyHtml = `
       <p style="margin: 0 0 16px; color: #36454F;">Hi there,</p>
@@ -78,15 +79,14 @@ Deno.serve(async (req) => {
         seasonName ? ` for <strong>${seasonName}</strong>` : ""
       }.</p>
       <p style="margin: 0 0 16px; color: #36454F;"><strong>${chapterLabel}</strong></p>
-      <p style="margin: 0 0 16px; color: #36454F;">Tap below to jump straight in:</p>
-      ${ctaButton(chapterUrl, "Read this chapter")}
+      <p style="margin: 0; color: #36454F;">Open the app to read the latest chapter.</p>
     `;
     const htmlPart = wrapEmailBody(bodyHtml);
     const textPart =
       `Hi there,\n\n` +
       `A new chapter is now available in Huntly World${seasonName ? ` for ${seasonName}` : ""}.\n\n` +
       `${chapterLabel}\n\n` +
-      `Read now: ${chapterUrl}\n\n` +
+      `Open the app to read the latest chapter.\n\n` +
       `— The Huntly World team`;
 
     const { data: users, error: usersError } = await admin
@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Could not load recipients." }, 500);
     }
 
-    const replyTo = Deno.env.get("MAILJET_REPLY_TO");
+    const replyTo = deno.env.get("MAILJET_REPLY_TO");
     let sent = 0;
     for (const row of (users ?? []) as UserDataRow[]) {
       const userId = row.user_id;

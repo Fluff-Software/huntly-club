@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { sendChapterPushNotification } from "./actions";
+import { sendChapterEmailNotification, sendChapterPushNotification } from "./actions";
 import { Button } from "@/components/Button";
 
 type Props = { chapterId: number; chapterTitle: string };
@@ -14,12 +14,29 @@ export function NotifyChapterButton({ chapterId, chapterTitle }: Props) {
     setMessage(null);
     setLoading(true);
     try {
-      const result = await sendChapterPushNotification(chapterId);
-      if (result.error) {
-        setMessage(`Failed: ${result.error}`);
+      const [pushResult, emailResult] = await Promise.all([
+        sendChapterPushNotification(chapterId),
+        sendChapterEmailNotification(chapterId),
+      ]);
+
+      if (pushResult.error && emailResult.error) {
+        setMessage(`Failed push and email notifications.`);
+      } else if (pushResult.error) {
+        const emailCount = emailResult.count ?? 0;
+        setMessage(
+          `Push failed. Email sent to ${emailCount} user${emailCount === 1 ? "" : "s"}.`
+        );
+      } else if (emailResult.error) {
+        const pushCount = pushResult.count ?? 0;
+        setMessage(
+          `Push sent to ${pushCount} user${pushCount === 1 ? "" : "s"}, but email failed.`
+        );
       } else {
-        const n = result.count ?? 0;
-        setMessage(`Notification sent to ${n} user${n === 1 ? "" : "s"}.`);
+        const pushCount = pushResult.count ?? 0;
+        const emailCount = emailResult.count ?? 0;
+        setMessage(
+          `Push sent to ${pushCount} user${pushCount === 1 ? "" : "s"}. Email sent to ${emailCount} user${emailCount === 1 ? "" : "s"}.`
+        );
       }
     } finally {
       setLoading(false);

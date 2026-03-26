@@ -460,7 +460,7 @@ export default function SettingsScreen() {
                 weeklyEmailScale.value = withSpring(1, { damping: 15, stiffness: 400 });
               }}
             >
-              <ThemedText style={styles.prefLabel}>Receive weekly email</ThemedText>
+              <ThemedText style={styles.prefLabel}>Receive email notifications</ThemedText>
               {weeklyEmailToggling ? (
                 <ActivityIndicator size="small" color={COLORS.darkGreen} />
               ) : (

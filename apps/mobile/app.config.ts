@@ -2,17 +2,63 @@ import 'dotenv/config';
 
 import { ExpoConfig, ConfigContext } from 'expo/config';
 
+type AppVariant = 'production' | 'preview' | 'development';
+
+const variant = (process.env.APP_VARIANT ?? 'production') as AppVariant;
+
+const appName: Record<AppVariant, string> = {
+  production: 'Huntly World',
+  preview: 'Huntly Preview',
+  development: 'Huntly Dev',
+};
+
+const bundleId: Record<AppVariant, string> = {
+  production: 'software.fluff.huntly-club',
+  preview: 'software.fluff.huntly-club.preview',
+  development: 'software.fluff.huntly-club.dev',
+};
+
+const androidPackage: Record<AppVariant, string> = {
+  production: 'software.fluff.huntlyclub',
+  preview: 'software.fluff.huntlyclubpreview',
+  development: 'software.fluff.huntlyclubdev',
+};
+
+const icon: Record<AppVariant, string> = {
+  production: './assets/images/ios-light.png',
+  preview: './assets/images/ios-light-preview.png',
+  development: './assets/images/ios-light-dev.png',
+};
+
+const iconDark: Record<AppVariant, string> = {
+  production: './assets/images/ios-dark.png',
+  preview: './assets/images/ios-dark-preview.png',
+  development: './assets/images/ios-dark-dev.png',
+};
+
+const iconTinted: Record<AppVariant, string> = {
+  production: './assets/images/ios-tinted.png',
+  preview: './assets/images/ios-tinted-preview.png',
+  development: './assets/images/ios-tinted-dev.png',
+};
+
+const adaptiveIcon: Record<AppVariant, string> = {
+  production: './assets/images/adaptive-icon.png',
+  preview: './assets/images/adaptive-icon-preview.png',
+  development: './assets/images/adaptive-icon-dev.png',
+};
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
-  name: "Huntly World",
+  name: appName[variant],
   slug: "huntly-club",
   version: "1.0.0",
   orientation: "portrait",
-  icon: "./assets/images/ios-light.png",
+  icon: icon[variant],
   scheme: "huntlyclub",
   userInterfaceStyle: "automatic",
   ios: {
     supportsTablet: true,
-    bundleIdentifier: 'software.fluff.huntly-club',
+    bundleIdentifier: bundleId[variant],
     requireFullScreen: true,
     associatedDomains: [
       'applinks:huntly.app',
@@ -22,17 +68,17 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       usesNonExemptEncryption: false
     },
     "icon": {
-        "dark": "./assets/images/ios-dark.png",
-        "light": "./assets/images/ios-light.png",
-        "tinted": "./assets/images/ios-tinted.png"
+        "dark": iconDark[variant],
+        "light": icon[variant],
+        "tinted": iconTinted[variant],
       }
   },
   android: {
     adaptiveIcon: {
-      foregroundImage: "./assets/images/adaptive-icon.png",
+      foregroundImage: adaptiveIcon[variant],
       backgroundColor: "#1A62A3",
     },
-    package: 'software.fluff.huntlyclub',
+    package: androidPackage[variant],
     googleServicesFile: "./google-services.json",
     intentFilters: [
       {

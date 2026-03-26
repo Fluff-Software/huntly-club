@@ -14,6 +14,7 @@ jobs:
     name: Publish EAS Update (production)
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    environment: Production
     permissions:
       contents: read
     steps:
@@ -65,6 +66,7 @@ jobs:
     name: Publish EAS Update (preview)
     if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
+    environment: develop
     permissions:
       contents: read
     steps:

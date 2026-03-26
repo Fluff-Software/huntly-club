@@ -164,6 +164,8 @@ export default function IntroScreen() {
         acceptButton: {
           backgroundColor: HUNTLY_GREEN,
           borderRadius: scaleW(28),
+          borderWidth: scaleW(2),
+          borderColor: "rgba(255,255,255,0.45)",
           paddingVertical: scaleW(16),
           paddingHorizontal: scaleW(32),
           alignSelf: "center",

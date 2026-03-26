@@ -6,6 +6,7 @@ import {
   Pressable,
   StyleSheet,
   ActivityIndicator,
+  Text,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
@@ -140,7 +141,7 @@ export default function StepsScreen() {
         },
         progressLineDone: { backgroundColor: "#FFF" },
         scroll: { flex: 1, backgroundColor: DARK_BG },
-        scrollContent: { padding: scaleW(20), paddingBottom: scaleW(120) },
+        scrollContent: { padding: scaleW(20), paddingBottom: scaleW(24) },
         mediaPlaceholder: {
           width: "100%",
           height: scaleW(220),
@@ -178,29 +179,29 @@ export default function StepsScreen() {
         footer: {
           flexDirection: "row",
           gap: scaleW(12),
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
+          backgroundColor: DARK_BG,
           paddingTop: scaleW(12),
           paddingHorizontal: scaleW(20),
-          paddingBottom: scaleW(8),
+          paddingBottom: scaleW(12),
+          marginBottom: scaleW(24),
         },
         backButton: {
           flex: 1,
           backgroundColor: "rgba(255,255,255,0.15)",
           borderRadius: scaleW(24),
-          paddingVertical: scaleW(16),
+          minHeight: scaleW(56),
           alignItems: "center",
+          justifyContent: "center",
         },
         doneButton: {
           flex: 1,
           backgroundColor: HUNTLY_GREEN,
           borderRadius: scaleW(24),
-          paddingVertical: scaleW(16),
+          minHeight: scaleW(56),
           alignItems: "center",
+          justifyContent: "center",
         },
-        buttonText: { fontSize: scaleW(17), fontWeight: "700", color: "#FFF" },
+        buttonText: { fontSize: scaleW(16), fontWeight: "700", color: "#FFF", lineHeight: scaleW(20) },
       }),
     [scaleW]
   );
@@ -290,8 +291,8 @@ export default function StepsScreen() {
           )}
         </Animated.View>
       </ScrollView>
-      <View style={styles.footer} pointerEvents="box-none">
-        <View style={{ flexDirection: "row", gap: scaleW(12), flex: 1 }}>
+      <SafeAreaView edges={["bottom"]} style={{ backgroundColor: DARK_BG }}>
+        <View style={styles.footer}>
           <Animated.View style={[backStyle, { flex: 1 }]}>
             <Pressable
               onPress={handleBack}
@@ -303,7 +304,7 @@ export default function StepsScreen() {
               }}
               style={styles.backButton}
             >
-              <ThemedText type="heading" style={styles.buttonText}>Back</ThemedText>
+              <Text style={styles.buttonText}>Back</Text>
             </Pressable>
           </Animated.View>
           <Animated.View style={[doneStyle, { flex: 1 }]}>
@@ -317,13 +318,11 @@ export default function StepsScreen() {
               }}
               style={styles.doneButton}
             >
-              <ThemedText type="heading" style={styles.buttonText}>
-                That&apos;s done!
-              </ThemedText>
+              <Text style={styles.buttonText}>That's done!</Text>
             </Pressable>
           </Animated.View>
         </View>
-      </View>
+      </SafeAreaView>
     </SafeAreaView>
   );
 }

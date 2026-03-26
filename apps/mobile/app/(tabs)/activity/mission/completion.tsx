@@ -493,7 +493,7 @@ export default function CompletionScreen() {
         subtitle: {
           fontSize: scaleW(16),
           fontWeight: "600",
-          color: TEXT_SECONDARY,
+          color: "#FFFFFF",
           textAlign: "center",
           marginBottom: scaleW(12),
         },
@@ -938,25 +938,22 @@ export default function CompletionScreen() {
                 </ThemedText>
                 <View
                   style={{
-                    backgroundColor: "rgba(79, 111, 82, 0.12)",
+                    backgroundColor: "rgba(255,255,255,0.15)",
                     borderRadius: scaleW(12),
-                    paddingVertical: scaleW(12),
-                    paddingHorizontal: scaleW(16),
-                    marginBottom: scaleW(12),
-                    borderLeftWidth: scaleW(4),
-                    borderLeftColor: LIGHT_GREEN,
+                    paddingVertical: scaleW(8),
+                    paddingHorizontal: scaleW(12),
+                    marginBottom: scaleW(16),
                   }}
                 >
                   <Text
                     style={{
-                      fontSize: scaleW(14),
-                      fontWeight: "600",
-                      color: TEXT_SECONDARY,
-                      lineHeight: scaleW(20),
+                      fontSize: scaleW(13),
+                      color: "rgba(255,255,255,0.85)",
+                      lineHeight: scaleW(18),
                       textAlign: "center",
                     }}
                   >
-                    Please don't include any faces or people in your photo. This keeps everyone safe and anonymous. Make sure your photo is of the mission activity - otherwise it may be rejected.
+                    To keep everyone safe - no faces please!
                   </Text>
                 </View>
                 {hasPhotos ? (

@@ -1,8 +1,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 // @ts-ignore Deno npm specifier is resolved in Supabase Edge runtime.
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { sendEmail } from "../_shared/mailjet";
-import { wrapEmailBody } from "../_shared/emailTemplate";
+// @ts-ignore Deno-style relative .ts imports are resolved by Edge runtime.
+import { sendEmail } from "../_shared/mailjet.ts";
+// @ts-ignore Deno-style relative .ts imports are resolved by Edge runtime.
+import { wrapEmailBody } from "../_shared/emailTemplate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

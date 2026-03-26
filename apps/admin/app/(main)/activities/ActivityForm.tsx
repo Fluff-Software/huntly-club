@@ -11,6 +11,9 @@ export type CategoryOption = {
   icon: string | null;
 };
 
+type PrepItem = { title: string; description: string };
+type StepItem = { instruction: string; tip: string; media_url: string };
+
 type ActivityFormProps = {
   action: (formData: FormData) => Promise<{ error?: string }>;
   categoriesList: CategoryOption[];
@@ -18,30 +21,23 @@ type ActivityFormProps = {
     name: string;
     title: string;
     description: string | null;
-    long_description: string | null;
-    hints: string[] | string | null;
-    tips: string[] | string | null;
-    trivia: string | null;
     image: string | null;
     xp: number | null;
-    photo_required: boolean | null;
     categories: number[] | null;
+    intro_urgent_message?: string | null;
+    intro_character_name?: string | null;
+    intro_character_avatar_url?: string | null;
+    intro_dialogue?: string | null;
+    estimated_duration?: string | null;
+    optional_items?: string | null;
+    prep_checklist?: PrepItem[] | null;
+    steps?: StepItem[] | null;
+    debrief_heading?: string | null;
+    debrief_photo_label?: string | null;
+    debrief_question_1?: string | null;
+    debrief_question_2?: string | null;
   };
 };
-
-function normalizeStringArray(value: string[] | string | null | undefined): string[] {
-  if (value == null) return [];
-  if (Array.isArray(value)) return value;
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (!trimmed) return [];
-    return trimmed
-      .split(/\n/)
-      .map((s) => s.replace(/^\s*•\s*/, "").trim())
-      .filter(Boolean);
-  }
-  return [];
-}
 
 const TrashIcon = () => (
   <svg
@@ -77,11 +73,19 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
     async (_: { error?: string }, formData: FormData) => action(formData),
     { error: undefined }
   );
-  const [hintsList, setHintsList] = useState<string[]>(() =>
-    normalizeStringArray(initial?.hints).length > 0 ? normalizeStringArray(initial?.hints) : [""]
+  const [prepChecklistList, setPrepChecklistList] = useState<PrepItem[]>(() =>
+    Array.isArray(initial?.prep_checklist) && initial.prep_checklist.length > 0
+      ? initial.prep_checklist.map((p) => ({ title: p.title, description: p.description }))
+      : [{ title: "", description: "" }]
   );
-  const [tipsList, setTipsList] = useState<string[]>(() =>
-    normalizeStringArray(initial?.tips).length > 0 ? normalizeStringArray(initial?.tips) : [""]
+  const [stepsList, setStepsList] = useState<StepItem[]>(() =>
+    Array.isArray(initial?.steps) && initial.steps.length > 0
+      ? initial.steps.map((s) => ({
+          instruction: s.instruction,
+          tip: s.tip ?? "",
+          media_url: s.media_url ?? "",
+        }))
+      : [{ instruction: "", tip: "", media_url: "" }]
   );
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>(() =>
     initial && Array.isArray(initial.categories) ? initial.categories : []
@@ -155,17 +159,272 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
         />
       </div>
 
-      <div>
-        <label htmlFor="long_description" className="mb-1 block text-sm font-medium text-stone-700">
-          Long description
-        </label>
-        <textarea
-          id="long_description"
-          name="long_description"
-          rows={4}
-          defaultValue={initial?.long_description ?? ""}
-          className="w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-        />
+      <div className="space-y-4 rounded-lg border border-stone-200 bg-stone-50/50 p-4">
+        <h3 className="text-sm font-semibold text-stone-800">Intro (experience-driven)</h3>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <label htmlFor="intro_urgent_message" className="mb-1 block text-xs font-medium text-stone-600">
+              Urgent banner message
+            </label>
+            <input
+              id="intro_urgent_message"
+              name="intro_urgent_message"
+              type="text"
+              defaultValue={initial?.intro_urgent_message ?? ""}
+              placeholder="e.g. URGENT — BELLA BEAR NEEDS YOU"
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+            />
+          </div>
+          <div>
+            <label htmlFor="intro_character_name" className="mb-1 block text-xs font-medium text-stone-600">
+              Character name
+            </label>
+            <input
+              id="intro_character_name"
+              name="intro_character_name"
+              type="text"
+              defaultValue={initial?.intro_character_name ?? ""}
+              placeholder="e.g. Bella Bear"
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+            />
+          </div>
+          <div>
+            <label htmlFor="intro_character_avatar_url" className="mb-1 block text-xs font-medium text-stone-600">
+              Character avatar URL
+            </label>
+            <input
+              id="intro_character_avatar_url"
+              name="intro_character_avatar_url"
+              type="text"
+              defaultValue={initial?.intro_character_avatar_url ?? ""}
+              placeholder="URL or leave blank"
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="intro_dialogue" className="mb-1 block text-xs font-medium text-stone-600">
+              Intro dialogue (speech bubble)
+            </label>
+            <textarea
+              id="intro_dialogue"
+              name="intro_dialogue"
+              rows={3}
+              defaultValue={initial?.intro_dialogue ?? ""}
+              placeholder="Narrative message from the character"
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+            />
+          </div>
+          <div>
+            <label htmlFor="estimated_duration" className="mb-1 block text-xs font-medium text-stone-600">
+              Estimated duration
+            </label>
+            <input
+              id="estimated_duration"
+              name="estimated_duration"
+              type="text"
+              defaultValue={initial?.estimated_duration ?? ""}
+              placeholder="e.g. ~45 mins"
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+            />
+          </div>
+          <div>
+            <label htmlFor="optional_items" className="mb-1 block text-xs font-medium text-stone-600">
+              Optional items
+            </label>
+            <input
+              id="optional_items"
+              name="optional_items"
+              type="text"
+              defaultValue={initial?.optional_items ?? ""}
+              placeholder="e.g. String & stickers optional"
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <label className="mb-1 block text-sm font-medium text-stone-700">Prep checklist</label>
+        <p className="mb-2 text-xs text-stone-500">
+          &quot;Before you start...&quot; items. Title and description per row.
+        </p>
+        <div className="space-y-2">
+          {prepChecklistList.map((item, index) => (
+            <div key={index} className="flex flex-col gap-2 rounded-lg border border-stone-200 p-3 sm:flex-row sm:items-start">
+              <input
+                name="prep_title"
+                type="text"
+                value={item.title}
+                onChange={(e) =>
+                  setPrepChecklistList((prev) =>
+                    prev.map((p, i) => (i === index ? { ...p, title: e.target.value } : p))
+                  )
+                }
+                placeholder="Title"
+                className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+              />
+              <input
+                name="prep_description"
+                type="text"
+                value={item.description}
+                onChange={(e) =>
+                  setPrepChecklistList((prev) =>
+                    prev.map((p, i) => (i === index ? { ...p, description: e.target.value } : p))
+                  )
+                }
+                placeholder="Description"
+                className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+              />
+              <button
+                type="button"
+                onClick={() => setPrepChecklistList((prev) => prev.filter((_, i) => i !== index))}
+                className="rounded-lg border border-stone-300 p-2 text-stone-600 hover:bg-stone-100 focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+                aria-label="Delete prep item"
+              >
+                <TrashIcon />
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => setPrepChecklistList((prev) => [...prev, { title: "", description: "" }])}
+            className="flex items-center gap-1 rounded-lg border border-dashed border-stone-400 px-3 py-2 text-sm text-stone-600 hover:border-huntly-sage hover:text-huntly-forest focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+          >
+            + Add prep item
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <label className="mb-1 block text-sm font-medium text-stone-700">Steps (experience-driven)</label>
+        <p className="mb-2 text-xs text-stone-500">
+          One screen per step. Instruction required; tip and media URL optional. Used for step-by-step flow when set.
+        </p>
+        <div className="space-y-3">
+          {stepsList.map((step, index) => (
+            <div key={index} className="rounded-lg border border-stone-200 bg-white p-3">
+              <div className="mb-2 flex items-center gap-2">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-stone-200 text-sm font-medium text-stone-600">
+                  {index + 1}
+                </span>
+                <span className="text-sm font-medium text-stone-700">Step {index + 1}</span>
+                <button
+                  type="button"
+                  onClick={() => setStepsList((prev) => prev.filter((_, i) => i !== index))}
+                  className="ml-auto rounded-lg border border-stone-300 p-1.5 text-stone-600 hover:bg-stone-100"
+                  aria-label="Delete step"
+                >
+                  <TrashIcon />
+                </button>
+              </div>
+              <div className="grid gap-2">
+                <input
+                  name="step_instruction"
+                  type="text"
+                  value={step.instruction}
+                  onChange={(e) =>
+                    setStepsList((prev) =>
+                      prev.map((s, i) => (i === index ? { ...s, instruction: e.target.value } : s))
+                    )
+                  }
+                  placeholder="Instruction text"
+                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+                />
+                <input
+                  name="step_tip"
+                  type="text"
+                  value={step.tip}
+                  onChange={(e) =>
+                    setStepsList((prev) =>
+                      prev.map((s, i) => (i === index ? { ...s, tip: e.target.value } : s))
+                    )
+                  }
+                  placeholder="Tip (optional)"
+                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+                />
+                <input
+                  name="step_media"
+                  type="url"
+                  value={step.media_url}
+                  onChange={(e) =>
+                    setStepsList((prev) =>
+                      prev.map((s, i) => (i === index ? { ...s, media_url: e.target.value } : s))
+                    )
+                  }
+                  placeholder="Media URL (optional)"
+                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+                />
+              </div>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() =>
+              setStepsList((prev) => [...prev, { instruction: "", tip: "", media_url: "" }])
+            }
+            className="flex items-center gap-1 rounded-lg border border-dashed border-stone-400 px-3 py-2 text-sm text-stone-600 hover:border-huntly-sage hover:text-huntly-forest focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+          >
+            + Add step
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-4 rounded-lg border border-stone-200 bg-stone-50/50 p-4">
+        <h3 className="text-sm font-semibold text-stone-800">Debrief (submit proof)</h3>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <label htmlFor="debrief_heading" className="mb-1 block text-xs font-medium text-stone-600">
+              Debrief heading
+            </label>
+            <input
+              id="debrief_heading"
+              name="debrief_heading"
+              type="text"
+              defaultValue={initial?.debrief_heading ?? ""}
+              placeholder="e.g. Report back to Bella"
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="debrief_photo_label" className="mb-1 block text-xs font-medium text-stone-600">
+              Photo label
+            </label>
+            <input
+              id="debrief_photo_label"
+              name="debrief_photo_label"
+              type="text"
+              defaultValue={initial?.debrief_photo_label ?? ""}
+              placeholder="e.g. Show Bella your base"
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+            />
+          </div>
+          <div>
+            <label htmlFor="debrief_question_1" className="mb-1 block text-xs font-medium text-stone-600">
+              Debrief question 1
+            </label>
+            <input
+              id="debrief_question_1"
+              name="debrief_question_1"
+              type="text"
+              defaultValue={initial?.debrief_question_1 ?? ""}
+              placeholder="e.g. What did you call your base?"
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+            />
+          </div>
+          <div>
+            <label htmlFor="debrief_question_2" className="mb-1 block text-xs font-medium text-stone-600">
+              Debrief question 2
+            </label>
+            <input
+              id="debrief_question_2"
+              name="debrief_question_2"
+              type="text"
+              defaultValue={initial?.debrief_question_2 ?? ""}
+              placeholder="e.g. What was the trickiest part?"
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+            />
+          </div>
+        </div>
       </div>
 
       <ImageUploadField
@@ -173,35 +432,21 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
         label="Image"
         uploadKind="activity"
         defaultValue={initial?.image}
-        help="Upload to Supabase Storage or paste a URL."
+        help="Upload to Supabase Storage."
       />
 
-      <div className="grid gap-6 sm:grid-cols-2">
-        <div>
-          <label htmlFor="xp" className="mb-1 block text-sm font-medium text-stone-700">
-            XP
-          </label>
-          <input
-            id="xp"
-            name="xp"
-            type="number"
-            min={0}
-            defaultValue={initial?.xp ?? 10}
-            className="w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-          />
-        </div>
-        <div className="flex items-center gap-2 pt-8">
-          <input
-            id="photo_required"
-            name="photo_required"
-            type="checkbox"
-            defaultChecked={initial?.photo_required ?? false}
-            className="h-4 w-4 rounded border-stone-300 text-huntly-forest focus:ring-huntly-sage"
-          />
-          <label htmlFor="photo_required" className="text-sm font-medium text-stone-700">
-            Photo required
-          </label>
-        </div>
+      <div>
+        <label htmlFor="xp" className="mb-1 block text-sm font-medium text-stone-700">
+          XP
+        </label>
+        <input
+          id="xp"
+          name="xp"
+          type="number"
+          min={0}
+          defaultValue={initial?.xp ?? 10}
+          className="w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+        />
       </div>
 
       <div ref={categoriesDropdownRef} className="relative">
@@ -301,83 +546,6 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
         {selectedCategoryIds.map((id) => (
           <input key={id} type="hidden" name="categories" value={id} />
         ))}
-      </div>
-
-      <div>
-        <label className="mb-1 block text-sm font-medium text-stone-700">Hints</label>
-        <div className="space-y-2">
-          {hintsList.map((hint, index) => (
-            <div key={index} className="flex gap-2">
-              <input
-                name="hints"
-                type="text"
-                defaultValue={hint}
-                placeholder="e.g. Look for movement in trees and bushes"
-                className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-              />
-              <button
-                type="button"
-                onClick={() => setHintsList((prev) => prev.filter((_, i) => i !== index))}
-                className="rounded-lg border border-stone-300 p-2 text-stone-600 hover:bg-stone-100 focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-                aria-label="Delete hint"
-              >
-                <TrashIcon />
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => setHintsList((prev) => [...prev, ""])}
-            className="flex items-center gap-1 rounded-lg border border-dashed border-stone-400 px-3 py-2 text-sm text-stone-600 hover:border-huntly-sage hover:text-huntly-forest focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-          >
-            + Add hint
-          </button>
-        </div>
-      </div>
-
-      <div>
-        <label className="mb-1 block text-sm font-medium text-stone-700">Tips</label>
-        <div className="space-y-2">
-          {tipsList.map((tip, index) => (
-            <div key={index} className="flex gap-2">
-              <input
-                name="tips"
-                type="text"
-                defaultValue={tip}
-                placeholder="e.g. Stay quiet and move slowly"
-                className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-              />
-              <button
-                type="button"
-                onClick={() => setTipsList((prev) => prev.filter((_, i) => i !== index))}
-                className="rounded-lg border border-stone-300 p-2 text-stone-600 hover:bg-stone-100 focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-                aria-label="Delete tip"
-              >
-                <TrashIcon />
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => setTipsList((prev) => [...prev, ""])}
-            className="flex items-center gap-1 rounded-lg border border-dashed border-stone-400 px-3 py-2 text-sm text-stone-600 hover:border-huntly-sage hover:text-huntly-forest focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-          >
-            + Add tip
-          </button>
-        </div>
-      </div>
-
-      <div>
-        <label htmlFor="trivia" className="mb-1 block text-sm font-medium text-stone-700">
-          Trivia
-        </label>
-        <textarea
-          id="trivia"
-          name="trivia"
-          rows={2}
-          defaultValue={initial?.trivia ?? ""}
-          className="w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-        />
       </div>
 
       <Button type="submit" size="lg">

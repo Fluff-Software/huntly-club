@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useCallback, useRef, useState, useEffect } from "react";
 import {
   View,
   ScrollView,
@@ -8,12 +8,34 @@ import {
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { useCurrentChapter } from "@/hooks/useCurrentChapter";
+import { useCountdownToUtcDate } from "@/hooks/useCountdownToUtcDate";
 import { useChaptersWithActivities, type ChapterWithActivities } from "@/hooks/useAllChaptersActivities";
+import { usePlayer } from "@/contexts/PlayerContext";
 import { MissionCard } from "@/components/MissionCard";
+import { supabase } from "@/services/supabase";
 
 const MISSIONS_ORANGE = "#D2684B";
+
+function formatReleaseDate(isoDate: string): string {
+  // `unlock_date` comes from a DB `date` column (YYYY-MM-DD).
+  // Formatting from the raw string avoids JS timezone parsing differences.
+  const parts = isoDate.split("-");
+  if (parts.length === 3) {
+    const [yyyy, mm, dd] = parts;
+    return `${dd}/${mm}/${yyyy.slice(-2)}`;
+  }
+
+  // Fallback for unexpected values.
+  const d = new Date(isoDate);
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yy = String(d.getFullYear()).slice(-2);
+  return `${dd}/${mm}/${yy}`;
+}
 
 function chapterSectionTitle(chapter: ChapterWithActivities): string {
   const title = chapter.title?.trim() || "Missions";
@@ -22,7 +44,64 @@ function chapterSectionTitle(chapter: ChapterWithActivities): string {
 
 export default function MissionsScreen() {
   const { scaleW } = useLayoutScale();
-  const { chapters, loading, error, refetch } = useChaptersWithActivities();
+  const { profiles } = usePlayer();
+  const { chapters, completedActivityIds, loading, error, refetch } = useChaptersWithActivities(null);
+  const { nextChapterDate, loading: currentChapterLoading, refetch: refetchCurrentChapter } = useCurrentChapter();
+
+  const handleCountdownComplete = React.useCallback(async () => {
+    // Refresh both: the missions list depends on unlocked chapters,
+    // and `nextChapterDate` depends on the unlock gate logic.
+    await refetch();
+    await refetchCurrentChapter();
+  }, [refetch, refetchCurrentChapter]);
+
+  const { label: countdownLabel } = useCountdownToUtcDate(nextChapterDate, {
+    onComplete: handleCountdownComplete,
+  });
+
+  const scrollRef = useRef<ScrollView>(null);
+  const [completionCountByActivityId, setCompletionCountByActivityId] = React.useState<Record<string, number>>({});
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+      refetchCurrentChapter();
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, [refetch, refetchCurrentChapter])
+  );
+
+  React.useEffect(() => {
+    const profileIds = profiles.map((p) => p.id);
+    const activityIds = chapters.flatMap((ch) => ch.activities.map((a) => parseInt(a.id, 10)));
+    if (profileIds.length === 0 || activityIds.length === 0) {
+      setCompletionCountByActivityId({});
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data, error: progressError } = await supabase
+        .from("user_activity_progress")
+        .select("activity_id, profile_id, completed_at")
+        .in("activity_id", activityIds)
+        .in("profile_id", profileIds)
+        .not("completed_at", "is", null);
+      if (cancelled || progressError) return;
+      const counts: Record<string, number> = {};
+      for (const row of data ?? []) {
+        const key = String(row.activity_id);
+        counts[key] = (counts[key] ?? 0) + 1;
+      }
+      setCompletionCountByActivityId(counts);
+    })();
+    return () => { cancelled = true; };
+  }, [chapters, profiles]);
+
+  useEffect(() => {
+    if (!hasLoadedOnce && !loading && !error) {
+      setHasLoadedOnce(true);
+    }
+  }, [loading, error, hasLoadedOnce]);
 
   const styles = useMemo(
     () =>
@@ -41,6 +120,35 @@ export default function MissionsScreen() {
           color: "#FFF",
           textAlign: "center" as const,
           marginBottom: scaleW(12),
+        },
+        countdownContainer: {
+          alignItems: "center" as const,
+          marginBottom: scaleW(10),
+          alignSelf: "stretch",
+          paddingHorizontal: scaleW(20),
+          paddingVertical: scaleW(8),
+          backgroundColor: "rgba(244, 240, 235, 0.18)",
+          borderRadius: 0,
+        },
+        countdownTitle: {
+          fontSize: scaleW(16),
+          fontWeight: "600",
+          color: "#FFF",
+          opacity: 0.95,
+          textAlign: "center" as const,
+          marginBottom: scaleW(4),
+        },
+        countdownValue: {
+          fontSize: scaleW(18),
+          fontWeight: "700",
+          color: "#FFF",
+          textAlign: "center" as const,
+          marginBottom: 0,
+        },
+        countdownDate: {
+          fontSize: scaleW(13),
+          color: "rgba(255,255,255,0.75)",
+          textAlign: "center" as const,
         },
         sectionTitle: {
           fontSize: scaleW(18),
@@ -83,45 +191,52 @@ export default function MissionsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <ScrollView
+        ref={scrollRef}
         style={{ flex: 1 }}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         bounces={false}
         overScrollMode="never"
       >
-        <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
+        {!!nextChapterDate && !currentChapterLoading && countdownLabel != null && (
+          <View style={styles.countdownContainer}>
+            <ThemedText style={styles.countdownValue}>Next chapter unlocks in {countdownLabel}</ThemedText>
+          </View>
+        )}
+
+        <Animated.View entering={FadeInDown.duration(500).delay(0)}>
           <ThemedText type="heading" style={styles.title}>Current Missions</ThemedText>
         </Animated.View>
 
-        {loading && (
+        {(!hasLoadedOnce && loading) && (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#FFF" />
-            <ThemedText style={[styles.emptyText, { marginTop: scaleW(16) }]}>Loading missions…</ThemedText>
+            <ThemedText style={[styles.emptyText, { marginTop: scaleW(16) }]}>Finding your missions…</ThemedText>
           </View>
         )}
         {error && !loading && (
           <View style={styles.errorContainer}>
-            <ThemedText style={styles.errorText}>{error}</ThemedText>
+            <ThemedText style={styles.errorText}>Something went wrong loading your missions.</ThemedText>
             <Pressable style={styles.retryButton} onPress={refetch}>
               <ThemedText type="heading" style={{ fontSize: scaleW(16), fontWeight: "600", color: "#2D5A27" }}>
-                Retry
+                Try again
               </ThemedText>
             </Pressable>
           </View>
         )}
 
-        {!loading && !error && (
+        {(!loading || hasLoadedOnce) && !error && (
           <>
             {chapters.length === 0 ? (
               <View style={[styles.loadingContainer, { paddingVertical: scaleW(24) }]}>
-                <ThemedText style={styles.emptyText}>No chapters yet.</ThemedText>
+                <ThemedText style={styles.emptyText}>New adventures are on the way. Check back soon!</ThemedText>
               </View>
             ) : (
               <>
                 {/* Current missions (latest chapter) */}
                 <Animated.View
                   key={chapters[0].id}
-                  entering={FadeInDown.duration(400).delay(80).springify().damping(18)}
+                  entering={FadeInDown.duration(400).delay(80)}
                   style={styles.sectionBlock}
                 >
                   <ThemedText type="heading" style={styles.sectionTitle}>
@@ -129,7 +244,7 @@ export default function MissionsScreen() {
                   </ThemedText>
                   {chapters[0].activities.length === 0 ? (
                     <View style={{ paddingHorizontal: scaleW(20), paddingVertical: scaleW(12) }}>
-                      <ThemedText style={styles.emptyText}>No missions for this chapter yet.</ThemedText>
+                      <ThemedText style={styles.emptyText}>No missions here yet—your next challenge is coming!</ThemedText>
                     </View>
                   ) : (
                     <ScrollView
@@ -139,7 +254,14 @@ export default function MissionsScreen() {
                     >
                       {chapters[0].activities.map((card) => (
                         <View key={card.id} style={styles.cardWrap}>
-                          <MissionCard card={card} xp={card.xp} tiltDeg={0} />
+                          <MissionCard
+                            card={card}
+                            xp={card.xp}
+                            tiltDeg={0}
+                            completed={completedActivityIds.has(card.id)}
+                            completionCount={completionCountByActivityId[card.id] ?? 0}
+                            totalExplorers={profiles.length}
+                          />
                         </View>
                       ))}
                     </ScrollView>
@@ -155,7 +277,7 @@ export default function MissionsScreen() {
                     {chapters.slice(1).map((chapter, index) => (
                       <Animated.View
                         key={chapter.id}
-                        entering={FadeInDown.duration(400).delay(140 + index * 60).springify().damping(18)}
+                        entering={FadeInDown.duration(400).delay(140 + index * 60)}
                         style={styles.sectionBlock}
                       >
                         <ThemedText type="heading" style={styles.sectionTitle}>
@@ -163,7 +285,7 @@ export default function MissionsScreen() {
                         </ThemedText>
                         {chapter.activities.length === 0 ? (
                           <View style={{ paddingHorizontal: scaleW(20), paddingVertical: scaleW(12) }}>
-                            <ThemedText style={styles.emptyText}>No missions for this chapter yet.</ThemedText>
+                            <ThemedText style={styles.emptyText}>No missions here yet—your next challenge is coming!</ThemedText>
                           </View>
                         ) : (
                           <ScrollView
@@ -173,7 +295,14 @@ export default function MissionsScreen() {
                           >
                             {chapter.activities.map((card) => (
                               <View key={card.id} style={styles.cardWrap}>
-                                <MissionCard card={card} xp={card.xp} tiltDeg={0} />
+                                <MissionCard
+                                  card={card}
+                                  xp={card.xp}
+                                  tiltDeg={0}
+                                  completed={completedActivityIds.has(card.id)}
+                                  completionCount={completionCountByActivityId[card.id] ?? 0}
+                                  totalExplorers={profiles.length}
+                                />
                               </View>
                             ))}
                           </ScrollView>

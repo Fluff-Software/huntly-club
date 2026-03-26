@@ -26,6 +26,7 @@ export function ImageUploadField({
 }: ImageUploadFieldProps) {
   const [url, setUrl] = useState(defaultValue ?? "");
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [hasValidPreview, setHasValidPreview] = useState(true);
   const [isPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -48,6 +49,7 @@ export function ImageUploadField({
       }
       if (result.url) {
         setUrl(result.url);
+        setHasValidPreview(true);
       }
       if (fileInputRef.current) fileInputRef.current.value = "";
     });
@@ -59,19 +61,7 @@ export function ImageUploadField({
         {label}
       </label>
       {help && <p className="mb-1 text-xs text-stone-500">{help}</p>}
-      <input
-        id={name}
-        name={name}
-        type="url"
-        value={url}
-        onChange={(e) => {
-          setUrl(e.target.value);
-          setUploadError(null);
-        }}
-        placeholder="Upload a file or paste a URL"
-        className="mb-2 w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-        aria-describedby={uploadError ? `${name}-upload-error` : undefined}
-      />
+      <input id={name} name={name} type="hidden" value={url} />
       <div className="flex flex-wrap items-center gap-2">
         <input
           ref={fileInputRef}
@@ -91,7 +81,7 @@ export function ImageUploadField({
           {uploadError}
         </p>
       )}
-      {url && (
+      {url && hasValidPreview && (
         <div className="relative mt-2 h-40 w-full max-w-sm overflow-hidden rounded-lg border border-stone-200">
           <Image
             src={url}
@@ -99,6 +89,7 @@ export function ImageUploadField({
             fill
             className="object-contain"
             unoptimized={!url.includes("supabase.co")}
+            onError={() => setHasValidPreview(false)}
           />
         </div>
       )}

@@ -11,9 +11,7 @@ import { useAuth } from "./AuthContext";
 import { getProfiles, Profile } from "@/services/profileService";
 
 type PlayerContextType = {
-  currentPlayer: Profile | null;
   profiles: Profile[];
-  setCurrentPlayer: (player: Profile | null) => void;
   refreshProfiles: () => Promise<void>;
   loading: boolean;
 };
@@ -24,48 +22,20 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const { user } = useAuth();
-  const [currentPlayer, setCurrentPlayer] = useState<Profile | null>(null);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // Use refs for cleanup tracking
+
   const isMountedRef = useRef(true);
-  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastRefreshTimeRef = useRef<number>(0);
   const isRefreshingRef = useRef(false);
 
-  // Clear current player when user logs out
   useEffect(() => {
     if (!user) {
-      setCurrentPlayer(null);
       setProfiles([]);
       setLoading(false);
     }
   }, [user]);
-
-  // Helper function to safely update current player
-  const updateCurrentPlayer = useCallback((newProfiles: Profile[], prevPlayer: Profile | null) => {
-    if (!prevPlayer || newProfiles.length === 0) {
-      return null;
-    }
-
-    // Find updated version of current player
-    const updatedPlayer = newProfiles.find(p => p.id === prevPlayer.id);
-    if (!updatedPlayer) {
-      return null; // Player no longer exists
-    }
-
-    // Simple field comparison to avoid unnecessary re-renders
-    const hasChanged = (
-      updatedPlayer.name !== prevPlayer.name ||
-      updatedPlayer.nickname !== prevPlayer.nickname ||
-      updatedPlayer.colour !== prevPlayer.colour ||
-      updatedPlayer.team !== prevPlayer.team ||
-      updatedPlayer.xp !== prevPlayer.xp
-    );
-
-    return hasChanged ? updatedPlayer : prevPlayer;
-  }, []);
 
   const fetchProfiles = useCallback(async (): Promise<void> => {
     if (!user || !isMountedRef.current || isRefreshingRef.current) {
@@ -81,12 +51,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({
       // Only update state if component is still mounted
       if (isMountedRef.current) {
         setProfiles(profilesData);
-        setCurrentPlayer(prev => {
-          const updated = updateCurrentPlayer(profilesData, prev);
-          if (updated) return updated;
-          if (profilesData.length > 0) return profilesData[0];
-          return null;
-        });
       }
     } catch (error) {
       if (isMountedRef.current) {
@@ -99,7 +63,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({
       }
       isRefreshingRef.current = false;
     }
-  }, [user, updateCurrentPlayer]);
+  }, [user]);
 
   // Simplified debounced refresh without complex timeout logic
   const refreshProfiles = useCallback(async (): Promise<void> => {
@@ -170,13 +134,14 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   // Memoize context value to prevent unnecessary re-renders
-  const contextValue = useMemo(() => ({
-    currentPlayer,
-    profiles,
-    setCurrentPlayer,
-    refreshProfiles,
-    loading,
-  }), [currentPlayer, profiles, refreshProfiles, loading]);
+  const contextValue = useMemo(
+    () => ({
+      profiles,
+      refreshProfiles,
+      loading,
+    }),
+    [profiles, refreshProfiles, loading]
+  );
 
   return (
     <PlayerContext.Provider value={contextValue}>

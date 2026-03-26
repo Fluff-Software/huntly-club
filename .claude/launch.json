@@ -1,0 +1,24 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Mobile (Expo Web)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "web", "--prefix", "apps/mobile", "--", "--port", "19006"],
+      "port": 19006
+    },
+    {
+      "name": "Website (Next.js)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "apps/website"],
+      "port": 3000
+    },
+    {
+      "name": "Admin (Next.js)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "apps/admin"],
+      "port": 3001
+    }
+  ],
+  "autoVerify": false
+}

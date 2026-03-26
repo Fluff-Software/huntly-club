@@ -46,6 +46,8 @@ export function useCurrentChapterActivities(profileId: number | null): {
   activityCards: ChapterActivityCard[];
   /** Next mission for the user in this chapter (first incomplete, or first in chapter if no profile) */
   nextMission: MissionCardData | null;
+  /** Latest mission in the chapter (last in order; not profile-specific) */
+  latestMission: MissionCardData | null;
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -137,10 +139,17 @@ export function useCurrentChapterActivities(profileId: number | null): {
         })()
       : null;
 
+  // Latest mission = last activity in chapter order (not profile-specific)
+  const latestMission: MissionCardData | null =
+    currentChapter && activityCards.length > 0
+      ? toMissionCardData(activityCards[activityCards.length - 1])
+      : null;
+
   return {
     activities: currentChapter ? activityCards.map(toMissionCardData) : [],
     activityCards: currentChapter ? activityCards : [],
     nextMission,
+    latestMission,
     loading,
     error,
     refetch,

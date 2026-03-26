@@ -42,6 +42,30 @@ export const getTeamActivityLogs = async (
   teamId: number,
   limit: number = 20
 ): Promise<TeamActivityLogEntry[]> => {
+  // Get user_ids whose user_data.team = teamId
+  const { data: userDataRows, error: userDataError } = await supabase
+    .from("user_data")
+    .select("user_id")
+    .eq("team", teamId);
+
+  if (userDataError || !userDataRows?.length) {
+    return [];
+  }
+
+  const userIds = userDataRows.map((r) => r.user_id);
+
+  // Get profile IDs for those users
+  const { data: profiles, error: profilesError } = await supabase
+    .from("profiles")
+    .select("id")
+    .in("user_id", userIds);
+
+  if (profilesError || !profiles?.length) {
+    return [];
+  }
+
+  const profileIds = profiles.map((p) => p.id);
+
   const { data, error } = await supabase
     .from("user_activity_progress")
     .select(
@@ -55,8 +79,7 @@ export const getTeamActivityLogs = async (
         id,
         name,
         nickname,
-        colour,
-        team
+        colour
       ),
       activity:activities!inner(
         id,
@@ -67,7 +90,7 @@ export const getTeamActivityLogs = async (
       )
     `
     )
-    .eq("profile.team", teamId)
+    .in("profile_id", profileIds)
     .not("completed_at", "is", null)
     .order("completed_at", { ascending: false, nullsFirst: false })
     .limit(limit);
@@ -77,7 +100,19 @@ export const getTeamActivityLogs = async (
     throw new Error(`Failed to fetch team activity logs: ${error.message}`);
   }
 
-  return (data ?? []).map((row) => ({ ...row, status: "completed" as const }));
+  // Add team to profile for response shape (we filtered by user_data.team = teamId)
+  return (data ?? []).map((row: any) => {
+    const profile = row.profile
+      ? { ...row.profile, team: teamId }
+      : { id: 0, name: "", nickname: null, colour: "", team: teamId };
+    const activity = Array.isArray(row.activity) ? row.activity[0] : row.activity;
+    return {
+      ...row,
+      profile,
+      activity,
+      status: "completed" as const,
+    } as TeamActivityLogEntry;
+  });
 };
 
 export const getTeamActivityLogsByStatus = async (
@@ -222,15 +257,32 @@ export const getTotalXpForProfileIds = async (
   profileIds: number[]
 ): Promise<number> => {
   if (profileIds.length === 0) return 0;
+  const byProfile = await getXpByProfileIds(profileIds);
+  return Object.values(byProfile).reduce((sum, xp) => sum + xp, 0);
+};
+
+/**
+ * Returns total XP from user_achievements per profile ID (for showing score per explorer).
+ */
+export const getXpByProfileIds = async (
+  profileIds: number[]
+): Promise<Record<number, number>> => {
+  if (profileIds.length === 0) return {};
   const { data, error } = await supabase
     .from("user_achievements")
-    .select("xp")
+    .select("profile_id, xp")
     .in("profile_id", profileIds);
 
   if (error) {
-    console.error("Error fetching total XP for profiles:", error);
-    return 0;
+    console.error("Error fetching XP by profile:", error);
+    return {};
   }
 
-  return (data ?? []).reduce((sum, row) => sum + (row.xp ?? 0), 0);
+  const byProfile: Record<number, number> = {};
+  for (const id of profileIds) byProfile[id] = 0;
+  for (const row of data ?? []) {
+    const id = row.profile_id;
+    byProfile[id] = (byProfile[id] ?? 0) + (row.xp ?? 0);
+  }
+  return byProfile;
 };

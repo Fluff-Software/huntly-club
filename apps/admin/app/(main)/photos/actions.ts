@@ -267,7 +267,6 @@ export type PhotoDetailsResult = {
     nickname: string | null;
     colour: string;
     xp: number;
-    team: number;
     user_id: string;
     created_at: string;
   };
@@ -304,7 +303,6 @@ export async function getPhotoDetails(
           nickname,
           colour,
           xp,
-          team,
           user_id,
           created_at
         ),

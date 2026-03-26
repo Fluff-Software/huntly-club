@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, ActivityIndicator, Pressable, Alert, AppState, AppStateStatus } from "react-native";
+import { View, ActivityIndicator, Pressable, Alert, AppState, AppStateStatus, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Stack } from "expo-router";
@@ -153,24 +153,38 @@ export default function VerifyEmailScreen() {
       <StatusBar style="light" />
       <Stack.Screen options={{ title: "Verify Email", headerShown: false }} />
       <SafeAreaView style={{ flex: 1, backgroundColor: HUNTLY_GREEN }} edges={["top", "left", "right"]}>
-      <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: scaleW(24) }}>
+      <View style={{ flex: 1, justifyContent: "flex-start", paddingHorizontal: scaleW(24), paddingTop: scaleW(32) }}>
         <View
           style={{
             alignItems: "center",
           }}
         >
+          <View
+            style={{
+              width: scaleW(150),
+              height: scaleW(150),
+              marginBottom: scaleW(24),
+            }}
+          >
+            <Image
+              source={require("@/assets/images/bear-email.png")}
+              style={{ width: "100%", height: "100%" }}
+              resizeMode="contain"
+            />
+          </View>
+
           <ThemedText
             type="heading"
             lightColor="#FFFFFF"
             darkColor="#FFFFFF"
-              style={{
-                textAlign: "center",
-                fontWeight: "600",
-                fontSize: scaleW(26),
-                marginBottom: scaleW(12),
-              }}
+            style={{
+              textAlign: "center",
+              fontWeight: "600",
+              fontSize: scaleW(26),
+              marginBottom: scaleW(12),
+            }}
           >
-            Check Your Email
+            Check your email
           </ThemedText>
 
           <ThemedText
@@ -199,43 +213,52 @@ export default function VerifyEmailScreen() {
           >
             {parentEmail}
           </ThemedText>
-          <ThemedText
-            lightColor="#FFFFFF"
-            darkColor="#FFFFFF"
+          <View
             style={{
-              textAlign: "center",
-              fontSize: scaleW(16),
-              opacity: 0.95,
+              marginTop: scaleW(8),
               marginBottom: scaleW(20),
-              lineHeight: scaleW(24),
+              paddingVertical: scaleW(14),
+              paddingHorizontal: scaleW(18),
+              borderRadius: scaleW(16),
+              backgroundColor: "rgba(244, 240, 235, 0.16)",
               maxWidth: scaleW(340),
+              gap: scaleW(6),
             }}
           >
-            Click the link in the email to continue setting up your explorers.
-          </ThemedText>
-
-          {!verificationComplete && (
-            <View
+            <ThemedText
+              lightColor="#FFFFFF"
+              darkColor="#FFFFFF"
               style={{
-                marginTop: scaleW(16),
-                marginBottom: scaleW(16),
+                textAlign: "left",
+                fontSize: scaleW(14),
+                opacity: 0.95,
               }}
             >
-              <ActivityIndicator size="large" color={CREAM} />
-              <ThemedText
-                lightColor="#FFFFFF"
-                darkColor="#FFFFFF"
-                style={{
-                  textAlign: "center",
-                  fontSize: scaleW(14),
-                  opacity: 0.8,
-                  marginTop: scaleW(12),
-                }}
-              >
-                Waiting for verification...
-              </ThemedText>
-            </View>
-          )}
+              1. Open your email app.
+            </ThemedText>
+            <ThemedText
+              lightColor="#FFFFFF"
+              darkColor="#FFFFFF"
+              style={{
+                textAlign: "left",
+                fontSize: scaleW(14),
+                opacity: 0.95,
+              }}
+            >
+              2. Tap the &quot;Verify email&quot; link we just sent.
+            </ThemedText>
+            <ThemedText
+              lightColor="#FFFFFF"
+              darkColor="#FFFFFF"
+              style={{
+                textAlign: "left",
+                fontSize: scaleW(14),
+                opacity: 0.95,
+              }}
+            >
+              3. Come back here and we&apos;ll move you on automatically.
+            </ThemedText>
+          </View>
 
           <ThemedText
             lightColor="#FFFFFF"

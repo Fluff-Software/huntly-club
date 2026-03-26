@@ -307,6 +307,28 @@ export const ensureProgressRows = async (
   };
 };
 
+/**
+ * Updates user_activity_progress rows with debrief answers (e.g. base name, trickiest part).
+ */
+export const updateProgressDebrief = async (
+  progressIds: number[],
+  debriefAnswer1: string | null,
+  debriefAnswer2: string | null
+): Promise<void> => {
+  if (progressIds.length === 0) return;
+  const { error } = await supabase
+    .from("user_activity_progress")
+    .update({
+      debrief_answer_1: debriefAnswer1 || null,
+      debrief_answer_2: debriefAnswer2 || null,
+    })
+    .in("id", progressIds);
+  if (error) {
+    console.error("Error updating progress debrief:", error);
+    throw new Error(`Failed to save debrief: ${error.message}`);
+  }
+};
+
 export interface UserAchievementInsert {
   profile_id: number;
   team_id: number;
@@ -338,6 +360,61 @@ export const insertUserAchievementsForMission = async (
     console.error("Error inserting user achievements:", error);
     throw new Error(`Failed to insert user achievements: ${error.message}`);
   }
+};
+
+export const TUTORIAL_ACHIEVEMENT_XP = 5;
+
+/**
+ * Returns true if the profile has already completed the tutorial (has a "tutorial" achievement).
+ */
+export const getHasCompletedTutorial = async (profileId: number): Promise<boolean> => {
+  const { data, error } = await supabase
+    .from("user_achievements")
+    .select("id")
+    .eq("profile_id", profileId)
+    .eq("source", "tutorial")
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error checking tutorial achievement:", error);
+    return false;
+  }
+  return data != null;
+};
+
+/**
+ * Records a "completed the tutorial" achievement for the profile, once per profile.
+ * @returns true if a new achievement was inserted, false if they already had it.
+ */
+export const recordTutorialAchievement = async (
+  profileId: number,
+  teamId: number
+): Promise<boolean> => {
+  const { data: existing } = await supabase
+    .from("user_achievements")
+    .select("id")
+    .eq("profile_id", profileId)
+    .eq("source", "tutorial")
+    .limit(1)
+    .maybeSingle();
+
+  if (existing) return false;
+
+  const { error } = await supabase.from("user_achievements").insert({
+    profile_id: profileId,
+    team_id: teamId,
+    source: "tutorial",
+    source_id: 0,
+    message: "completed the tutorial",
+    xp: TUTORIAL_ACHIEVEMENT_XP,
+  });
+
+  if (error) {
+    console.error("Error recording tutorial achievement:", error);
+    return false;
+  }
+  return true;
 };
 
 export interface UserActivityPhotoInsert {
@@ -404,9 +481,22 @@ export const getRandomActivityPhotos = async (
 
 export interface ClubPhotoCardItem {
   id: string;
+  /** Thumbnail-sized URL optimised for cards. */
+  thumb_url: string;
+  /** Original or larger image URL. */
   photo_url: string;
   title: string;
   author: string;
+}
+
+function buildThumbnailUrl(originalUrl: string): string {
+  if (!originalUrl) return originalUrl;
+  // Append basic resize/quality params; for Supabase Storage this will
+  // request a resized variant, and for other providers it degrades to
+  // a cached full-size URL with harmless query params.
+  const separator = originalUrl.includes("?") ? "&" : "?";
+  const params = "width=600&quality=75&resize=cover";
+  return `${originalUrl}${separator}${params}`;
 }
 
 /**
@@ -457,9 +547,11 @@ export const getRandomClubPhotos = async (
     const title = Array.isArray(activity) ? activity[0]?.title : (activity as { title?: string } | null)?.title;
     const profileId = row.profile_id as number | undefined;
     const nickname = profileId != null ? nicknamesByProfileId[profileId] ?? "" : "";
+    const photoUrl = String(row.photo_url ?? "");
     return {
       id: String(row.photo_id ?? Math.random()),
-      photo_url: String(row.photo_url ?? ""),
+      thumb_url: buildThumbnailUrl(photoUrl),
+      photo_url: photoUrl,
       title: typeof title === "string" ? title : "",
       author: typeof nickname === "string" ? nickname : "",
     };

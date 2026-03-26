@@ -21,10 +21,11 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withDelay,
+  cancelAnimation,
 } from "react-native-reanimated";
 import { MaterialIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useFirstSeason } from "@/hooks/useFirstSeason";
 import { useAllChapters } from "@/hooks/useAllChapters";
@@ -46,7 +47,7 @@ const STORY_BLUE = "#4B9CD2";
 const STORY_CONTAINER_BG = "#1E2E28";
 const CREAM = "#F4F0EB";
 const DARK_GREEN = "#2D5A27";
-const AUTO_PLAY_INTERVAL_MS = 3000;
+const AUTO_PLAY_INTERVAL_MS = 4500;
 
 function imageSlideEntering() {
   "worklet";
@@ -95,8 +96,6 @@ function AnimatedSentence({
           key={`${index}-${word}`}
           entering={FadeInUp.duration(WORD_DURATION)
             .delay(40 + index * WORD_DELAY_MS)
-            .springify()
-            .damping(22)
             .withInitialValues({ transform: [{ translateY: -8 }] })}
           style={wordStyle}
         >
@@ -144,7 +143,7 @@ function ImageSlide({
       <BlurView
         intensity={80}
         tint="dark"
-        experimentalBlurMethod={Platform.OS === "android" ? "dimezisBlurView" : undefined}
+        blurMethod={Platform.OS === "android" ? "dimezisBlurView" : undefined}
         style={[StyleSheet.absoluteFill, slideStyles.slideImageBgLayer, { opacity: isActive ? 1 : 0 }]}
       />
       <View style={slideStyles.slideInner}>
@@ -218,7 +217,7 @@ function TextImageSlide({
       <BlurView
         intensity={80}
         tint="dark"
-        experimentalBlurMethod={Platform.OS === "android" ? "dimezisBlurView" : undefined}
+        blurMethod={Platform.OS === "android" ? "dimezisBlurView" : undefined}
         style={[StyleSheet.absoluteFill, slideStyles.slideImageBgLayer, { opacity: isActive ? 1 : 0 }]}
       />
       <View style={slideStyles.slideInner}>
@@ -324,6 +323,71 @@ function SlideItem({
   );
 }
 
+function ProgressDot({
+  isActive,
+  autoPlay,
+  duration,
+  dotSize,
+  pillWidth,
+}: {
+  isActive: boolean;
+  autoPlay: boolean;
+  duration: number;
+  dotSize: number;
+  pillWidth: number;
+}) {
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    if (isActive && autoPlay) {
+      progress.value = 0;
+      progress.value = withTiming(1, { duration });
+    } else {
+      cancelAnimation(progress);
+    }
+  }, [isActive, autoPlay, duration]);
+
+  const fillStyle = useAnimatedStyle(() => ({
+    width: progress.value * pillWidth,
+  }));
+
+  if (isActive && autoPlay) {
+    return (
+      <View
+        style={{
+          width: pillWidth,
+          height: dotSize,
+          borderRadius: dotSize / 2,
+          backgroundColor: "rgba(255,255,255,0.4)",
+          overflow: "hidden",
+        }}
+      >
+        <Animated.View
+          style={[
+            {
+              height: dotSize,
+              backgroundColor: CREAM,
+              borderRadius: dotSize / 2,
+            },
+            fillStyle,
+          ]}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <View
+      style={{
+        width: dotSize,
+        height: dotSize,
+        borderRadius: dotSize / 2,
+        backgroundColor: isActive ? CREAM : "rgba(255,255,255,0.4)",
+      }}
+    />
+  );
+}
+
 function BouncingDot({ delay, scaleW }: { delay: number; scaleW: (n: number) => number }) {
   const translateY = useSharedValue(0);
 
@@ -376,7 +440,7 @@ function StoryLoadingScreen({ scaleW }: { scaleW: (n: number) => number }) {
           opacity: 0.8,
         }}
       >
-        Loading story
+        Getting your story ready…
       </Text>
       <View style={{ flexDirection: "row", alignItems: "center" }}>
         <BouncingDot delay={0} scaleW={scaleW} />
@@ -462,6 +526,14 @@ export default function StorySlidesScreen() {
   useEffect(() => {
     currentIndexRef.current = currentIndex;
   }, [currentIndex]);
+
+  useFocusEffect(
+    useCallback(() => {
+      setCurrentIndex(0);
+      currentIndexRef.current = 0;
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+    }, [])
+  );
 
   useEffect(() => {
     if (!autoPlay || !flatListRef.current) return;
@@ -674,12 +746,13 @@ export default function StorySlidesScreen() {
           )}
           <View style={styles.dotsRow}>
             {slides.map((_, i) => (
-              <View
+              <ProgressDot
                 key={i}
-                style={[
-                  styles.dot,
-                  { backgroundColor: i === currentIndex ? CREAM : "rgba(255,255,255,0.4)" },
-                ]}
+                isActive={i === currentIndex}
+                autoPlay={autoPlay}
+                duration={AUTO_PLAY_INTERVAL_MS}
+                dotSize={scaleW(8)}
+                pillWidth={scaleW(24)}
               />
             ))}
           </View>

@@ -1,8 +1,16 @@
 import { Tables } from "@/models/supabase";
 
-// Extend the auto-generated Activity type to include categories (array of category ids)
+export type PrepChecklistItem = { title: string; description: string };
+export type MissionStep = {
+  instruction: string;
+  tip: string | null;
+  media_url: string | null;
+};
+
 export type Activity = Tables<"activities"> & {
   categories: number[];
+  prep_checklist: PrepChecklistItem[] | null;
+  steps: MissionStep[] | null;
 };
 
 // Type for category filtering

@@ -19,13 +19,13 @@ import Animated, {
 import { useRouter, useFocusEffect } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { useUser } from "@/contexts/UserContext";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
-import { Button } from "@/components/ui/Button";
-import { StatCard } from "@/components/StatCard";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import {
   createProfile,
+  deleteProfile as deleteProfileService,
   getTeams,
   updateProfile,
   type Profile,
@@ -38,7 +38,7 @@ import {
   getRecentCompletedActivities,
   type RecentCompletedActivity,
 } from "@/services/activityProgressService";
-import { useUserStats } from "@/hooks/useUserStats";
+import { getXpByProfileIds } from "@/services/teamActivityService";
 import { MaterialIcons } from "@expo/vector-icons";
 
 // Design colors from reference
@@ -67,17 +67,19 @@ export default function ProfileScreen() {
   const [editName, setEditName] = useState("");
   const [editNickname, setEditNickname] = useState("");
   const [editColor, setEditColor] = useState<string>("#FF6B35");
-  const [editTeam, setEditTeam] = useState<number | null>(null);
   const [addNickname, setAddNickname] = useState(() => generateNickname());
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAddExplorer, setShowAddExplorer] = useState(false);
+  const [profileToDelete, setProfileToDelete] = useState<Profile | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  type RecentActivityWithProfile = RecentCompletedActivity & { profileName: string };
   const [recentActivities, setRecentActivities] = useState<
-    RecentCompletedActivity[]
+    RecentActivityWithProfile[]
   >([]);
+  const [xpByProfileId, setXpByProfileId] = useState<Record<number, number>>({});
   const { user, signOut } = useAuth();
-  const { currentPlayer, profiles, setCurrentPlayer, refreshProfiles } =
-    usePlayer();
-  const { daysPlayed, pointsEarned } = useUserStats();
+  const { teamId } = useUser();
+  const { profiles, refreshProfiles } = usePlayer();
   const router = useRouter();
   const { scaleW } = useLayoutScale();
 
@@ -137,14 +139,42 @@ export default function ProfileScreen() {
   }, []);
 
   useEffect(() => {
-    if (currentPlayer && user) {
-      getRecentCompletedActivities(currentPlayer.id)
-        .then(setRecentActivities)
-        .catch(() => setRecentActivities([]));
-    } else {
+    if (!user || profiles.length === 0) {
       setRecentActivities([]);
+      return;
     }
-  }, [currentPlayer?.id, user?.id]);
+    const limitPerProfile = 8;
+    Promise.all(
+      profiles.map((p) => getRecentCompletedActivities(p.id, limitPerProfile))
+    )
+      .then((results) => {
+        const withProfile: RecentActivityWithProfile[] = results.flatMap(
+          (activities, i) =>
+            activities.map((a) => ({
+              ...a,
+              profileName: profiles[i].name,
+            }))
+        );
+        const sorted = withProfile.sort(
+          (a, b) =>
+            new Date(b.completed_at ?? 0).getTime() -
+            new Date(a.completed_at ?? 0).getTime()
+        );
+        setRecentActivities(sorted.slice(0, 5));
+      })
+      .catch(() => setRecentActivities([]));
+  }, [profiles, user?.id]);
+
+  useEffect(() => {
+    const ids = profiles.map((p) => p.id);
+    if (ids.length === 0) {
+      setXpByProfileId({});
+      return;
+    }
+    getXpByProfileIds(ids)
+      .then(setXpByProfileId)
+      .catch(() => setXpByProfileId({}));
+  }, [profiles]);
 
   useEffect(() => {
     const profile =
@@ -155,12 +185,11 @@ export default function ProfileScreen() {
       setEditName(profile.name);
       setEditNickname(profile.nickname || generateNickname());
       setEditColor(profile.colour);
-      setEditTeam(profile.team);
     }
   }, [editingProfileId, profiles]);
 
   const handleCreateProfile = async () => {
-    if (!name.trim() || !selectedTeam) {
+    if (!name.trim()) {
       Alert.alert("Error", "Please fill in all fields");
       return;
     }
@@ -174,7 +203,6 @@ export default function ProfileScreen() {
         user_id: user.id,
         name: name.trim(),
         colour: selectedColor,
-        team: selectedTeam,
       });
       await refreshProfiles();
       setName("");
@@ -193,23 +221,12 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleSelectPlayer = (profile: Profile) => {
-    if (isEditing) return;
-    setCurrentPlayer(profile);
-    Alert.alert(
-      "Explorer Selected! 🎉",
-      `${profile.name} is now your active explorer!`,
-      [{ text: "OK", onPress: () => router.replace("/") }],
-    );
-  };
-
   const handleExpandEdit = (profile: Profile) => {
     setShowAddForm(false);
     setEditingProfileId(profile.id);
     setEditName(profile.name);
     setEditNickname(profile.nickname || generateNickname());
     setEditColor(profile.colour);
-    setEditTeam(profile.team);
   };
 
   const handleSaveEdit = async () => {
@@ -217,18 +234,13 @@ export default function ProfileScreen() {
       Alert.alert("Error", "Please fill in all fields");
       return;
     }
-    const profile = profiles.find((p) => p.id === editingProfileId);
-    if (!profile) return;
     setLoading(true);
     try {
-      const updatedProfile = await updateProfile(editingProfileId, {
+      await updateProfile(editingProfileId, {
         name: editName.trim(),
         nickname: editNickname.trim(),
         colour: editColor,
-        team: profile.team,
       });
-      if (currentPlayer?.id === editingProfileId)
-        setCurrentPlayer(updatedProfile);
       await refreshProfiles();
       setEditingProfileId(null);
       Alert.alert("Success", "Explorer updated successfully!");
@@ -245,6 +257,25 @@ export default function ProfileScreen() {
     setEditingProfileId(null);
   };
 
+  const handleConfirmDelete = async () => {
+    if (!profileToDelete) return;
+    setDeleting(true);
+    try {
+      await deleteProfileService(profileToDelete.id);
+      await refreshProfiles();
+      setProfileToDelete(null);
+      if (editingProfileId === profileToDelete.id) {
+        setEditingProfileId(null);
+      }
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Failed to delete explorer";
+      Alert.alert("Error", msg);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleDoneEditing = () => {
     setIsEditing(false);
     setEditingProfileId(null);
@@ -256,11 +287,6 @@ export default function ProfileScreen() {
       Alert.alert("Error", "Please fill in name");
       return;
     }
-    const defaultTeam = currentPlayer?.team ?? teams[0]?.id;
-    if (defaultTeam == null) {
-      Alert.alert("Error", "No team available. Please try again later.");
-      return;
-    }
     setLoading(true);
     try {
       await createProfile({
@@ -268,7 +294,6 @@ export default function ProfileScreen() {
         name: name.trim(),
         nickname: addNickname.trim() || generateNickname(),
         colour: selectedColor,
-        team: defaultTeam,
       });
       await refreshProfiles();
       setName("");
@@ -374,9 +399,6 @@ export default function ProfileScreen() {
           borderWidth: 3,
           borderColor: "#FFF",
         },
-        playerCardSelected: {
-          borderColor: "#333",
-        },
         playerAccent: {
           width: scaleW(20),
           borderRadius: scaleW(2),
@@ -396,6 +418,22 @@ export default function ProfileScreen() {
           fontSize: scaleW(14),
           color: COLORS.charcoal,
           marginTop: scaleW(2),
+        },
+        playerScoreWrap: {
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          paddingHorizontal: scaleW(12),
+        },
+        playerScore: {
+          fontSize: scaleW(18),
+          fontWeight: "700",
+          color: COLORS.darkGreen,
+        },
+        playerScoreLabel: {
+          fontSize: scaleW(12),
+          color: COLORS.charcoal,
+          marginLeft: scaleW(4),
         },
         addNewPlayerCard: {
           marginTop: scaleW(4),
@@ -652,7 +690,7 @@ export default function ProfileScreen() {
       >
         {/* Your players */}
         <Animated.View
-          entering={FadeInDown.duration(500).delay(0).springify().damping(18)}
+          entering={FadeInDown.duration(500).delay(0)}
           style={styles.section}
         >
           <View style={styles.sectionHeader}>
@@ -716,19 +754,9 @@ export default function ProfileScreen() {
             sortedProfiles.map((profile, index) => (
               <Animated.View
                 key={profile.id}
-                entering={FadeInDown.duration(400)
-                  .delay(80 + index * 60)
-                  .springify()
-                  .damping(18)}
+                entering={FadeInDown.duration(400).delay(80 + index * 60)}
               >
-                <Pressable
-                  style={[
-                    styles.playerCard,
-                    currentPlayer?.id === profile.id &&
-                      styles.playerCardSelected,
-                  ]}
-                  onPress={() => handleSelectPlayer(profile)}
-                >
+                <View style={styles.playerCard}>
                   <View
                     style={[
                       styles.playerAccent,
@@ -747,7 +775,15 @@ export default function ProfileScreen() {
                       {profile.nickname || "Explorer"}
                     </ThemedText>
                   </View>
-                </Pressable>
+                  <View style={styles.playerScoreWrap}>
+                    <ThemedText type="heading" style={styles.playerScore}>
+                      {xpByProfileId[profile.id] ?? profile.xp ?? 0}
+                    </ThemedText>
+                    <ThemedText style={styles.playerScoreLabel}>
+                      points
+                    </ThemedText>
+                  </View>
+                </View>
               </Animated.View>
             ))}
 
@@ -849,8 +885,7 @@ export default function ProfileScreen() {
                           </View>
                         </View>
                       ) : (
-                        <Pressable
-                          onPress={() => handleExpandEdit(profile)}
+                        <View
                           style={{
                             flexDirection: "row",
                             alignItems: "center",
@@ -858,7 +893,10 @@ export default function ProfileScreen() {
                             paddingHorizontal: scaleW(20),
                           }}
                         >
-                          <View style={{ flex: 1 }}>
+                          <Pressable
+                            onPress={() => handleExpandEdit(profile)}
+                            style={{ flex: 1 }}
+                          >
                             <ThemedText
                               type="heading"
                               style={styles.playerName}
@@ -868,13 +906,23 @@ export default function ProfileScreen() {
                             <ThemedText style={styles.playerNickname}>
                               {profile.nickname || "Explorer"}
                             </ThemedText>
-                          </View>
+                          </Pressable>
                           <MaterialIcons
                             name="edit"
                             size={scaleW(22)}
                             color={COLORS.darkGreen}
                           />
-                        </Pressable>
+                          <Pressable
+                            onPress={() => setProfileToDelete(profile)}
+                            style={{ padding: scaleW(8), marginLeft: scaleW(4) }}
+                          >
+                            <MaterialIcons
+                              name="delete"
+                              size={scaleW(22)}
+                              color="#DC2626"
+                            />
+                          </Pressable>
+                        </View>
                       )}
                     </View>
                   </View>
@@ -979,27 +1027,9 @@ export default function ProfileScreen() {
           )}
         </Animated.View>
 
-        {/* Your progress */}
-        <Animated.View
-          entering={FadeInDown.duration(500).delay(150).springify().damping(18)}
-          style={styles.section}
-        >
-          <ThemedText type="heading" style={styles.sectionTitle}>
-            Your progress
-          </ThemedText>
-          <View style={styles.progressRow}>
-            <StatCard value={daysPlayed} label="Days since started" color="pink" />
-            <StatCard
-              value={pointsEarned}
-              label="Points earned"
-              color="green"
-            />
-          </View>
-        </Animated.View>
-
         {/* Top Skills — commented out
         <Animated.View
-          entering={FadeInDown.duration(500).delay(280).springify().damping(18)}
+          entering={FadeInDown.duration(500).delay(280)}
           style={styles.section}
         >
           <View style={styles.skillsCard}>
@@ -1036,7 +1066,7 @@ export default function ProfileScreen() {
 
         {/* Your badges — commented out
         <Animated.View
-          entering={FadeInDown.duration(500).delay(380).springify().damping(18)}
+          entering={FadeInDown.duration(500).delay(380)}
           style={styles.section}
         >
           <ThemedText type="heading" style={styles.sectionTitle}>Your badges</ThemedText>
@@ -1062,7 +1092,7 @@ export default function ProfileScreen() {
 
         {/* Recent activities */}
         <Animated.View
-          entering={FadeInDown.duration(500).delay(480).springify().damping(18)}
+          entering={FadeInDown.duration(500).delay(480)}
           style={styles.section}
         >
           <ThemedText type="heading" style={styles.sectionTitle}>
@@ -1078,12 +1108,6 @@ export default function ProfileScreen() {
                   Complete missions to see them here
                 </ThemedText>
               </View>
-              <MaterialIcons
-                name="chevron-right"
-                size={24}
-                color={COLORS.arrow}
-                style={styles.activityArrow}
-              />
             </View>
           ) : (
             recentActivities.map((act) => (
@@ -1101,7 +1125,7 @@ export default function ProfileScreen() {
                     {act.activity?.title ?? "Activity"}
                   </ThemedText>
                   <ThemedText style={styles.activityDate}>
-                    {formatActivityDate(act.completed_at)}
+                    {act.profileName} · {formatActivityDate(act.completed_at)}
                   </ThemedText>
                 </View>
                 <MaterialIcons
@@ -1117,7 +1141,7 @@ export default function ProfileScreen() {
 
         {/* Parent Zone */}
         <Animated.View
-          entering={FadeInDown.duration(500).delay(580).springify().damping(18)}
+          entering={FadeInDown.duration(500).delay(580)}
           style={parentZoneAnimatedStyle}
         >
           <Pressable
@@ -1144,7 +1168,7 @@ export default function ProfileScreen() {
 
         {/* Log out */}
         <Animated.View
-          entering={FadeInDown.duration(500).delay(620).springify().damping(18)}
+          entering={FadeInDown.duration(500).delay(620)}
           style={[logOutAnimatedStyle, styles.logOutButtonWrap]}
         >
           <Pressable
@@ -1184,6 +1208,58 @@ export default function ProfileScreen() {
           </Pressable>
         </Animated.View>
       </ScrollView>
+
+      {/* Delete profile confirmation modal */}
+      <Modal
+        visible={profileToDelete !== null}
+        animationType="fade"
+        transparent
+        onRequestClose={() => !deleting && setProfileToDelete(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <ThemedText style={styles.modalTitle}>Delete explorer?</ThemedText>
+            <ThemedText
+              style={{
+                fontSize: scaleW(15),
+                color: COLORS.charcoal,
+                marginBottom: scaleW(24),
+                lineHeight: scaleW(22),
+              }}
+            >
+              This will permanently delete{" "}
+              {profileToDelete ? profileToDelete.name : ""} and all their data:
+              activity progress, uploaded photos, achievements, and public
+              profile. This cannot be undone.
+            </ThemedText>
+            <View style={styles.modalActions}>
+              <Pressable
+                style={[styles.modalButton, styles.modalButtonCancel]}
+                onPress={() => !deleting && setProfileToDelete(null)}
+                disabled={deleting}
+              >
+                <ThemedText style={styles.modalButtonCancelText}>Cancel</ThemedText>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.modalButton,
+                  { backgroundColor: "#B91C1C" },
+                ]}
+                onPress={handleConfirmDelete}
+                disabled={deleting}
+              >
+                {deleting ? (
+                  <ActivityIndicator color={COLORS.white} />
+                ) : (
+                  <ThemedText style={styles.modalButtonSaveText}>
+                    Delete
+                  </ThemedText>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Add explorer modal */}
       <Modal

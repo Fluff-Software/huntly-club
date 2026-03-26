@@ -6,13 +6,9 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from "react-native";
-import Animated, {
-  FadeInDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,6 +16,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useSignUp } from "@/contexts/SignUpContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { generateNickname } from "@/services/nicknameGenerator";
 import {
@@ -34,7 +31,9 @@ const LIGHT_GREEN = "#A8D5BA";
 export default function SignUpPlayersScreen() {
   const { scaleW } = useLayoutScale();
   const { players, addPlayer, removePlayer, replacePlayer } = useSignUp();
+  const { signOut } = useAuth();
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [showAddForm, setShowAddForm] = useState(true);
   const [name, setName] = useState("");
   const [nickname, setNickname] = useState(() => generateNickname());
   const [selectedColor, setSelectedColor] = useState(() =>
@@ -53,6 +52,7 @@ export default function SignUpPlayersScreen() {
   };
 
   const handleEditPlayer = (index: number) => {
+    setShowAddForm(false);
     if (editingIndex !== null && name.trim()) {
       replacePlayer(editingIndex, {
         name: name.trim(),
@@ -76,6 +76,7 @@ export default function SignUpPlayersScreen() {
   const handleDeleteInForm = () => {
     if (editingIndex !== null) {
       removePlayer(editingIndex);
+      if (players.length <= 1) setShowAddForm(false);
     }
     resetForm();
   };
@@ -91,6 +92,7 @@ export default function SignUpPlayersScreen() {
       replacePlayer(editingIndex, playerData);
     } else {
       addPlayer(playerData);
+      setShowAddForm(false);
     }
     resetForm();
   };
@@ -107,6 +109,7 @@ export default function SignUpPlayersScreen() {
         replacePlayer(editingIndex, playerData);
       } else {
         addPlayer(playerData);
+        setShowAddForm(false);
       }
     }
     const totalPlayers = currentName ? players.length + 1 : players.length;
@@ -121,13 +124,6 @@ export default function SignUpPlayersScreen() {
 
   const canAddPlayer = name.trim().length > 0;
   const showTrash = name.trim().length > 0 || editingIndex !== null;
-  const hasAnyPlayers = players.length > 0;
-  const showAddAnotherPlayer = hasAnyPlayers;
-
-  const addPlayerScale = useSharedValue(1);
-  const continueScale = useSharedValue(1);
-  const addPlayerAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: addPlayerScale.value }] }));
-  const continueAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: continueScale.value }] }));
 
   const containerStyle = { flex: 1, backgroundColor: HUNTLY_GREEN };
   const Wrapper = Platform.OS === "ios" ? KeyboardAvoidingView : View;
@@ -151,7 +147,7 @@ export default function SignUpPlayersScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
+          <Animated.View entering={FadeInDown.duration(500).delay(0)}>
             <ThemedText
               type="heading"
               lightColor="#FFFFFF"
@@ -180,7 +176,7 @@ export default function SignUpPlayersScreen() {
             </ThemedText>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.duration(500).delay(150).springify().damping(18)}>
+          <Animated.View entering={FadeInDown.duration(500).delay(150)}>
           {/* Player cards: compact or expanded in place */}
           {players.map((player, index) => {
             const isExpanded = editingIndex === index;
@@ -422,10 +418,75 @@ export default function SignUpPlayersScreen() {
           })}
           </Animated.View>
 
-          {/* Add-new form card: only when not editing any player */}
-          {editingIndex === null && (
+          {/* "Add a new player" card: same structure as profile — show when form is hidden or when editing another player */}
+          {(editingIndex !== null ||
+            (editingIndex === null && !showAddForm)) && (
             <Animated.View
-              entering={FadeInDown.duration(500).delay(280).springify().damping(18)}
+              entering={FadeInDown.duration(500).delay(280)}
+              style={{ marginTop: scaleW(4) }}
+            >
+              <Pressable
+                onPress={() => {
+                  setEditingIndex(null);
+                  setShowAddForm(true);
+                }}
+                style={{
+                  flexDirection: "row",
+                  backgroundColor: CREAM,
+                  borderRadius: scaleW(16),
+                  marginBottom: scaleW(12),
+                  overflow: "hidden",
+                  minHeight: scaleW(64),
+                }}
+              >
+                <View
+                  style={{
+                    width: scaleW(20),
+                    alignSelf: "stretch",
+                    backgroundColor: LIGHT_GREEN,
+                  }}
+                />
+                <View
+                  style={{
+                    flex: 1,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingVertical: scaleW(16),
+                    paddingHorizontal: scaleW(20),
+                  }}
+                >
+                  <ThemedText
+                    type="heading"
+                    lightColor="#111827"
+                    darkColor="#111827"
+                    style={{
+                      fontWeight: "700",
+                      fontSize: scaleW(18),
+                    }}
+                  >
+                    Add a new player
+                  </ThemedText>
+                </View>
+                <View
+                  style={{
+                    justifyContent: "center",
+                    marginRight: scaleW(16),
+                  }}
+                >
+                  <MaterialIcons
+                    name="add"
+                    size={scaleW(24)}
+                    color={HUNTLY_GREEN}
+                  />
+                </View>
+              </Pressable>
+            </Animated.View>
+          )}
+
+          {/* Add-new form card: only when not editing any player and form is shown */}
+          {editingIndex === null && showAddForm && (
+            <Animated.View
+              entering={FadeInDown.duration(500).delay(280)}
               style={{
                 backgroundColor: CREAM,
                 borderRadius: scaleW(24),
@@ -604,79 +665,49 @@ export default function SignUpPlayersScreen() {
                   );
                 })}
               </View>
+              <Pressable
+                onPress={handleAddPlayer}
+                disabled={!canAddPlayer}
+                style={{
+                  marginTop: scaleW(24),
+                  alignSelf: "center",
+                  width: "100%",
+                  maxWidth: scaleW(240),
+                  paddingVertical: scaleW(18),
+                  borderRadius: scaleW(50),
+                  backgroundColor: canAddPlayer ? HUNTLY_GREEN : "#9CA3AF",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: canAddPlayer ? 0.3 : 0.1,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }}
+              >
+                <ThemedText
+                  type="heading"
+                  lightColor="#FFFFFF"
+                  darkColor="#FFFFFF"
+                  style={{ fontSize: scaleW(16), fontWeight: "600" }}
+                >
+                  Add player
+                </ThemedText>
+              </Pressable>
             </Animated.View>
           )}
-        </ScrollView>
 
-        {/* Fixed footer: Add player / Add another player + Continue */}
-        <Animated.View
-          entering={FadeInDown.duration(500).delay(380).springify().damping(18)}
-          style={{
-            paddingHorizontal: scaleW(24),
-            paddingTop: scaleW(8),
-            paddingBottom: scaleW(24),
-          }}
-        >
-          <Animated.View style={addPlayerAnimatedStyle}>
-            <Pressable
-              onPress={handleAddPlayer}
-              disabled={!canAddPlayer}
-              onPressIn={() => {
-                addPlayerScale.value = withSpring(0.96, {
-                  damping: 15,
-                  stiffness: 400,
-                });
-              }}
-              onPressOut={() => {
-                addPlayerScale.value = withSpring(1, {
-                  damping: 15,
-                  stiffness: 400,
-                });
-              }}
-              style={{
-                alignSelf: "center",
-                width: "100%",
-                maxWidth: scaleW(240),
-                paddingVertical: scaleW(18),
-                borderRadius: scaleW(50),
-                backgroundColor: canAddPlayer ? CREAM : "#9CA3AF",
-                alignItems: "center",
-                justifyContent: "center",
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: canAddPlayer ? 0.3 : 0.1,
-                shadowRadius: 4,
-                elevation: 2,
-                marginBottom: scaleW(16),
-              }}
-            >
-              <ThemedText
-                type="heading"
-                lightColor={canAddPlayer ? HUNTLY_GREEN : "#FFFFFF"}
-                darkColor={canAddPlayer ? HUNTLY_GREEN : "#FFFFFF"}
-                style={{ fontSize: scaleW(16), fontWeight: "600" }}
-              >
-                {showAddAnotherPlayer ? "Add another player" : "Add player"}
-              </ThemedText>
-            </Pressable>
-          </Animated.View>
-
-          <Animated.View style={continueAnimatedStyle}>
+          {/* Continue: on scroll page */}
+          <Animated.View
+            entering={FadeInDown.duration(500).delay(380)}
+            style={{
+              paddingTop: scaleW(16),
+              paddingBottom: scaleW(24),
+            }}
+          >
             <Pressable
               onPress={handleContinue}
               disabled={!canContinue}
-              onPressIn={() => {
-                continueScale.value = withSpring(0.96, {
-                  damping: 15,
-                  stiffness: 400,
-                });
-              }}
-              onPressOut={() => {
-                continueScale.value = withSpring(1, {
-                  damping: 15,
-                  stiffness: 400,
-                });
-              }}
               style={{
                 alignSelf: "center",
                 width: "100%",
@@ -702,8 +733,46 @@ export default function SignUpPlayersScreen() {
                 Continue
               </ThemedText>
             </Pressable>
+            <Pressable
+              onPress={() => {
+                Alert.alert("Log out", "Return to sign in? You can finish setting up explorers later.", [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Log out",
+                    style: "destructive",
+                    onPress: async () => {
+                      try {
+                        await signOut();
+                        router.replace("/auth");
+                      } catch {
+                        router.replace("/auth");
+                      }
+                    },
+                  },
+                ]);
+              }}
+              style={{
+                alignSelf: "center",
+                marginTop: scaleW(20),
+                paddingVertical: scaleW(10),
+                paddingHorizontal: scaleW(20),
+              }}
+            >
+              <ThemedText
+                lightColor="#FFFFFF"
+                darkColor="#FFFFFF"
+                style={{
+                  fontSize: scaleW(15),
+                  fontWeight: "600",
+                  textDecorationLine: "underline",
+                  opacity: 0.9,
+                }}
+              >
+                Log out
+              </ThemedText>
+            </Pressable>
           </Animated.View>
-        </Animated.View>
+        </ScrollView>
         </Wrapper>
       </SafeAreaView>
     </>

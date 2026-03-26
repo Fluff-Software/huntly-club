@@ -77,3 +77,16 @@ There’s no widely reported “Supabase + Mailjet” soft-bounce bug; issues ar
 ### 7. If it’s one provider (e.g. Outlook/Hotmail)
 
 - Check the bounce reason in step 1. If SPF/DKIM show “Pass” in Mailjet but that provider still soft-bounces, it’s often reputation or their policy. Options: warm up, contact Mailjet support with the message ID and bounce reason, and consider their “Sender reputation” / deliverability tools.
+
+---
+
+## Push notifications (Expo)
+
+The **send-chapter-push** Edge Function sends push notifications via the Expo Push API. No extra secrets are required for the function; the API does not use an API key.
+
+**Mobile app (EAS Build):** Push credentials are managed by EAS:
+
+- **Android**: Configure FCM (Firebase Cloud Messaging) and add the FCM API key via `eas credentials` or when prompted during the first `eas build`. See [Expo: FCM credentials](https://docs.expo.dev/push-notifications/fcm-credentials).
+- **iOS**: EAS will prompt for your Apple Push Notifications key (or create one) during the first build. See [Expo: push notifications setup](https://docs.expo.dev/push-notifications/push-notifications-setup).
+
+**Testing:** Push notifications do **not** work on iOS Simulator or Android Emulator. Use a physical device to test receiving notifications.

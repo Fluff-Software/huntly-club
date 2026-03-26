@@ -1,14 +1,11 @@
-import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider,
-} from "@react-navigation/native";
+import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { useFonts } from "expo-font";
 import { Slot, router } from "expo-router";
+import * as Notifications from "expo-notifications";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import "react-native-reanimated";
+import { LayoutAnimationConfig } from "react-native-reanimated";
 import * as Linking from "expo-linking";
 import {
   useFonts as useJuaFonts,
@@ -20,12 +17,15 @@ import {
   ComicNeue_700Bold,
 } from "@expo-google-fonts/comic-neue";
 
-import { useColorScheme } from "@/hooks/useColorScheme";
+import { useAppUpdate } from "@/hooks/useAppUpdate";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { NetworkProvider } from "@/contexts/NetworkContext";
 import { PurchasesProvider } from "@/contexts/PurchasesContext";
 import { PlayerProvider } from "@/contexts/PlayerContext";
 import { SignUpProvider } from "@/contexts/SignUpContext";
+import { UserProvider } from "@/contexts/UserContext";
 import { AuthGuard } from "@/components/authentication/AuthGuard";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { supabase } from "@/services/supabase";
 
 import "../global.css";
@@ -46,8 +46,19 @@ async function setSessionFromAuthConfirmUrl(url: string): Promise<void> {
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  useAppUpdate();
+
   const [juaLoaded] = useJuaFonts({
     Jua_400Regular,
   });
@@ -66,6 +77,16 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded]);
+
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data as { screen?: string } | undefined;
+      if (data?.screen === "story") {
+        router.push("/(tabs)/story");
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   // Handle deep links (e.g. email verification: huntlyclub://auth/confirm#access_token=...)
   useEffect(() => {
@@ -97,21 +118,26 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <SignUpProvider>
-        <PurchasesProvider>
-          <PlayerProvider>
-            <ThemeProvider
-            value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
-          >
-            <AuthGuard>
-              <Slot />
-            </AuthGuard>
-            <StatusBar style="auto" />
-          </ThemeProvider>
-        </PlayerProvider>
-      </PurchasesProvider>
-      </SignUpProvider>
-    </AuthProvider>
+    <NetworkProvider>
+      <AuthProvider>
+        <SignUpProvider>
+          <PurchasesProvider>
+            <UserProvider>
+              <PlayerProvider>
+                <ThemeProvider value={DefaultTheme}>
+                  <OfflineBanner />
+                  <LayoutAnimationConfig skipEntering>
+                    <AuthGuard>
+                      <Slot />
+                    </AuthGuard>
+                  </LayoutAnimationConfig>
+                  <StatusBar style="dark" />
+                </ThemeProvider>
+              </PlayerProvider>
+            </UserProvider>
+          </PurchasesProvider>
+        </SignUpProvider>
+      </AuthProvider>
+    </NetworkProvider>
   );
 }

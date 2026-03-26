@@ -17,10 +17,10 @@ export type Database = {
     Functions: {
       graphql: {
         Args: {
+          extensions?: Json
           operationName?: string
           query?: string
           variables?: Json
-          extensions?: Json
         }
         Returns: Json
       }
@@ -36,67 +36,103 @@ export type Database = {
     Tables: {
       activities: {
         Row: {
+          categories: Json | null
           created_at: string
           description: string | null
-          hints: string[] | null
+          hints: string | null
           id: number
           image: string | null
           long_description: string | null
           name: string
           photo_required: boolean | null
-          tips: string[] | null
+          tips: string | null
           title: string
           trivia: string | null
           xp: number | null
-          categories: number[]
         }
         Insert: {
+          categories?: Json | null
           created_at?: string
           description?: string | null
-          hints?: string[] | null
+          hints?: string | null
           id?: number
           image?: string | null
           long_description?: string | null
           name: string
           photo_required?: boolean | null
-          tips?: string[] | null
+          tips?: string | null
           title: string
           trivia?: string | null
           xp?: number | null
-          categories?: number[]
         }
         Update: {
+          categories?: Json | null
           created_at?: string
           description?: string | null
-          hints?: string[] | null
+          hints?: string | null
           id?: number
           image?: string | null
           long_description?: string | null
           name?: string
           photo_required?: boolean | null
-          tips?: string[] | null
+          tips?: string | null
           title?: string
           trivia?: string | null
           xp?: number | null
-          categories?: number[]
         }
         Relationships: []
       }
-      categories: {
+      activity_reactions: {
         Row: {
+          activity_progress_id: number
+          created_at: string | null
           id: number
-          icon: string | null
-          name: string | null
+          profile_id: number
+          reaction_type: string
         }
         Insert: {
+          activity_progress_id: number
+          created_at?: string | null
           id?: number
-          icon?: string | null
-          name: string | null
+          profile_id: number
+          reaction_type: string
         }
         Update: {
+          activity_progress_id?: number
+          created_at?: string | null
           id?: number
-          icon?: string | null
-          name?: string | null
+          profile_id?: number
+          reaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_reactions_activity_progress_id_fkey"
+            columns: ["activity_progress_id"]
+            isOneToOne: false
+            referencedRelation: "user_activity_progress"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_reactions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admins: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -109,6 +145,7 @@ export type Database = {
           image_url: string
           local_image_path: string | null
           name: string
+          requirement_category: string | null
           requirement_type: string
           requirement_value: number
           uses_custom_image: boolean
@@ -121,6 +158,7 @@ export type Database = {
           image_url: string
           local_image_path?: string | null
           name: string
+          requirement_category?: string | null
           requirement_type: string
           requirement_value: number
           uses_custom_image?: boolean
@@ -133,11 +171,92 @@ export type Database = {
           image_url?: string
           local_image_path?: string | null
           name?: string
+          requirement_category?: string | null
           requirement_type?: string
           requirement_value?: number
           uses_custom_image?: boolean
         }
         Relationships: []
+      }
+      chapter_activities: {
+        Row: {
+          activity_id: number
+          chapter_id: number
+          created_at: string
+          id: number
+          order: number
+        }
+        Insert: {
+          activity_id: number
+          chapter_id: number
+          created_at?: string
+          id?: number
+          order?: number
+        }
+        Update: {
+          activity_id?: number
+          chapter_id?: number
+          created_at?: string
+          id?: number
+          order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapter_activities_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chapter_activities_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chapters: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: number
+          image: string | null
+          season_id: number
+          title: string
+          unlock_date: string
+          week_number: number
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: number
+          image?: string | null
+          season_id: number
+          title: string
+          unlock_date: string
+          week_number: number
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: number
+          image?: string | null
+          season_id?: number
+          title?: string
+          unlock_date?: string
+          week_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapters_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pack_activities: {
         Row: {
@@ -207,6 +326,7 @@ export type Database = {
           name: string
           nickname: string | null
           team: number
+          team_contribution: number | null
           user_id: string
           xp: number
         }
@@ -217,6 +337,7 @@ export type Database = {
           name: string
           nickname?: string | null
           team: number
+          team_contribution?: number | null
           user_id: string
           xp?: number
         }
@@ -227,6 +348,7 @@ export type Database = {
           name?: string
           nickname?: string | null
           team?: number
+          team_contribution?: number | null
           user_id?: string
           xp?: number
         }
@@ -239,6 +361,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      seasons: {
+        Row: {
+          created_at: string
+          hero_image: string | null
+          id: number
+          name: string | null
+          story: string | null
+        }
+        Insert: {
+          created_at?: string
+          hero_image?: string | null
+          id?: number
+          name?: string | null
+          story?: string | null
+        }
+        Update: {
+          created_at?: string
+          hero_image?: string | null
+          id?: number
+          name?: string | null
+          story?: string | null
+        }
+        Relationships: []
       }
       teams: {
         Row: {
@@ -271,23 +417,35 @@ export type Database = {
         Row: {
           activity_id: number
           completed_at: string | null
+          created_at: string
           id: number
           notes: string | null
+          photo_url: string | null
           profile_id: number
+          started_at: string | null
+          status: string
         }
         Insert: {
           activity_id: number
           completed_at?: string | null
+          created_at?: string
           id?: number
           notes?: string | null
+          photo_url?: string | null
           profile_id: number
+          started_at?: string | null
+          status?: string
         }
         Update: {
           activity_id?: number
           completed_at?: string | null
+          created_at?: string
           id?: number
           notes?: string | null
+          photo_url?: string | null
           profile_id?: number
+          started_at?: string | null
+          status?: string
         }
         Relationships: [
           {
@@ -306,61 +464,13 @@ export type Database = {
           },
         ]
       }
-      user_achievements: {
-        Row: {
-          id: number
-          profile_id: number
-          team_id: number
-          source: string
-          source_id: number
-          message: string
-          xp: number
-          created_at: string
-        }
-        Insert: {
-          id?: number
-          profile_id: number
-          team_id: number
-          source: string
-          source_id: number
-          message: string
-          xp?: number
-          created_at?: string
-        }
-        Update: {
-          id?: number
-          profile_id?: number
-          team_id?: number
-          source?: string
-          source_id?: number
-          message?: string
-          xp?: number
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_achievements_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_achievements_team_id_fkey"
-            columns: ["team_id"]
-            isOneToOne: false
-            referencedRelation: "teams"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       user_badges: {
         Row: {
           badge_id: number
           created_at: string
           earned_at: string
           id: number
-          profile_id: number | null
+          profile_id: number
           user_id: string
         }
         Insert: {
@@ -368,7 +478,7 @@ export type Database = {
           created_at?: string
           earned_at?: string
           id?: number
-          profile_id?: number | null
+          profile_id: number
           user_id: string
         }
         Update: {
@@ -376,7 +486,7 @@ export type Database = {
           created_at?: string
           earned_at?: string
           id?: number
-          profile_id?: number | null
+          profile_id?: number
           user_id?: string
         }
         Relationships: [
@@ -402,7 +512,7 @@ export type Database = {
     }
     Functions: {
       add_team_xp: {
-        Args: { team_id: number; xp_amount: number }
+        Args: { xp_amount: number; team_id: number }
         Returns: undefined
       }
       get_team_xp: {

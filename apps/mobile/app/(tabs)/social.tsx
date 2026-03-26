@@ -16,8 +16,10 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
+import { useFocusEffect } from "expo-router";
 import { BaseLayout } from "@/components/layout/BaseLayout";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { useTablet } from "@/hooks/useTablet";
 import {
   getTeamInfo,
   getAllTeamsWithXp,
@@ -25,7 +27,7 @@ import {
   getTeamAchievementTotals,
   TeamInfo,
 } from "@/services/teamActivityService";
-import { usePlayer } from "@/contexts/PlayerContext";
+import { useUser } from "@/contexts/UserContext";
 import { getTeamCardConfig } from "@/utils/teamUtils";
 
 const BEAR_FACE_IMAGE = require("@/assets/images/bear-face.png");
@@ -38,13 +40,22 @@ const ACHIEVEMENTS_INITIAL = 4;
 const ACHIEVEMENTS_PAGE_SIZE = 4;
 const LOAD_MORE_THRESHOLD = 40;
 
-const HEADER_ORANGE = "#F7A676";
-const PAGE_BG = "#EBCDBB";
-const CHART_BASELINE = "#4F6F52";
+const HEADER_PURPLE = "#C3A4FF";
+const PAGE_BG = "#F3ECFF";
+const CHART_BASELINE = "#6B4BB6";
 const BAR_WHITE = "#FFFFFF";
-const BAR_BLUE = "#A8D5E5";
-const BAR_GREEN = "#B5D9B5";
-const CARD_GRAY = "#D9D9D9";
+const BAR_BLUE = "#D3C2FF";
+const BAR_GREEN = "#B6A0F5";
+
+const ACHIEVEMENT_CARD_COLORS = [
+  "#FFF5E8",
+  "#E8F5F0",
+  "#F0E8FF",
+  "#E8F0FF",
+  "#FFF0F0",
+];
+const ACHIEVEMENT_ICON_BG = ["#F7A676", "#7FAF8A", "#A8D5E5", "#D4A05A", "#C97B6C"];
+const POINTS_PURPLE = "#5B3AAE";
 
 type AchievementItem = {
   id: string;
@@ -64,7 +75,8 @@ function mapAchievementsToItems(achievements: { id: number; profile_name: string
 
 export default function SocialScreen() {
   const { scaleW, width } = useLayoutScale();
-  const { currentPlayer } = usePlayer();
+  const { isTablet } = useTablet();
+  const { teamId } = useUser();
   const [teamAchievements, setTeamAchievements] = useState<Awaited<ReturnType<typeof getTeamAchievements>>>([]);
   const [teamAchievementTotals, setTeamAchievementTotals] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(true);
@@ -76,35 +88,66 @@ export default function SocialScreen() {
 
   const bearSlideAnim = useRef(new RNAnimated.Value(400)).current;
   const chartProgress = useSharedValue(0);
+  const scrollRef = useRef<ScrollView>(null);
 
-  const barHeights = useMemo(() => {
-    const teamOrder = ["bears", "foxes", "otters"];
+  const TEAM_ORDER = ["bears", "foxes", "otters"] as const;
+  const TEAM_FACE_BY_NAME: Record<string, typeof BEAR_FACE_IMAGE> = {
+    bears: BEAR_FACE_IMAGE,
+    foxes: FOX_FACE_IMAGE,
+    otters: OTTER_FACE_IMAGE,
+  };
+
+  /** Teams sorted by points (highest first) for the chart. */
+  const sortedTeamsForChart = useMemo(() => {
     const teamIdByName = Object.fromEntries(
       allTeams.map((t) => [t.name.toLowerCase(), t.id])
     );
-    const maxTotal = Math.max(
-      1,
-      ...teamOrder.map((name) => teamAchievementTotals[teamIdByName[name]] ?? 0)
-    );
-    const minDesign = 20;
+    const colourByName: Record<string, string> = {};
+    for (const team of allTeams) {
+      if (team.colour) colourByName[team.name.toLowerCase()] = team.colour;
+    }
+    const withTotals = TEAM_ORDER.map((name) => {
+      const id = teamIdByName[name];
+      const total = teamAchievementTotals[id] ?? 0;
+      const color =
+        colourByName[name] ??
+        (name === "bears" ? BAR_WHITE : name === "foxes" ? BAR_BLUE : BAR_GREEN);
+      return {
+        name,
+        total,
+        face: TEAM_FACE_BY_NAME[name],
+        color,
+      };
+    });
+    return withTotals.sort((a, b) => b.total - a.total);
+  }, [allTeams, teamAchievementTotals]);
+
+  const barHeights = useMemo(() => {
+    const maxTotal = Math.max(1, ...sortedTeamsForChart.map((t) => t.total));
+    const minDesign = 60;
     const maxDesign = 220;
-    return teamOrder.map((name) => {
-      const total = teamAchievementTotals[teamIdByName[name]] ?? 0;
-      const designHeight = minDesign + (total / maxTotal) * (maxDesign - minDesign);
+    return sortedTeamsForChart.map((t) => {
+      const designHeight = minDesign + (t.total / maxTotal) * (maxDesign - minDesign);
       return scaleW(designHeight);
     });
-  }, [scaleW, allTeams, teamAchievementTotals]);
+  }, [scaleW, sortedTeamsForChart]);
+
+  const barColors = useMemo(
+    () => sortedTeamsForChart.map((t) => t.color),
+    [sortedTeamsForChart]
+  );
+
   const bar1Style = useAnimatedStyle(() => ({
     height: chartProgress.value * barHeights[0],
-    backgroundColor: BAR_WHITE,
+    backgroundColor: barColors[0],
   }));
   const bar2Style = useAnimatedStyle(() => ({
     height: chartProgress.value * barHeights[1],
-    backgroundColor: BAR_BLUE,
+    backgroundColor: barColors[1],
   }));
   const bar3Style = useAnimatedStyle(() => ({
     height: chartProgress.value * barHeights[2],
-    backgroundColor: BAR_GREEN,
+    backgroundColor: barColors[2],
   }));
 
   useEffect(() => {
@@ -123,16 +166,16 @@ export default function SocialScreen() {
   }, []);
 
   const fetchTeamActivities = useCallback(async () => {
-    if (!currentPlayer?.team) {
+    if (!teamId) {
       setLoading(false);
       return;
     }
     try {
       setError(null);
       const [teamData, teamsData, achievements, totals] = await Promise.all([
-        getTeamInfo(currentPlayer.team),
+        getTeamInfo(teamId),
         getAllTeamsWithXp(),
-        getTeamAchievements(currentPlayer.team),
+        getTeamAchievements(teamId),
         getTeamAchievementTotals(),
       ]);
       setTeamInfo(teamData);
@@ -144,11 +187,18 @@ export default function SocialScreen() {
     } finally {
       setLoading(false);
     }
-  }, [currentPlayer?.team]);
+  }, [teamId]);
 
   useEffect(() => {
     fetchTeamActivities();
   }, [fetchTeamActivities]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchTeamActivities();
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, [fetchTeamActivities])
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -193,17 +243,17 @@ export default function SocialScreen() {
       StyleSheet.create({
         page: { flex: 1, backgroundColor: PAGE_BG },
         header: {
-          backgroundColor: HEADER_ORANGE,
+          backgroundColor: HEADER_PURPLE,
           paddingHorizontal: scaleW(24),
           overflow: "hidden",
         },
         headerRow: {
           flexDirection: "row",
           alignItems: "flex-end",
-          paddingVertical: scaleW(70),
+          paddingVertical: scaleW(isTablet ? 70 : 40),
         },
         headerBearWrap: {
-          bottom: scaleW(-27),
+          bottom: scaleW(isTablet ? -27 : 0),
           width: scaleW(140),
           alignItems: "center",
           justifyContent: "center",
@@ -275,54 +325,62 @@ export default function SocialScreen() {
           opacity: 0.85,
         },
         achievementsTitle: {
-          fontSize: scaleW(20),
+          fontSize: scaleW(24),
           fontWeight: "700",
-          color: "#000",
+          color: POINTS_PURPLE,
           marginTop: scaleW(40),
-          marginBottom: scaleW(20),
+          marginBottom: scaleW(24),
           marginLeft: scaleW(24),
         },
         timeline: {
-          paddingHorizontal: scaleW(24),
+          paddingHorizontal: scaleW(20),
           paddingBottom: scaleW(64),
           alignItems: "center",
-          gap: scaleW(24),
+          gap: scaleW(20),
         },
         achievementCard: {
-          backgroundColor: CARD_GRAY,
-          width: scaleW(240),
+          width: "100%",
+          maxWidth: scaleW(340),
           flexDirection: "row",
+          borderRadius: scaleW(20),
+          overflow: "hidden" as const,
+          padding: scaleW(16),
+          shadowColor: "#4F6F52",
+          shadowOpacity: 0.12,
+          shadowRadius: scaleW(12),
+          shadowOffset: { width: 0, height: 4 },
+          elevation: 3,
+          borderWidth: 3,
+          borderColor: "rgba(255,255,255,0.9)",
         },
         achievementIcon: {
-          width: scaleW(100),
-          height: scaleW(120),
-          borderTopRightRadius: "50%",
-          borderBottomRightRadius: "50%",
-          backgroundColor: "#FFF",
+          width: scaleW(56),
+          height: scaleW(56),
+          borderRadius: scaleW(28),
           alignItems: "center",
           justifyContent: "center",
-          marginRight: scaleW(14),
+          marginRight: scaleW(16),
         },
         achievementIconImage: {
-          width: scaleW(50),
-          height: scaleW(50),
+          width: scaleW(32),
+          height: scaleW(32),
         },
         achievementText: {
           flex: 1,
-          justifyContent: "space-between",
-          paddingHorizontal: scaleW(6),
-          paddingVertical: scaleW(16),
+          justifyContent: "center",
+          paddingVertical: scaleW(4),
         },
         achievementTitle: {
-          fontSize: scaleW(15),
+          fontSize: scaleW(16),
           fontWeight: "600",
-          color: "#000",
-          marginBottom: 2,
+          color: "#1a1a1a",
+          marginBottom: scaleW(4),
+          lineHeight: scaleW(22),
         },
         achievementPoints: {
-          fontSize: scaleW(13),
-          color: "#000",
-          opacity: 0.7,
+          fontSize: scaleW(15),
+          fontWeight: "700",
+          color: POINTS_PURPLE,
         },
         emptyStateContainer: {
           flex: 1,
@@ -333,7 +391,7 @@ export default function SocialScreen() {
         emptyStateTitle: {
           fontSize: scaleW(24),
           fontWeight: "700",
-          color: "#2D5A27",
+          color: POINTS_PURPLE,
           textAlign: "center",
           marginBottom: scaleW(16),
         },
@@ -345,7 +403,7 @@ export default function SocialScreen() {
         loadingText: {
           fontSize: scaleW(18),
           fontWeight: "600",
-          color: "#2D5A27",
+          color: POINTS_PURPLE,
         },
         errorText: {
           fontSize: scaleW(18),
@@ -368,25 +426,10 @@ export default function SocialScreen() {
           marginBottom: scaleW(8),
         },
       }),
-    [scaleW]
+    [scaleW, isTablet]
   );
 
-  if (!currentPlayer) {
-    return (
-      <BaseLayout>
-        <View style={styles.emptyStateContainer}>
-          <Text style={styles.emptyStateTitle}>
-            Select Your Explorer
-          </Text>
-          <Text style={styles.emptyStateBody}>
-            Choose an explorer profile to view your team
-          </Text>
-        </View>
-      </BaseLayout>
-    );
-  }
-
-  if (!currentPlayer.team) {
+  if (!teamId) {
     return (
       <BaseLayout>
         <View style={styles.emptyStateContainer}>
@@ -394,7 +437,7 @@ export default function SocialScreen() {
             Join a Team
           </Text>
           <Text style={styles.emptyStateBody}>
-            Your explorer needs to join a team to view team activities
+            Your account needs a team to view team activities. Create an explorer in Clubhouse to get started!
           </Text>
         </View>
       </BaseLayout>
@@ -405,7 +448,7 @@ export default function SocialScreen() {
     return (
       <SafeAreaView style={[styles.page, { justifyContent: "center", alignItems: "center" }]} edges={["top", "left", "right"]}>
         <Text style={styles.loadingText}>
-          Loading...
+          Loading your team…
         </Text>
       </SafeAreaView>
     );
@@ -423,15 +466,10 @@ export default function SocialScreen() {
     );
   }
 
-  const chartBars = [
-    { face: BEAR_FACE_IMAGE, color: BAR_WHITE, height: scaleW(100) },
-    { face: FOX_FACE_IMAGE, color: BAR_BLUE, height: scaleW(160) },
-    { face: OTTER_FACE_IMAGE, color: BAR_GREEN, height: scaleW(88) },
-  ];
-
   return (
     <SafeAreaView style={styles.page} edges={["top", "left", "right"]}>
       <ScrollView
+        ref={scrollRef}
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         bounces={false}
@@ -443,7 +481,7 @@ export default function SocialScreen() {
         }
       >
         <Animated.View
-          entering={FadeInDown.duration(600).delay(0).springify().damping(18)}
+          entering={FadeInDown.duration(600).delay(0)}
           style={styles.header}
         >
           <View style={styles.headerRow}>
@@ -469,18 +507,18 @@ export default function SocialScreen() {
           </View>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.duration(500).delay(150).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(150)}>
           <Text style={styles.sectionTitle}>This month</Text>
         </Animated.View>
 
         <Animated.View
-          entering={FadeInDown.duration(500).delay(280).springify().damping(18)}
+          entering={FadeInDown.duration(500).delay(280)}
           style={styles.chartRow}
         >
-          {chartBars.map((bar, index) => {
+          {sortedTeamsForChart.map((bar, index) => {
             const barStyle = index === 0 ? bar1Style : index === 1 ? bar2Style : bar3Style;
             return (
-              <View key={index} style={styles.chartBarWrap}>
+              <View key={bar.name} style={styles.chartBarWrap}>
                 <Animated.View style={[styles.chartBar, barStyle]}>
                   <View style={styles.chartFace}>
                     <Image
@@ -495,51 +533,51 @@ export default function SocialScreen() {
           })}
         </Animated.View>
         <View style={styles.chartBaseline} />
-        <Text style={styles.chartSubtitle}>
-          {teamCardConfig.title} are exploring brilliantly this month
-        </Text>
 
-        <Animated.View entering={FadeInDown.duration(500).delay(380).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(380)}>
           <Text style={styles.achievementsTitle}>Recent achievements</Text>
         </Animated.View>
         <View style={[styles.timeline, { position: "relative" }]}>
-          {visibleAchievements.map((item, index) => (
-            <Animated.View
-              key={item.id}
-              entering={FadeInDown.duration(400).delay(450 + index * 60).springify().damping(18)}
-              style={{ zIndex: 1 }}
-            >
-              <View
-                style={[
-                  styles.achievementCard,
-                  {
-                    transform: [{ rotate: index % 2 === 0 ? "-2deg" : "2deg" }],
-                    marginLeft: index % 2 === 0 ? scaleW(20) : 0,
-                    marginRight: index % 2 === 1 ? scaleW(20) : 0,
-                  },
-                ]}
+          {visibleAchievements.map((item, index) => {
+            const cardBg = ACHIEVEMENT_CARD_COLORS[index % ACHIEVEMENT_CARD_COLORS.length];
+            const iconBg = ACHIEVEMENT_ICON_BG[index % ACHIEVEMENT_ICON_BG.length];
+            return (
+              <Animated.View
+                key={item.id}
+                entering={FadeInDown.duration(400).delay(450 + index * 60)}
+                style={{ zIndex: 1, width: "100%", alignItems: "center" }}
               >
-                <View style={styles.achievementIcon}>
-                  <Image
-                    source={item.type === "badge" ? GET_STARTED_ICON_2_IMAGE : CELEBRATE_IMAGE}
-                    style={styles.achievementIconImage}
-                    resizeMode="contain"
-                  />
+                <View
+                  style={[
+                    styles.achievementCard,
+                    {
+                      backgroundColor: cardBg,
+                      transform: [{ rotate: index % 2 === 0 ? "-1.5deg" : "1.5deg" }],
+                    },
+                  ]}
+                >
+                  <View style={[styles.achievementIcon, { backgroundColor: iconBg }]}>
+                    <Image
+                      source={item.type === "badge" ? GET_STARTED_ICON_2_IMAGE : CELEBRATE_IMAGE}
+                      style={styles.achievementIconImage}
+                      resizeMode="contain"
+                    />
+                  </View>
+                  <View style={styles.achievementText}>
+                    <Text style={styles.achievementTitle}>{item.title}</Text>
+                    <Text style={styles.achievementPoints}>+ {item.points} points</Text>
+                  </View>
                 </View>
-                <View style={styles.achievementText}>
-                  <Text style={styles.achievementTitle}>{item.title}</Text>
-                  <Text style={styles.achievementPoints}>+ {item.points} points</Text>
-                </View>
-              </View>
-            </Animated.View>
-          ))}
+              </Animated.View>
+            );
+          })}
           {hasMoreAchievements && (
             <View style={styles.loadingMoreWrap}>
               <ActivityIndicator size="small" color={CHART_BASELINE} />
             </View>
           )}
           {showNoMoreMessage && (
-            <Text style={styles.noMoreAchievements}>No more achievements to load</Text>
+            <Text style={styles.noMoreAchievements}>You're all caught up! More achievements will appear as your team explores.</Text>
           )}
         </View>
       </ScrollView>

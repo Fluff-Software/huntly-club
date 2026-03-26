@@ -1,19 +1,43 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { Button } from "@/components/Button";
 
-async function getActivities() {
+async function getActivitiesWithProfilesPlayed() {
   const supabase = createServerSupabaseClient();
-  const { data, error } = await supabase
-    .from("activities")
-    .select("id, name, title, xp, created_at")
-    .order("id");
 
-  if (error) throw new Error(error.message);
-  return data ?? [];
+  const [activitiesRes, profilesCountRes, progressRes] = await Promise.all([
+    supabase
+      .from("activities")
+      .select("id, name, title, xp, created_at")
+      .order("id"),
+    supabase.from("profiles").select("id", { count: "exact", head: true }),
+    supabase.from("user_activity_progress").select("activity_id"),
+  ]);
+
+  if (activitiesRes.error) throw new Error(activitiesRes.error.message);
+  if (profilesCountRes.error) throw new Error(profilesCountRes.error.message);
+  if (progressRes.error) throw new Error(progressRes.error.message);
+
+  const activities = activitiesRes.data ?? [];
+  const totalProfiles = profilesCountRes.count ?? 0;
+  const progressRows = progressRes.data ?? [];
+
+  const progressCountByActivityId = progressRows.reduce<Record<number, number>>(
+    (acc, row) => {
+      acc[row.activity_id] = (acc[row.activity_id] ?? 0) + 1;
+      return acc;
+    },
+    {}
+  );
+
+  return { activities, totalProfiles, progressCountByActivityId };
 }
 
 export default async function ActivitiesPage() {
-  const activities = await getActivities();
+  const {
+    activities,
+    totalProfiles,
+    progressCountByActivityId,
+  } = await getActivitiesWithProfilesPlayed();
 
   return (
     <div>
@@ -68,6 +92,12 @@ export default async function ActivitiesPage() {
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500"
                 >
+                  Profiles played
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500"
+                >
                   Created
                 </th>
                 <th scope="col" className="relative px-6 py-3">
@@ -87,6 +117,9 @@ export default async function ActivitiesPage() {
                   <td className="px-6 py-4 text-sm text-stone-700">{a.title}</td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-stone-500">
                     {a.xp ?? "–"}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-stone-500">
+                    {progressCountByActivityId[a.id] ?? 0} / {totalProfiles}
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-stone-500">
                     {new Date(a.created_at).toLocaleDateString("en-GB")}

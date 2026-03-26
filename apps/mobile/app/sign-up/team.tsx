@@ -22,7 +22,8 @@ import { ThemedText } from "@/components/ThemedText";
 import { useSignUp } from "@/contexts/SignUpContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
-import { getTeams, createProfile } from "@/services/profileService";
+import { useUser } from "@/contexts/UserContext";
+import { getTeams, getProfiles, createProfile, updateUserDataTeam } from "@/services/profileService";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 
 const HUNTLY_GREEN = "#4F6F52";
@@ -64,9 +65,11 @@ export default function SignUpTeamScreen() {
     setSelectedTeamName,
     clearSignUpData,
     setShowPostSignUpWelcome,
+    setTutorialStep,
   } = useSignUp();
   const { user } = useAuth();
   const { refreshProfiles } = usePlayer();
+  const { refreshUserData } = useUser();
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
@@ -101,7 +104,8 @@ export default function SignUpTeamScreen() {
     setCreating(true);
 
     try {
-      if (players.length === 0) {
+      const profiles = await getProfiles(user.id);
+      if (players.length === 0 && profiles.length === 0) {
         Alert.alert("Add explorers", "Please go back and add at least one explorer.");
         return;
       }
@@ -117,17 +121,20 @@ export default function SignUpTeamScreen() {
         return;
       }
 
+      await updateUserDataTeam(user.id, teamId);
+      await refreshUserData();
+
       for (const player of players) {
         await createProfile({
           user_id: user.id,
           name: player.name,
           colour: player.colour,
-          team: teamId,
           nickname: player.nickname,
         });
       }
       await refreshProfiles();
       clearSignUpData();
+      setTutorialStep("intro");
       setShowPostSignUpWelcome(true);
       router.replace("/(tabs)");
     } catch (error) {
@@ -154,7 +161,7 @@ export default function SignUpTeamScreen() {
           }}
           showsVerticalScrollIndicator={false}
         >
-          <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
+          <Animated.View entering={FadeInDown.duration(500).delay(0)}>
             <ThemedText
               type="heading"
               lightColor="#FFFFFF"
@@ -267,7 +274,7 @@ export default function SignUpTeamScreen() {
               </Animated.View>
             );
           })}
-          <Animated.View entering={FadeInDown.duration(500).delay(380).springify().damping(18)}>
+          <Animated.View entering={FadeInDown.duration(500).delay(380)}>
             <Animated.View style={enterAnimatedStyle}>
               <Pressable
                 onPress={handleEnterHuntlyWorld}

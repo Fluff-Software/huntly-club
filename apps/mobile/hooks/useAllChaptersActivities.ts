@@ -137,13 +137,15 @@ export type ChapterWithActivities = {
   activities: ChapterActivityCard[];
 };
 
-export function useChaptersWithActivities(): {
+export function useChaptersWithActivities(profileId: number | null = null): {
   chapters: ChapterWithActivities[];
+  completedActivityIds: Set<string>;
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
 } {
   const [chapters, setChapters] = useState<ChapterWithActivities[]>([]);
+  const [completedActivityIds, setCompletedActivityIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -220,12 +222,27 @@ export function useChaptersWithActivities(): {
       })
     );
     setChapters(result);
+
+    const allActivityIds = result.flatMap((ch) => ch.activities.map((a) => a.id));
+    if (profileId != null && allActivityIds.length > 0) {
+      const { data: progressRows } = await supabase
+        .from("user_activity_progress")
+        .select("activity_id")
+        .eq("profile_id", profileId)
+        .in("activity_id", allActivityIds.map((id) => parseInt(id, 10)))
+        .not("completed_at", "is", null);
+      const completed = new Set((progressRows ?? []).map((p: { activity_id: number }) => String(p.activity_id)));
+      setCompletedActivityIds(completed);
+    } else {
+      setCompletedActivityIds(new Set());
+    }
+
     setLoading(false);
-  }, []);
+  }, [profileId]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  return { chapters, loading, error, refetch: fetchData };
+  return { chapters, completedActivityIds, loading, error, refetch: fetchData };
 }

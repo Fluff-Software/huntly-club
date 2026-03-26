@@ -132,3 +132,42 @@ export async function setChapterActivities(
   }
   return {};
 }
+
+export type SendChapterPushResult = { error?: string; count?: number };
+export type SendChapterEmailResult = { error?: string; count?: number };
+
+export async function sendChapterPushNotification(
+  chapterId: number
+): Promise<SendChapterPushResult> {
+  if (!Number.isFinite(chapterId)) return { error: "Invalid chapter" };
+  try {
+    const supabase = createServerSupabaseClient();
+    const { data, error } = await supabase.functions.invoke("send-chapter-push", {
+      body: { chapterId },
+    });
+    if (error) return { error: error.message };
+    const count = typeof (data as { count?: number })?.count === "number" ? (data as { count: number }).count : 0;
+    return { count };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Failed to send notification";
+    return { error: message };
+  }
+}
+
+export async function sendChapterEmailNotification(
+  chapterId: number
+): Promise<SendChapterEmailResult> {
+  if (!Number.isFinite(chapterId)) return { error: "Invalid chapter" };
+  try {
+    const supabase = createServerSupabaseClient();
+    const { data, error } = await supabase.functions.invoke("send-chapter-email", {
+      body: { chapterId },
+    });
+    if (error) return { error: error.message };
+    const count = typeof (data as { count?: number })?.count === "number" ? (data as { count: number }).count : 0;
+    return { count };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Failed to send email notification";
+    return { error: message };
+  }
+}

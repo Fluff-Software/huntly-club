@@ -5,6 +5,7 @@ import {
   Image,
   Pressable,
   Text,
+  TextInput,
   StyleSheet,
   Alert,
   Modal,
@@ -35,11 +36,14 @@ import {
   ensureProgressRows,
   insertUserActivityPhotos,
   insertUserAchievementsForMission,
+  updateProgressDebrief,
 } from "@/services/activityProgressService";
+import { compressImageAsync } from "@/utils/imageCompression";
 import { uploadUserActivityPhoto } from "@/services/storageService";
 import type { Activity } from "@/types/activity";
-import * as FileSystem from "expo-file-system";
 
+const FOREST_DARK = "#2D4A35";
+const HUNTLY_GREEN = "#4F6F52";
 const TEXT_SECONDARY = "#2F3336";
 const LIGHT_GREEN = "#7FAF8A";
 const CREAM = "#F6F5F1";
@@ -132,6 +136,8 @@ export default function CompletionScreen() {
     number | null
   >(null);
   const [completing, setCompleting] = useState(false);
+  const [debriefAnswer1, setDebriefAnswer1] = useState("");
+  const [debriefAnswer2, setDebriefAnswer2] = useState("");
 
   const getPlayerPhotos = (playerId: number) => playerPhotos[playerId] ?? [];
 
@@ -176,8 +182,8 @@ export default function CompletionScreen() {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
-          "Permission Required",
-          "Sorry, we need camera access to take photos for this activity."
+          "Camera access",
+          "We need camera access so you can capture your mission."
         );
         return;
       }
@@ -193,7 +199,7 @@ export default function CompletionScreen() {
       }
     } catch (error) {
       console.error("Camera error:", error);
-      Alert.alert("Error", "Failed to take photo. Please try again.");
+      Alert.alert("Oops", "We couldn't save that—give it another try?");
     }
   };
 
@@ -203,8 +209,8 @@ export default function CompletionScreen() {
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
-          "Permission Required",
-          "Sorry, we need gallery access to pick photos for this activity."
+          "Gallery access",
+          "We need gallery access so you can add photos to your mission."
         );
         return;
       }
@@ -224,7 +230,7 @@ export default function CompletionScreen() {
       }
     } catch (error) {
       console.error("Image picker error:", error);
-      Alert.alert("Error", "Failed to pick image. Please try again.");
+      Alert.alert("Oops", "We couldn't add that photo—give it another try?");
     }
   };
 
@@ -316,6 +322,15 @@ export default function CompletionScreen() {
       const { progressIdByProfile, inserted: insertedProgress } =
         await ensureProgressRows(selectedPlayerIds, activity.id);
 
+      const progressIds = Object.values(progressIdByProfile);
+      if (progressIds.length > 0) {
+        await updateProgressDebrief(
+          progressIds,
+          debriefAnswer1.trim() || null,
+          debriefAnswer2.trim() || null
+        );
+      }
+
       // When new progress rows were created, record achievements
       if (insertedProgress.length > 0) {
         const activityXp = activity.xp ?? 0;
@@ -339,28 +354,27 @@ export default function CompletionScreen() {
         for (let i = 0; i < uris.length; i++) {
           const photoUri = uris[i];
           const tempFileName = `mission_${activity.id}_${profileId}_${Date.now()}_${i}.jpg`;
-          const tempUri = `${FileSystem.cacheDirectory}${tempFileName}`;
+          let uploadUri = photoUri;
           try {
-            await FileSystem.copyAsync({ from: photoUri, to: tempUri });
-            const fileObject = {
-              uri: tempUri,
-              type: "image/jpeg",
-              name: tempFileName,
-            };
-            const result = await uploadUserActivityPhoto(
-              fileObject,
-              tempFileName,
-              profileId.toString()
-            );
-            if (result.success && result.url) {
-              uploaded.push({ profileId, photoUrl: result.url });
+            const compressed = await compressImageAsync(photoUri);
+            if (compressed?.uri) {
+              uploadUri = compressed.uri;
             }
-          } finally {
-            try {
-              await FileSystem.deleteAsync(tempUri);
-            } catch {
-              // ignore
-            }
+          } catch {
+            // If compression fails for any reason, fall back to original URI.
+          }
+          const fileObject = {
+            uri: uploadUri,
+            type: "image/jpeg",
+            name: tempFileName,
+          };
+          const result = await uploadUserActivityPhoto(
+            fileObject,
+            tempFileName,
+            profileId.toString()
+          );
+          if (result.success && result.url) {
+            uploaded.push({ profileId, photoUrl: result.url });
           }
         }
       }
@@ -384,16 +398,16 @@ export default function CompletionScreen() {
       }));
 
       router.push({
-        pathname: "/(tabs)/activity/mission/reward",
+        pathname: "/(tabs)/activity/mission/reward" as const,
         params: {
           activityId: String(activity.id),
           achievements: JSON.stringify(achievementsForReward),
         },
-      } as { pathname: string; params: Record<string, string> });
+      });
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Something went wrong.";
-      Alert.alert("Error", `Failed to complete: ${message}`);
+      Alert.alert("Oops", "We couldn't save that—give it another try?");
     } finally {
       setCompleting(false);
     }
@@ -402,26 +416,100 @@ export default function CompletionScreen() {
   const styles = useMemo(
     () =>
       StyleSheet.create({
-        container: { flex: 1, backgroundColor: LIGHT_GREEN },
+        container: { flex: 1, backgroundColor: FOREST_DARK },
         scroll: {
           flex: 1,
           paddingHorizontal: scaleW(24),
-          paddingTop: scaleW(60),
+          paddingTop: scaleW(24),
           paddingBottom: scaleW(32),
+        },
+        debriefHeaderLabel: {
+          fontSize: scaleW(12),
+          fontWeight: "600",
+          color: "rgba(255,255,255,0.7)",
+          letterSpacing: 1,
+          marginBottom: scaleW(4),
+        },
+        debriefHeading: {
+          fontSize: scaleW(24),
+          fontWeight: "700",
+          color: "#FFF",
+          marginBottom: scaleW(24),
+        },
+        photoUploadCard: {
+          backgroundColor: HUNTLY_GREEN,
+          borderRadius: scaleW(20),
+          borderWidth: 2,
+          borderStyle: "dashed",
+          borderColor: "rgba(255,255,255,0.4)",
+          paddingVertical: scaleW(32),
+          paddingHorizontal: scaleW(24),
+          alignItems: "center",
+          marginBottom: scaleW(20),
+        },
+        photoUploadCardLabel: {
+          fontSize: scaleW(16),
+          fontWeight: "700",
+          color: "#FFF",
+          marginTop: scaleW(12),
+          marginBottom: scaleW(4),
+        },
+        photoUploadCardHint: {
+          fontSize: scaleW(14),
+          color: "rgba(255,255,255,0.8)",
+        },
+        debriefInputCard: {
+          backgroundColor: HUNTLY_GREEN,
+          borderRadius: scaleW(16),
+          padding: scaleW(16),
+          marginBottom: scaleW(16),
+        },
+        debriefInputLabel: {
+          fontSize: scaleW(15),
+          fontWeight: "600",
+          color: "#FFF",
+          marginBottom: scaleW(8),
+        },
+        debriefInput: {
+          backgroundColor: "rgba(0,0,0,0.2)",
+          borderRadius: scaleW(12),
+          paddingVertical: scaleW(12),
+          paddingHorizontal: scaleW(16),
+          fontSize: scaleW(16),
+          color: "#FFF",
+          minHeight: scaleW(44),
+        },
+        debriefInputMultiline: {
+          minHeight: scaleW(80),
+          textAlignVertical: "top",
         },
         title: {
           fontSize: scaleW(20),
           fontWeight: "600",
-          color: TEXT_SECONDARY,
+          color: "#FFF",
           textAlign: "center",
           marginBottom: scaleW(32),
         },
         subtitle: {
           fontSize: scaleW(16),
           fontWeight: "600",
-          color: TEXT_SECONDARY,
+          color: "#FFFFFF",
           textAlign: "center",
           marginBottom: scaleW(12),
+        },
+        pointsHint: {
+          marginHorizontal: scaleW(12),
+          marginBottom: scaleW(16),
+          paddingVertical: scaleW(8),
+          paddingHorizontal: scaleW(12),
+          backgroundColor: "rgba(255,255,255,0.15)",
+          borderRadius: scaleW(12),
+        },
+        pointsHintText: {
+          fontSize: scaleW(13),
+          color: "rgba(255,255,255,0.85)",
+          textAlign: "center",
+          flex: 1,
         },
         photoStackContainer: {
           marginBottom: scaleW(16),
@@ -499,14 +587,14 @@ export default function CompletionScreen() {
         whoHeading: {
           fontSize: scaleW(16),
           fontWeight: "600",
-          color: TEXT_SECONDARY,
+          color: "rgba(255,255,255,0.95)",
           textAlign: "center",
           marginBottom: scaleW(16),
         },
         playerSectionHeading: {
           fontSize: scaleW(16),
           fontWeight: "600",
-          color: TEXT_SECONDARY,
+          color: "rgba(255,255,255,0.95)",
           marginBottom: scaleW(12),
           marginTop: scaleW(24),
         },
@@ -553,13 +641,13 @@ export default function CompletionScreen() {
         },
         checkboxChecked: { backgroundColor: TEXT_SECONDARY },
         completeButton: {
-          backgroundColor: CREAM,
+          backgroundColor: HUNTLY_GREEN,
           paddingVertical: scaleW(16),
           borderRadius: scaleW(32),
           alignItems: "center",
           marginTop: scaleW(24),
           marginBottom: scaleW(64),
-          marginHorizontal: scaleW(52),
+          marginHorizontal: scaleW(24),
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.3,
@@ -748,17 +836,63 @@ export default function CompletionScreen() {
         bounces={false}
         overScrollMode="never"
       >
-        <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
-          <ThemedText type="heading" style={styles.title}>
-            {activity?.title ?? "Activity"}
+        <Animated.View entering={FadeInDown.duration(500).delay(0)}>
+          <ThemedText style={styles.debriefHeaderLabel}>MISSION DEBRIEF</ThemedText>
+          <ThemedText type="heading" style={styles.debriefHeading}>
+            {activity?.debrief_heading?.trim() || "Report back"}
           </ThemedText>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.duration(500).delay(100).springify().damping(18)}>
+        {activity?.debrief_photo_label != null && activity.debrief_photo_label.trim() !== "" && (
+          <Animated.View entering={FadeInDown.duration(500).delay(50)}>
+            <ThemedText style={[styles.photoUploadCardHint, { marginBottom: scaleW(16) }]}>
+              {activity.debrief_photo_label.trim()}
+            </ThemedText>
+          </Animated.View>
+        )}
+
+        {(activity?.debrief_question_1 != null && activity.debrief_question_1.trim() !== "") && (
+          <Animated.View entering={FadeInDown.duration(500).delay(100)} style={styles.debriefInputCard}>
+            <ThemedText style={styles.debriefInputLabel}>
+              {activity.debrief_question_1}
+            </ThemedText>
+            <TextInput
+              style={styles.debriefInput}
+              value={debriefAnswer1}
+              onChangeText={setDebriefAnswer1}
+              placeholder="Write the name here..."
+              placeholderTextColor="rgba(255,255,255,0.5)"
+            />
+          </Animated.View>
+        )}
+
+        {(activity?.debrief_question_2 != null && activity.debrief_question_2.trim() !== "") && (
+          <Animated.View entering={FadeInDown.duration(500).delay(150)} style={styles.debriefInputCard}>
+            <ThemedText style={styles.debriefInputLabel}>
+              {activity.debrief_question_2}
+            </ThemedText>
+            <TextInput
+              style={[styles.debriefInput, styles.debriefInputMultiline]}
+              value={debriefAnswer2}
+              onChangeText={setDebriefAnswer2}
+              placeholder="Write a few words..."
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              multiline
+            />
+          </Animated.View>
+        )}
+
+        <Animated.View entering={FadeInDown.duration(500).delay(200)}>
           <ThemedText type="heading" style={styles.whoHeading}>
             Who did this activity?
           </ThemedText>
         </Animated.View>
+
+        <View style={styles.pointsHint}>
+          <Text style={styles.pointsHintText}>
+            Points are awarded once per user, even if you replay this mission. Select all explorers who should earn points for this activity.
+          </Text>
+        </View>
 
         {displayProfiles.map((profile, profileIndex) => {
           const isSelected = selectedPlayerIds.includes(profile.id);
@@ -767,7 +901,7 @@ export default function CompletionScreen() {
           return (
             <Animated.View
               key={profile.id}
-              entering={FadeInDown.duration(400).delay(150 + profileIndex * 80).springify().damping(18)}
+              entering={FadeInDown.duration(400).delay(150 + profileIndex * 80)}
             >
               <View style={styles.playerCardContainer}>
                 <Pressable
@@ -802,6 +936,26 @@ export default function CompletionScreen() {
                 <ThemedText type="heading" style={styles.subtitle}>
                   Add your photo of this activity
                 </ThemedText>
+                <View
+                  style={{
+                    backgroundColor: "rgba(255,255,255,0.15)",
+                    borderRadius: scaleW(12),
+                    paddingVertical: scaleW(8),
+                    paddingHorizontal: scaleW(12),
+                    marginBottom: scaleW(16),
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: scaleW(13),
+                      color: "rgba(255,255,255,0.85)",
+                      lineHeight: scaleW(18),
+                      textAlign: "center",
+                    }}
+                  >
+                    To keep everyone safe - no faces please!
+                  </Text>
+                </View>
                 {hasPhotos ? (
                   <TouchableOpacity
                     onPress={() => openGalleryModal(profile.id)}
@@ -901,7 +1055,7 @@ export default function CompletionScreen() {
         })}
 
         <Animated.View
-          entering={FadeInDown.duration(500).delay(580).springify().damping(18)}
+          entering={FadeInDown.duration(500).delay(580)}
           style={completeAnimatedStyle}
         >
           <Pressable
@@ -921,7 +1075,7 @@ export default function CompletionScreen() {
             }}
           >
             <ThemedText type="heading" style={styles.completeButtonText}>
-              {completing ? "Completing…" : "Complete"}
+              {completing ? "Sending…" : "Send — mission done!"}
             </ThemedText>
           </Pressable>
         </Animated.View>

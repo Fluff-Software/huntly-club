@@ -118,7 +118,7 @@ export default function AuthScreen() {
         }}
       >
         <Animated.View
-          entering={FadeInDown.duration(600).delay(0).springify().damping(18)}
+          entering={FadeInDown.duration(600).delay(0)}
           style={{
             width: scaleW(350),
             height: scaleW(228),
@@ -185,7 +185,7 @@ export default function AuthScreen() {
             width: width,
           }}
         >
-          <Animated.View entering={FadeInDown.duration(500).delay(150).springify().damping(18)}>
+          <Animated.View entering={FadeInDown.duration(500).delay(150)}>
             <ThemedText
               type="heading"
               lightColor="#FFFFFF"
@@ -203,7 +203,7 @@ export default function AuthScreen() {
             </ThemedText>
           </Animated.View>
           <Animated.View
-            entering={FadeInDown.duration(500).delay(280).springify().damping(18)}
+            entering={FadeInDown.duration(500).delay(280)}
             style={getStartedAnimatedStyle}
           >
             <Pressable
@@ -235,7 +235,7 @@ export default function AuthScreen() {
             </Pressable>
           </Animated.View>
           <Animated.View
-            entering={FadeInDown.duration(500).delay(380).springify().damping(18)}
+            entering={FadeInDown.duration(500).delay(380)}
             style={loginAnimatedStyle}
           >
             <Pressable

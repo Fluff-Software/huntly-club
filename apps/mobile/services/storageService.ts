@@ -1,4 +1,6 @@
 import { supabase } from "./supabase";
+import * as FileSystem from "expo-file-system/legacy";
+import { decode as decodeBase64 } from "base64-arraybuffer";
 
 const ACTIVITY_IMAGES_BUCKET = "activity-images";
 const USER_PHOTOS_BUCKET = "user-activity-photos";
@@ -83,6 +85,9 @@ export const uploadUserActivityPhoto = async (
 
     // Handle different file types
     let uploadData: any;
+    let contentType = "image/jpeg";
+    let shouldSetContentType = true;
+
     if (typeof file === "string") {
       // Base64 string
       uploadData = file;
@@ -96,23 +101,75 @@ export const uploadUserActivityPhoto = async (
       } else {
         return { success: false, error: "No file found in FormData" };
       }
+      // Let fetch set the multipart/form-data content type with boundary
+      shouldSetContentType = false;
     } else if (file && typeof file === "object" && "uri" in file) {
-      // React Native file object
-      uploadData = file;
-      console.log("Uploading React Native file object:", file);
+      // React Native file object - follow Supabase RN recommendation:
+      // read as base64 and upload ArrayBuffer
+      const rnFile = file as { uri: string; type?: string; name?: string };
+      console.log(
+        "Uploading React Native file object via base64 -> ArrayBuffer:",
+        rnFile.uri
+      );
+
+      const base64 = await FileSystem.readAsStringAsync(rnFile.uri, {
+        encoding: "base64",
+      });
+
+      if (!base64 || base64.length === 0) {
+        console.error(
+          "Expo FileSystem returned empty base64 for uri:",
+          rnFile.uri
+        );
+        return {
+          success: false,
+          error: "Could not read photo data from device",
+        };
+      }
+
+      const arrayBuffer = decodeBase64(base64);
+      uploadData = arrayBuffer;
+      contentType = rnFile.type || "image/jpeg";
+      console.log(
+        "React Native photo ArrayBuffer ready for upload. Bytes length:",
+        (arrayBuffer as ArrayBuffer).byteLength,
+        "contentType:",
+        contentType
+      );
     } else {
       // Blob or File
       uploadData = file;
-      console.log("Uploading blob/file, size:", file.size);
+      const inferredType =
+        file && typeof (file as any).type === "string"
+          ? (file as any).type
+          : undefined;
+      if (inferredType) {
+        contentType = inferredType;
+      }
+      console.log(
+        "Uploading blob/file, size:",
+        (file as any)?.size,
+        "contentType:",
+        contentType
+      );
+    }
+
+    const uploadOptions: {
+      cacheControl: string;
+      upsert: boolean;
+      contentType?: string;
+    } = {
+      cacheControl: "3600",
+      upsert: false,
+    };
+
+    if (shouldSetContentType) {
+      uploadOptions.contentType = contentType;
     }
 
     const { data, error } = await supabase.storage
       .from(USER_PHOTOS_BUCKET)
-      .upload(filePath, uploadData, {
-        cacheControl: "3600",
-        upsert: false,
-        contentType: "image/jpeg",
-      });
+      .upload(filePath, uploadData, uploadOptions);
 
     if (error) {
       console.error("Upload error:", error);

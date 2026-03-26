@@ -1,10 +1,34 @@
-import { Tabs } from "expo-router";
-import { Image, Platform, StyleSheet } from "react-native";
+import { Tabs, router } from "expo-router";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { Image, Modal, Platform, Pressable, StyleSheet, View } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { useUser } from "@/contexts/UserContext";
 import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
-import { PostSignUpWelcome } from "@/components/PostSignUpWelcome";
+import { NewPlayerTutorial } from "@/components/NewPlayerTutorial";
+import { ThemedText } from "@/components/ThemedText";
+import { Button } from "@/components/ui/Button";
+import {
+  getHasCompletedTutorial,
+  recordTutorialAchievement,
+} from "@/services/activityProgressService";
+import {
+  getPushEnabled,
+  hasAskedPushOptIn,
+  registerForPushNotificationsAsync,
+  setPushEnabled,
+  setPushOptInAsked,
+} from "@/services/pushNotificationService";
 
 const HOME_CLUBHOUSE = require("@/assets/images/home-clubhouse.png");
 const HOME_STORY = require("@/assets/images/home-story.png");
@@ -15,8 +39,13 @@ const TAB_BAR_COLORS: Record<string, string> = {
   index: "#4F6F52",
   story: "#1E2E28",
   missions: "#D2684B",
-  social: "#F7A676",
+  social: "#C3A4FF",
+  testing: "#5B8A9E",
 };
+
+const CREAM = "#F4F0EB";
+const HUNTLY_GREEN = "#4F6F52";
+const HUNTLY_CHARCOAL = "#3D3D3D";
 
 function TabIcon({
   source,
@@ -36,13 +65,199 @@ function TabIcon({
   );
 }
 
+function StoryTabPulse({ size }: { size: number }) {
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(0.6);
+  useEffect(() => {
+    scale.value = withRepeat(
+      withSequence(withTiming(1.35, { duration: 600 }), withTiming(1, { duration: 600 })),
+      -1,
+      true
+    );
+    opacity.value = withRepeat(
+      withSequence(withTiming(0.2, { duration: 600 }), withTiming(0.6, { duration: 600 })),
+      -1,
+      true
+    );
+  }, []);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.tutorialPulseRing,
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: 3,
+        },
+        animatedStyle,
+      ]}
+    />
+  );
+}
+
 export default function TabLayout() {
-  const { currentPlayer } = usePlayer();
+  const { user } = useAuth();
+  const { profiles } = usePlayer();
+  const { userData, loading: userLoading, updateWeeklyEmail } = useUser();
   const { scaleW } = useLayoutScale();
   const insets = useSafeAreaInsets();
   const signUpContext = useSignUpOptional();
   const showPostSignUpWelcome = signUpContext?.showPostSignUpWelcome ?? false;
   const setShowPostSignUpWelcome = signUpContext?.setShowPostSignUpWelcome;
+  const tutorialStep = signUpContext?.tutorialStep ?? "done";
+  const setTutorialStep = signUpContext?.setTutorialStep;
+  const replayTutorialRequested = signUpContext?.replayTutorialRequested ?? false;
+  const setReplayTutorialRequested = signUpContext?.setReplayTutorialRequested;
+  const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
+  const [notificationPromptChecking, setNotificationPromptChecking] = useState(true);
+  const [notificationSaving, setNotificationSaving] = useState(false);
+  const [emailOptIn, setEmailOptIn] = useState(false);
+  const [pushOptIn, setPushOptIn] = useState(false);
+  const [hasCompletedTutorial, setHasCompletedTutorial] = useState<boolean | null>(null);
+  const hasCheckedNotificationPromptRef = useRef(false);
+
+  // If user has no team set, redirect to team selection
+  useEffect(() => {
+    if (!user?.id || userLoading || !userData || userData.team != null) return;
+    router.replace("/sign-up/team");
+  }, [user?.id, userLoading, userData]);
+
+  // On clubhouse/tabs load: if user has no tutorial achievement (check first profile), show the tutorial
+  const firstProfileId = profiles[0]?.id ?? null;
+  useEffect(() => {
+    if (firstProfileId == null) return;
+    let cancelled = false;
+    getHasCompletedTutorial(firstProfileId).then((completed) => {
+      if (cancelled) return;
+      setHasCompletedTutorial(completed);
+      if (completed) {
+        setShowPostSignUpWelcome?.(false);
+      } else {
+        setShowPostSignUpWelcome?.(true);
+        setTutorialStep?.("intro");
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [firstProfileId, setShowPostSignUpWelcome, setTutorialStep]);
+
+  // When showPostSignUpWelcome was set (e.g. "Show tutorial again"): re-check and hide if they already have achievement (unless replay requested)
+  useEffect(() => {
+    if (!showPostSignUpWelcome || firstProfileId == null) {
+      if (!showPostSignUpWelcome) setHasCompletedTutorial(null);
+      return;
+    }
+    if (replayTutorialRequested) {
+      setHasCompletedTutorial(false);
+      return;
+    }
+    let cancelled = false;
+    getHasCompletedTutorial(firstProfileId).then((completed) => {
+      if (cancelled) return;
+      setHasCompletedTutorial(completed);
+      if (completed) setShowPostSignUpWelcome?.(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [showPostSignUpWelcome, firstProfileId, replayTutorialRequested, setShowPostSignUpWelcome]);
+
+  // Only consider showing the notification prompt when the tutorial is not visible.
+  // After the tutorial is dismissed we wait a short moment so the user lands on the clubhouse first, then show the prompt.
+  const NOTIFICATION_PROMPT_DELAY_MS = 600;
+
+  const maybeShowNotificationPrompt = useCallback(() => {
+    if (!user?.id) {
+      setNotificationPromptChecking(false);
+      return;
+    }
+    if (hasCheckedNotificationPromptRef.current) return;
+    hasCheckedNotificationPromptRef.current = true;
+    setNotificationPromptChecking(false);
+    hasAskedPushOptIn(user.id)
+      .then((asked) => {
+        if (!asked) {
+          // First-run prompt should start fully opt-out.
+          setEmailOptIn(false);
+          setPushOptIn(false);
+          // Safety: if backend/user_data came through as true for any reason, normalize it.
+          if (userData?.weekly_email === true) {
+            void updateWeeklyEmail(false);
+          }
+          setShowNotificationPrompt(true);
+        }
+      })
+      .catch(() => {
+        // Don't block the UI if the check fails; user can still be prompted from settings
+      });
+  }, [user?.id, userData?.weekly_email, updateWeeklyEmail]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setNotificationPromptChecking(false);
+      return;
+    }
+    if (showPostSignUpWelcome) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      maybeShowNotificationPrompt();
+    }, NOTIFICATION_PROMPT_DELAY_MS);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [user?.id, showPostSignUpWelcome, maybeShowNotificationPrompt]);
+
+  useEffect(() => {
+    if (!showNotificationPrompt) return;
+    // Default to opt-out in the first-run prompt.
+    setEmailOptIn(false);
+    getPushEnabled()
+      .then((enabled) => setPushOptIn(enabled))
+      .catch(() => setPushOptIn(false));
+  }, [showNotificationPrompt]);
+
+  const handleNotificationPromptSave = async () => {
+    if (!user?.id) return;
+    if (notificationSaving) return;
+    setNotificationSaving(true);
+    try {
+      await updateWeeklyEmail(emailOptIn);
+      if (pushOptIn) {
+        const token = await registerForPushNotificationsAsync();
+        if (token) {
+          await setPushEnabled(true, token);
+        }
+      } else {
+        await setPushEnabled(false);
+      }
+      await setPushOptInAsked(user.id);
+      setShowNotificationPrompt(false);
+    } finally {
+      setNotificationSaving(false);
+    }
+  };
+
+  const handleNotificationPromptNotNow = async () => {
+    if (!user?.id) return;
+    if (notificationSaving) return;
+    setNotificationSaving(true);
+    try {
+      await updateWeeklyEmail(false);
+      await setPushEnabled(false);
+      await setPushOptInAsked(user.id);
+      setShowNotificationPrompt(false);
+    } finally {
+      setNotificationSaving(false);
+    }
+  };
 
   const activeColor = "#FFFFFF";
   const inactiveColor = "rgba(255,255,255,0.6)";
@@ -54,16 +269,42 @@ export default function TabLayout() {
   const tabBarPaddingBottom = scaleW(16) + bottomInset;
   const tabBarHeight = scaleW(72) + bottomInset;
 
+  const isTabDisabled = (routeName: string) => {
+    const step = tutorialStep as string;
+    if (step === "click_story") return routeName !== "story";
+    if (step === "click_missions") return routeName !== "missions";
+    if (step === "click_team") return routeName !== "social";
+    if (step === "click_testing") return routeName !== "testing";
+    return false;
+  };
+
+  const handleTutorialDismiss = () => {
+    setReplayTutorialRequested?.(false);
+    setTutorialStep?.("done");
+    setShowPostSignUpWelcome?.(false);
+    if (profiles.length > 0 && userData && userData.team !== null) {
+      profiles.forEach((profile) => {
+        if (profile.id != null) {
+          recordTutorialAchievement(profile.id, userData.team!).catch(() => {});
+        }
+      });
+    }
+    router.replace("/(tabs)");
+    setTimeout(() => {
+      maybeShowNotificationPrompt();
+    }, NOTIFICATION_PROMPT_DELAY_MS);
+  };
+
+  const showNotificationUI =
+    showNotificationPrompt && !notificationPromptChecking;
+
   return (
-    <>
-      <PostSignUpWelcome
-        visible={showPostSignUpWelcome}
-        onDismiss={() => setShowPostSignUpWelcome?.(false)}
-      />
+    <View style={styles.layoutWrapper}>
       <Tabs
       screenOptions={({ route }) => ({
         tabBarActiveTintColor: activeColor,
         tabBarInactiveTintColor: inactiveColor,
+        tabBarLabelPosition: "below-icon",
         tabBarStyle: {
           borderTopWidth: 0,
           height: tabBarHeight,
@@ -80,12 +321,18 @@ export default function TabLayout() {
         tabBarLabelStyle: {
           fontSize: scaleW(12),
           fontWeight: "600",
-          marginTop: scaleW(4),
+          marginTop: scaleW(8),
         },
         tabBarIconStyle: {
           marginTop: 0,
         },
         headerShown: false,
+        tabBarButton: (props) => {
+          const { ref: _ref, ...rest } = props;
+          return (
+            <Pressable {...rest} disabled={isTabDisabled(route.name)} />
+          );
+        },
       })}
     >
       <Tabs.Screen
@@ -95,7 +342,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <TabIcon source={HOME_CLUBHOUSE} color={color} size={scaleW(24)} />
           ),
-          href: currentPlayer ? undefined : null,
+          href: profiles.length > 0 ? undefined : null,
         }}
       />
       <Tabs.Screen
@@ -103,9 +350,17 @@ export default function TabLayout() {
         options={{
           title: "Story",
           tabBarIcon: ({ color }) => (
-            <TabIcon source={HOME_STORY} color={color} size={scaleW(24)} />
+            <View style={[styles.storyIconWrapper, { width: scaleW(44), height: scaleW(44) }]}>
+              {tutorialStep === "click_story" && (
+                <View style={[styles.tutorialPulseContainer, { width: scaleW(44), height: scaleW(44) }]}>
+                  <StoryTabPulse size={scaleW(44)} />
+                </View>
+              )}
+              <TabIcon source={HOME_STORY} color={color} size={scaleW(24)} />
+            </View>
           ),
-          href: currentPlayer ? undefined : null,
+          href: profiles.length > 0 ? undefined : null,
+          popToTopOnBlur: true,
         }}
       />
       <Tabs.Screen
@@ -113,9 +368,16 @@ export default function TabLayout() {
         options={{
           title: "Missions",
           tabBarIcon: ({ color }) => (
-            <TabIcon source={HOME_MISSIONS} color={color} size={scaleW(24)} />
+            <View style={[styles.storyIconWrapper, { width: scaleW(44), height: scaleW(44) }]}>
+              {tutorialStep === "click_missions" && (
+                <View style={[styles.tutorialPulseContainer, { width: scaleW(44), height: scaleW(44) }]}>
+                  <StoryTabPulse size={scaleW(44)} />
+                </View>
+              )}
+              <TabIcon source={HOME_MISSIONS} color={color} size={scaleW(24)} />
+            </View>
           ),
-          href: currentPlayer ? undefined : null,
+          href: profiles.length > 0 ? undefined : null,
         }}
       />
       <Tabs.Screen
@@ -123,9 +385,39 @@ export default function TabLayout() {
         options={{
           title: "Team",
           tabBarIcon: ({ color }) => (
-            <TabIcon source={HOME_TEAM} color={color} size={scaleW(24)} />
+            <View style={[styles.storyIconWrapper, { width: scaleW(44), height: scaleW(44) }]}>
+              {tutorialStep === "click_team" && (
+                <View style={[styles.tutorialPulseContainer, { width: scaleW(44), height: scaleW(44) }]}>
+                  <StoryTabPulse size={scaleW(44)} />
+                </View>
+              )}
+              <TabIcon source={HOME_TEAM} color={color} size={scaleW(24)} />
+            </View>
           ),
-          href: currentPlayer ? undefined : null,
+          // Always show the Team tab; the screen itself already handles
+          // the “no team yet” state.
+          href: undefined,
+        }}
+      />
+      <Tabs.Screen
+        name="testing"
+        options={{
+          title: "Feedback",
+          tabBarIcon: ({ color }) => (
+            <View style={[styles.storyIconWrapper, { width: scaleW(44), height: scaleW(44) }]}>
+              {(tutorialStep as string) === "click_testing" && (
+                <View style={[styles.tutorialPulseContainer, { width: scaleW(44), height: scaleW(44) }]}>
+                  <StoryTabPulse size={scaleW(44)} />
+                </View>
+              )}
+              <MaterialIcons
+                name="chat-bubble-outline"
+                size={scaleW(24)}
+                color={color}
+              />
+            </View>
+          ),
+          href: profiles.length > 0 ? undefined : null,
         }}
       />
       <Tabs.Screen
@@ -153,10 +445,199 @@ export default function TabLayout() {
         }}
       />
       </Tabs>
-    </>
+      <NewPlayerTutorial
+        visible={showPostSignUpWelcome && hasCompletedTutorial === false}
+        onDismiss={handleTutorialDismiss}
+        tabBarHeight={tabBarHeight}
+      />
+      {Platform.OS === "ios" ? (
+        <Modal
+          visible={showNotificationUI}
+          transparent
+          animationType="fade"
+          onRequestClose={handleNotificationPromptNotNow}
+        >
+          <View style={styles.notificationPromptOverlay}>
+            <View
+              style={[
+                styles.notificationPromptCard,
+                { padding: scaleW(24), borderRadius: scaleW(16) },
+              ]}
+            >
+              <ThemedText
+                type="subtitle"
+                style={{ marginBottom: scaleW(16), textAlign: "center" }}
+                lightColor={HUNTLY_GREEN}
+                darkColor={CREAM}
+              >
+                Would you like to be notified when new chapters are available?
+              </ThemedText>
+              <View style={{ gap: scaleW(12) }}>
+                <Pressable
+                  style={styles.notificationOptionRow}
+                  onPress={() => setEmailOptIn((current) => !current)}
+                  disabled={notificationSaving}
+                >
+                  <ThemedText lightColor={HUNTLY_CHARCOAL} darkColor={CREAM}>
+                    Email updates
+                  </ThemedText>
+                  <View style={styles.notificationCheckbox}>
+                    {emailOptIn ? (
+                      <MaterialIcons name="check" size={scaleW(18)} color={HUNTLY_GREEN} />
+                    ) : null}
+                  </View>
+                </Pressable>
+                <Pressable
+                  style={styles.notificationOptionRow}
+                  onPress={() => setPushOptIn((current) => !current)}
+                  disabled={notificationSaving}
+                >
+                  <ThemedText lightColor={HUNTLY_CHARCOAL} darkColor={CREAM}>
+                    Push notifications
+                  </ThemedText>
+                  <View style={styles.notificationCheckbox}>
+                    {pushOptIn ? (
+                      <MaterialIcons name="check" size={scaleW(18)} color={HUNTLY_GREEN} />
+                    ) : null}
+                  </View>
+                </Pressable>
+                <Button
+                  variant="secondary"
+                  onPress={handleNotificationPromptSave}
+                >
+                  Save preferences
+                </Button>
+                <Button
+                  variant="white"
+                  onPress={handleNotificationPromptNotNow}
+                >
+                  Not now
+                </Button>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      ) : (
+        showNotificationUI && (
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              styles.notificationPromptOverlay,
+              { zIndex: 9999, elevation: 9999 },
+            ]}
+          >
+            <View
+              style={[
+                styles.notificationPromptCard,
+                { padding: scaleW(24), borderRadius: scaleW(16) },
+              ]}
+            >
+              <ThemedText
+                type="subtitle"
+                style={{ marginBottom: scaleW(16), textAlign: "center" }}
+                lightColor={HUNTLY_GREEN}
+                darkColor={CREAM}
+              >
+                Would you like to be notified when new chapters are available?
+              </ThemedText>
+              <View style={{ gap: scaleW(12) }}>
+                <Pressable
+                  style={styles.notificationOptionRow}
+                  onPress={() => setEmailOptIn((current) => !current)}
+                  disabled={notificationSaving}
+                >
+                  <ThemedText lightColor={HUNTLY_CHARCOAL} darkColor={CREAM}>
+                    Email updates
+                  </ThemedText>
+                  <View style={styles.notificationCheckbox}>
+                    {emailOptIn ? (
+                      <MaterialIcons name="check" size={scaleW(18)} color={HUNTLY_GREEN} />
+                    ) : null}
+                  </View>
+                </Pressable>
+                <Pressable
+                  style={styles.notificationOptionRow}
+                  onPress={() => setPushOptIn((current) => !current)}
+                  disabled={notificationSaving}
+                >
+                  <ThemedText lightColor={HUNTLY_CHARCOAL} darkColor={CREAM}>
+                    Push notifications
+                  </ThemedText>
+                  <View style={styles.notificationCheckbox}>
+                    {pushOptIn ? (
+                      <MaterialIcons name="check" size={scaleW(18)} color={HUNTLY_GREEN} />
+                    ) : null}
+                  </View>
+                </Pressable>
+                <Button
+                  variant="secondary"
+                  onPress={handleNotificationPromptSave}
+                >
+                  Save preferences
+                </Button>
+                <Button
+                  variant="white"
+                  onPress={handleNotificationPromptNotNow}
+                >
+                  Not now
+                </Button>
+              </View>
+            </View>
+          </View>
+        )
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  layoutWrapper: {
+    flex: 1,
+  },
   tabIcon: {},
+  storyIconWrapper: {
+    position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tutorialPulseContainer: {
+    position: "absolute",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tutorialPulseRing: {
+    position: "absolute",
+    borderColor: "rgba(255,255,255,0.9)",
+  },
+  notificationPromptOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  notificationPromptCard: {
+    backgroundColor: CREAM,
+    maxWidth: 360,
+    width: "100%",
+  },
+  notificationOptionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  notificationCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: HUNTLY_GREEN,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+  },
 });

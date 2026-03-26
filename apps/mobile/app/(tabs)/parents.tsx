@@ -19,11 +19,11 @@ import { ThemedText } from "@/components/ThemedText";
 import { StatCard } from "@/components/StatCard";
 import { ParentPinModal } from "@/components/ParentPinModal";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUser } from "@/contexts/UserContext";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useParentResources } from "@/hooks/useParentResources";
 import { supabase } from "@/services/supabase";
-import { getTotalXpForProfileIds } from "@/services/teamActivityService";
 import { getCategories } from "@/services/categoriesService";
 import { MaterialIcons } from "@expo/vector-icons";
 
@@ -36,21 +36,6 @@ const COLORS = {
   cardGray: "#E8E8E8",
 };
 
-interface ExplorerStats {
-  id: number;
-  name: string;
-  nickname: string;
-  colour: string;
-  xp: number;
-  team: string;
-  totalActivities: number;
-  completedActivities: number;
-  recentActivities: any[];
-  categoryStats: {
-    [categoryId: number]: { count: number; xp: number };
-  };
-}
-
 interface CategoryAnalytics {
   categoryId: number;
   label: string;
@@ -62,14 +47,14 @@ interface CategoryAnalytics {
 
 export default function ParentsScreen() {
   const { user } = useAuth();
+  const { daysPlayed, pointsEarned } = useUser();
   const router = useRouter();
   const { scaleW } = useLayoutScale();
-  const [explorers, setExplorers] = useState<ExplorerStats[]>([]);
+  const [hasExplorers, setHasExplorers] = useState(false);
   const [categoryAnalytics, setCategoryAnalytics] = useState<
     CategoryAnalytics[]
   >([]);
   const [loading, setLoading] = useState(true);
-  const [totalXp, setTotalXp] = useState(0);
   const [totalActivities, setTotalActivities] = useState(0);
   const [skillAreasTotal, setSkillAreasTotal] = useState(0);
   const [showAllProgress, setShowAllProgress] = useState(false);
@@ -106,23 +91,12 @@ export default function ParentsScreen() {
 
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
-        .select(
-          `
-          id,
-          name,
-          nickname,
-          colour,
-          xp,
-          team,
-          teams(name)
-        `
-        )
+        .select("id")
         .eq("user_id", user!.id);
 
       if (profilesError) throw profilesError;
 
       const categoriesList = await getCategories();
-      const explorerStats: ExplorerStats[] = [];
       let totalActivitiesSum = 0;
       const categoryStatsMap: {
         [categoryId: number]: {
@@ -156,14 +130,7 @@ export default function ParentsScreen() {
         }
 
         const completedActivities = activities ?? [];
-        const completedCount = completedActivities.length;
-        const explorerXp = profile.xp || 0;
-
-        totalActivitiesSum += completedCount;
-
-        const explorerCategoryStats: {
-          [categoryId: number]: { count: number; xp: number };
-        } = {};
+        totalActivitiesSum += completedActivities.length;
 
         completedActivities.forEach((activity) => {
           const activityData = Array.isArray(activity.activities)
@@ -181,26 +148,7 @@ export default function ParentsScreen() {
             categoryStatsMap[categoryId].count += 1;
             categoryStatsMap[categoryId].xp += activityXp;
             categoryStatsMap[categoryId].explorers.add(profile.id);
-            if (!explorerCategoryStats[categoryId]) {
-              explorerCategoryStats[categoryId] = { count: 0, xp: 0 };
-            }
-            explorerCategoryStats[categoryId].count += 1;
-            explorerCategoryStats[categoryId].xp += activityXp;
           });
-        });
-
-        const recentFive = (activities || []).slice(0, 5);
-        explorerStats.push({
-          id: profile.id,
-          name: profile.name,
-          nickname: profile.nickname || profile.name,
-          colour: profile.colour,
-          xp: explorerXp,
-          team: (profile.teams as any)?.name || "No Team",
-          totalActivities: activities?.length || 0,
-          completedActivities: completedCount,
-          recentActivities: recentFive,
-          categoryStats: explorerCategoryStats,
         });
       }
 
@@ -221,12 +169,10 @@ export default function ParentsScreen() {
         0
       );
 
-      setExplorers(explorerStats);
+      setHasExplorers((profiles?.length ?? 0) > 0);
       setCategoryAnalytics(analytics);
       setTotalActivities(totalActivitiesSum);
       setSkillAreasTotal(skillTotal);
-      const profileIds = (profiles || []).map((p: { id: number }) => p.id);
-      getTotalXpForProfileIds(profileIds).then(setTotalXp).catch(() => setTotalXp(0));
     } catch (error) {
       console.error("Error fetching explorers data:", error);
     } finally {
@@ -485,7 +431,7 @@ export default function ParentsScreen() {
     );
   }
 
-  if (explorers.length === 0) {
+  if (!hasExplorers) {
     return (
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         <View style={[styles.scrollContent, { flex: 1 }]}>
@@ -503,21 +449,11 @@ export default function ParentsScreen() {
     );
   }
 
-  const daysPlayed = user?.created_at != null
-    ? Math.max(
-        0,
-        Math.floor(
-          (Date.now() - new Date(user.created_at).getTime()) /
-            (24 * 60 * 60 * 1000)
-        )
-      )
-    : 0;
-
   const summaryStats: { value: number; label: string; color: "pink" | "green" | "purple" | "cream" }[] = [
     { value: totalActivities, label: "Activities completed", color: "purple" },
     { value: skillAreasTotal, label: "Skill areas", color: "cream" },
     { value: daysPlayed, label: "Days since started", color: "pink" },
-    { value: totalXp, label: "Points earned", color: "green" },
+    { value: pointsEarned, label: "Points earned", color: "green" },
   ];
 
   return (
@@ -530,7 +466,7 @@ export default function ParentsScreen() {
         overScrollMode="never"
       >
         {/* Progress – summary stats */}
-        <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(0)}>
           <ThemedText type="heading" style={styles.sectionTitle}>Progress</ThemedText>
           <View style={styles.progressGrid}>
             {summaryStats.map((stat, i) => (
@@ -545,7 +481,7 @@ export default function ParentsScreen() {
         </Animated.View>
 
         {/* Progress – by category */}
-        <Animated.View entering={FadeInDown.duration(500).delay(150).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(150)}>
           <ThemedText type="heading" style={styles.sectionTitle}>Progress</ThemedText>
           {categoryAnalytics.length === 0 ? (
             <View style={styles.activityCard}>
@@ -558,7 +494,7 @@ export default function ParentsScreen() {
               {(showAllProgress ? categoryAnalytics : categoryAnalytics.slice(0, 4)).map((cat, i) => (
                 <Animated.View
                   key={cat.categoryId}
-                  entering={FadeInDown.duration(400).delay(200 + i * 50).springify().damping(18)}
+                  entering={FadeInDown.duration(400).delay(200 + i * 50)}
                 >
                   <View style={styles.activityCard}>
                     <View style={styles.activityCardLeft}>
@@ -607,7 +543,7 @@ export default function ParentsScreen() {
         </Animated.View>
 
         {/* Resources */}
-        <Animated.View entering={FadeInDown.duration(500).delay(280).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(280)}>
           <ThemedText type="heading" style={[styles.sectionTitle, { marginTop: scaleW(24) }]}>
             Resources
           </ThemedText>
@@ -650,7 +586,7 @@ export default function ParentsScreen() {
         </Animated.View>
 
         {/* Settings */}
-        <Animated.View entering={FadeInDown.duration(500).delay(480).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(480)}>
           <ThemedText type="heading" style={[styles.sectionTitle, { marginTop: scaleW(24) }]}>
             Settings
           </ThemedText>

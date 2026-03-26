@@ -2,6 +2,17 @@ import { supabase } from "./supabase";
 import { generateNickname } from "./nicknameGenerator";
 import { Tables, TablesInsert, TablesUpdate } from "@/models/supabase";
 
+const USER_PHOTOS_BUCKET = "user-activity-photos";
+
+/** Extract storage file path from a Supabase public URL (object/public/bucket/path). */
+function getStoragePathFromPublicUrl(url: string, bucket: string): string | null {
+  if (!url || typeof url !== "string") return null;
+  const prefix = `/object/public/${bucket}/`;
+  const i = url.indexOf(prefix);
+  if (i === -1) return null;
+  return url.slice(i + prefix.length).trim() || null;
+}
+
 // Use Supabase generated types
 export type Profile = Tables<"profiles"> & {
   nickname: string; // Add nickname field which isn't in DB yet but used in app
@@ -76,6 +87,48 @@ export const getTeams = async (): Promise<Team[]> => {
   return data || [];
 };
 
+/** Get user_data for the given user (includes team, weekly_email; team may be null). */
+export const getUserData = async (userId: string): Promise<{ user_id: string; team: number | null; weekly_email: boolean } | null> => {
+  const { data, error } = await supabase
+    .from("user_data")
+    .select("user_id, team, weekly_email")
+    .eq("user_id", userId)
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") return null; // no row
+    console.error("Error fetching user_data:", error);
+    throw new Error(`Failed to fetch user data: ${error.message}`);
+  }
+  return data;
+};
+
+/** Update the authenticated user's team in user_data (e.g. when they choose a team at sign-up). */
+export const updateUserDataTeam = async (userId: string, teamId: number): Promise<void> => {
+  const { error } = await supabase
+    .from("user_data")
+    .update({ team: teamId })
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("Error updating user_data team:", error);
+    throw new Error(`Failed to update user data: ${error.message}`);
+  }
+};
+
+/** Update the authenticated user's weekly_email preference in user_data. */
+export const updateUserDataWeeklyEmail = async (userId: string, weeklyEmail: boolean): Promise<void> => {
+  const { error } = await supabase
+    .from("user_data")
+    .update({ weekly_email: weeklyEmail })
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("Error updating user_data weekly_email:", error);
+    throw new Error(`Failed to update weekly email preference: ${error.message}`);
+  }
+};
+
 export const getTeamById = async (teamId: number): Promise<Team | null> => {
   const { data, error } = await supabase
     .from("teams")
@@ -115,4 +168,52 @@ export const updateProfile = async (
     ...data,
     nickname: updates.nickname || data.nickname || generateNickname()
   };
+};
+
+/**
+ * Deletes a profile and all related data:
+ * - user_activity_progress, user_activity_photos, user_achievements, user_badges
+ * - profile row in profiles (profile_public is a view, so no direct delete)
+ * - All photos in user-activity-photos storage linked via user_activity_photos
+ */
+export const deleteProfile = async (profileId: number): Promise<void> => {
+  const { data: photoRows, error: photosError } = await supabase
+    .from("user_activity_photos")
+    .select("photo_url")
+    .eq("profile_id", profileId);
+
+  if (photosError) {
+    console.error("Error fetching profile photos for deletion:", photosError);
+    throw new Error(`Failed to delete profile: ${photosError.message}`);
+  }
+
+  const paths: string[] = [];
+  for (const row of photoRows ?? []) {
+    const path = row.photo_url
+      ? getStoragePathFromPublicUrl(row.photo_url, USER_PHOTOS_BUCKET)
+      : null;
+    if (path) paths.push(path);
+  }
+  if (paths.length > 0) {
+    const { error: storageError } = await supabase.storage
+      .from(USER_PHOTOS_BUCKET)
+      .remove(paths);
+    if (storageError) {
+      console.warn("Some profile photos could not be removed from storage:", storageError);
+    }
+  }
+
+  await supabase.from("user_activity_photos").delete().eq("profile_id", profileId);
+  await supabase.from("user_activity_progress").delete().eq("profile_id", profileId);
+  await supabase.from("user_achievements").delete().eq("profile_id", profileId);
+  await supabase.from("user_badges").delete().eq("profile_id", profileId);
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .delete()
+    .eq("id", profileId);
+
+  if (profileError) {
+    console.error("Error deleting profile:", profileError);
+    throw new Error(`Failed to delete profile: ${profileError.message}`);
+  }
 };

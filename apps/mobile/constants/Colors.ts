@@ -56,18 +56,17 @@ export function getHexColorTailwind(hex: string): string {
   return HEX_TO_TAILWIND[hex] || "bg-profile-4"; // Default to leaf green
 }
 
-// Legacy support - for components that haven't been migrated yet
-const tintColorLight = "#4A7C59"; // huntly-leaf
-const tintColorDark = "#7FB069"; // huntly-sage
+// App uses a single light theme for consistency across Android and iOS
+const tintColor = "#4A7C59"; // huntly-leaf
 
 export const Colors = {
   light: {
     text: "#2D5A27",
     background: "#FFF8DC",
-    tint: tintColorLight,
+    tint: tintColor,
     icon: "#8B4513",
     tabIconDefault: "#8B4513",
-    tabIconSelected: tintColorLight,
+    tabIconSelected: tintColor,
     primary: "#4A7C59",
     secondary: "#FFA500",
     accent: "#FFD93D",
@@ -75,19 +74,20 @@ export const Colors = {
     card: "#FFFFFF",
     border: "#7FB069",
   },
+  // Kept for type compatibility; app always uses light
   dark: {
-    text: "#A8D5BA",
-    background: "#2D5A27",
-    tint: tintColorDark,
-    icon: "#7FB069",
-    tabIconDefault: "#7FB069",
-    tabIconSelected: tintColorDark,
-    primary: "#7FB069",
-    secondary: "#FFB347",
+    text: "#2D5A27",
+    background: "#FFF8DC",
+    tint: tintColor,
+    icon: "#8B4513",
+    tabIconDefault: "#8B4513",
+    tabIconSelected: tintColor,
+    primary: "#4A7C59",
+    secondary: "#FFA500",
     accent: "#FFD93D",
-    surface: "#4A7C59",
-    card: "#36454F",
-    border: "#4A7C59",
+    surface: "#A8D5BA",
+    card: "#FFFFFF",
+    border: "#7FB069",
   },
 };
 

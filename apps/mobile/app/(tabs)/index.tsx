@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useMemo } from "react";
+import React, { useRef, useState, useEffect, useMemo, useCallback } from "react";
 import {
   View,
   ScrollView,
@@ -12,6 +12,7 @@ import {
   type NativeSyntheticEvent,
   type NativeScrollEvent,
 } from "react-native";
+import { Image as ExpoImage } from "expo-image";
 import AnimatedReanimated, {
   useAnimatedStyle,
   useSharedValue,
@@ -19,15 +20,14 @@ import AnimatedReanimated, {
   withDelay,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
+import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { MissionCard } from "@/components/MissionCard";
 import { StatCard } from "@/components/StatCard";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useCurrentChapterActivities } from "@/hooks/useCurrentChapterActivities";
-import { useUserStats } from "@/hooks/useUserStats";
-import { usePlayer } from "@/contexts/PlayerContext";
-import { getTeamById } from "@/services/profileService";
+import { useUser } from "@/contexts/UserContext";
 import { getRandomClubPhotos, type ClubPhotoCardItem } from "@/services/activityProgressService";
 import { getTeamCardConfig } from "@/utils/teamUtils";
 
@@ -37,6 +37,10 @@ const HOME_MODES: HomeMode[] = ["profile", "activity", "missions"];
 const BG_IMAGE = require("@/assets/images/bg.png");
 
 const CREAM = "#F4F0EB";
+const HUNTLY_GREEN = "#4F6F52";
+
+const CLUB_CARDS_PAGE_SIZE = 6;
+const CLUB_CARDS_MAX = 24;
 
 /** Pastel/bright author badge colors (white text) for club cards */
 const CLUB_CARD_AUTHOR_COLORS = [
@@ -57,13 +61,12 @@ const TEAM_CARD_MESSAGES = [
 
 export default function HomeScreen() {
   const { scaleW, width, height } = useLayoutScale();
-  const { currentPlayer } = usePlayer();
-  const { daysPlayed, pointsEarned } = useUserStats();
-  const { nextMission, loading: missionLoading } = useCurrentChapterActivities(currentPlayer?.id ?? null);
-  const [teamName, setTeamName] = useState<string | null>(null);
+  const { team, daysPlayed, pointsEarned } = useUser();
+  const { latestMission, loading: missionLoading, refetch: refetchMissions } = useCurrentChapterActivities(null);
   const [clubCards, setClubCards] = useState<ClubPhotoCardItem[]>([]);
   const [clubCardsLoading, setClubCardsLoading] = useState(true);
   const [loadingMoreClubCards, setLoadingMoreClubCards] = useState(false);
+  const [clubImageStatus, setClubImageStatus] = useState<Record<string, "loading" | "loaded" | "error">>({});
   const initialIndex = 1; // activity (Welcome back)
   const [currentIndex, setCurrentIndex] = useState<number>(initialIndex);
   const currentMode = HOME_MODES[currentIndex] ?? "activity";
@@ -72,7 +75,7 @@ export default function HomeScreen() {
   useEffect(() => {
     let cancelled = false;
     setClubCardsLoading(true);
-    getRandomClubPhotos(5).then((cards) => {
+    getRandomClubPhotos(CLUB_CARDS_PAGE_SIZE).then((cards) => {
       if (!cancelled) setClubCards(cards);
     }).catch(() => {
       if (!cancelled) setClubCards([]);
@@ -83,11 +86,13 @@ export default function HomeScreen() {
   }, []);
 
   const loadMoreClubCards = async () => {
-    if (loadingMoreClubCards || clubCards.length === 0) return;
+    if (loadingMoreClubCards || clubCards.length === 0 || clubCards.length >= CLUB_CARDS_MAX) return;
     setLoadingMoreClubCards(true);
     try {
       const excludeIds = clubCards.map((c) => c.id);
-      const more = await getRandomClubPhotos(5, excludeIds);
+      const remaining = CLUB_CARDS_MAX - clubCards.length;
+      const pageSize = Math.min(CLUB_CARDS_PAGE_SIZE, remaining);
+      const more = await getRandomClubPhotos(pageSize, excludeIds);
       if (more.length > 0) {
         const existingIds = new Set(clubCards.map((c) => c.id));
         const newCards = more.filter((c) => !existingIds.has(c.id));
@@ -100,19 +105,7 @@ export default function HomeScreen() {
     }
   };
 
-  useEffect(() => {
-    if (!currentPlayer?.team) {
-      setTeamName(null);
-      return;
-    }
-    let cancelled = false;
-    getTeamById(currentPlayer.team).then((team) => {
-      if (!cancelled && team) setTeamName(team.name);
-    });
-    return () => { cancelled = true; };
-  }, [currentPlayer?.team]);
-
-  const teamCardConfig = teamName ? getTeamCardConfig(teamName) : null;
+  const teamCardConfig = team ? getTeamCardConfig(team.name) : null;
 
   const pagerRef = useRef<ScrollView>(null);
   const pagerX = useRef(new Animated.Value(width * initialIndex)).current;
@@ -144,11 +137,10 @@ export default function HomeScreen() {
   const bearCardStyle = useAnimatedStyle(() => ({ transform: [{ translateX: bearCardTranslateX.value }] }));
 
   useEffect(() => {
-    if (width > 0 && teamName) {
-      bearCardTranslateX.value = width;
-      bearCardTranslateX.value = withDelay(100, withSpring(0, springLessBouncy));
+    if (width > 0 && teamCardConfig) {
+      bearCardTranslateX.value = 0;
     }
-  }, [width, teamName]);
+  }, [width, teamCardConfig]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -156,6 +148,15 @@ export default function HomeScreen() {
     }, 0);
     return () => clearTimeout(timer);
   }, [width, initialIndex]);
+
+  useFocusEffect(
+    useCallback(() => {
+      refetchMissions();
+      if (width > 0) {
+        pagerRef.current?.scrollTo({ x: width * initialIndex, animated: false });
+      }
+    }, [refetchMissions, width, initialIndex])
+  );
 
   const pageAnimatedStyles = useMemo(() => {
     if (width <= 0) return [];
@@ -261,6 +262,11 @@ export default function HomeScreen() {
         bearsCard: {
           borderRadius: scaleW(15),
           marginBottom: scaleW(20),
+          paddingHorizontal: scaleW(14),
+          paddingVertical: scaleW(12),
+          minHeight: scaleW(180),
+          width: "100%",
+          overflow: "hidden" as const,
           shadowColor: "#000",
           shadowOpacity: 0.3,
           shadowRadius: 2,
@@ -269,9 +275,10 @@ export default function HomeScreen() {
         },
         bearImage: {
           position: "absolute",
-          width: scaleW(140),
-          height: scaleW(140),
-          bottom: scaleW(-95),
+          width: scaleW(110),
+          height: scaleW(110),
+          right: 0,
+          bottom: 0,
         },
         horizontalCardsContainer: {
           paddingLeft: clubCardsPaddingHorizontal,
@@ -294,6 +301,12 @@ export default function HomeScreen() {
           elevation: 2,
         },
         clubCardImage: { width: "100%", height: "100%" },
+        clubCardPlaceholder: {
+          ...StyleSheet.absoluteFillObject,
+          backgroundColor: HUNTLY_GREEN,
+          justifyContent: "center",
+          alignItems: "center",
+        },
         horizontalMissionCardsContainer: {
           paddingLeft: missionCardsPaddingHorizontal,
           paddingRight: missionCardsPaddingHorizontal,
@@ -323,10 +336,12 @@ export default function HomeScreen() {
     </AnimatedReanimated.View>
   );
 
+  const navArrowColor = "#4F6F52";
+  const navArrowSize = scaleW(20);
+
   const renderNavigationButtons = () => {
     const navTextStyle = { fontSize: scaleW(14), color: "#4F6F52", fontWeight: "600" as const };
-    const arrowStyle = { fontSize: scaleW(14), color: "#4F6F52" };
-    
+
     if (currentMode === "profile") {
       return (
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: scaleW(24), paddingTop: scaleW(16) }}>
@@ -336,7 +351,7 @@ export default function HomeScreen() {
               <ThemedText type="body" style={navTextStyle}>
                 Activity
               </ThemedText>
-              <ThemedText style={[arrowStyle, { marginLeft: scaleW(8) }]}>→</ThemedText>
+              <MaterialIcons name="chevron-right" size={navArrowSize} color={navArrowColor} style={{ marginLeft: scaleW(4) }} />
             </>
           ))}
         </View>
@@ -346,7 +361,7 @@ export default function HomeScreen() {
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: scaleW(24), paddingTop: scaleW(16) }}>
           {wrapNavPressable(() => switchMode("profile"), (
             <>
-              <ThemedText style={[arrowStyle, { marginRight: scaleW(8) }]}>←</ThemedText>
+              <MaterialIcons name="chevron-left" size={navArrowSize} color={navArrowColor} style={{ marginRight: scaleW(4) }} />
               <ThemedText type="body" style={navTextStyle}>
                 Profile
               </ThemedText>
@@ -358,7 +373,7 @@ export default function HomeScreen() {
               <ThemedText type="body" style={navTextStyle}>
                 Missions
               </ThemedText>
-              <ThemedText style={[arrowStyle, { marginLeft: scaleW(8) }]}>→</ThemedText>
+              <MaterialIcons name="chevron-right" size={navArrowSize} color={navArrowColor} style={{ marginLeft: scaleW(4) }} />
             </>
           ))}
         </View>
@@ -368,7 +383,7 @@ export default function HomeScreen() {
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: scaleW(24), paddingTop: scaleW(16) }}>
           {wrapNavPressable(() => switchMode("activity"), (
             <>
-              <ThemedText style={[arrowStyle, { marginRight: scaleW(8) }]}>←</ThemedText>
+              <MaterialIcons name="chevron-left" size={navArrowSize} color={navArrowColor} style={{ marginRight: scaleW(4) }} />
               <ThemedText type="body" style={navTextStyle}>
                 Activity
               </ThemedText>
@@ -468,7 +483,7 @@ export default function HomeScreen() {
     >
       <View style={{
         paddingHorizontal: scaleW(24),
-        paddingTop: scaleW(24),
+        paddingTop: scaleW(8),
         paddingBottom: scaleW(24),
       }}>
         <ThemedText
@@ -483,27 +498,27 @@ export default function HomeScreen() {
               lineHeight: scaleW(32),
               fontWeight: "600",
               textAlign: "center",
-              marginTop: scaleW(16),
+              marginTop: 0,
               marginBottom: scaleW(24),
               textShadowColor: "#000",
               textShadowRadius: 3,
               textShadowOffset: { width: 0, height: 0 },
             }}
         >
-          Welcome back, explorer!
+          Welcome back, Explorer!
         </ThemedText>
 
         {teamCardConfig && (
           <AnimatedReanimated.View style={bearCardStyle}>
             <View style={[styles.bearsCard, { backgroundColor: teamCardConfig.backgroundColor, borderWidth: 4, borderColor: "#FFF" }]}>
-              <View className="flex-row items-center flex-1 overflow-hidden p-4">
+              <View className="flex-row items-center flex-1 p-4 overflow-hidden">
                 <View style={{ flex: 1, paddingRight: scaleW(8) }}>
                   <ThemedText type="heading" style={{ color: "#000", fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(12), lineHeight: scaleW(28) }}>{teamCardConfig.title}</ThemedText>
                   <ThemedText type="body" style={{ color: "#000", fontSize: scaleW(16), lineHeight: scaleW(24) }}>
                     {teamCardMessage}
                   </ThemedText>
                 </View>
-                <View style={{ width: scaleW(120) }}>
+                <View style={{ width: scaleW(110), height: scaleW(110) }}>
                   <Image
                     source={teamCardConfig.waveImage}
                     resizeMode="contain"
@@ -537,8 +552,43 @@ export default function HomeScreen() {
               From around the club
             </ThemedText>
             {clubCardsLoading && clubCards.length === 0 ? (
-              <View style={{ minHeight: scaleW(200), justifyContent: "center", alignItems: "center", paddingVertical: scaleW(32) }}>
-                <ActivityIndicator size="large" color="#5B8A9E" />
+              <View
+                style={{
+                  minHeight: scaleW(220),
+                  justifyContent: "center",
+                  alignItems: "center",
+                  paddingVertical: scaleW(32),
+                }}
+              >
+                <View
+                  style={{
+                    backgroundColor: HUNTLY_GREEN,
+                    borderRadius: scaleW(24),
+                    paddingVertical: scaleW(18),
+                    paddingHorizontal: scaleW(24),
+                    alignItems: "center",
+                    justifyContent: "center",
+                    shadowColor: "#000",
+                    shadowOpacity: 0.35,
+                    shadowRadius: 4,
+                    shadowOffset: { width: 0, height: 3 },
+                    elevation: 3,
+                  }}
+                >
+                  <ActivityIndicator size="large" color="#FFFFFF" />
+                  <ThemedText
+                    type="body"
+                    style={{
+                      marginTop: scaleW(12),
+                      color: "#FFFFFF",
+                      fontSize: scaleW(14),
+                      fontWeight: "600",
+                      textAlign: "center",
+                    }}
+                  >
+                    Loading photos from around the club…
+                  </ThemedText>
+                </View>
               </View>
             ) : (
             <>
@@ -564,6 +614,7 @@ export default function HomeScreen() {
               decelerationRate="fast"
             >
               {clubCards.map((card, index) => {
+                const status = clubImageStatus[card.id] ?? "loading";
                 const centerScrollX = index === 0 ? 0 : getCenterScrollX(index);
                 const rotation = clubCardsScrollX.interpolate({
                   inputRange: [
@@ -586,7 +637,22 @@ export default function HomeScreen() {
                   >
                     <Pressable style={{ flex: 1 }}>
                       <View style={styles.clubCardImageWrap}>
-                        <Image source={{ uri: card.photo_url }} style={styles.clubCardImage} resizeMode="cover" />
+                        <ExpoImage
+                          source={{ uri: card.thumb_url || card.photo_url }}
+                          style={styles.clubCardImage}
+                          contentFit="cover"
+                          onLoadEnd={() => {
+                            setClubImageStatus((prev) => ({ ...prev, [card.id]: "loaded" }));
+                          }}
+                          onError={() => {
+                            setClubImageStatus((prev) => ({ ...prev, [card.id]: "error" }));
+                          }}
+                        />
+                        {status !== "loaded" && (
+                          <View style={styles.clubCardPlaceholder}>
+                            <ActivityIndicator size="small" color="#FFFFFF" />
+                          </View>
+                        )}
                       <ThemedText type="heading" style={{
                         position: "absolute",
                         bottom: scaleW(40),
@@ -661,7 +727,7 @@ export default function HomeScreen() {
               textShadowOffset: { width: 0, height: 0 },
             }}
         >
-          Current Mission
+          Latest Mission
         </ThemedText>
 
         <View collapsable={Platform.OS !== "android"} style={{ alignItems: "center", marginBottom: scaleW(24) }}>
@@ -669,8 +735,8 @@ export default function HomeScreen() {
             <View style={{ paddingVertical: scaleW(48), alignItems: "center" }}>
               <ActivityIndicator size="large" color="#FFF" />
             </View>
-          ) : nextMission ? (
-            <MissionCard card={nextMission} tiltDeg={0} />
+          ) : latestMission ? (
+            <MissionCard card={latestMission} tiltDeg={0} />
           ) : null}
         </View>
 
@@ -691,25 +757,25 @@ export default function HomeScreen() {
   );
 
   return (
-    <SafeAreaView edges={["top", "left", "right"]} style={styles.container}>
-      <View className="flex-1" style={styles.container}>
-        <Animated.View
-          style={[
-            styles.backgroundContainer,
-            {
-              transform: [{ translateX: backgroundTranslateX }],
-            },
-          ]}
+    <View style={styles.container}>
+      <Animated.View
+        style={[
+          styles.backgroundContainer,
+          {
+            transform: [{ translateX: backgroundTranslateX }],
+          },
+        ]}
+      >
+        <ImageBackground
+          source={BG_IMAGE}
+          style={styles.backgroundImage}
+          resizeMode="cover"
         >
-          <ImageBackground
-            source={BG_IMAGE}
-            style={styles.backgroundImage}
-            resizeMode="cover"
-          >
-            <View style={styles.backgroundOverlay} />
-          </ImageBackground>
-        </Animated.View>
-
+          <View style={styles.backgroundOverlay} />
+        </ImageBackground>
+      </Animated.View>
+      <SafeAreaView edges={["top", "left", "right"]} style={styles.container}>
+        <View className="flex-1" style={styles.container}>
         <View className="flex-1">
         {renderNavigationButtons()}
         <Animated.ScrollView
@@ -748,7 +814,8 @@ export default function HomeScreen() {
           </Animated.View>
         </Animated.ScrollView>
         </View>
-      </View>
-    </SafeAreaView>
+        </View>
+      </SafeAreaView>
+    </View>
   );
 }

@@ -10,6 +10,7 @@ export type StorySlide =
   | { type: "text-image"; text: string; image: string };
 
 export type FirstSeason = {
+  id: number;
   name: string | null;
   hero_image: string | null;
   story: string | null;
@@ -19,29 +20,33 @@ export type FirstSeason = {
 
 export function useFirstSeason(): {
   firstSeason: FirstSeason;
+  seasonNumber: number;
   heroImageSource: ImageSourcePropType;
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
 } {
   const [firstSeason, setFirstSeason] = useState<FirstSeason>(null);
+  const [seasonNumber, setSeasonNumber] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setError(null);
     setLoading(true);
-    const { data, error: err } = await supabase
+    const { data: seasons, error: err } = await supabase
       .from("seasons")
-      .select("name, hero_image, story, story_parts, story_slides")
-      .order("id", { ascending: true })
-      .limit(1)
-      .maybeSingle();
+      .select("id, name, hero_image, story, story_parts, story_slides, created_at")
+      .order("created_at", { ascending: false });
     if (err) {
       setError(err.message ?? "Failed to load season");
       setFirstSeason(null);
+      setSeasonNumber(0);
     } else {
-      setFirstSeason(data ?? null);
+      const latest = seasons?.[0] ?? null;
+      const count = seasons?.length ?? 0;
+      setFirstSeason(latest ? { id: latest.id, name: latest.name, hero_image: latest.hero_image, story: latest.story, story_parts: latest.story_parts, story_slides: latest.story_slides } : null);
+      setSeasonNumber(count);
     }
     setLoading(false);
   }, []);
@@ -55,5 +60,5 @@ export function useFirstSeason(): {
       ? { uri: firstSeason.hero_image }
       : DEFAULT_SEASON_HERO_IMAGE;
 
-  return { firstSeason, heroImageSource, loading, error, refetch: fetchData };
+  return { firstSeason, seasonNumber, heroImageSource, loading, error, refetch: fetchData };
 }

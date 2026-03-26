@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   View,
   ScrollView,
@@ -18,8 +18,11 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as Device from "expo-device";
 import { ThemedText } from "@/components/ThemedText";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUser } from "@/contexts/UserContext";
+import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { useRouter } from "expo-router";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -31,6 +34,7 @@ import {
   canCancelRemovalRequest,
   sendAccountRemovalNotification,
 } from "@/services/accountRemovalService";
+import { getPushEnabled, setPushEnabled } from "@/services/pushNotificationService";
 
 const COLORS = {
   darkGreen: "#4F6F52",
@@ -43,10 +47,18 @@ const COLORS = {
 
 export default function SettingsScreen() {
   const { user, signOut } = useAuth();
+  const { userData, updateWeeklyEmail } = useUser();
   const router = useRouter();
   const { scaleW } = useLayoutScale();
-  const [weeklyEmail, setWeeklyEmail] = useState(true);
+  const signUpContext = useSignUpOptional();
+  const setShowPostSignUpWelcome = signUpContext?.setShowPostSignUpWelcome;
+  const setTutorialStep = signUpContext?.setTutorialStep;
+  const setReplayTutorialRequested = signUpContext?.setReplayTutorialRequested;
+  const weeklyEmail = userData?.weekly_email ?? false;
+  const [weeklyEmailToggling, setWeeklyEmailToggling] = useState(false);
   const [pushNotifications, setPushNotifications] = useState(false);
+  const [pushNotificationsLoading, setPushNotificationsLoading] = useState(true);
+  const [pushNotificationsToggling, setPushNotificationsToggling] = useState(false);
   const [showRemovalModal, setShowRemovalModal] = useState(false);
   const [removalReason, setRemovalReason] = useState("");
   const [removalSubmitting, setRemovalSubmitting] = useState(false);
@@ -57,6 +69,7 @@ export default function SettingsScreen() {
   const weeklyEmailScale = useSharedValue(1);
   const pushScale = useSharedValue(1);
   const privacyScale = useSharedValue(1);
+  const tutorialScale = useSharedValue(1);
   const signOutAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: signOutScale.value }],
   }));
@@ -68,6 +81,9 @@ export default function SettingsScreen() {
   }));
   const privacyAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: privacyScale.value }],
+  }));
+  const tutorialAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: tutorialScale.value }],
   }));
 
   const handleSignOut = () => {
@@ -96,6 +112,37 @@ export default function SettingsScreen() {
   React.useEffect(() => {
     refreshPendingRemoval();
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setPushNotificationsLoading(false);
+      return;
+    }
+    getPushEnabled().then((enabled) => {
+      setPushNotifications(enabled);
+      setPushNotificationsLoading(false);
+    });
+  }, [user?.id]);
+
+  const handlePushToggle = async () => {
+    if (pushNotificationsToggling) return;
+    const next = !pushNotifications;
+    setPushNotificationsToggling(true);
+    try {
+      const ok = await setPushEnabled(next);
+      if (next && !ok) {
+        Alert.alert(
+          "Notifications unavailable",
+          "Permission was denied or push notifications are not available on this device (e.g. simulator). You can enable them later in your device settings."
+        );
+        setPushNotifications(false);
+      } else {
+        setPushNotifications(next);
+      }
+    } finally {
+      setPushNotificationsToggling(false);
+    }
+  };
 
   const handleOpenRemovalModal = () => {
     if (pendingRemovalRequest) return;
@@ -129,6 +176,13 @@ export default function SettingsScreen() {
     } finally {
       setRemovalSubmitting(false);
     }
+  };
+
+  const handleShowTutorialAgain = () => {
+    setReplayTutorialRequested?.(true);
+    setTutorialStep?.("intro");
+    setShowPostSignUpWelcome?.(true);
+    router.replace("/(tabs)");
   };
 
   const handleCancelRemovalRequest = () => {
@@ -361,7 +415,7 @@ export default function SettingsScreen() {
         bounces={false}
         overScrollMode="never"
       >
-        <Animated.View entering={FadeInDown.duration(500).delay(0).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(0)}>
           <ThemedText type="heading" style={styles.sectionTitle}>Your account</ThemedText>
           <ThemedText style={styles.email} numberOfLines={1}>
             {user?.email ?? "parentemail@somewhere.com"}
@@ -382,12 +436,23 @@ export default function SettingsScreen() {
           </Animated.View>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.duration(500).delay(150).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(150)}>
           <ThemedText type="heading" style={styles.prefsTitle}>Your preferences</ThemedText>
           <Animated.View style={weeklyEmailAnimatedStyle}>
             <Pressable
               style={styles.prefRow}
-              onPress={() => setWeeklyEmail((v) => !v)}
+              onPress={async () => {
+                if (weeklyEmailToggling) return;
+                setWeeklyEmailToggling(true);
+                try {
+                  await updateWeeklyEmail(!weeklyEmail);
+                } catch {
+                  Alert.alert("Error", "Failed to update weekly email preference");
+                } finally {
+                  setWeeklyEmailToggling(false);
+                }
+              }}
+              disabled={weeklyEmailToggling}
               onPressIn={() => {
                 weeklyEmailScale.value = withSpring(0.98, { damping: 15, stiffness: 400 });
               }}
@@ -395,22 +460,27 @@ export default function SettingsScreen() {
                 weeklyEmailScale.value = withSpring(1, { damping: 15, stiffness: 400 });
               }}
             >
-              <ThemedText style={styles.prefLabel}>Receive weekly email</ThemedText>
-              <View style={styles.checkbox}>
-                {weeklyEmail ? (
-                  <MaterialIcons
-                    name="check"
-                    size={scaleW(18)}
-                    color={COLORS.darkGreen}
-                  />
-                ) : null}
-              </View>
+              <ThemedText style={styles.prefLabel}>Receive email notifications</ThemedText>
+              {weeklyEmailToggling ? (
+                <ActivityIndicator size="small" color={COLORS.darkGreen} />
+              ) : (
+                <View style={styles.checkbox}>
+                  {weeklyEmail ? (
+                    <MaterialIcons
+                      name="check"
+                      size={scaleW(18)}
+                      color={COLORS.darkGreen}
+                    />
+                  ) : null}
+                </View>
+              )}
             </Pressable>
           </Animated.View>
           <Animated.View style={pushAnimatedStyle}>
             <Pressable
               style={styles.prefRow}
-              onPress={() => setPushNotifications((v) => !v)}
+              onPress={handlePushToggle}
+              disabled={pushNotificationsLoading || pushNotificationsToggling}
               onPressIn={() => {
                 pushScale.value = withSpring(0.98, { damping: 15, stiffness: 400 });
               }}
@@ -418,23 +488,52 @@ export default function SettingsScreen() {
                 pushScale.value = withSpring(1, { damping: 15, stiffness: 400 });
               }}
             >
-              <ThemedText style={styles.prefLabel}>
-                Receive push notifications
-              </ThemedText>
-              <View style={styles.checkbox}>
-                {pushNotifications ? (
-                  <MaterialIcons
-                    name="check"
-                    size={scaleW(18)}
-                    color={COLORS.darkGreen}
-                  />
+              <View style={{ flex: 1 }}>
+                <ThemedText style={styles.prefLabel}>
+                  Receive push notifications
+                </ThemedText>
+                {!Device.isDevice ? (
+                  <ThemedText style={[styles.prefLabel, { fontSize: scaleW(12), opacity: 0.7, marginTop: scaleW(4) }]}>
+                    Not available on simulator
+                  </ThemedText>
                 ) : null}
               </View>
+              {pushNotificationsLoading || pushNotificationsToggling ? (
+                <ActivityIndicator size="small" color={COLORS.darkGreen} />
+              ) : (
+                <View style={styles.checkbox}>
+                  {pushNotifications ? (
+                    <MaterialIcons
+                      name="check"
+                      size={scaleW(18)}
+                      color={COLORS.darkGreen}
+                    />
+                  ) : null}
+                </View>
+              )}
             </Pressable>
           </Animated.View>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.duration(500).delay(200).springify().damping(18)}>
+        {/* No entering animation here so the button is always visible in production (Reanimated entering can be unreliable in release builds) */}
+        <Animated.View style={tutorialAnimatedStyle}>
+          <Pressable
+            style={styles.privacyButton}
+            onPress={handleShowTutorialAgain}
+            onPressIn={() => {
+              tutorialScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+            }}
+            onPressOut={() => {
+              tutorialScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+            }}
+          >
+            <ThemedText type="heading" style={styles.privacyButtonText}>
+              Show tutorial again
+            </ThemedText>
+          </Pressable>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.duration(500).delay(250)}>
           <ThemedText type="heading" style={styles.prefsTitle}>Legal</ThemedText>
           <Animated.View style={privacyAnimatedStyle}>
             <Pressable
@@ -454,7 +553,7 @@ export default function SettingsScreen() {
           </Animated.View>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.duration(500).delay(250).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(300)}>
           <Pressable
             style={styles.removalButton}
             onPress={pendingRemovalRequest && canCancelRemovalRequest(pendingRemovalRequest) ? handleCancelRemovalRequest : handleOpenRemovalModal}

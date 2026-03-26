@@ -11,6 +11,7 @@ import {
   getTeamById,
   getProfiles,
   getUserData,
+  updateUserDataLastSeenSeasonId,
   updateUserDataWeeklyEmail,
   Team,
 } from "@/services/profileService";
@@ -20,6 +21,7 @@ type UserData = {
   user_id: string;
   team: number | null;
   weekly_email: boolean;
+  last_seen_season_id: number | null;
 };
 
 type UserContextType = {
@@ -34,6 +36,8 @@ type UserContextType = {
   refreshUserData: () => Promise<void>;
   /** Update weekly email preference and refresh user data. */
   updateWeeklyEmail: (enabled: boolean) => Promise<void>;
+  /** Persist latest season announcement seen by the user. */
+  updateLastSeenSeasonId: (seasonId: number) => Promise<void>;
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -131,6 +135,15 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     [user?.id, refreshUserData]
   );
 
+  const updateLastSeenSeasonId = useCallback(
+    async (seasonId: number) => {
+      if (!user?.id) return;
+      await updateUserDataLastSeenSeasonId(user.id, seasonId);
+      await refreshUserData();
+    },
+    [user?.id, refreshUserData]
+  );
+
   const value = useMemo<UserContextType>(
     () => ({
       userData,
@@ -141,8 +154,18 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       pointsEarned,
       refreshUserData,
       updateWeeklyEmail,
+      updateLastSeenSeasonId,
     }),
-    [userData, team, loading, daysPlayed, pointsEarned, refreshUserData, updateWeeklyEmail]
+    [
+      userData,
+      team,
+      loading,
+      daysPlayed,
+      pointsEarned,
+      refreshUserData,
+      updateWeeklyEmail,
+      updateLastSeenSeasonId,
+    ]
   );
 
   return (

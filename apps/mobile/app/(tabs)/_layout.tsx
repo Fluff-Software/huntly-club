@@ -15,6 +15,7 @@ import { usePlayer } from "@/contexts/PlayerContext";
 import { useUser } from "@/contexts/UserContext";
 import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { useFirstSeason } from "@/hooks/useFirstSeason";
 import { NewPlayerTutorial } from "@/components/NewPlayerTutorial";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/ui/Button";
@@ -104,7 +105,13 @@ function StoryTabPulse({ size }: { size: number }) {
 export default function TabLayout() {
   const { user } = useAuth();
   const { profiles } = usePlayer();
-  const { userData, loading: userLoading, updateWeeklyEmail } = useUser();
+  const { userData, loading: userLoading, updateWeeklyEmail, updateLastSeenSeasonId } =
+    useUser();
+  const {
+    firstSeason,
+    heroImageSource,
+    loading: seasonLoading,
+  } = useFirstSeason();
   const { scaleW } = useLayoutScale();
   const insets = useSafeAreaInsets();
   const signUpContext = useSignUpOptional();
@@ -119,8 +126,13 @@ export default function TabLayout() {
   const [notificationSaving, setNotificationSaving] = useState(false);
   const [emailOptIn, setEmailOptIn] = useState(false);
   const [pushOptIn, setPushOptIn] = useState(false);
+  const [showSeasonAnnouncementModal, setShowSeasonAnnouncementModal] =
+    useState(false);
+  const [seasonAnnouncementChecking, setSeasonAnnouncementChecking] =
+    useState(true);
   const [hasCompletedTutorial, setHasCompletedTutorial] = useState<boolean | null>(null);
   const hasCheckedNotificationPromptRef = useRef(false);
+  const hasCheckedSeasonAnnouncementRef = useRef(false);
 
   // If user has no team set, redirect to team selection
   useEffect(() => {
@@ -178,6 +190,7 @@ export default function TabLayout() {
       setNotificationPromptChecking(false);
       return;
     }
+    if (showSeasonAnnouncementModal || seasonAnnouncementChecking) return;
     if (hasCheckedNotificationPromptRef.current) return;
     hasCheckedNotificationPromptRef.current = true;
     setNotificationPromptChecking(false);
@@ -197,7 +210,58 @@ export default function TabLayout() {
       .catch(() => {
         // Don't block the UI if the check fails; user can still be prompted from settings
       });
-  }, [user?.id, userData?.weekly_email, updateWeeklyEmail]);
+  }, [
+    user?.id,
+    userData?.weekly_email,
+    updateWeeklyEmail,
+    showSeasonAnnouncementModal,
+    seasonAnnouncementChecking,
+  ]);
+
+  const maybeShowSeasonAnnouncement = useCallback(async () => {
+    if (!user?.id) {
+      setSeasonAnnouncementChecking(false);
+      return;
+    }
+    if (userLoading) return;
+    if (showPostSignUpWelcome) return;
+    if (seasonLoading) return;
+    if (!userData) {
+      hasCheckedSeasonAnnouncementRef.current = true;
+      setSeasonAnnouncementChecking(false);
+      return;
+    }
+    if (!firstSeason?.id) {
+      hasCheckedSeasonAnnouncementRef.current = true;
+      setSeasonAnnouncementChecking(false);
+      return;
+    }
+    if (hasCheckedSeasonAnnouncementRef.current) return;
+    hasCheckedSeasonAnnouncementRef.current = true;
+    const seenSeasonId = userData?.last_seen_season_id ?? null;
+    if (seenSeasonId !== firstSeason.id) {
+      setShowSeasonAnnouncementModal(true);
+    }
+    setSeasonAnnouncementChecking(false);
+  }, [
+    user?.id,
+    userLoading,
+    userData,
+    showPostSignUpWelcome,
+    seasonLoading,
+    firstSeason?.id,
+    userData?.last_seen_season_id,
+  ]);
+
+  useEffect(() => {
+    hasCheckedSeasonAnnouncementRef.current = false;
+    setSeasonAnnouncementChecking(true);
+    setShowSeasonAnnouncementModal(false);
+  }, [user?.id]);
+
+  useEffect(() => {
+    void maybeShowSeasonAnnouncement();
+  }, [maybeShowSeasonAnnouncement]);
 
   useEffect(() => {
     if (!user?.id) {
@@ -207,13 +271,22 @@ export default function TabLayout() {
     if (showPostSignUpWelcome) {
       return;
     }
+    if (showSeasonAnnouncementModal || seasonAnnouncementChecking) {
+      return;
+    }
     const timer = setTimeout(() => {
       maybeShowNotificationPrompt();
     }, NOTIFICATION_PROMPT_DELAY_MS);
     return () => {
       clearTimeout(timer);
     };
-  }, [user?.id, showPostSignUpWelcome, maybeShowNotificationPrompt]);
+  }, [
+    user?.id,
+    showPostSignUpWelcome,
+    maybeShowNotificationPrompt,
+    showSeasonAnnouncementModal,
+    seasonAnnouncementChecking,
+  ]);
 
   useEffect(() => {
     if (!showNotificationPrompt) return;
@@ -290,6 +363,17 @@ export default function TabLayout() {
       });
     }
     router.replace("/(tabs)");
+    setTimeout(() => {
+      void maybeShowSeasonAnnouncement();
+      maybeShowNotificationPrompt();
+    }, NOTIFICATION_PROMPT_DELAY_MS);
+  };
+
+  const handleSeasonAnnouncementDismiss = async () => {
+    if (firstSeason?.id) {
+      await updateLastSeenSeasonId(firstSeason.id);
+    }
+    setShowSeasonAnnouncementModal(false);
     setTimeout(() => {
       maybeShowNotificationPrompt();
     }, NOTIFICATION_PROMPT_DELAY_MS);
@@ -450,6 +534,63 @@ export default function TabLayout() {
         onDismiss={handleTutorialDismiss}
         tabBarHeight={tabBarHeight}
       />
+      {showSeasonAnnouncementModal && firstSeason ? (
+        <Modal
+          visible={showSeasonAnnouncementModal}
+          transparent
+          animationType="fade"
+          onRequestClose={handleSeasonAnnouncementDismiss}
+        >
+          <View style={styles.notificationPromptOverlay}>
+            <View
+              style={[
+                styles.notificationPromptCard,
+                { padding: scaleW(24), borderRadius: scaleW(16) },
+              ]}
+            >
+              {firstSeason.hero_image ? (
+                <Image
+                  source={heroImageSource}
+                  resizeMode="cover"
+                  style={{
+                    width: "100%",
+                    height: scaleW(160),
+                    borderRadius: scaleW(12),
+                    marginBottom: scaleW(16),
+                  }}
+                />
+              ) : null}
+              <ThemedText
+                type="subtitle"
+                style={{ marginBottom: scaleW(8), textAlign: "center" }}
+                lightColor={HUNTLY_GREEN}
+                darkColor={CREAM}
+              >
+                A new season has arrived!
+              </ThemedText>
+              {firstSeason.name ? (
+                <ThemedText
+                  style={{ marginBottom: scaleW(8), textAlign: "center", fontWeight: "600" }}
+                  lightColor={HUNTLY_CHARCOAL}
+                  darkColor={CREAM}
+                >
+                  {firstSeason.name}
+                </ThemedText>
+              ) : null}
+              <ThemedText
+                style={{ marginBottom: scaleW(16), textAlign: "center" }}
+                lightColor={HUNTLY_CHARCOAL}
+                darkColor={CREAM}
+              >
+                Read the latest story and jump into this season&apos;s missions.
+              </ThemedText>
+              <Button variant="secondary" onPress={handleSeasonAnnouncementDismiss}>
+                Continue
+              </Button>
+            </View>
+          </View>
+        </Modal>
+      ) : null}
       {Platform.OS === "ios" ? (
         <Modal
           visible={showNotificationUI}

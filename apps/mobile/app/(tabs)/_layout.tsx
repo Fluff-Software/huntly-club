@@ -23,6 +23,7 @@ import {
   recordTutorialAchievement,
 } from "@/services/activityProgressService";
 import {
+  getPushEnabled,
   hasAskedPushOptIn,
   registerForPushNotificationsAsync,
   setPushEnabled,
@@ -103,7 +104,7 @@ function StoryTabPulse({ size }: { size: number }) {
 export default function TabLayout() {
   const { user } = useAuth();
   const { profiles } = usePlayer();
-  const { userData, loading: userLoading } = useUser();
+  const { userData, loading: userLoading, updateWeeklyEmail } = useUser();
   const { scaleW } = useLayoutScale();
   const insets = useSafeAreaInsets();
   const signUpContext = useSignUpOptional();
@@ -115,6 +116,9 @@ export default function TabLayout() {
   const setReplayTutorialRequested = signUpContext?.setReplayTutorialRequested;
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
   const [notificationPromptChecking, setNotificationPromptChecking] = useState(true);
+  const [notificationSaving, setNotificationSaving] = useState(false);
+  const [emailOptIn, setEmailOptIn] = useState(false);
+  const [pushOptIn, setPushOptIn] = useState(false);
   const [hasCompletedTutorial, setHasCompletedTutorial] = useState<boolean | null>(null);
   const hasCheckedNotificationPromptRef = useRef(false);
 
@@ -179,12 +183,21 @@ export default function TabLayout() {
     setNotificationPromptChecking(false);
     hasAskedPushOptIn(user.id)
       .then((asked) => {
-        if (!asked) setShowNotificationPrompt(true);
+        if (!asked) {
+          // First-run prompt should start fully opt-out.
+          setEmailOptIn(false);
+          setPushOptIn(false);
+          // Safety: if backend/user_data came through as true for any reason, normalize it.
+          if (userData?.weekly_email === true) {
+            void updateWeeklyEmail(false);
+          }
+          setShowNotificationPrompt(true);
+        }
       })
       .catch(() => {
         // Don't block the UI if the check fails; user can still be prompted from settings
       });
-  }, [user?.id]);
+  }, [user?.id, userData?.weekly_email, updateWeeklyEmail]);
 
   useEffect(() => {
     if (!user?.id) {
@@ -202,18 +215,48 @@ export default function TabLayout() {
     };
   }, [user?.id, showPostSignUpWelcome, maybeShowNotificationPrompt]);
 
-  const handleNotificationPromptYes = async () => {
+  useEffect(() => {
+    if (!showNotificationPrompt) return;
+    // Default to opt-out in the first-run prompt.
+    setEmailOptIn(false);
+    getPushEnabled()
+      .then((enabled) => setPushOptIn(enabled))
+      .catch(() => setPushOptIn(false));
+  }, [showNotificationPrompt]);
+
+  const handleNotificationPromptSave = async () => {
     if (!user?.id) return;
-    const token = await registerForPushNotificationsAsync();
-    if (token) await setPushEnabled(true, token);
-    await setPushOptInAsked(user.id);
-    setShowNotificationPrompt(false);
+    if (notificationSaving) return;
+    setNotificationSaving(true);
+    try {
+      await updateWeeklyEmail(emailOptIn);
+      if (pushOptIn) {
+        const token = await registerForPushNotificationsAsync();
+        if (token) {
+          await setPushEnabled(true, token);
+        }
+      } else {
+        await setPushEnabled(false);
+      }
+      await setPushOptInAsked(user.id);
+      setShowNotificationPrompt(false);
+    } finally {
+      setNotificationSaving(false);
+    }
   };
 
   const handleNotificationPromptNotNow = async () => {
     if (!user?.id) return;
-    await setPushOptInAsked(user.id);
-    setShowNotificationPrompt(false);
+    if (notificationSaving) return;
+    setNotificationSaving(true);
+    try {
+      await updateWeeklyEmail(false);
+      await setPushEnabled(false);
+      await setPushOptInAsked(user.id);
+      setShowNotificationPrompt(false);
+    } finally {
+      setNotificationSaving(false);
+    }
   };
 
   const activeColor = "#FFFFFF";
@@ -429,23 +472,40 @@ export default function TabLayout() {
               >
                 Would you like to be notified when new chapters are available?
               </ThemedText>
-              <ThemedText
-                style={{
-                  marginBottom: scaleW(24),
-                  textAlign: "center",
-                  fontSize: scaleW(14),
-                }}
-                lightColor={HUNTLY_CHARCOAL}
-                darkColor="rgba(244,240,235,0.9)"
-              >
-                Get notified when a new chapter is ready to read.
-              </ThemedText>
               <View style={{ gap: scaleW(12) }}>
+                <Pressable
+                  style={styles.notificationOptionRow}
+                  onPress={() => setEmailOptIn((current) => !current)}
+                  disabled={notificationSaving}
+                >
+                  <ThemedText lightColor={HUNTLY_CHARCOAL} darkColor={CREAM}>
+                    Email updates
+                  </ThemedText>
+                  <View style={styles.notificationCheckbox}>
+                    {emailOptIn ? (
+                      <MaterialIcons name="check" size={scaleW(18)} color={HUNTLY_GREEN} />
+                    ) : null}
+                  </View>
+                </Pressable>
+                <Pressable
+                  style={styles.notificationOptionRow}
+                  onPress={() => setPushOptIn((current) => !current)}
+                  disabled={notificationSaving}
+                >
+                  <ThemedText lightColor={HUNTLY_CHARCOAL} darkColor={CREAM}>
+                    Push notifications
+                  </ThemedText>
+                  <View style={styles.notificationCheckbox}>
+                    {pushOptIn ? (
+                      <MaterialIcons name="check" size={scaleW(18)} color={HUNTLY_GREEN} />
+                    ) : null}
+                  </View>
+                </Pressable>
                 <Button
                   variant="secondary"
-                  onPress={handleNotificationPromptYes}
+                  onPress={handleNotificationPromptSave}
                 >
-                  Yes, notify me
+                  Save preferences
                 </Button>
                 <Button
                   variant="white"
@@ -480,23 +540,40 @@ export default function TabLayout() {
               >
                 Would you like to be notified when new chapters are available?
               </ThemedText>
-              <ThemedText
-                style={{
-                  marginBottom: scaleW(24),
-                  textAlign: "center",
-                  fontSize: scaleW(14),
-                }}
-                lightColor={HUNTLY_CHARCOAL}
-                darkColor="rgba(244,240,235,0.9)"
-              >
-                Get notified when a new chapter is ready to read.
-              </ThemedText>
               <View style={{ gap: scaleW(12) }}>
+                <Pressable
+                  style={styles.notificationOptionRow}
+                  onPress={() => setEmailOptIn((current) => !current)}
+                  disabled={notificationSaving}
+                >
+                  <ThemedText lightColor={HUNTLY_CHARCOAL} darkColor={CREAM}>
+                    Email updates
+                  </ThemedText>
+                  <View style={styles.notificationCheckbox}>
+                    {emailOptIn ? (
+                      <MaterialIcons name="check" size={scaleW(18)} color={HUNTLY_GREEN} />
+                    ) : null}
+                  </View>
+                </Pressable>
+                <Pressable
+                  style={styles.notificationOptionRow}
+                  onPress={() => setPushOptIn((current) => !current)}
+                  disabled={notificationSaving}
+                >
+                  <ThemedText lightColor={HUNTLY_CHARCOAL} darkColor={CREAM}>
+                    Push notifications
+                  </ThemedText>
+                  <View style={styles.notificationCheckbox}>
+                    {pushOptIn ? (
+                      <MaterialIcons name="check" size={scaleW(18)} color={HUNTLY_GREEN} />
+                    ) : null}
+                  </View>
+                </Pressable>
                 <Button
                   variant="secondary"
-                  onPress={handleNotificationPromptYes}
+                  onPress={handleNotificationPromptSave}
                 >
-                  Yes, notify me
+                  Save preferences
                 </Button>
                 <Button
                   variant="white"
@@ -543,5 +620,24 @@ const styles = StyleSheet.create({
     backgroundColor: CREAM,
     maxWidth: 360,
     width: "100%",
+  },
+  notificationOptionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  notificationCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: HUNTLY_GREEN,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
   },
 });

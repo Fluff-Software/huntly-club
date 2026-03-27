@@ -227,6 +227,14 @@ export default function RewardScreen() {
           textAlign: "center",
           marginBottom: scaleW(28),
         },
+        approvalNote: {
+          fontSize: scaleW(14),
+          lineHeight: scaleW(20),
+          color: "rgba(255,255,255,0.85)",
+          textAlign: "center",
+          marginBottom: scaleW(8),
+          marginHorizontal: scaleW(24),
+        },
         achievementTimeline: {
           alignItems: "center",
           gap: scaleW(20),
@@ -357,6 +365,12 @@ export default function RewardScreen() {
 
         <Animated.View entering={FadeInDown.duration(500).delay(200)}>
           <Text style={styles.wellDoneHeading}>{wellDoneHeadline}</Text>
+        </Animated.View>
+        <Animated.View entering={FadeInDown.duration(500).delay(260)}>
+          <Text style={styles.approvalNote}>
+            Any pictures submitted will appear in your clubhouse image gallery once they
+            have been approved.
+          </Text>
         </Animated.View>
 
         {achievements.length > 0 && (

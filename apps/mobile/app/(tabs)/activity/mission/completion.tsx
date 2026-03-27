@@ -31,6 +31,7 @@ import * as ImagePicker from "expo-image-picker";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { useUser } from "@/contexts/UserContext";
 import { getActivityById } from "@/services/packService";
 import {
   ensureProgressRows,
@@ -40,7 +41,7 @@ import {
 } from "@/services/activityProgressService";
 import { compressImageAsync } from "@/utils/imageCompression";
 import { uploadUserActivityPhoto } from "@/services/storageService";
-import type { Activity } from "@/types/activity";
+import type { Activity as BaseActivity } from "@/types/activity";
 
 const FOREST_DARK = "#2D4A35";
 const HUNTLY_GREEN = "#4F6F52";
@@ -55,6 +56,13 @@ const CAMERA_ICON = require("@/assets/images/camera.png");
 
 const EXPAND_DURATION = 500;
 const TIMING_EASING = Easing.out(Easing.cubic);
+
+type MissionDebriefActivity = BaseActivity & {
+  debrief_heading: string | null;
+  debrief_photo_label: string | null;
+  debrief_question_1: string | null;
+  debrief_question_2: string | null;
+};
 
 function ExpandableSection({
   isSelected,
@@ -125,7 +133,8 @@ export default function CompletionScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { scaleW } = useLayoutScale();
   const { profiles } = usePlayer();
-  const [activity, setActivity] = useState<Activity | null>(null);
+  const { teamId } = useUser();
+  const [activity, setActivity] = useState<MissionDebriefActivity | null>(null);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<number[]>([]);
   const [playerPhotos, setPlayerPhotos] = useState<Record<number, string[]>>({});
   const [galleryPlayerId, setGalleryPlayerId] = useState<number | null>(null);
@@ -146,7 +155,7 @@ export default function CompletionScreen() {
     let isMounted = true;
     getActivityById(Number(id))
       .then((data) => {
-        if (isMounted && data) setActivity(data);
+        if (isMounted && data) setActivity(data as MissionDebriefActivity);
       })
       .catch(() => {
         if (isMounted) setActivity(null);
@@ -333,18 +342,21 @@ export default function CompletionScreen() {
 
       // When new progress rows were created, record achievements
       if (insertedProgress.length > 0) {
-        const activityXp = activity.xp ?? 0;
-        await insertUserAchievementsForMission(
-          insertedProgress.map((row) => {
-            const profile = profiles.find((p) => p.id === row.profile_id);
-            return {
+        if (teamId != null) {
+          const activityXp = activity.xp ?? 0;
+          await insertUserAchievementsForMission(
+            insertedProgress.map((row) => ({
               profile_id: row.profile_id,
-              team_id: profile?.team ?? 0,
+              team_id: teamId,
               source_id: row.id,
               xp: activityXp,
-            };
-          })
-        );
+            }))
+          );
+        } else {
+          console.warn(
+            "Skipping mission achievements: user has no team id in user_data."
+          );
+        }
       }
 
       // 4–5: Upload each photo to Supabase bucket "user-activity-photos"
@@ -641,7 +653,9 @@ export default function CompletionScreen() {
         },
         checkboxChecked: { backgroundColor: TEXT_SECONDARY },
         completeButton: {
-          backgroundColor: HUNTLY_GREEN,
+          backgroundColor: "#8BC79A",
+          borderWidth: 2,
+          borderColor: "#CFE9D5",
           paddingVertical: scaleW(16),
           borderRadius: scaleW(32),
           alignItems: "center",
@@ -655,9 +669,15 @@ export default function CompletionScreen() {
           elevation: 2,
         },
         completeButtonDisabled: {
-          opacity: 0.5,
+          backgroundColor: "rgba(255,255,255,0.3)",
+          borderColor: "rgba(255,255,255,0.5)",
+          opacity: 1,
         },
-        completeButtonText: { fontSize: scaleW(17), fontWeight: "600" },
+        completeButtonText: {
+          fontSize: scaleW(17),
+          fontWeight: "700",
+          color: "#174B2A",
+        },
         // Gallery modal
         modalOverlay: {
           flex: 1,

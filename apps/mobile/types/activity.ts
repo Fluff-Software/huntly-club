@@ -11,6 +11,16 @@ export type Activity = Tables<"activities"> & {
   categories: number[];
   prep_checklist: PrepChecklistItem[] | null;
   steps: MissionStep[] | null;
+  intro_urgent_message: string | null;
+  intro_character_name: string | null;
+  intro_character_avatar_url: string | null;
+  intro_dialogue: string | null;
+  estimated_duration: string | null;
+  optional_items: string[] | null;
+  debrief_heading: string | null;
+  debrief_photo_label: string | null;
+  debrief_question_1: string | null;
+  debrief_question_2: string | null;
 };
 
 // Type for category filtering

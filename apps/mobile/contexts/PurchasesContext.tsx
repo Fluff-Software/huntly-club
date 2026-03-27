@@ -68,12 +68,17 @@ export const PurchasesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // Update user ID on login/logout
   useEffect(() => {
     const handleUserChange = async () => {
-      if (user?.id) {
-        await updatePurchasesUserId(user.id);
-      } else {
-        await resetPurchasesUser();
+      setIsLoading(true);
+      try {
+        if (user?.id) {
+          await updatePurchasesUserId(user.id);
+        } else {
+          await resetPurchasesUser();
+        }
+        await refreshSubscriptionStatus();
+      } finally {
+        setIsLoading(false);
       }
-      await refreshSubscriptionStatus();
     };
 
     handleUserChange();

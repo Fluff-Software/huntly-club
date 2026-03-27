@@ -87,11 +87,18 @@ export const getTeams = async (): Promise<Team[]> => {
   return data || [];
 };
 
-/** Get user_data for the given user (includes team, weekly_email; team may be null). */
-export const getUserData = async (userId: string): Promise<{ user_id: string; team: number | null; weekly_email: boolean } | null> => {
+/** Get user_data for the given user (team may be null). */
+export const getUserData = async (
+  userId: string
+): Promise<{
+  user_id: string;
+  team: number | null;
+  weekly_email: boolean;
+  last_seen_season_id: number | null;
+} | null> => {
   const { data, error } = await supabase
     .from("user_data")
-    .select("user_id, team, weekly_email")
+    .select("user_id, team, weekly_email, last_seen_season_id")
     .eq("user_id", userId)
     .single();
 
@@ -126,6 +133,22 @@ export const updateUserDataWeeklyEmail = async (userId: string, weeklyEmail: boo
   if (error) {
     console.error("Error updating user_data weekly_email:", error);
     throw new Error(`Failed to update weekly email preference: ${error.message}`);
+  }
+};
+
+/** Update the authenticated user's last seen season announcement in user_data. */
+export const updateUserDataLastSeenSeasonId = async (
+  userId: string,
+  seasonId: number
+): Promise<void> => {
+  const { error } = await supabase
+    .from("user_data")
+    .update({ last_seen_season_id: seasonId })
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("Error updating user_data last_seen_season_id:", error);
+    throw new Error(`Failed to update last seen season id: ${error.message}`);
   }
 };
 

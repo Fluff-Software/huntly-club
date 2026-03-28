@@ -24,7 +24,6 @@ import {
   recordTutorialAchievement,
 } from "@/services/activityProgressService";
 import {
-  getPushEnabled,
   hasAskedPushOptIn,
   registerForPushNotificationsAsync,
   setPushEnabled,
@@ -287,15 +286,6 @@ export default function TabLayout() {
     showSeasonAnnouncementModal,
     seasonAnnouncementChecking,
   ]);
-
-  useEffect(() => {
-    if (!showNotificationPrompt) return;
-    // Default to opt-out in the first-run prompt.
-    setEmailOptIn(false);
-    getPushEnabled()
-      .then((enabled) => setPushOptIn(enabled))
-      .catch(() => setPushOptIn(false));
-  }, [showNotificationPrompt]);
 
   const handleNotificationPromptSave = async () => {
     if (!user?.id) return;

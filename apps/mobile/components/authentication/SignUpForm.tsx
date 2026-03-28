@@ -148,6 +148,8 @@ export function SignUpForm({ onLoginInstead }: SignUpFormProps) {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          autoCorrect={false}
+          autoCapitalize="none"
         />
 
         <TextInput
@@ -157,6 +159,8 @@ export function SignUpForm({ onLoginInstead }: SignUpFormProps) {
           value={confirmPassword}
           onChangeText={setConfirmPassword}
           secureTextEntry
+          autoCorrect={false}
+          autoCapitalize="none"
         />
 
         <Button

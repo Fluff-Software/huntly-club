@@ -5,6 +5,7 @@ import {
   Pressable,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
@@ -60,23 +61,25 @@ export default function AuthScreen() {
         <StatusBar style="light" />
         <Stack.Screen options={{ title: "Authentication", headerShown: false }} />
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          behavior="padding"
           className="flex-1"
         >
-          <View
-            style={{
-              flex: 1,
+          <ScrollView
+            contentContainerStyle={{
+              flexGrow: 1,
               justifyContent: "center",
               paddingHorizontal: scaleW(20),
               paddingVertical: scaleW(24),
             }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
             {mode === AuthScreenMode.LOGIN ? (
               <LoginForm onCreateAccount={() => router.replace("/get-started")} />
             ) : (
               <SignUpForm onLoginInstead={() => setMode(AuthScreenMode.LOGIN)} />
             )}
-          </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     );

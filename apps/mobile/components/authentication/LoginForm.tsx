@@ -112,7 +112,6 @@ export function LoginForm({ onCreateAccount }: LoginFormProps) {
             backgroundColor: "#FDF8F3",
             color: "#4F6F52",
             fontSize: scaleW(16),
-            lineHeight: scaleW(22),
             textAlignVertical: "center",
           }}
           placeholder="Email"
@@ -134,7 +133,6 @@ export function LoginForm({ onCreateAccount }: LoginFormProps) {
             backgroundColor: "#FDF8F3",
             color: "#4F6F52",
             fontSize: scaleW(16),
-            lineHeight: scaleW(22),
             textAlignVertical: "center",
           }}
           placeholder="Password"

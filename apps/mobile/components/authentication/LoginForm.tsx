@@ -140,6 +140,8 @@ export function LoginForm({ onCreateAccount }: LoginFormProps) {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          autoCorrect={false}
+          autoCapitalize="none"
         />
 
         <Pressable

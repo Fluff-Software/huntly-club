@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useActionState, useState, useRef, useEffect } from "react";
 import { Button } from "@/components/Button";
 import { ImageUploadField } from "@/components/ImageUploadField";
+import { uploadActivityImage } from "@/lib/upload-actions";
 
 export type CategoryOption = {
   id: number;
@@ -12,7 +13,13 @@ export type CategoryOption = {
 };
 
 type PrepItem = { title: string; description: string };
-type StepItem = { instruction: string; tip: string; media_url: string };
+type StepItem = {
+  instruction: string;
+  tip: string;
+  media_url: string;
+  _uploading?: boolean;
+  _uploadError?: string | null;
+};
 
 type ActivityFormProps = {
   action: (formData: FormData) => Promise<{ error?: string }>;
@@ -104,6 +111,27 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [categoriesOpen]);
+
+  async function handleStepImageUpload(index: number, file: File) {
+    setStepsList((prev) =>
+      prev.map((s, i) => (i === index ? { ...s, _uploading: true, _uploadError: null } : s))
+    );
+    const formData = new FormData();
+    formData.set("file", file);
+    const result = await uploadActivityImage(formData);
+    setStepsList((prev) =>
+      prev.map((s, i) =>
+        i === index
+          ? {
+              ...s,
+              _uploading: false,
+              _uploadError: result.error ?? null,
+              media_url: result.url ?? s.media_url,
+            }
+          : s
+      )
+    );
+  }
 
   return (
     <form action={formAction} className="max-w-2xl space-y-6">
@@ -342,18 +370,67 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
                   placeholder="Tip (optional)"
                   className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
                 />
-                <input
-                  name="step_media"
-                  type="url"
-                  value={step.media_url}
-                  onChange={(e) =>
-                    setStepsList((prev) =>
-                      prev.map((s, i) => (i === index ? { ...s, media_url: e.target.value } : s))
-                    )
-                  }
-                  placeholder="Media URL (optional)"
-                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-                />
+                <div>
+                  <input type="hidden" name="step_media" value={step.media_url} />
+                  {step._uploading ? (
+                    <span className="text-sm text-stone-500">Uploading…</span>
+                  ) : step.media_url ? (
+                    <div className="flex items-start gap-2">
+                      <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg border border-stone-200">
+                        <Image
+                          src={step.media_url}
+                          alt=""
+                          fill
+                          className="object-cover"
+                          unoptimized={!step.media_url.includes("supabase.co")}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="cursor-pointer rounded-lg border border-stone-300 px-2 py-1 text-xs text-stone-600 hover:bg-stone-100">
+                          Change
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,image/gif"
+                            className="sr-only"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) handleStepImageUpload(index, f);
+                            }}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setStepsList((prev) =>
+                              prev.map((s, i) => (i === index ? { ...s, media_url: "" } : s))
+                            )
+                          }
+                          className="rounded-lg border border-stone-300 px-2 py-1 text-xs text-stone-600 hover:bg-stone-100"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-dashed border-stone-400 px-3 py-2 text-sm text-stone-600 hover:border-huntly-sage hover:text-huntly-forest">
+                      + Upload image
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        className="sr-only"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleStepImageUpload(index, f);
+                        }}
+                      />
+                    </label>
+                  )}
+                  {step._uploadError && (
+                    <p className="mt-1 text-xs text-red-600" role="alert">
+                      {step._uploadError}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           ))}

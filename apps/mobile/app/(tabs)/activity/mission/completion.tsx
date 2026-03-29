@@ -35,6 +35,7 @@ import { useUser } from "@/contexts/UserContext";
 import { getActivityById } from "@/services/packService";
 import {
   ensureProgressRows,
+  completeProgressRows,
   insertUserActivityPhotos,
   insertUserAchievementsForMission,
   updateProgressDebrief,
@@ -328,11 +329,12 @@ export default function CompletionScreen() {
     setCompleting(true);
     try {
       // 1–3: Ensure user_activity_progress rows exist for each selected profile
-      const { progressIdByProfile, inserted: insertedProgress } =
+      const { progressIdByProfile, inserted: insertedProgress, existingIncomplete } =
         await ensureProgressRows(selectedPlayerIds, activity.id);
 
       const progressIds = Object.values(progressIdByProfile);
       if (progressIds.length > 0) {
+        await completeProgressRows(progressIds);
         await updateProgressDebrief(
           progressIds,
           debriefAnswer1.trim() || null,
@@ -340,15 +342,17 @@ export default function CompletionScreen() {
         );
       }
 
-      // When new progress rows were created, record achievements
-      if (insertedProgress.length > 0) {
+      // Award achievements for all profiles completing this mission for the first time
+      // (both newly inserted rows and existing rows that weren't yet completed)
+      const newlyCompleting = [...insertedProgress, ...existingIncomplete];
+      if (newlyCompleting.length > 0) {
         if (teamId != null) {
           const activityXp = activity.xp ?? 0;
           await insertUserAchievementsForMission(
-            insertedProgress.map((row) => ({
+            newlyCompleting.map((row) => ({
               profile_id: row.profile_id,
               team_id: teamId,
-              source_id: row.id,
+              source_id: progressIdByProfile[row.profile_id],
               xp: activityXp,
             }))
           );
@@ -402,7 +406,7 @@ export default function CompletionScreen() {
         }))
       );
 
-      const achievementsForReward = insertedProgress.map((row) => ({
+      const achievementsForReward = newlyCompleting.map((row) => ({
         profile_name:
           profiles.find((p) => p.id === row.profile_id)?.nickname ?? "Explorer",
         message: "completed a mission",

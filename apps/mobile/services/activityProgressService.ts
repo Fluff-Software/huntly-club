@@ -246,6 +246,8 @@ export interface EnsureProgressRowsResult {
   progressIdByProfile: Record<number, number>;
   /** Rows that were newly created (use to e.g. insert user_achievements). */
   inserted: { id: number; profile_id: number }[];
+  /** Rows that already existed but had not yet been completed (completed_at was null). */
+  existingIncomplete: { id: number; profile_id: number }[];
 }
 
 /**
@@ -257,12 +259,12 @@ export const ensureProgressRows = async (
   profileIds: number[],
   activityId: number
 ): Promise<EnsureProgressRowsResult> => {
-  const empty: EnsureProgressRowsResult = { progressIdByProfile: {}, inserted: [] };
+  const empty: EnsureProgressRowsResult = { progressIdByProfile: {}, inserted: [], existingIncomplete: [] };
   if (profileIds.length === 0) return empty;
 
   const { data: existing, error: selectError } = await supabase
     .from("user_activity_progress")
-    .select("id, profile_id")
+    .select("id, profile_id, completed_at")
     .eq("activity_id", activityId)
     .in("profile_id", profileIds);
 
@@ -272,13 +274,17 @@ export const ensureProgressRows = async (
   }
 
   const progressIdByProfile: Record<number, number> = {};
+  const existingIncomplete: { id: number; profile_id: number }[] = [];
   for (const row of existing ?? []) {
     progressIdByProfile[row.profile_id] = row.id;
+    if (row.completed_at == null) {
+      existingIncomplete.push({ id: row.id, profile_id: row.profile_id });
+    }
   }
 
   const missingProfileIds = profileIds.filter((id) => progressIdByProfile[id] == null);
   if (missingProfileIds.length === 0) {
-    return { progressIdByProfile, inserted: [] };
+    return { progressIdByProfile, inserted: [], existingIncomplete };
   }
 
   const inserts = missingProfileIds.map((profile_id) => ({
@@ -304,6 +310,7 @@ export const ensureProgressRows = async (
   return {
     progressIdByProfile,
     inserted: insertedRows,
+    existingIncomplete,
   };
 };
 
@@ -326,6 +333,22 @@ export const updateProgressDebrief = async (
   if (error) {
     console.error("Error updating progress debrief:", error);
     throw new Error(`Failed to save debrief: ${error.message}`);
+  }
+};
+
+/**
+ * Marks user_activity_progress rows as completed by setting completed_at.
+ */
+export const completeProgressRows = async (progressIds: number[]): Promise<void> => {
+  if (progressIds.length === 0) return;
+  const { error } = await supabase
+    .from("user_activity_progress")
+    .update({ completed_at: new Date().toISOString() })
+    .in("id", progressIds)
+    .is("completed_at", null);
+  if (error) {
+    console.error("Error completing progress rows:", error);
+    throw new Error(`Failed to complete progress rows: ${error.message}`);
   }
 };
 

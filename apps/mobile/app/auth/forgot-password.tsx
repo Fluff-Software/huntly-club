@@ -53,14 +53,17 @@ export default function ForgotPasswordScreen() {
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
+        enabled={Platform.OS !== "ios"}
       >
         <ScrollView
+          style={{ flex: 1 }}
           contentContainerStyle={{
             flexGrow: 1,
             justifyContent: "center",
             padding: 24,
           }}
           keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
         >
           <View className="bg-white rounded-2xl p-6 shadow-soft max-w-sm self-center w-full">
             <ThemedText type="subtitle" className="text-huntly-forest text-center mb-2">

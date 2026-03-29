@@ -1,0 +1,60 @@
+name: EAS Production Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to build'
+        required: true
+        type: choice
+        options:
+          - all
+          - ios
+          - android
+        default: 'all'
+      auto_submit:
+        description: 'Automatically submit to app stores after build'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'apps/mobile/package-lock.json'
+
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        working-directory: apps/mobile
+        run: npm ci
+
+      - name: Trigger EAS Production Build
+        working-directory: apps/mobile
+        env:
+          EXPO_PUBLIC_EAS_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_EAS_PROJECT_ID }}
+          EXPO_PUBLIC_OWNER: ${{ secrets.EXPO_PUBLIC_OWNER }}
+        run: |
+          echo "Starting EAS production build for platform: ${{ github.event.inputs.platform }}"
+          AUTO_SUBMIT_FLAG=""
+          if [ "${{ github.event.inputs.auto_submit }}" == "true" ]; then
+            AUTO_SUBMIT_FLAG="--auto-submit"
+            echo "Auto-submit enabled: build will be submitted to the app stores after completion."
+          fi
+          eas build --profile production --platform ${{ github.event.inputs.platform }} --non-interactive --no-wait $AUTO_SUBMIT_FLAG
+          echo "EAS production build triggered successfully! Check https://expo.dev for build status."

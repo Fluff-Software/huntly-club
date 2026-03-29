@@ -36,17 +36,10 @@ export function useLayoutScale(): LayoutScale {
 
   const scaleW = useCallback(
     (n: number) => {
-      // Calculate scale factors for both dimensions
-      const widthScale = width / REFERENCE_WIDTH;
-      const heightScale = height / REFERENCE_HEIGHT;
-      
-      // Use the minimum to ensure content fits on screen
-      // This prevents content from being cut off on devices with different aspect ratios
-      const scale = Math.min(widthScale, heightScale);
-      
+      const scale = width / REFERENCE_WIDTH;
       return Math.round(scale * n);
     },
-    [width, height]
+    [width]
   );
 
   return { scaleW, width, height, isTablet };

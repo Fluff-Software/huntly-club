@@ -39,7 +39,10 @@ async function setSessionFromAuthConfirmUrl(url: string): Promise<void> {
   const accessToken = params.get("access_token");
   const refreshToken = params.get("refresh_token");
   if (accessToken && refreshToken) {
-    await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+    const { error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+    if (error) {
+      console.error("setSession failed (token may have been rotated):", error.message);
+    }
   }
 }
 

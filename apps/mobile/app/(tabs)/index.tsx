@@ -142,20 +142,24 @@ export default function HomeScreen() {
     }
   }, [width, teamCardConfig]);
 
+  const resetToActivityPage = useCallback(() => {
+    if (width <= 0) return;
+    pagerRef.current?.scrollTo({ x: width * initialIndex, animated: false });
+    setCurrentIndex(initialIndex);
+  }, [width, initialIndex]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
-      pagerRef.current?.scrollTo({ x: width * initialIndex, animated: false });
+      resetToActivityPage();
     }, 0);
     return () => clearTimeout(timer);
-  }, [width, initialIndex]);
+  }, [resetToActivityPage]);
 
   useFocusEffect(
     useCallback(() => {
       refetchMissions();
-      if (width > 0) {
-        pagerRef.current?.scrollTo({ x: width * initialIndex, animated: false });
-      }
-    }, [refetchMissions, width, initialIndex])
+      resetToActivityPage();
+    }, [refetchMissions, resetToActivityPage])
   );
 
   const pageAnimatedStyles = useMemo(() => {

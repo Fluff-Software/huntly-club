@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
       console.error("createUser error:", createResult.error);
       const msg = createResult.error.toLowerCase().includes("already")
         ? "An account with this email already exists."
-        : "Could not create account. Please try again.";
+        : "Could not create account. Please try again";
       return jsonResponse({ error: msg }, 400);
     }
 

@@ -128,6 +128,7 @@ export default function SignUpParentEmailScreen() {
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
+        enabled={Platform.OS !== "ios"}
       >
         <ScrollView
           style={{ flex: 1 }}
@@ -139,6 +140,7 @@ export default function SignUpParentEmailScreen() {
           }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
         >
           <Animated.View entering={FadeInDown.duration(500).delay(0)}>
             <ThemedText

@@ -63,8 +63,10 @@ export default function AuthScreen() {
         <KeyboardAvoidingView
           behavior="padding"
           className="flex-1"
+          enabled={Platform.OS !== "ios"}
         >
           <ScrollView
+            style={{ flex: 1 }}
             contentContainerStyle={{
               flexGrow: 1,
               justifyContent: "center",
@@ -73,6 +75,7 @@ export default function AuthScreen() {
             }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
           >
             {mode === AuthScreenMode.LOGIN ? (
               <LoginForm onCreateAccount={() => router.replace("/get-started")} />

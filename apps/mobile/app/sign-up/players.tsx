@@ -4,7 +4,6 @@ import {
   Pressable,
   TextInput,
   ScrollView,
-  KeyboardAvoidingView,
   Platform,
   Alert,
 } from "react-native";
@@ -126,17 +125,13 @@ export default function SignUpPlayersScreen() {
   const showTrash = name.trim().length > 0 || editingIndex !== null;
 
   const containerStyle = { flex: 1, backgroundColor: HUNTLY_GREEN };
-  const Wrapper = Platform.OS === "ios" ? KeyboardAvoidingView : View;
 
   return (
     <>
       <StatusBar style="light" />
       <Stack.Screen options={{ title: "Who's playing", headerShown: false }} />
       <SafeAreaView style={containerStyle} edges={["top", "left", "right"]}>
-        <Wrapper
-          {...(Platform.OS === "ios" && { behavior: "padding" as const })}
-          style={{ flex: 1 }}
-        >
+        <View style={{ flex: 1 }}>
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{
@@ -146,6 +141,7 @@ export default function SignUpPlayersScreen() {
           }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
         >
           <Animated.View entering={FadeInDown.duration(500).delay(0)}>
             <ThemedText
@@ -773,7 +769,7 @@ export default function SignUpPlayersScreen() {
             </Pressable>
           </Animated.View>
         </ScrollView>
-        </Wrapper>
+        </View>
       </SafeAreaView>
     </>
   );

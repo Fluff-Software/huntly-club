@@ -337,7 +337,6 @@ export default function TabLayout() {
     if (step === "click_story") return routeName !== "story";
     if (step === "click_missions") return routeName !== "missions";
     if (step === "click_team") return routeName !== "social";
-    if (step === "click_testing") return routeName !== "testing";
     return false;
   };
 
@@ -476,22 +475,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="testing"
         options={{
-          title: "Feedback",
-          tabBarIcon: ({ color }) => (
-            <View style={[styles.storyIconWrapper, { width: scaleW(44), height: scaleW(44) }]}>
-              {(tutorialStep as string) === "click_testing" && (
-                <View style={[styles.tutorialPulseContainer, { width: scaleW(44), height: scaleW(44) }]}>
-                  <StoryTabPulse size={scaleW(44)} />
-                </View>
-              )}
-              <MaterialIcons
-                name="chat-bubble-outline"
-                size={scaleW(24)}
-                color={color}
-              />
-            </View>
-          ),
-          href: profiles.length > 0 ? undefined : null,
+          href: null,
         }}
       />
       <Tabs.Screen

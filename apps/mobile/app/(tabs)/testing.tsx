@@ -89,7 +89,7 @@ export default function TestingScreen() {
               textAlign: "center",
             }}
           >
-            You&apos;re using a beta version of Huntly World. Tell us what feels
+            Tell us what feels
             great, what&apos;s confusing, or anything that doesn&apos;t quite
             work as expected.
           </ThemedText>

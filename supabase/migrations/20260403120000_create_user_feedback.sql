@@ -14,8 +14,12 @@ CREATE TABLE IF NOT EXISTS "public"."user_feedback" (
   "app_build" text,
   "app_environment" text,
   "handled" boolean DEFAULT false,
+  "handled_at" timestamptz,
   "extra" jsonb
 );
+
+ALTER TABLE "public"."user_feedback"
+  ADD COLUMN IF NOT EXISTS "handled_at" timestamptz;
 
 ALTER TABLE "public"."user_feedback" ENABLE ROW LEVEL SECURITY;
 

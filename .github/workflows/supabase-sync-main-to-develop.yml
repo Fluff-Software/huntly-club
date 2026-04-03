@@ -44,11 +44,25 @@ jobs:
           sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
           sudo apt-get update
           sudo apt-get install -y postgresql-client-17
+          if [ ! -x /usr/lib/postgresql/17/bin/pg_dump ]; then
+            echo "postgresql-client-17 did not install pg_dump under /usr/lib/postgresql/17/bin"
+            exit 1
+          fi
+          echo "/usr/lib/postgresql/17/bin" >> "${GITHUB_PATH}"
           pg_dump --version
+          psql --version
           curl -sS "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip
           unzip -q awscliv2.zip
           sudo ./aws/install --update
           rm -rf aws awscliv2.zip
+
+      - name: Verify PostgreSQL client matches server major (17)
+        run: |
+          v="$(pg_dump --version | awk '{print $3}' | cut -d. -f1)"
+          if [ "${v}" != "17" ]; then
+            echo "Expected pg_dump major 17, got ${v} ($(command -v pg_dump))"
+            exit 1
+          fi
 
       - name: Capture migration state
         env:

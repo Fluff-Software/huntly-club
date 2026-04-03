@@ -132,7 +132,11 @@ jobs:
           END
           $$;
           SQL
-          psql "${TARGET_DB_URL}" -v ON_ERROR_STOP=1 -f main-data.sql
+          {
+            echo "SET session_replication_role = replica;"
+            cat main-data.sql
+            echo "SET session_replication_role = DEFAULT;"
+          } | psql "${TARGET_DB_URL}" -v ON_ERROR_STOP=1
 
       - name: Anonymise non-admin emails
         env:

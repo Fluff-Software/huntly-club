@@ -118,7 +118,7 @@ jobs:
           DECLARE
             stmt text;
           BEGIN
-            SELECT 'TRUNCATE TABLE ' || string_agg(format('%I.%I', schemaname, tablename), ', ') || ' RESTART IDENTITY CASCADE;'
+            SELECT 'TRUNCATE TABLE ' || string_agg(format('%I.%I', schemaname, tablename), ', ') || ' CONTINUE IDENTITY CASCADE;'
             INTO stmt
             FROM pg_tables
             WHERE schemaname IN ('public', 'auth')

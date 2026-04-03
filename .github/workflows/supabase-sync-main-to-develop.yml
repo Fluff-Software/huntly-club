@@ -106,6 +106,7 @@ jobs:
             --schema=public \
             --schema=auth \
             --exclude-table-data='supabase_migrations.schema_migrations' \
+            --exclude-table-data='auth.schema_migrations' \
             --exclude-table-data='auth.audit_log_entries' \
             > main-data.sql
 

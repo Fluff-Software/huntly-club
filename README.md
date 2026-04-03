@@ -5,51 +5,37 @@ This is an Expo project, which uses Supabase for the back end.
 ## Get started with local development
 
 1. Run Supabase locally
-
-   ```bash
+  ```bash
    supabase start
-   ```
-
+  ```
 2. Copy `.env.example` to `.env` and fill in values from `supabase status` (local) or your Supabase project (hosted).
-
 3. Install a development build on your device/simulator.
-
 4. Start the app
-
-   ```bash
+  ```bash
     npx expo start
-   ```
+  ```
 
 ## Database
 
 The core flow that we use to affect changes to the database and the associated types are:
 
 1. Make changes to the database using the Supabase UI.
-
 2. Create a migration file using
-
-   ```bash
+  ```bash
    supabase db diff --local --file <a_descriptive_name>
-   ```
-
+  ```
 3. If needed, use this command to rebuild your database from the migrations:
-
-   ```bash
+  ```bash
    supabase db reset
-   ```
-
+  ```
 4. Recreate types using
-
-   ```bash
+  ```bash
    supabase gen types typescript --local > models/supabase.ts
-   ```
-
+  ```
 5. Set up initial data:
-
-   ```bash
+  ```bash
    docker exec -i supabase_db_huntly-club psql -U postgres -d postgres < supabase/seed/initial_data.sql
-   ```
-
+  ```
    Or run `make seed` (starts Supabase if needed, then loads the same seed file).
 
 ## Hosted Supabase and EAS device builds
@@ -76,32 +62,60 @@ The workflow `.github/workflows/supabase-deploy.yml` runs on push to `main` when
 
 Add these **GitHub repository secrets** (Settings → Secrets and variables → Actions):
 
-| Secret | Where to get it |
-|--------|------------------|
-| `SUPABASE_ACCESS_TOKEN` | [Supabase dashboard](https://supabase.com/dashboard/account/tokens) → Access Tokens → Generate |
-| `SUPABASE_PROJECT_REF` | Project ref from the project URL (e.g. `abcdefghijklmnop`) |
-| `SUPABASE_DB_PASSWORD` | Project **Settings → Database → Database password** (the one you set when creating the project) |
-| `EXPO_TOKEN` | [Expo dashboard](https://expo.dev/accounts/[account]/settings/access-tokens) → Access Tokens → Create Token |
-| `EXPO_PUBLIC_EAS_PROJECT_ID` | Your EAS project ID from `app.config.ts` or run `eas init` locally to generate one |
-| `EXPO_PUBLIC_OWNER` | Your Expo account username or organization name (e.g. `fluffsoftware`) |
+
+| Secret                       | Where to get it                                                                                             |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `SUPABASE_ACCESS_TOKEN`      | [Supabase dashboard](https://supabase.com/dashboard/account/tokens) → Access Tokens → Generate              |
+| `SUPABASE_PROJECT_REF`       | Project ref from the project URL (e.g. `abcdefghijklmnop`)                                                  |
+| `SUPABASE_DB_PASSWORD`       | Project **Settings → Database → Database password** (the one you set when creating the project)             |
+| `EXPO_TOKEN`                 | [Expo dashboard](https://expo.dev/accounts/[account]/settings/access-tokens) → Access Tokens → Create Token |
+| `EXPO_PUBLIC_EAS_PROJECT_ID` | Your EAS project ID from `app.config.ts` or run `eas init` locally to generate one                          |
+| `EXPO_PUBLIC_OWNER`          | Your Expo account username or organization name (e.g. `fluffsoftware`)                                      |
+
 
 After that you do not need to run migrations or deploy functions locally for the hosted project, and you do not need hosted URL/keys in your local `.env`.
+
+### 3b. Manual prod-to-develop data sync
+
+Use **Actions → Supabase Sync Main To Develop → Run workflow** to copy the latest production data into develop for testing.
+
+- This workflow runs only from `develop`.
+- It applies repo migrations to the develop project before loading data.
+- It restores `public` and `auth` data from main into develop, then anonymises emails for users not in `public.admins`.
+- It mirrors storage buckets so mission and submission media are available in develop.
+- It requires typing `SYNC_MAIN_TO_DEVELOP` in the confirmation input.
+
+Add these additional GitHub secrets for the sync workflow:
+
+
+| Secret                                       | Purpose                                                        |
+| -------------------------------------------- | -------------------------------------------------------------- |
+| `SUPABASE_MAIN_DB_URL`                       | Direct Postgres connection string for source (main/prod)       |
+| `SUPABASE_DEVELOP_DB_URL`                    | Direct Postgres connection string for target (develop)         |
+| `SUPABASE_DEVELOP_PROJECT_REF`               | Supabase project ref for develop                               |
+| `SUPABASE_DEVELOP_DB_PASSWORD`               | Database password for develop project (for `supabase db push`) |
+| `SUPABASE_MAIN_PROJECT_REF`                  | Supabase project ref for main/prod                             |
+| `SUPABASE_MAIN_STORAGE_ACCESS_KEY_ID`        | S3 access key for source Supabase storage                      |
+| `SUPABASE_MAIN_STORAGE_SECRET_ACCESS_KEY`    | S3 secret key for source Supabase storage                      |
+| `SUPABASE_DEVELOP_STORAGE_ACCESS_KEY_ID`     | S3 access key for target Supabase storage                      |
+| `SUPABASE_DEVELOP_STORAGE_SECRET_ACCESS_KEY` | S3 secret key for target Supabase storage                      |
+
 
 ### 4. EAS builds for devices (internal install)
 
 1. Set EAS secrets so the built app talks to the hosted backend (EAS does not use your local `.env`):
-   ```bash
+  ```bash
    eas secret:create --name EXPO_PUBLIC_SUPABASE_URL --value "https://YOUR_PROJECT_REF.supabase.co" --scope project
    eas secret:create --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "YOUR_ANON_KEY" --scope project
-   ```
+  ```
 2. Register devices:
-   ```bash
+  ```bash
    eas device:create
-   ```
+  ```
 3. Build an installable app using the **preview** profile (internal distribution):
-   ```bash
+  ```bash
    eas build --profile preview --platform all
-   ```
+  ```
    Or use `make create-preview-build` for the same. Install the built app on registered devices via the link EAS provides.
 
 #### Triggering builds from GitHub Actions
@@ -129,3 +143,4 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+

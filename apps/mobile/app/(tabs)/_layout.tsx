@@ -40,6 +40,7 @@ const TAB_BAR_COLORS: Record<string, string> = {
   story: "#1E2E28",
   missions: "#D2684B",
   social: "#C3A4FF",
+  journal: "#B07D3E",
   testing: "#5B8A9E",
 };
 
@@ -470,6 +471,16 @@ export default function TabLayout() {
           // Always show the Team tab; the screen itself already handles
           // the “no team yet” state.
           href: undefined,
+        }}
+      />
+      <Tabs.Screen
+        name="journal"
+        options={{
+          title: "Journal",
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons name="auto-stories" size={scaleW(24)} color={color} />
+          ),
+          href: profiles.length > 0 ? undefined : null,
         }}
       />
       <Tabs.Screen

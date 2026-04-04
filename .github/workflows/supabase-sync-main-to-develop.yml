@@ -1,0 +1,199 @@
+name: Supabase Sync Main To Develop
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_sync:
+        description: "Type SYNC_MAIN_TO_DEVELOP to run"
+        required: true
+        type: string
+      dry_run_storage:
+        description: "Run storage sync in dry-run mode"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  sync:
+    name: Sync Supabase Data And Storage
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    environment: develop
+    permissions:
+      contents: read
+    steps:
+      - name: Validate confirmation input
+        run: |
+          if [ "${{ github.event.inputs.confirm_sync }}" != "SYNC_MAIN_TO_DEVELOP" ]; then
+            echo "Confirmation string mismatch. Aborting."
+            exit 1
+          fi
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Install PostgreSQL client and AWS CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-common curl unzip
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+          if [ ! -x /usr/lib/postgresql/17/bin/pg_dump ]; then
+            echo "postgresql-client-17 did not install pg_dump under /usr/lib/postgresql/17/bin"
+            exit 1
+          fi
+          echo "/usr/lib/postgresql/17/bin" >> "${GITHUB_PATH}"
+          pg_dump --version
+          psql --version
+          curl -sS "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip
+          unzip -q awscliv2.zip
+          sudo ./aws/install --update
+          rm -rf aws awscliv2.zip
+
+      - name: Verify PostgreSQL client matches server major (17)
+        run: |
+          v="$(pg_dump --version | awk '{print $3}' | cut -d. -f1)"
+          if [ "${v}" != "17" ]; then
+            echo "Expected pg_dump major 17, got ${v} ($(command -v pg_dump))"
+            exit 1
+          fi
+
+      - name: Capture migration state
+        env:
+          SOURCE_DB_URL: ${{ secrets.SUPABASE_MAIN_DB_URL }}
+          TARGET_DB_URL: ${{ secrets.SUPABASE_DEVELOP_DB_URL }}
+        run: |
+          echo "Source migration count:"
+          psql "${SOURCE_DB_URL}" -t -c "SELECT count(*) FROM supabase_migrations.schema_migrations;"
+          echo "Target migration count:"
+          psql "${TARGET_DB_URL}" -t -c "SELECT count(*) FROM supabase_migrations.schema_migrations;"
+
+      - name: Apply repo migrations to develop
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DEVELOP_DB_PASSWORD }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_DEVELOP_PROJECT_REF }}
+        run: |
+          supabase link --project-ref "${SUPABASE_PROJECT_REF}" --password "${SUPABASE_DB_PASSWORD}"
+          supabase db push --linked --include-all
+
+      - name: Preflight schema compatibility checks
+        env:
+          TARGET_DB_URL: ${{ secrets.SUPABASE_DEVELOP_DB_URL }}
+        run: |
+          has_admins_table="$(psql "${TARGET_DB_URL}" -t -A -c "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='admins');")"
+          has_auth_users_table="$(psql "${TARGET_DB_URL}" -t -A -c "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='auth' AND table_name='users');")"
+          if [ "${has_admins_table}" != "t" ] || [ "${has_auth_users_table}" != "t" ]; then
+            echo "Required tables are missing in target schema (public.admins and/or auth.users)."
+            exit 1
+          fi
+
+      - name: Dump source data
+        env:
+          SOURCE_DB_URL: ${{ secrets.SUPABASE_MAIN_DB_URL }}
+        run: |
+          pg_dump "${SOURCE_DB_URL}" \
+            --format=plain \
+            --data-only \
+            --no-owner \
+            --no-privileges \
+            --schema=public \
+            --schema=auth \
+            --exclude-table-data='supabase_migrations.schema_migrations' \
+            --exclude-table-data='auth.schema_migrations' \
+            --exclude-table-data='auth.audit_log_entries' \
+            > main-data.sql
+
+      - name: Full replace target data and restore
+        env:
+          TARGET_DB_URL: ${{ secrets.SUPABASE_DEVELOP_DB_URL }}
+        run: |
+          psql "${TARGET_DB_URL}" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE
+            stmt text;
+          BEGIN
+            SELECT 'TRUNCATE TABLE ' || string_agg(format('%I.%I', schemaname, tablename), ', ') || ' CONTINUE IDENTITY CASCADE;'
+            INTO stmt
+            FROM pg_tables
+            WHERE schemaname IN ('public', 'auth')
+              AND NOT (schemaname = 'auth' AND tablename = 'schema_migrations')
+              AND NOT (schemaname = 'auth' AND tablename = 'audit_log_entries');
+
+            IF stmt IS NOT NULL THEN
+              EXECUTE stmt;
+            END IF;
+          END
+          $$;
+          SQL
+          {
+            echo "SET session_replication_role = replica;"
+            cat main-data.sql
+            echo "SET session_replication_role = DEFAULT;"
+          } | psql "${TARGET_DB_URL}" -v ON_ERROR_STOP=1
+
+      - name: Anonymise non-admin emails
+        env:
+          TARGET_DB_URL: ${{ secrets.SUPABASE_DEVELOP_DB_URL }}
+        run: |
+          psql "${TARGET_DB_URL}" -v ON_ERROR_STOP=1 -f supabase/sql/anonymise_non_admin_emails.sql
+
+      - name: Validate data and anonymisation
+        env:
+          SOURCE_DB_URL: ${{ secrets.SUPABASE_MAIN_DB_URL }}
+          TARGET_DB_URL: ${{ secrets.SUPABASE_DEVELOP_DB_URL }}
+        run: |
+          source_users_count="$(psql "${SOURCE_DB_URL}" -t -A -c "SELECT count(*) FROM auth.users;")"
+          target_users_count="$(psql "${TARGET_DB_URL}" -t -A -c "SELECT count(*) FROM auth.users;")"
+          if [ "${source_users_count}" != "${target_users_count}" ]; then
+            echo "User count mismatch: source=${source_users_count}, target=${target_users_count}"
+            exit 1
+          fi
+
+          non_admin_non_scrambled_count="$(psql "${TARGET_DB_URL}" -t -A -c "SELECT count(*) FROM auth.users u WHERE NOT EXISTS (SELECT 1 FROM public.admins a WHERE a.user_id = u.id) AND u.email !~* '@example\\.invalid$';")"
+          if [ "${non_admin_non_scrambled_count}" != "0" ]; then
+            echo "Found non-admin users with non-scrambled emails: ${non_admin_non_scrambled_count}"
+            exit 1
+          fi
+
+      - name: Sync storage buckets
+        env:
+          SOURCE_SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_MAIN_PROJECT_REF }}
+          TARGET_SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_DEVELOP_PROJECT_REF }}
+          SOURCE_AWS_ACCESS_KEY_ID: ${{ secrets.SUPABASE_MAIN_STORAGE_ACCESS_KEY_ID }}
+          SOURCE_AWS_SECRET_ACCESS_KEY: ${{ secrets.SUPABASE_MAIN_STORAGE_SECRET_ACCESS_KEY }}
+          TARGET_AWS_ACCESS_KEY_ID: ${{ secrets.SUPABASE_DEVELOP_STORAGE_ACCESS_KEY_ID }}
+          TARGET_AWS_SECRET_ACCESS_KEY: ${{ secrets.SUPABASE_DEVELOP_STORAGE_SECRET_ACCESS_KEY }}
+        run: |
+          chmod +x scripts/supabase-storage-sync.sh
+          if [ "${{ github.event.inputs.dry_run_storage }}" = "true" ]; then
+            ./scripts/supabase-storage-sync.sh --dry-run
+          else
+            ./scripts/supabase-storage-sync.sh
+          fi
+
+      - name: Validate storage sync
+        env:
+          SOURCE_SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_MAIN_PROJECT_REF }}
+          TARGET_SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_DEVELOP_PROJECT_REF }}
+          SOURCE_AWS_ACCESS_KEY_ID: ${{ secrets.SUPABASE_MAIN_STORAGE_ACCESS_KEY_ID }}
+          SOURCE_AWS_SECRET_ACCESS_KEY: ${{ secrets.SUPABASE_MAIN_STORAGE_SECRET_ACCESS_KEY }}
+          TARGET_AWS_ACCESS_KEY_ID: ${{ secrets.SUPABASE_DEVELOP_STORAGE_ACCESS_KEY_ID }}
+          TARGET_AWS_SECRET_ACCESS_KEY: ${{ secrets.SUPABASE_DEVELOP_STORAGE_SECRET_ACCESS_KEY }}
+        run: |
+          SOURCE_ENDPOINT="https://${SOURCE_SUPABASE_PROJECT_REF}.supabase.co/storage/v1/s3"
+          TARGET_ENDPOINT="https://${TARGET_SUPABASE_PROJECT_REF}.supabase.co/storage/v1/s3"
+          for bucket in activity-images user-activity-photos badges season-images story-slides parent-resources category-icons; do
+            source_count="$(AWS_ACCESS_KEY_ID="${SOURCE_AWS_ACCESS_KEY_ID}" AWS_SECRET_ACCESS_KEY="${SOURCE_AWS_SECRET_ACCESS_KEY}" AWS_DEFAULT_REGION="us-east-1" aws --endpoint-url "${SOURCE_ENDPOINT}" s3 ls "s3://${bucket}" --recursive | wc -l | xargs)"
+            target_count="$(AWS_ACCESS_KEY_ID="${TARGET_AWS_ACCESS_KEY_ID}" AWS_SECRET_ACCESS_KEY="${TARGET_AWS_SECRET_ACCESS_KEY}" AWS_DEFAULT_REGION="us-east-1" aws --endpoint-url "${TARGET_ENDPOINT}" s3 ls "s3://${bucket}" --recursive | wc -l | xargs)"
+            if [ "${source_count}" != "${target_count}" ]; then
+              echo "Bucket object count mismatch for ${bucket}: source=${source_count}, target=${target_count}"
+              exit 1
+            fi
+          done

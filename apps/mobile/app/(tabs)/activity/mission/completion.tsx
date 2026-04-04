@@ -146,8 +146,17 @@ export default function CompletionScreen() {
     number | null
   >(null);
   const [completing, setCompleting] = useState(false);
-  const [debriefAnswer1, setDebriefAnswer1] = useState("");
-  const [debriefAnswer2, setDebriefAnswer2] = useState("");
+  const [playerDebrief, setPlayerDebrief] = useState<Record<number, { answer1: string; answer2: string }>>({});
+
+  const getPlayerDebrief = (profileId: number) =>
+    playerDebrief[profileId] ?? { answer1: "", answer2: "" };
+
+  const setPlayerDebriefField = (profileId: number, field: "answer1" | "answer2", value: string) => {
+    setPlayerDebrief((prev) => ({
+      ...prev,
+      [profileId]: { ...getPlayerDebrief(profileId), [field]: value },
+    }));
+  };
 
   const getPlayerPhotos = (playerId: number) => playerPhotos[playerId] ?? [];
 
@@ -335,11 +344,16 @@ export default function CompletionScreen() {
       const progressIds = Object.values(progressIdByProfile);
       if (progressIds.length > 0) {
         await completeProgressRows(progressIds);
-        await updateProgressDebrief(
-          progressIds,
-          debriefAnswer1.trim() || null,
-          debriefAnswer2.trim() || null
-        );
+        for (const profileId of selectedPlayerIds) {
+          const progressId = progressIdByProfile[profileId];
+          if (progressId == null) continue;
+          const { answer1, answer2 } = getPlayerDebrief(profileId);
+          await updateProgressDebrief(
+            [progressId],
+            answer1.trim() || null,
+            answer2.trim() || null
+          );
+        }
       }
 
       // Award achievements for all profiles completing this mission for the first time
@@ -875,37 +889,6 @@ export default function CompletionScreen() {
           </Animated.View>
         )}
 
-        {(activity?.debrief_question_1 != null && activity.debrief_question_1.trim() !== "") && (
-          <Animated.View entering={FadeInDown.duration(500).delay(100)} style={styles.debriefInputCard}>
-            <ThemedText style={styles.debriefInputLabel}>
-              {activity.debrief_question_1}
-            </ThemedText>
-            <TextInput
-              style={styles.debriefInput}
-              value={debriefAnswer1}
-              onChangeText={setDebriefAnswer1}
-              placeholder="Write the name here..."
-              placeholderTextColor="rgba(255,255,255,0.5)"
-            />
-          </Animated.View>
-        )}
-
-        {(activity?.debrief_question_2 != null && activity.debrief_question_2.trim() !== "") && (
-          <Animated.View entering={FadeInDown.duration(500).delay(150)} style={styles.debriefInputCard}>
-            <ThemedText style={styles.debriefInputLabel}>
-              {activity.debrief_question_2}
-            </ThemedText>
-            <TextInput
-              style={[styles.debriefInput, styles.debriefInputMultiline]}
-              value={debriefAnswer2}
-              onChangeText={setDebriefAnswer2}
-              placeholder="Write a few words..."
-              placeholderTextColor="rgba(255,255,255,0.5)"
-              multiline
-            />
-          </Animated.View>
-        )}
-
         <Animated.View entering={FadeInDown.duration(500).delay(200)}>
           <ThemedText type="heading" style={styles.whoHeading}>
             Who did this activity?
@@ -1073,6 +1056,35 @@ export default function CompletionScreen() {
                     </Animated.View>
                   </View>
                 </View>
+                {(activity?.debrief_question_1 != null && activity.debrief_question_1.trim() !== "") && (
+                  <View style={[styles.debriefInputCard, { marginTop: scaleW(16) }]}>
+                    <ThemedText style={styles.debriefInputLabel}>
+                      {activity.debrief_question_1}
+                    </ThemedText>
+                    <TextInput
+                      style={styles.debriefInput}
+                      value={getPlayerDebrief(profile.id).answer1}
+                      onChangeText={(v) => setPlayerDebriefField(profile.id, "answer1", v)}
+                      placeholder="Write your answer here..."
+                      placeholderTextColor="rgba(255,255,255,0.5)"
+                    />
+                  </View>
+                )}
+                {(activity?.debrief_question_2 != null && activity.debrief_question_2.trim() !== "") && (
+                  <View style={styles.debriefInputCard}>
+                    <ThemedText style={styles.debriefInputLabel}>
+                      {activity.debrief_question_2}
+                    </ThemedText>
+                    <TextInput
+                      style={[styles.debriefInput, styles.debriefInputMultiline]}
+                      value={getPlayerDebrief(profile.id).answer2}
+                      onChangeText={(v) => setPlayerDebriefField(profile.id, "answer2", v)}
+                      placeholder="Write a few words..."
+                      placeholderTextColor="rgba(255,255,255,0.5)"
+                      multiline
+                    />
+                  </View>
+                )}
               </ExpandableSection>
             </Animated.View>
           );

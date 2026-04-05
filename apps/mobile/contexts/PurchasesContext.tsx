@@ -54,7 +54,6 @@ export const PurchasesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         await initializePurchases();
         const offerings = await getOfferings();
         setOfferings(offerings);
-        await refreshSubscriptionStatus();
       } catch (error) {
         console.error('Error initializing purchases:', error);
       } finally {

@@ -4,7 +4,7 @@ import { Slot, router } from "expo-router";
 import * as Notifications from "expo-notifications";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { LayoutAnimationConfig } from "react-native-reanimated";
 import * as Linking from "expo-linking";
 import {
@@ -62,24 +62,31 @@ Notifications.setNotificationHandler({
 export default function RootLayout() {
   useAppUpdate();
 
-  const [juaLoaded] = useJuaFonts({
+  const [juaLoaded, juaError] = useJuaFonts({
     Jua_400Regular,
   });
-  const [comicNeueLoaded] = useComicNeueFonts({
+  const [comicNeueLoaded, comicNeueError] = useComicNeueFonts({
     ComicNeue_400Regular,
     ComicNeue_700Bold,
   });
   const [spaceMonoLoaded] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
+  const [fontTimeoutElapsed, setFontTimeoutElapsed] = useState(false);
 
   const fontsLoaded = juaLoaded && comicNeueLoaded && spaceMonoLoaded;
+  const fontsReady = fontsLoaded || fontTimeoutElapsed || !!(juaError || comicNeueError);
 
   useEffect(() => {
-    if (fontsLoaded) {
+    const timer = setTimeout(() => setFontTimeoutElapsed(true), 5000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (fontsReady) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded]);
+  }, [fontsReady]);
 
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
@@ -116,7 +123,7 @@ export default function RootLayout() {
     };
   }, []);
 
-  if (!fontsLoaded) {
+  if (!fontsReady) {
     return null;
   }
 

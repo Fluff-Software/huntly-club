@@ -12,12 +12,20 @@ export function useAppUpdate(): void {
     const checkAndApply = async () => {
       try {
         const result = await Updates.checkForUpdateAsync();
-        if (result.isAvailable) {
-          await Updates.fetchUpdateAsync();
-          await Updates.reloadAsync();
-        }
+        if (!result.isAvailable) return;
+
+        // If the fetch takes too long the user is likely already past the splash screen —
+        // skip the update this session rather than reloading mid-use.
+        await Promise.race([
+          Updates.fetchUpdateAsync(),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("timeout")), 8000)
+          ),
+        ]);
+
+        await Updates.reloadAsync();
       } catch {
-        // Silently ignore — network errors, etc. App continues with cached bundle.
+        // Silently ignore — network errors, timeout, etc. App continues with cached bundle.
       }
     };
 

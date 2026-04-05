@@ -61,7 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const fetchUser = async () => {
       try {
         const user = await getCurrentUser();
-        if (isMounted) {
+        if (isMounted && user !== null) {
           await updateUser(user);
         }
       } catch (error) {

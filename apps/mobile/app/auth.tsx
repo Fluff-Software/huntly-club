@@ -7,7 +7,7 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
@@ -37,6 +37,7 @@ enum AuthScreenMode {
 export default function AuthScreen() {
   const [mode, setMode] = useState(AuthScreenMode.WELCOME);
   const { scaleW, width } = useLayoutScale();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ mode?: string }>();
 
   const heroHeight = scaleW(350);
@@ -186,7 +187,7 @@ export default function AuthScreen() {
             top: scaleW(180),
             paddingHorizontal: scaleW(24),
             paddingTop: scaleW(24),
-            paddingBottom: scaleW(40),
+            paddingBottom: Math.max(insets.bottom, scaleW(24)),
             alignItems: "center",
             width: width,
           }}

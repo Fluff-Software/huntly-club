@@ -5,6 +5,15 @@ import { useWindowDimensions, Dimensions, Platform } from "react-native";
 export const REFERENCE_WIDTH = 390;
 export const REFERENCE_HEIGHT = 844;
 
+/**
+ * Uniform scale so layouts designed at REFERENCE_WIDTH × REFERENCE_HEIGHT fit on both dimensions.
+ * Wide tablets use the height-limited factor so vertical spacing is not blown past the viewport.
+ */
+export function layoutScaleFactor(width: number, height: number): number {
+  if (width <= 0 || height <= 0) return 0;
+  return Math.min(width / REFERENCE_WIDTH, height / REFERENCE_HEIGHT);
+}
+
 export type LayoutScale = {
   scaleW: (n: number) => number;
   width: number;
@@ -36,10 +45,10 @@ export function useLayoutScale(): LayoutScale {
 
   const scaleW = useCallback(
     (n: number) => {
-      const scale = width / REFERENCE_WIDTH;
+      const scale = layoutScaleFactor(width, height);
       return Math.round(scale * n);
     },
-    [width]
+    [width, height]
   );
 
   return { scaleW, width, height, isTablet };

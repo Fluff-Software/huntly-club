@@ -94,12 +94,16 @@ export default function ProfileScreen() {
 
   const editScale = useSharedValue(1);
   const parentZoneScale = useSharedValue(1);
+  const settingsScale = useSharedValue(1);
   const logOutScale = useSharedValue(1);
   const editAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: editScale.value }],
   }));
   const parentZoneAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: parentZoneScale.value }],
+  }));
+  const settingsAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: settingsScale.value }],
   }));
   const logOutAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: logOutScale.value }],
@@ -1166,9 +1170,36 @@ export default function ProfileScreen() {
           </Pressable>
         </Animated.View>
 
-        {/* Log out */}
+        {/* Settings */}
         <Animated.View
           entering={FadeInDown.duration(500).delay(620)}
+          style={settingsAnimatedStyle}
+        >
+          <Pressable
+            style={styles.parentZoneButton}
+            onPress={() => router.push("/(tabs)/settings")}
+            onPressIn={() => {
+              settingsScale.value = withSpring(0.96, {
+                damping: 15,
+                stiffness: 400,
+              });
+            }}
+            onPressOut={() => {
+              settingsScale.value = withSpring(1, {
+                damping: 15,
+                stiffness: 400,
+              });
+            }}
+          >
+            <ThemedText type="heading" style={styles.parentZoneText}>
+              Settings
+            </ThemedText>
+          </Pressable>
+        </Animated.View>
+
+        {/* Log out */}
+        <Animated.View
+          entering={FadeInDown.duration(500).delay(660)}
           style={[logOutAnimatedStyle, styles.logOutButtonWrap]}
         >
           <Pressable

@@ -10,9 +10,6 @@ import {
 } from "react-native";
 import Animated, {
   FadeInDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
@@ -64,11 +61,7 @@ export default function ParentsScreen() {
   const [showPinModal, setShowPinModal] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(true);
 
-  const settingsScale = useSharedValue(1);
   const { resources, loading: resourcesLoading } = useParentResources();
-  const settingsAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: settingsScale.value }],
-  }));
 
   useEffect(() => {
     if (!user?.id) return;
@@ -308,24 +301,6 @@ export default function ParentsScreen() {
           fontSize: scaleW(14),
           fontWeight: "600",
           color: COLORS.charcoal,
-        },
-        settingsButton: {
-          width: scaleW(240),
-          backgroundColor: COLORS.cream,
-          borderRadius: scaleW(48),
-          paddingVertical: scaleW(14),
-          paddingHorizontal: scaleW(24),
-          alignItems: "center",
-          marginTop: scaleW(8),
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.3,
-          shadowRadius: 2,
-          elevation: 2,
-        },
-        settingsButtonText: {
-          fontSize: scaleW(16),
-          fontWeight: "600",
         },
         loadingWrap: {
           flex: 1,
@@ -585,29 +560,6 @@ export default function ParentsScreen() {
           )}
         </Animated.View>
 
-        {/* Settings */}
-        <Animated.View entering={FadeInDown.duration(500).delay(480)}>
-          <ThemedText type="heading" style={[styles.sectionTitle, { marginTop: scaleW(24) }]}>
-            Settings
-          </ThemedText>
-          <ThemedText style={styles.sectionDesc}>
-            Access settings to control your account and preferences.
-          </ThemedText>
-          <Animated.View style={settingsAnimatedStyle}>
-            <Pressable
-              style={styles.settingsButton}
-              onPress={() => router.push("/(tabs)/settings")}
-              onPressIn={() => {
-                settingsScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-              }}
-              onPressOut={() => {
-                settingsScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-              }}
-            >
-              <ThemedText type="heading" style={styles.settingsButtonText}>Settings</ThemedText>
-            </Pressable>
-          </Animated.View>
-        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );

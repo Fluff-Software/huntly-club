@@ -36,7 +36,7 @@ async function createUserViaApi(
   supabaseUrl: string,
   serviceRoleKey: string,
   params: { email: string; password: string; user_metadata?: Record<string, unknown> }
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; created_at?: string }> {
   const url = `${supabaseUrl.replace(/\/$/, "")}/auth/v1/admin/users`;
   const res = await fetch(url, {
     method: "POST",
@@ -57,7 +57,8 @@ async function createUserViaApi(
     const msg = (err as { msg?: string })?.msg ?? (err as { message?: string })?.message ?? res.statusText;
     return { error: msg };
   }
-  return {};
+  const data = await res.json().catch(() => ({}));
+  return { created_at: (data as { created_at?: string })?.created_at };
 }
 
 Deno.serve(async (req) => {
@@ -104,6 +105,36 @@ Deno.serve(async (req) => {
         ? "An account with this email already exists."
         : "Could not create account. Please try again";
       return jsonResponse({ error: msg }, 400);
+    }
+
+    // Notify admins about the new user (best-effort, does not block sign-up).
+    try {
+      const adminEmail = Deno.env.get("ADMIN_NOTIFICATION_EMAIL") ?? "huntly@fluff.software";
+      const signedUpAt = createResult.created_at
+        ? new Date(createResult.created_at).toUTCString()
+        : new Date().toUTCString();
+      const notifyHtml = `
+        <p style="margin: 0 0 12px; color: #36454F;">A new user has just signed up for Huntly World.</p>
+        <table style="border-collapse: collapse; width: 100%;">
+          <tr>
+            <td style="padding: 6px 12px 6px 0; color: #36454F; font-weight: 600; white-space: nowrap;">Email</td>
+            <td style="padding: 6px 0; color: #36454F;">${email}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 12px 6px 0; color: #36454F; font-weight: 600; white-space: nowrap;">Signed up at</td>
+            <td style="padding: 6px 0; color: #36454F;">${signedUpAt}</td>
+          </tr>
+        </table>
+      `;
+      const notifyText = `A new user has just signed up for Huntly World.\n\nEmail: ${email}\nSigned up at: ${signedUpAt}`;
+      await sendEmail({
+        to: adminEmail,
+        subject: `New Huntly World sign-up: ${email}`,
+        htmlPart: wrapEmailBody(notifyHtml),
+        textPart: notifyText,
+      });
+    } catch (notifyErr) {
+      console.warn("Admin notification email failed (non-fatal):", notifyErr);
     }
 
     const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({

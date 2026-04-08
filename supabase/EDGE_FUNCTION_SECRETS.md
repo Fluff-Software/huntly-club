@@ -23,6 +23,7 @@ supabase secrets set FRONTEND_RESET_REDIRECT=https://www.huntly.world/auth/reset
 
 - **EMAIL_LOGO_URL**: Full URL to your logo for branded emails (e.g. `https://www.huntly.world/logo.png`). If unset, that default URL is used. Ensure it is publicly reachable so the image loads in email clients.
 - **MAILJET_REPLY_TO**: Reply-To address (e.g. `support@yourdomain.com`). If unset, `MAILJET_FROM_EMAIL` is used.
+- **ADMIN_NOTIFICATION_EMAIL**: Email address that receives a notification whenever a new user signs up. Defaults to `huntly@fluff.software` if not set.
 
 `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are automatically available to Edge Functions; you do not need to set them manually.
 

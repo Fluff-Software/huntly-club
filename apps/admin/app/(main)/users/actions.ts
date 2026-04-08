@@ -42,9 +42,7 @@ async function fetchAllUsersSorted(): Promise<UserListItem[]> {
   );
 
   return withAuth.sort((a, b) => {
-    const emailA = (a.email ?? a.id).toLowerCase();
-    const emailB = (b.email ?? b.id).toLowerCase();
-    return emailA.localeCompare(emailB);
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 }
 

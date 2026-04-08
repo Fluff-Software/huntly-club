@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Props = {
   open: boolean;
@@ -22,9 +22,13 @@ export function DenyReasonModal({
   pending = false,
 }: Props) {
   const [reason, setReason] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (open) setReason("");
+    if (open) {
+      setReason("");
+      textareaRef.current?.focus();
+    }
   }, [open]);
 
   useEffect(() => {
@@ -67,6 +71,7 @@ export function DenyReasonModal({
           {message}
         </p>
         <textarea
+          ref={textareaRef}
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder="Reason for denial"

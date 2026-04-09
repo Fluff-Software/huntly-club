@@ -10,7 +10,7 @@ type Props = {
 export function UnverifiedUsersList({ initialUsers }: Props) {
   const [users, setUsers] = useState<UnverifiedUserItem[]>(initialUsers);
   const [verifying, setVerifying] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Record<string, { type: "success" | "error"; text: string }>>({});
+  const [messages, setMessages] = useState<Record<string, string>>({});
 
   if (users.length === 0) {
     return (
@@ -30,7 +30,7 @@ export function UnverifiedUsersList({ initialUsers }: Props) {
     const res = await verifyUserEmail(userId);
     setVerifying(null);
     if (res.error) {
-      setMessages((prev) => ({ ...prev, [userId]: { type: "error", text: res.error! } }));
+      setMessages((prev) => ({ ...prev, [userId]: res.error! }));
     } else {
       setUsers((prev) => prev.filter((u) => u.id !== userId));
     }
@@ -84,9 +84,7 @@ export function UnverifiedUsersList({ initialUsers }: Props) {
                     {verifying === user.id ? "Verifying…" : "Verify manually"}
                   </button>
                   {messages[user.id] && (
-                    <p className={`text-xs ${messages[user.id].type === "success" ? "text-green-600" : "text-red-600"}`}>
-                      {messages[user.id].text}
-                    </p>
+                    <p className="text-xs text-red-600">{messages[user.id]}</p>
                   )}
                 </div>
               </td>

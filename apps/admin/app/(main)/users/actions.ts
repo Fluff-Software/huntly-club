@@ -210,6 +210,28 @@ export type UserImagesResult = {
   images?: UserImageRow[];
 };
 
+export type VerifyUserEmailResult = {
+  error?: string;
+  success?: boolean;
+};
+
+export async function verifyUserEmail(
+  userId: string
+): Promise<VerifyUserEmailResult> {
+  try {
+    const supabase = createServerSupabaseClient();
+    const { error } = await supabase.auth.admin.updateUserById(userId, {
+      email_confirm: true,
+    });
+    if (error) return { error: error.message };
+    return { success: true };
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Failed to verify email",
+    };
+  }
+}
+
 export async function getUserImages(userId: string): Promise<UserImagesResult> {
   try {
     const supabase = createServerSupabaseClient();

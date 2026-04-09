@@ -6,6 +6,7 @@ import {
   getUserDetails,
   getUserProfiles,
   getUserImages,
+  verifyUserEmail,
   type UserDetailsResult,
   type UserProfilesResult,
   type UserImagesResult,
@@ -50,6 +51,12 @@ export function UserDetailModal({ userId, open, onClose }: Props) {
       setLoading(false);
     });
   }, [open, userId]);
+
+  const handleDetailsRefresh = () => {
+    if (userId) {
+      getUserDetails(userId).then(setDetails);
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -117,7 +124,7 @@ export function UserDetailModal({ userId, open, onClose }: Props) {
           )}
 
           {!loading && activeTab === "details" && (
-            <DetailsTab result={details} />
+            <DetailsTab result={details} onDetailsRefresh={handleDetailsRefresh} />
           )}
           {!loading && activeTab === "profiles" && (
             <ProfilesTab result={profiles} />
@@ -131,7 +138,10 @@ export function UserDetailModal({ userId, open, onClose }: Props) {
   );
 }
 
-function DetailsTab({ result }: { result: UserDetailsResult | null }) {
+function DetailsTab({ result, onDetailsRefresh }: { result: UserDetailsResult | null; onDetailsRefresh: () => void }) {
+  const [verifying, setVerifying] = useState(false);
+  const [verifyMessage, setVerifyMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
   if (!result) return null;
   if (result.error) {
     return <p className="text-sm text-red-600">{result.error}</p>;
@@ -142,6 +152,19 @@ function DetailsTab({ result }: { result: UserDetailsResult | null }) {
   const formatDate = (s: string | null) =>
     s ? new Date(s).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : "—";
 
+  const handleVerify = async () => {
+    setVerifying(true);
+    setVerifyMessage(null);
+    const res = await verifyUserEmail(u.id);
+    setVerifying(false);
+    if (res.error) {
+      setVerifyMessage({ type: "error", text: res.error });
+    } else {
+      setVerifyMessage({ type: "success", text: "Email successfully verified." });
+      onDetailsRefresh();
+    }
+  };
+
   return (
     <dl className="space-y-3 text-sm">
       <Row label="User ID" value={u.id} className="break-all" />
@@ -151,6 +174,25 @@ function DetailsTab({ result }: { result: UserDetailsResult | null }) {
       <Row label="Email confirmed at" value={formatDate(u.email_confirmed_at)} />
       <Row label="Last sign in" value={formatDate(u.last_sign_in_at)} />
       <Row label="Updated at" value={formatDate(u.updated_at)} />
+
+      {!u.email_confirmed_at && (
+        <div className="flex flex-col gap-2 pt-1">
+          <button
+            type="button"
+            onClick={handleVerify}
+            disabled={verifying}
+            className="w-fit rounded-lg bg-huntly-forest px-4 py-2 text-sm font-medium text-white hover:bg-huntly-forest/90 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-huntly-sage focus:ring-offset-2"
+          >
+            {verifying ? "Verifying…" : "Verify email"}
+          </button>
+          {verifyMessage && (
+            <p className={`text-sm ${verifyMessage.type === "success" ? "text-green-600" : "text-red-600"}`}>
+              {verifyMessage.text}
+            </p>
+          )}
+        </div>
+      )}
+
       {u.raw_app_meta_data && Object.keys(u.raw_app_meta_data).length > 0 && (
         <div className="space-y-1.5">
           <div className="text-xs font-semibold uppercase tracking-wide text-stone-500">App metadata</div>

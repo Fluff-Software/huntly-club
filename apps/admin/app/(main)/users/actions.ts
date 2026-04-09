@@ -232,6 +232,51 @@ export async function verifyUserEmail(
   }
 }
 
+export type UnverifiedUserItem = {
+  id: string;
+  email: string | null;
+  created_at: string;
+};
+
+export type UnverifiedUsersResult = {
+  error?: string;
+  users?: UnverifiedUserItem[];
+};
+
+export async function getUnverifiedUsers(): Promise<UnverifiedUsersResult> {
+  try {
+    const supabase = createServerSupabaseClient();
+    const allUsers: UnverifiedUserItem[] = [];
+    let page = 1;
+    const perPage = 1000;
+
+    while (true) {
+      const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+      if (error) return { error: error.message };
+      const unverified = (data?.users ?? [])
+        .filter((u) => !u.email_confirmed_at)
+        .map((u) => ({
+          id: u.id,
+          email: u.email ?? null,
+          created_at: u.created_at,
+        }));
+      allUsers.push(...unverified);
+      if ((data?.users ?? []).length < perPage) break;
+      page++;
+    }
+
+    allUsers.sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+
+    return { users: allUsers };
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Failed to load unverified users",
+    };
+  }
+}
+
 export async function getUserImages(userId: string): Promise<UserImagesResult> {
   try {
     const supabase = createServerSupabaseClient();

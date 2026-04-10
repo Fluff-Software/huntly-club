@@ -1,10 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getMissionCompletionsPage,
   type MissionCompletionItem,
+  type MissionCompletionsSortDir,
+  type MissionCompletionsSortKey,
 } from "./actions";
 
 const PAGE_SIZE = 30;
@@ -25,8 +27,19 @@ export function MissionCompletionsListClient({
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<MissionCompletionsSortKey>("completed_at");
+  const [sortDir, setSortDir] = useState<MissionCompletionsSortDir>("desc");
   const sentinelRef = useRef<HTMLTableRowElement | null>(null);
   const initialLoadDone = useRef(false);
+
+  const query = useMemo(
+    () => ({
+      search: searchQuery || undefined,
+      sortBy,
+      sortDir,
+    }),
+    [searchQuery, sortBy, sortDir]
+  );
 
   useEffect(() => {
     const t = setTimeout(() => setSearchQuery(searchInput), SEARCH_DEBOUNCE_MS);
@@ -34,14 +47,19 @@ export function MissionCompletionsListClient({
   }, [searchInput]);
 
   useEffect(() => {
-    if (!initialLoadDone.current && searchQuery === "") {
+    if (
+      !initialLoadDone.current &&
+      searchQuery === "" &&
+      sortBy === "completed_at" &&
+      sortDir === "desc"
+    ) {
       initialLoadDone.current = true;
       return;
     }
 
     let cancelled = false;
     setSearchLoading(true);
-    getMissionCompletionsPage(0, PAGE_SIZE, searchQuery || undefined)
+    getMissionCompletionsPage(0, PAGE_SIZE, query)
       .then(({ items: nextItems, hasMore: nextHasMore }) => {
         if (!cancelled) {
           setItems(nextItems);
@@ -55,24 +73,20 @@ export function MissionCompletionsListClient({
     return () => {
       cancelled = true;
     };
-  }, [searchQuery]);
+  }, [query, searchQuery, sortBy, sortDir]);
 
   const loadMore = useCallback(async () => {
     if (loading || !hasMore) return;
     setLoading(true);
     try {
       const { items: nextItems, hasMore: nextHasMore } =
-        await getMissionCompletionsPage(
-          items.length,
-          PAGE_SIZE,
-          searchQuery || undefined
-        );
+        await getMissionCompletionsPage(items.length, PAGE_SIZE, query);
       setItems((prev) => [...prev, ...nextItems]);
       setHasMore(nextHasMore);
     } finally {
       setLoading(false);
     }
-  }, [hasMore, items.length, loading, searchQuery]);
+  }, [hasMore, items.length, loading, query]);
 
   const sentinelVisible = hasMore && items.length > 0 && !searchLoading;
 
@@ -89,6 +103,20 @@ export function MissionCompletionsListClient({
     observer.observe(el);
     return () => observer.disconnect();
   }, [loadMore, sentinelVisible]);
+
+  const toggleSort = (key: MissionCompletionsSortKey) => {
+    if (sortBy === key) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortBy(key);
+    setSortDir("asc");
+  };
+
+  const headerLabel = (label: string, key: MissionCompletionsSortKey) => {
+    if (sortBy !== key) return label;
+    return `${label} ${sortDir === "asc" ? "↑" : "↓"}`;
+  };
 
   return (
     <>
@@ -111,10 +139,30 @@ export function MissionCompletionsListClient({
         <table className="min-w-full divide-y divide-stone-200">
           <thead>
             <tr>
-              <th className={thClass}>Completed</th>
-              <th className={thClass}>Who</th>
-              <th className={thClass}>Mission</th>
-              <th className={thClass}>Debrief</th>
+              <th className={thClass}>
+                <SortButton
+                  label={headerLabel("Completed", "completed_at")}
+                  onClick={() => toggleSort("completed_at")}
+                />
+              </th>
+              <th className={thClass}>
+                <SortButton
+                  label={headerLabel("Who", "who")}
+                  onClick={() => toggleSort("who")}
+                />
+              </th>
+              <th className={thClass}>
+                <SortButton
+                  label={headerLabel("Mission", "mission")}
+                  onClick={() => toggleSort("mission")}
+                />
+              </th>
+              <th className={thClass}>
+                <SortButton
+                  label={headerLabel("Debrief", "debrief")}
+                  onClick={() => toggleSort("debrief")}
+                />
+              </th>
               <th className={thClass}>Images</th>
             </tr>
           </thead>
@@ -159,9 +207,6 @@ export function MissionCompletionsListClient({
                     <td className={tdClass}>
                       <span className="block text-sm text-stone-900">
                         {row.activity_title ?? "Untitled mission"}
-                      </span>
-                      <span className="mt-0.5 block text-xs text-stone-500">
-                        {row.activity_name ?? "Unknown mission"}
                       </span>
                     </td>
 
@@ -221,6 +266,18 @@ export function MissionCompletionsListClient({
         </table>
       </div>
     </>
+  );
+}
+
+function SortButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1 hover:text-stone-700"
+    >
+      {label}
+    </button>
   );
 }
 

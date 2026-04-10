@@ -54,6 +54,15 @@ export type MissionCompletionsPageResult = {
   hasMore: boolean;
 };
 
+export type MissionCompletionsSortKey = "completed_at" | "who" | "mission" | "debrief";
+export type MissionCompletionsSortDir = "asc" | "desc";
+
+export type MissionCompletionsQuery = {
+  search?: string | null;
+  sortBy?: MissionCompletionsSortKey;
+  sortDir?: MissionCompletionsSortDir;
+};
+
 async function fetchAllMissionCompletions(): Promise<MissionCompletionItem[]> {
   const supabase = createServerSupabaseClient();
 
@@ -151,12 +160,12 @@ async function fetchAllMissionCompletions(): Promise<MissionCompletionItem[]> {
 export async function getMissionCompletionsPage(
   offset: number,
   limit: number = PAGE_SIZE,
-  search?: string | null
+  query?: MissionCompletionsQuery
 ): Promise<MissionCompletionsPageResult> {
   const all = await fetchAllMissionCompletions();
-  const term = search?.trim().toLowerCase();
+  const term = query?.search?.trim().toLowerCase();
 
-  const filtered = term
+  let filtered = term
     ? all.filter((row) => {
         const emailOrId = (row.user_email ?? row.user_id ?? "").toLowerCase();
         const profile = (row.profile_name ?? row.profile_nickname ?? "").toLowerCase();
@@ -166,6 +175,35 @@ export async function getMissionCompletionsPage(
         );
       })
     : all;
+
+  const sortBy = query?.sortBy ?? "completed_at";
+  const sortDir = query?.sortDir ?? "desc";
+  const sortFactor = sortDir === "asc" ? 1 : -1;
+
+  filtered = [...filtered].sort((a, b) => {
+    if (sortBy === "completed_at") {
+      return (
+        (new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime()) *
+        sortFactor
+      );
+    }
+
+    if (sortBy === "who") {
+      const left = (a.user_email ?? a.profile_name ?? a.user_id ?? "").toLowerCase();
+      const right = (b.user_email ?? b.profile_name ?? b.user_id ?? "").toLowerCase();
+      return left.localeCompare(right) * sortFactor;
+    }
+
+    if (sortBy === "mission") {
+      const left = (a.activity_title ?? a.activity_name ?? "").toLowerCase();
+      const right = (b.activity_title ?? b.activity_name ?? "").toLowerCase();
+      return left.localeCompare(right) * sortFactor;
+    }
+
+    const left = `${a.debrief_answer_1 ?? ""} ${a.debrief_answer_2 ?? ""}`.toLowerCase();
+    const right = `${b.debrief_answer_1 ?? ""} ${b.debrief_answer_2 ?? ""}`.toLowerCase();
+    return left.localeCompare(right) * sortFactor;
+  });
 
   const items = filtered.slice(offset, offset + limit);
   return {

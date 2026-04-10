@@ -200,8 +200,8 @@ export async function getMissionCompletionsPage(
       return left.localeCompare(right) * sortFactor;
     }
 
-    const left = `${a.debrief_answer_1 ?? ""} ${a.debrief_answer_2 ?? ""}`.toLowerCase();
-    const right = `${b.debrief_answer_1 ?? ""} ${b.debrief_answer_2 ?? ""}`.toLowerCase();
+    const left = `${a.debrief_question_1 ?? ""} ${a.debrief_question_2 ?? ""}`.toLowerCase();
+    const right = `${b.debrief_question_1 ?? ""} ${b.debrief_question_2 ?? ""}`.toLowerCase();
     return left.localeCompare(right) * sortFactor;
   });
 

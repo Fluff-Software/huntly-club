@@ -4,9 +4,11 @@ import { useRouter, useSegments } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePurchases } from "@/contexts/PurchasesContext";
 import { useSignUpOptional } from "@/contexts/SignUpContext";
-import { ThemedView } from "@/components/ThemedView";
 import { getProfiles, getUserData } from "@/services/profileService";
 import { REQUIRE_EMAIL_VERIFICATION } from "@/constants/auth";
+
+const LOADER_BACKGROUND = "#4F6F52";
+const LOADER_SPINNER = "#F4F0EB";
 
 type AuthGuardProps = {
   children: React.ReactNode;
@@ -87,28 +89,27 @@ export function AuthGuard({ children }: AuthGuardProps) {
     }
   }, [user, session, loading, segments, checkingProfiles, subscriptionInfo.isSubscribed, purchasesLoading]);
 
-  const showOverlay = loading || checkingProfiles;
+  const showLoader = loading || checkingProfiles;
 
-  return (
-    <View style={styles.wrapper}>
-      {children}
-      {showOverlay && (
-        <ThemedView style={styles.overlay} pointerEvents="none">
-          <ActivityIndicator size="large" />
-        </ThemedView>
-      )}
-    </View>
-  );
+  if (showLoader) {
+    return (
+      <View style={styles.fullScreenLoader} accessibilityLabel="Loading">
+        <ActivityIndicator size="large" color={LOADER_SPINNER} />
+      </View>
+    );
+  }
+
+  return <View style={styles.wrapper}>{children}</View>;
 }
 
 const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
   },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
+  fullScreenLoader: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "transparent",
+    backgroundColor: LOADER_BACKGROUND,
   },
 });

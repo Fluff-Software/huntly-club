@@ -95,10 +95,11 @@ export const getUserData = async (
   team: number | null;
   weekly_email: boolean;
   last_seen_season_id: number | null;
+  start_mission_step: number;
 } | null> => {
   const { data, error } = await supabase
     .from("user_data")
-    .select("user_id, team, weekly_email, last_seen_season_id")
+    .select("user_id, team, weekly_email, last_seen_season_id, start_mission_step")
     .eq("user_id", userId)
     .single();
 
@@ -149,6 +150,22 @@ export const updateUserDataLastSeenSeasonId = async (
   if (error) {
     console.error("Error updating user_data last_seen_season_id:", error);
     throw new Error(`Failed to update last seen season id: ${error.message}`);
+  }
+};
+
+/** Update the authenticated user's mission-first onboarding step in user_data. */
+export const updateUserDataStartMissionStep = async (
+  userId: string,
+  step: number
+): Promise<void> => {
+  const { error } = await supabase
+    .from("user_data")
+    .update({ start_mission_step: step })
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("Error updating user_data start_mission_step:", error);
+    throw new Error(`Failed to update onboarding step: ${error.message}`);
   }
 };
 

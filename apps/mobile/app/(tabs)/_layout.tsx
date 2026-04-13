@@ -29,6 +29,7 @@ import {
   setPushEnabled,
   setPushOptInAsked,
 } from "@/services/pushNotificationService";
+import { isStartMissionOnboardingActive } from "@/constants/startMissionOnboarding";
 
 const HOME_CLUBHOUSE = require("@/assets/images/home-clubhouse.png");
 const HOME_STORY = require("@/assets/images/home-story.png");
@@ -131,6 +132,8 @@ export default function TabLayout() {
   const [seasonAnnouncementChecking, setSeasonAnnouncementChecking] =
     useState(true);
   const [hasCompletedTutorial, setHasCompletedTutorial] = useState<boolean | null>(null);
+  const onboardingActive = isStartMissionOnboardingActive(userData?.start_mission_step);
+
   const hasCheckedNotificationPromptRef = useRef(false);
   const hasCheckedSeasonAnnouncementRef = useRef(false);
 
@@ -143,6 +146,7 @@ export default function TabLayout() {
   // On clubhouse/tabs load: if user has no tutorial achievement (check first profile), show the tutorial
   const firstProfileId = profiles[0]?.id ?? null;
   useEffect(() => {
+    if (onboardingActive) return;
     if (firstProfileId == null) return;
     let cancelled = false;
     getHasCompletedTutorial(firstProfileId).then((completed) => {
@@ -158,10 +162,11 @@ export default function TabLayout() {
     return () => {
       cancelled = true;
     };
-  }, [firstProfileId, setShowPostSignUpWelcome, setTutorialStep]);
+  }, [firstProfileId, onboardingActive, setShowPostSignUpWelcome, setTutorialStep]);
 
   // When showPostSignUpWelcome was set (e.g. "Show tutorial again"): re-check and hide if they already have achievement (unless replay requested)
   useEffect(() => {
+    if (onboardingActive) return;
     if (!showPostSignUpWelcome || firstProfileId == null) {
       if (!showPostSignUpWelcome) setHasCompletedTutorial(null);
       return;
@@ -179,7 +184,7 @@ export default function TabLayout() {
     return () => {
       cancelled = true;
     };
-  }, [showPostSignUpWelcome, firstProfileId, replayTutorialRequested, setShowPostSignUpWelcome]);
+  }, [showPostSignUpWelcome, firstProfileId, replayTutorialRequested, onboardingActive, setShowPostSignUpWelcome]);
 
   // Only consider showing the notification prompt when the tutorial is not visible.
   // After the tutorial is dismissed we wait a short moment so the user lands on the clubhouse first, then show the prompt.
@@ -224,6 +229,7 @@ export default function TabLayout() {
       return;
     }
     if (userLoading) return;
+    if (onboardingActive) return;
     if (showPostSignUpWelcome) return;
     if (seasonLoading) return;
     if (!userData) {
@@ -248,6 +254,7 @@ export default function TabLayout() {
     userLoading,
     userData,
     showPostSignUpWelcome,
+    onboardingActive,
     seasonLoading,
     firstSeason?.id,
     userData?.last_seen_season_id,
@@ -271,6 +278,9 @@ export default function TabLayout() {
     if (showPostSignUpWelcome) {
       return;
     }
+    if (onboardingActive) {
+      return;
+    }
     if (showSeasonAnnouncementModal || seasonAnnouncementChecking) {
       return;
     }
@@ -286,6 +296,7 @@ export default function TabLayout() {
     maybeShowNotificationPrompt,
     showSeasonAnnouncementModal,
     seasonAnnouncementChecking,
+    onboardingActive,
   ]);
 
   const handleNotificationPromptSave = async () => {
@@ -334,10 +345,12 @@ export default function TabLayout() {
   const tabBarHeight = scaleW(72) + bottomInset;
 
   const isTabDisabled = (routeName: string) => {
+    if (onboardingActive) return true;
     const step = tutorialStep as string;
     if (step === "click_story") return routeName !== "story";
     if (step === "click_missions") return routeName !== "missions";
     if (step === "click_team") return routeName !== "social";
+    if (step === "click_journal") return routeName !== "journal";
     return false;
   };
 
@@ -391,6 +404,7 @@ export default function TabLayout() {
           shadowOpacity: 0.12,
           shadowRadius: scaleW(4),
           backgroundColor: TAB_BAR_COLORS[route.name] ?? TAB_BAR_COLORS.index,
+          display: onboardingActive ? "none" : "flex",
         },
         tabBarLabelStyle: {
           fontSize: scaleW(12),
@@ -478,7 +492,14 @@ export default function TabLayout() {
         options={{
           title: "Journal",
           tabBarIcon: ({ color }) => (
-            <MaterialIcons name="auto-stories" size={scaleW(24)} color={color} />
+            <View style={[styles.storyIconWrapper, { width: scaleW(44), height: scaleW(44) }]}>
+              {tutorialStep === "click_journal" && (
+                <View style={[styles.tutorialPulseContainer, { width: scaleW(44), height: scaleW(44) }]}>
+                  <StoryTabPulse size={scaleW(44)} />
+                </View>
+              )}
+              <MaterialIcons name="auto-stories" size={scaleW(24)} color={color} />
+            </View>
           ),
           href: profiles.length > 0 ? undefined : null,
         }}
@@ -515,7 +536,7 @@ export default function TabLayout() {
       />
       </Tabs>
       <NewPlayerTutorial
-        visible={showPostSignUpWelcome && hasCompletedTutorial === false}
+        visible={!onboardingActive && showPostSignUpWelcome && hasCompletedTutorial === false}
         onDismiss={handleTutorialDismiss}
         tabBarHeight={tabBarHeight}
       />

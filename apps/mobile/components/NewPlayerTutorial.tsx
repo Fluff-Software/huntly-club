@@ -20,6 +20,8 @@ export type TutorialStep =
   | "missions"
   | "click_team"
   | "team"
+  | "click_journal"
+  | "journal"
   | "wrap_up"
   | "done";
 
@@ -47,6 +49,8 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
     } else if (tutorialStep === "missions") {
       setTutorialStep?.("click_team");
     } else if (tutorialStep === "team") {
+      setTutorialStep?.("click_journal");
+    } else if (tutorialStep === "journal") {
       setTutorialStep?.("wrap_up");
     } else if (tutorialStep === "wrap_up") {
       setTutorialStep?.("done");
@@ -59,6 +63,13 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
     if (!visible || tutorialStep !== "click_story" || !setTutorialStep) return;
     const inStoryTab = segments[0] === "(tabs)" && segments[1] === "story";
     if (inStoryTab) setTutorialStep("seasons");
+  }, [visible, tutorialStep, segments, setTutorialStep]);
+
+  // When on "click_journal" and user navigates to journal tab, advance to journal card
+  useEffect(() => {
+    if (!visible || tutorialStep !== "click_journal" || !setTutorialStep) return;
+    const inJournalTab = segments[0] === "(tabs)" && segments[1] === "journal";
+    if (inJournalTab) setTutorialStep("journal");
   }, [visible, tutorialStep, segments, setTutorialStep]);
 
   // When on "click_missions" and user navigates to missions tab, advance to missions card
@@ -80,7 +91,8 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
   const isTabBarVisibleStep =
     tutorialStep === "click_story" ||
     tutorialStep === "click_missions" ||
-    tutorialStep === "click_team";
+    tutorialStep === "click_team" ||
+    tutorialStep === "click_journal";
 
   // Rendered as absolute overlay (not Modal) so the tab bar stays in the same
   // view hierarchy and remains tappable when overlay has bottom: tabBarHeight.
@@ -100,6 +112,7 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
           tutorialStep === "seasons" ||
           tutorialStep === "missions" ||
           tutorialStep === "team" ||
+          tutorialStep === "journal" ||
           tutorialStep === "wrap_up") && (
           <View style={styles.centeredCardWrapper}>
             {tutorialStep === "intro" && (
@@ -273,6 +286,40 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
               </View>
             )}
 
+            {tutorialStep === "journal" && (
+              <View style={[styles.card, { padding: scaleW(24), borderRadius: scaleW(16), maxWidth: cardMaxWidth }]}>
+                <ThemedText type="subtitle" style={{ fontSize: scaleW(22), fontWeight: "600", marginBottom: scaleW(12) }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
+                  Your journal
+                </ThemedText>
+                <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(24), marginBottom: scaleW(24) }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
+                  Use Journal to look back at your adventures, photos, and mission moments all in one place.
+                </ThemedText>
+                <Pressable
+                  onPress={handleNext}
+                  style={{
+                    alignSelf: "center",
+                    minWidth: scaleW(200),
+                    minHeight: scaleW(52),
+                    paddingVertical: scaleW(14),
+                    paddingHorizontal: scaleW(28),
+                    borderRadius: scaleW(14),
+                    backgroundColor: HUNTLY_GREEN,
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                  accessibilityRole="button"
+                >
+                  <ThemedText
+                    style={{ fontSize: scaleW(18), fontWeight: "600" }}
+                    lightColor={CREAM}
+                    darkColor={CREAM}
+                  >
+                    Next
+                  </ThemedText>
+                </Pressable>
+              </View>
+            )}
+
             {tutorialStep === "wrap_up" && (
               <View style={[styles.card, styles.cardWithImage, { padding: scaleW(24), borderRadius: scaleW(16), maxWidth: cardMaxWidth }]}>
                 <Image source={TUTORIAL_CHARACTER} style={[styles.characterImage, { width: scaleW(100), height: scaleW(80), marginBottom: scaleW(12) }]} resizeMode="contain" />
@@ -345,6 +392,19 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
               </ThemedText>
               <ThemedText style={{ fontSize: scaleW(14), lineHeight: scaleW(20), textAlign: "center" }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
                 to see how you're doing.
+              </ThemedText>
+            </View>
+          </View>
+        )}
+
+        {tutorialStep === "click_journal" && (
+          <View style={[styles.tapTabStepContainer, { bottom: scaleW(24) }]}>
+            <View style={[styles.card, styles.tapTabCard, { padding: scaleW(20), borderRadius: scaleW(16), maxWidth: scaleW(320) }]}>
+              <ThemedText type="subtitle" style={{ fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(4), textAlign: "center" }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
+                Tap Journal below
+              </ThemedText>
+              <ThemedText style={{ fontSize: scaleW(14), lineHeight: scaleW(20), textAlign: "center" }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
+                to revisit your adventures.
               </ThemedText>
             </View>
           </View>

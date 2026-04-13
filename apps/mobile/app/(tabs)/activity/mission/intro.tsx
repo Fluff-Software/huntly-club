@@ -7,7 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
@@ -18,6 +18,8 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { getActivityById, getActivityImageSource } from "@/services/packService";
+import { useUser } from "@/contexts/UserContext";
+import { isStartMissionOnboardingActive } from "@/constants/startMissionOnboarding";
 import type { Activity } from "@/types/activity";
 
 const BEAR_FACE = require("@/assets/images/bear-face.png");
@@ -39,7 +41,10 @@ const CREAM = "#F6F5F1";
 export default function IntroScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const { scaleW } = useLayoutScale();
+  const { scaleW, isTablet } = useLayoutScale();
+  const insets = useSafeAreaInsets();
+  const { userData } = useUser();
+  const onboardingActive = isStartMissionOnboardingActive(userData?.start_mission_step);
   const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -178,10 +183,13 @@ export default function IntroScreen() {
           left: 0,
           right: 0,
           paddingHorizontal: scaleW(20),
-          paddingBottom: scaleW(24),
+          paddingBottom:
+            insets.bottom +
+            (onboardingActive ? scaleW(28) : scaleW(24)) +
+            (isTablet ? scaleW(40) : 0),
         },
       }),
-    [scaleW]
+    [scaleW, insets.bottom, onboardingActive, isTablet]
   );
 
   if (loading) {
@@ -261,24 +269,22 @@ export default function IntroScreen() {
         </Animated.View>
       </ScrollView>
       <View style={styles.footer} pointerEvents="box-none">
-        <SafeAreaView edges={["bottom"]}>
-          <Animated.View style={buttonStyle}>
-            <Pressable
-              onPress={handleAccept}
-              onPressIn={() => {
-                buttonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-              }}
-              onPressOut={() => {
-                buttonScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-              }}
-              style={styles.acceptButton}
-            >
-              <ThemedText type="heading" style={styles.acceptButtonText}>
-                Accept the mission
-              </ThemedText>
-            </Pressable>
-          </Animated.View>
-        </SafeAreaView>
+        <Animated.View style={buttonStyle}>
+          <Pressable
+            onPress={handleAccept}
+            onPressIn={() => {
+              buttonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+            }}
+            onPressOut={() => {
+              buttonScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+            }}
+            style={styles.acceptButton}
+          >
+            <ThemedText type="heading" style={styles.acceptButtonText}>
+              Accept the mission
+            </ThemedText>
+          </Pressable>
+        </Animated.View>
       </View>
     </SafeAreaView>
   );

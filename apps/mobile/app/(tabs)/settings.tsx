@@ -47,7 +47,7 @@ const COLORS = {
 
 export default function SettingsScreen() {
   const { user, signOut } = useAuth();
-  const { userData, updateWeeklyEmail } = useUser();
+  const { userData, updateWeeklyEmail, updateStartMissionStep } = useUser();
   const router = useRouter();
   const { scaleW } = useLayoutScale();
   const signUpContext = useSignUpOptional();
@@ -95,6 +95,7 @@ export default function SettingsScreen() {
         onPress: async () => {
           try {
             await signOut();
+            router.replace("/auth");
           } catch {
             Alert.alert("Error", "Failed to sign out");
           }
@@ -178,11 +179,12 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleShowTutorialAgain = () => {
+  const handleShowTutorialAgain = async () => {
     setReplayTutorialRequested?.(true);
     setTutorialStep?.("intro");
     setShowPostSignUpWelcome?.(true);
-    router.replace("/(tabs)");
+    await updateStartMissionStep(0);
+    router.replace("/onboarding/welcome");
   };
 
   const handleCancelRemovalRequest = () => {

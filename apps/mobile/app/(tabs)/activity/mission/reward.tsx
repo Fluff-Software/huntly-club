@@ -8,6 +8,8 @@ import {
   StyleSheet,
   Dimensions,
   type ImageSourcePropType,
+  ActivityIndicator,
+  InteractionManager,
 } from "react-native";
 import ConfettiCannon from "react-native-confetti-cannon";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -27,6 +29,8 @@ import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { MissionCard } from "@/components/MissionCard";
 import { getActivityById, getActivityImageSource } from "@/services/packService";
 import type { MissionCardData } from "@/constants/missionCards";
+import { useUser } from "@/contexts/UserContext";
+import { START_MISSION_STEP } from "@/constants/startMissionOnboarding";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -57,6 +61,7 @@ export default function RewardScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const { scaleW } = useLayoutScale();
+  const { updateStartMissionStep } = useUser();
   const params = useLocalSearchParams<{ activityId?: string; achievements?: string }>();
 
   const wellDoneHeadline = useMemo(
@@ -67,6 +72,7 @@ export default function RewardScreen() {
   const [activityCard, setActivityCard] = useState<MissionCardData | null>(null);
   const [activityXp, setActivityXp] = useState<number | null>(null);
   const [achievements, setAchievements] = useState<RewardAchievement[]>([]);
+  const [goingHome, setGoingHome] = useState(false);
 
   useEffect(() => {
     const activityId = params.activityId ? Number(params.activityId) : null;
@@ -149,6 +155,20 @@ export default function RewardScreen() {
     const t = setTimeout(() => confettiRef.current?.start?.(), 0);
     return () => clearTimeout(t);
   }, []);
+
+  const handleGoHome = () => {
+    if (goingHome) return;
+    setGoingHome(true);
+    InteractionManager.runAfterInteractions(async () => {
+      try {
+        await updateStartMissionStep(START_MISSION_STEP.MISSION_COMPLETE);
+        router.replace("/(tabs)");
+      } catch (error) {
+        console.error("Error completing starter mission onboarding:", error);
+        setGoingHome(false);
+      }
+    });
+  };
 
   const styles = useMemo(
     () =>
@@ -422,17 +442,23 @@ export default function RewardScreen() {
         >
           <Pressable
             style={styles.goHomeButton}
-            onPress={() => router.replace("/(tabs)")}
+            disabled={goingHome}
+            onPress={handleGoHome}
             onPressIn={() => {
+              if (goingHome) return;
               goHomeScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
             }}
             onPressOut={() => {
               goHomeScale.value = withSpring(1, { damping: 15, stiffness: 400 });
             }}
           >
-            <ThemedText type="heading" style={styles.goHomeButtonText}>
-              Go Home
-            </ThemedText>
+            {goingHome ? (
+              <ActivityIndicator size="small" color={HUNTLY_GREEN} />
+            ) : (
+              <ThemedText type="heading" style={styles.goHomeButtonText}>
+                Go Home
+              </ThemedText>
+            )}
           </Pressable>
         </Animated.View>
       </ScrollView>

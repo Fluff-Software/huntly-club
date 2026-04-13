@@ -26,9 +26,12 @@ import Animated, {
 import { MaterialIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
+import { useNavigation } from "@react-navigation/native";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useFirstSeason } from "@/hooks/useFirstSeason";
 import { useAllChapters } from "@/hooks/useAllChapters";
+import { useUser } from "@/contexts/UserContext";
+import { START_MISSION_STEP } from "@/constants/startMissionOnboarding";
 
 type StorySlide =
   | { type: "text"; value: string }
@@ -116,7 +119,7 @@ function ImageSlide({
 }: {
   imageUri: string;
   isActive: boolean;
-  onPress: () => void;
+  onPress?: () => void;
   width: number;
   slideStyles: {
     slide: object;
@@ -129,6 +132,7 @@ function ImageSlide({
   return (
     <Pressable
       onPress={onPress}
+      disabled={!onPress}
       style={[slideStyles.slide, { width }]}
       accessible
       accessibilityRole="button"
@@ -182,7 +186,7 @@ function TextImageSlide({
   text: string;
   imageUri: string;
   isActive: boolean;
-  onPress: () => void;
+  onPress?: () => void;
   scaleW: (n: number) => number;
   width: number;
   height: number;
@@ -203,6 +207,7 @@ function TextImageSlide({
   return (
     <Pressable
       onPress={onPress}
+      disabled={!onPress}
       style={[slideStyles.slide, { width }]}
       accessible
       accessibilityRole="button"
@@ -260,7 +265,7 @@ function SlideItem({
 }: {
   slide: StorySlide;
   isActive: boolean;
-  onPress: () => void;
+  onPress?: () => void;
   scaleW: (n: number) => number;
   width: number;
   height: number;
@@ -304,6 +309,7 @@ function SlideItem({
   return (
     <Pressable
       onPress={onPress}
+      disabled={!onPress}
       style={[slideStyles.slide, { width }]}
       accessible
       accessibilityRole="button"
@@ -453,7 +459,10 @@ function StoryLoadingScreen({ scaleW }: { scaleW: (n: number) => number }) {
 
 export default function StorySlidesScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ source?: string; chapterId?: string }>();
+  const navigation = useNavigation();
+  const params = useLocalSearchParams<{ source?: string; chapterId?: string; onboardingFlow?: string }>();
+  const onboardingFlow = params.onboardingFlow === "start-mission";
+  const { updateStartMissionStep } = useUser();
   const { firstSeason, loading: seasonLoading } = useFirstSeason();
   const { chapters, loading: chaptersLoading } = useAllChapters();
   const dataLoading = seasonLoading || chaptersLoading;
@@ -562,10 +571,19 @@ export default function StorySlidesScreen() {
         offset: (currentIndex + 1) * width,
         animated: true,
       });
-    } else {
-      router.back();
     }
   }, [currentIndex, width, slides.length]);
+
+  useEffect(() => {
+    if (!onboardingFlow) return;
+    const unsubscribe = navigation.addListener("beforeRemove", (event) => {
+      const actionType = event.data.action.type;
+      if (actionType === "GO_BACK" || actionType === "POP") {
+        event.preventDefault();
+      }
+    });
+    return unsubscribe;
+  }, [onboardingFlow, navigation]);
 
   const viewabilityConfig = useMemo(
     () => ({ viewAreaCoveragePercentThreshold: 60 }),
@@ -684,7 +702,7 @@ export default function StorySlidesScreen() {
       <SlideItem
         slide={item}
         isActive={currentIndex === index}
-        onPress={goNext}
+        onPress={index === slides.length - 1 ? undefined : goNext}
         scaleW={scaleW}
         width={width}
         height={height}
@@ -759,13 +777,24 @@ export default function StorySlidesScreen() {
         </View>
         {currentIndex === slides.length - 1 && (
           <Pressable
-            onPress={() => router.push("/(tabs)/missions")}
+            onPress={() => {
+              if (onboardingFlow) {
+                void updateStartMissionStep(START_MISSION_STEP.MISSION_INTRO).catch((error) => {
+                  console.warn("Failed to persist onboarding step:", error);
+                });
+                router.replace("/onboarding/mission-intro");
+                return;
+              }
+              router.push("/(tabs)/missions");
+            }}
             style={styles.missionsCta}
             accessible
             accessibilityRole="button"
-            accessibilityLabel="View missions"
+            accessibilityLabel={onboardingFlow ? "Next" : "View missions"}
           >
-            <Text style={styles.missionsCtaText}>View missions →</Text>
+            <Text style={styles.missionsCtaText}>
+              {onboardingFlow ? "Next" : "View missions →"}
+            </Text>
           </Pressable>
         )}
       </View>

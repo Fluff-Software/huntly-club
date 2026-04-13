@@ -4,9 +4,14 @@ import { useRouter, useSegments } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePurchases } from "@/contexts/PurchasesContext";
 import { useSignUpOptional } from "@/contexts/SignUpContext";
-import { ThemedView } from "@/components/ThemedView";
 import { getProfiles, getUserData } from "@/services/profileService";
 import { REQUIRE_EMAIL_VERIFICATION } from "@/constants/auth";
+import {
+  START_MISSION_STEP,
+  isStartMissionOnboardingActive,
+} from "@/constants/startMissionOnboarding";
+import { getWeekOneRippedMapChapterId } from "@/services/startMissionOnboardingService";
+import { getActivityByName } from "@/services/packService";
 
 type AuthGuardProps = {
   children: React.ReactNode;
@@ -18,19 +23,28 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const segments = useSegments();
   const router = useRouter();
   const signUpContext = useSignUpOptional();
-  const [checkingProfiles, setCheckingProfiles] = useState(false);
+  const [checkingProfiles, setCheckingProfiles] = useState(true);
 
   useEffect(() => {
-    if (loading || checkingProfiles) return;
+    if (loading) return;
 
     const inAuthGroup = segments[0] === "auth";
     const inGetStarted = segments[0] === "get-started";
     const inSignUp = segments[0] === "sign-up";
+    const inOnboarding = segments[0] === "onboarding";
     const inPrivacy = segments[0] === "privacy";
+    const inStorySlides =
+      segments[0] === "(tabs)" && segments[1] === "story" && segments[2] === "slides";
+    const inMissionFlow = segments[0] === "(tabs)" && segments[1] === "activity";
     const inUnauthFlow = inAuthGroup || inGetStarted || inSignUp || inPrivacy;
 
     if (!user && !inUnauthFlow) {
       router.replace("/auth");
+      return;
+    }
+
+    if (!user && inUnauthFlow) {
+      setCheckingProfiles(false);
       return;
     }
 
@@ -60,6 +74,16 @@ export function AuthGuard({ children }: AuthGuardProps) {
               router.replace("/sign-up/players");
             } else if (userData?.team == null) {
               router.replace("/sign-up/team");
+            } else if (isStartMissionOnboardingActive(userData.start_mission_step)) {
+              if (userData.start_mission_step <= START_MISSION_STEP.WELCOME) {
+                router.replace("/onboarding/welcome");
+              } else if (userData.start_mission_step === START_MISSION_STEP.TEASER) {
+                router.replace("/onboarding/teaser");
+              } else if (userData.start_mission_step === START_MISSION_STEP.MISSION_INTRO) {
+                router.replace("/onboarding/mission-intro");
+              } else {
+                router.replace("/(tabs)");
+              }
             } else {
               router.replace("/(tabs)");
             }
@@ -69,7 +93,111 @@ export function AuthGuard({ children }: AuthGuardProps) {
             router.replace("/(tabs)");
           })
           .finally(() => setCheckingProfiles(false));
+      } else {
+        setCheckingProfiles(false);
       }
+      return;
+    }
+
+    if (user && inOnboarding) {
+      setCheckingProfiles(true);
+      Promise.all([getProfiles(user.id), getUserData(user.id)])
+        .then(async ([profiles, userData]) => {
+          if (profiles.length === 0) {
+            router.replace("/sign-up/players");
+            return;
+          }
+          if (userData?.team == null) {
+            router.replace("/sign-up/team");
+            return;
+          }
+          if (!isStartMissionOnboardingActive(userData.start_mission_step)) {
+            router.replace("/(tabs)");
+            return;
+          }
+          if (userData.start_mission_step <= START_MISSION_STEP.WELCOME && segments[1] !== "welcome") {
+            router.replace("/onboarding/welcome");
+            return;
+          }
+          if (userData.start_mission_step === START_MISSION_STEP.TEASER && segments[1] !== "teaser") {
+            router.replace("/onboarding/teaser");
+            return;
+          }
+          if (
+            userData.start_mission_step === START_MISSION_STEP.MISSION_INTRO &&
+            segments[1] !== "mission-intro"
+          ) {
+            router.replace("/onboarding/mission-intro");
+          }
+        })
+        .catch((error) => {
+          console.error("Error validating onboarding route:", error);
+        })
+        .finally(() => setCheckingProfiles(false));
+      return;
+    }
+
+    if (user && !inUnauthFlow && !inOnboarding) {
+      setCheckingProfiles(true);
+      Promise.all([getProfiles(user.id), getUserData(user.id)])
+        .then(async ([profiles, userData]) => {
+          if (profiles.length === 0) {
+            router.replace("/sign-up/players");
+            return;
+          }
+          if (userData?.team == null) {
+            router.replace("/sign-up/team");
+            return;
+          }
+          if (!isStartMissionOnboardingActive(userData.start_mission_step)) return;
+
+          const onboardingStep = userData.start_mission_step;
+          if (onboardingStep <= START_MISSION_STEP.WELCOME) {
+            router.replace("/onboarding/welcome");
+            return;
+          }
+          if (onboardingStep === START_MISSION_STEP.TEASER) {
+            router.replace("/onboarding/teaser");
+            return;
+          }
+          if (onboardingStep === START_MISSION_STEP.STORY) {
+            if (inStorySlides) return;
+            const chapterId = await getWeekOneRippedMapChapterId();
+            if (chapterId != null) {
+              router.replace({
+                pathname: "/(tabs)/story/slides",
+                params: {
+                  source: "chapter",
+                  chapterId: String(chapterId),
+                  onboardingFlow: "start-mission",
+                },
+              });
+            } else {
+              router.replace("/onboarding/teaser");
+            }
+            return;
+          }
+          if (onboardingStep === START_MISSION_STEP.MISSION_INTRO) {
+            router.replace("/onboarding/mission-intro");
+            return;
+          }
+          if (onboardingStep === START_MISSION_STEP.MISSION_IN_PROGRESS) {
+            if (inMissionFlow) return;
+            const activity = await getActivityByName("build_your_base");
+            if (activity?.id != null) {
+              router.replace({
+                pathname: "/(tabs)/activity/mission",
+                params: { id: String(activity.id), onboardingFlow: "start-mission" },
+              });
+            } else {
+              router.replace("/onboarding/mission-intro");
+            }
+          }
+        })
+        .catch((error) => {
+          console.error("Error checking mission-first onboarding:", error);
+        })
+        .finally(() => setCheckingProfiles(false));
       return;
     }
 
@@ -85,17 +213,19 @@ export function AuthGuard({ children }: AuthGuardProps) {
       router.replace("/subscription-required");
       return;
     }
-  }, [user, session, loading, segments, checkingProfiles, subscriptionInfo.isSubscribed, purchasesLoading]);
 
-  const showOverlay = loading || checkingProfiles;
+    setCheckingProfiles(false);
+  }, [user, session, loading, segments, subscriptionInfo.isSubscribed, purchasesLoading]);
+
+  const showOverlay = loading || (checkingProfiles && segments[0] !== "onboarding");
 
   return (
     <View style={styles.wrapper}>
       {children}
       {showOverlay && (
-        <ThemedView style={styles.overlay} pointerEvents="none">
+        <View style={styles.overlay} pointerEvents="none">
           <ActivityIndicator size="large" />
-        </ThemedView>
+        </View>
       )}
     </View>
   );
@@ -109,6 +239,6 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "transparent",
+    backgroundColor: "#4F6F52",
   },
 });

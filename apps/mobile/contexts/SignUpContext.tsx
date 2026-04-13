@@ -36,6 +36,8 @@ type SignUpContextValue = {
     | "missions"
     | "click_team"
     | "team"
+    | "click_journal"
+    | "journal"
     | "wrap_up"
     | "done";
   setTutorialStep: (
@@ -48,6 +50,8 @@ type SignUpContextValue = {
       | "missions"
       | "click_team"
       | "team"
+      | "click_journal"
+      | "journal"
       | "wrap_up"
       | "done"
   ) => void;
@@ -65,7 +69,7 @@ export function SignUpProvider({ children }: { children: React.ReactNode }) {
   const [selectedTeamName, setSelectedTeamName] = useState<string | null>(null);
   const [showPostSignUpWelcome, setShowPostSignUpWelcome] = useState(false);
   const [tutorialStep, setTutorialStep] = useState<
-    "intro" | "clubhouse" | "click_story" | "seasons" | "click_missions" | "missions" | "click_team" | "team" | "wrap_up" | "done"
+    "intro" | "clubhouse" | "click_story" | "seasons" | "click_missions" | "missions" | "click_team" | "team" | "click_journal" | "journal" | "wrap_up" | "done"
   >("intro");
   const [replayTutorialRequested, setReplayTutorialRequested] = useState(false);
 

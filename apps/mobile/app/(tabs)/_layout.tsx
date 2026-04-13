@@ -113,7 +113,7 @@ export default function TabLayout() {
     heroImageSource,
     loading: seasonLoading,
   } = useFirstSeason();
-  const { scaleW } = useLayoutScale();
+  const { scaleW, isTablet } = useLayoutScale();
   const insets = useSafeAreaInsets();
   const signUpContext = useSignUpOptional();
   const showPostSignUpWelcome = signUpContext?.showPostSignUpWelcome ?? false;
@@ -129,6 +129,7 @@ export default function TabLayout() {
   const [pushOptIn, setPushOptIn] = useState(false);
   const [showSeasonAnnouncementModal, setShowSeasonAnnouncementModal] =
     useState(false);
+  const [seasonAnnouncementSaving, setSeasonAnnouncementSaving] = useState(false);
   const [seasonAnnouncementChecking, setSeasonAnnouncementChecking] =
     useState(true);
   const [hasCompletedTutorial, setHasCompletedTutorial] = useState<boolean | null>(null);
@@ -343,8 +344,21 @@ export default function TabLayout() {
       : insets.bottom;
   const tabBarPaddingBottom = scaleW(16) + bottomInset;
   const tabBarHeight = scaleW(72) + bottomInset;
+  const seasonCardMaxWidth = isTablet ? scaleW(460) : 360;
+  const seasonTitleFontSize = isTablet ? scaleW(30) : undefined;
+  const seasonNameFontSize = isTablet ? scaleW(24) : undefined;
+  const seasonBodyFontSize = isTablet ? scaleW(20) : undefined;
+  const seasonBodyLineHeight = isTablet ? scaleW(28) : undefined;
+  const seasonCtaFontSize = isTablet ? scaleW(22) : undefined;
+
+  const tutorialVisible =
+    !onboardingActive &&
+    !showSeasonAnnouncementModal &&
+    showPostSignUpWelcome &&
+    hasCompletedTutorial === false;
 
   const isTabDisabled = (routeName: string) => {
+    if (!tutorialVisible) return false;
     if (onboardingActive) return true;
     const step = tutorialStep as string;
     if (step === "click_story") return routeName !== "story";
@@ -373,10 +387,17 @@ export default function TabLayout() {
   };
 
   const handleSeasonAnnouncementDismiss = async () => {
-    if (firstSeason?.id) {
-      await updateLastSeenSeasonId(firstSeason.id);
-    }
+    if (seasonAnnouncementSaving) return;
+    setSeasonAnnouncementSaving(true);
     setShowSeasonAnnouncementModal(false);
+    if (firstSeason?.id) {
+      try {
+        await updateLastSeenSeasonId(firstSeason.id);
+      } catch (error) {
+        console.error("Error updating last seen season id:", error);
+      }
+    }
+    setSeasonAnnouncementSaving(false);
     setTimeout(() => {
       maybeShowNotificationPrompt();
     }, NOTIFICATION_PROMPT_DELAY_MS);
@@ -393,18 +414,21 @@ export default function TabLayout() {
         tabBarInactiveTintColor: inactiveColor,
         tabBarLabelPosition: "below-icon",
         tabBarStyle: {
-          borderTopWidth: 0,
-          height: tabBarHeight,
-          paddingTop: scaleW(16),
-          paddingBottom: tabBarPaddingBottom,
-          paddingHorizontal: scaleW(8),
-          elevation: 8,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: scaleW(-2) },
-          shadowOpacity: 0.12,
-          shadowRadius: scaleW(4),
-          backgroundColor: TAB_BAR_COLORS[route.name] ?? TAB_BAR_COLORS.index,
-          display: onboardingActive ? "none" : "flex",
+          ...(onboardingActive
+            ? { display: "none", height: 0, paddingTop: 0, paddingBottom: 0, borderTopWidth: 0 }
+            : {
+                borderTopWidth: 0,
+                height: tabBarHeight,
+                paddingTop: scaleW(16),
+                paddingBottom: tabBarPaddingBottom,
+                paddingHorizontal: scaleW(8),
+                elevation: 8,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: scaleW(-2) },
+                shadowOpacity: 0.12,
+                shadowRadius: scaleW(4),
+                backgroundColor: TAB_BAR_COLORS[route.name] ?? TAB_BAR_COLORS.index,
+              }),
         },
         tabBarLabelStyle: {
           fontSize: scaleW(12),
@@ -536,7 +560,7 @@ export default function TabLayout() {
       />
       </Tabs>
       <NewPlayerTutorial
-        visible={!onboardingActive && showPostSignUpWelcome && hasCompletedTutorial === false}
+        visible={tutorialVisible}
         onDismiss={handleTutorialDismiss}
         tabBarHeight={tabBarHeight}
       />
@@ -551,7 +575,7 @@ export default function TabLayout() {
             <View
               style={[
                 styles.notificationPromptCard,
-                { padding: scaleW(24), borderRadius: scaleW(16) },
+                { padding: scaleW(24), borderRadius: scaleW(16), maxWidth: seasonCardMaxWidth },
               ]}
             >
               {firstSeason.hero_image ? (
@@ -568,7 +592,11 @@ export default function TabLayout() {
               ) : null}
               <ThemedText
                 type="subtitle"
-                style={{ marginBottom: scaleW(8), textAlign: "center" }}
+                style={{
+                  marginBottom: scaleW(8),
+                  textAlign: "center",
+                  ...(seasonTitleFontSize != null ? { fontSize: seasonTitleFontSize } : {}),
+                }}
                 lightColor={HUNTLY_GREEN}
                 darkColor={CREAM}
               >
@@ -576,7 +604,12 @@ export default function TabLayout() {
               </ThemedText>
               {firstSeason.name ? (
                 <ThemedText
-                  style={{ marginBottom: scaleW(8), textAlign: "center", fontWeight: "600" }}
+                  style={{
+                    marginBottom: scaleW(8),
+                    textAlign: "center",
+                    fontWeight: "600",
+                    ...(seasonNameFontSize != null ? { fontSize: seasonNameFontSize } : {}),
+                  }}
                   lightColor={HUNTLY_CHARCOAL}
                   darkColor={CREAM}
                 >
@@ -584,14 +617,32 @@ export default function TabLayout() {
                 </ThemedText>
               ) : null}
               <ThemedText
-                style={{ marginBottom: scaleW(16), textAlign: "center" }}
+                style={{
+                  marginBottom: scaleW(16),
+                  textAlign: "center",
+                  ...(seasonBodyFontSize != null ? { fontSize: seasonBodyFontSize } : {}),
+                  ...(seasonBodyLineHeight != null ? { lineHeight: seasonBodyLineHeight } : {}),
+                }}
                 lightColor={HUNTLY_CHARCOAL}
                 darkColor={CREAM}
               >
                 Read the latest story and jump into this season&apos;s missions.
               </ThemedText>
-              <Button variant="secondary" onPress={handleSeasonAnnouncementDismiss}>
-                Continue
+              <Button
+                variant="secondary"
+                onPress={handleSeasonAnnouncementDismiss}
+                loading={seasonAnnouncementSaving}
+                disabled={seasonAnnouncementSaving}
+                className={isTablet ? "h-16 rounded-2xl mx-2" : "rounded-2xl"}
+              >
+                <ThemedText
+                  type="defaultSemiBold"
+                  lightColor="#FFFFFF"
+                  darkColor="#FFFFFF"
+                  style={seasonCtaFontSize != null ? { fontSize: seasonCtaFontSize } : undefined}
+                >
+                  Continue
+                </ThemedText>
               </Button>
             </View>
           </View>

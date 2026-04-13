@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   Text,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
@@ -19,6 +19,8 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { getActivityById, getActivityImageSource } from "@/services/packService";
+import { useUser } from "@/contexts/UserContext";
+import { isStartMissionOnboardingActive } from "@/constants/startMissionOnboarding";
 import type { Activity } from "@/types/activity";
 import type { MissionStep } from "@/types/activity";
 
@@ -34,7 +36,10 @@ function buildSteps(activity: Activity): MissionStep[] {
 export default function StepsScreen() {
   const router = useRouter();
   const { id, step } = useLocalSearchParams<{ id?: string; step?: string }>();
-  const { scaleW } = useLayoutScale();
+  const { scaleW, isTablet } = useLayoutScale();
+  const insets = useSafeAreaInsets();
+  const { userData } = useUser();
+  const onboardingActive = isStartMissionOnboardingActive(userData?.start_mission_step);
   const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -182,8 +187,11 @@ export default function StepsScreen() {
           backgroundColor: DARK_BG,
           paddingTop: scaleW(12),
           paddingHorizontal: scaleW(20),
-          paddingBottom: scaleW(12),
-          marginBottom: scaleW(24),
+          paddingBottom:
+            insets.bottom +
+            (onboardingActive ? scaleW(20) : scaleW(12)) +
+            (isTablet ? scaleW(36) : 0),
+          marginBottom: onboardingActive ? 0 : scaleW(24),
         },
         backButton: {
           flex: 1,
@@ -203,7 +211,7 @@ export default function StepsScreen() {
         },
         buttonText: { fontSize: scaleW(16), fontWeight: "700", color: "#FFF", lineHeight: scaleW(20) },
       }),
-    [scaleW]
+    [scaleW, insets.bottom, onboardingActive, isTablet]
   );
 
   if (loading) {

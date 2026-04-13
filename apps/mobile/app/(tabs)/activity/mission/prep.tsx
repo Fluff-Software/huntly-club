@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
@@ -18,6 +18,8 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { getActivityById } from "@/services/packService";
+import { useUser } from "@/contexts/UserContext";
+import { isStartMissionOnboardingActive } from "@/constants/startMissionOnboarding";
 import type { Activity } from "@/types/activity";
 import type { PrepChecklistItem } from "@/types/activity";
 
@@ -31,7 +33,10 @@ const CHECK_GREEN = "#2D5A27";
 export default function PrepScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const { scaleW } = useLayoutScale();
+  const { scaleW, isTablet } = useLayoutScale();
+  const insets = useSafeAreaInsets();
+  const { userData } = useUser();
+  const onboardingActive = isStartMissionOnboardingActive(userData?.start_mission_step);
   const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -182,13 +187,16 @@ export default function PrepScreen() {
           right: 0,
           paddingTop: scaleW(12),
           paddingHorizontal: scaleW(20),
-          paddingBottom: scaleW(8),
+          paddingBottom:
+            insets.bottom +
+            (onboardingActive ? scaleW(20) : scaleW(8)) +
+            (isTablet ? scaleW(40) : 0),
           backgroundColor: LIGHT_GREEN_BG,
           borderTopWidth: 1,
           borderTopColor: "rgba(79,111,82,0.1)",
         },
       }),
-    [scaleW]
+    [scaleW, insets.bottom, onboardingActive, isTablet]
   );
 
   if (loading) {

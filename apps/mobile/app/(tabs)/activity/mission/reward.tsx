@@ -9,6 +9,7 @@ import {
   Dimensions,
   type ImageSourcePropType,
   ActivityIndicator,
+  InteractionManager,
 } from "react-native";
 import ConfettiCannon from "react-native-confetti-cannon";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -154,6 +155,20 @@ export default function RewardScreen() {
     const t = setTimeout(() => confettiRef.current?.start?.(), 0);
     return () => clearTimeout(t);
   }, []);
+
+  const handleGoHome = () => {
+    if (goingHome) return;
+    setGoingHome(true);
+    InteractionManager.runAfterInteractions(async () => {
+      try {
+        await updateStartMissionStep(START_MISSION_STEP.MISSION_COMPLETE);
+        router.replace("/(tabs)");
+      } catch (error) {
+        console.error("Error completing starter mission onboarding:", error);
+        setGoingHome(false);
+      }
+    });
+  };
 
   const styles = useMemo(
     () =>
@@ -428,16 +443,7 @@ export default function RewardScreen() {
           <Pressable
             style={styles.goHomeButton}
             disabled={goingHome}
-            onPress={async () => {
-              if (goingHome) return;
-              setGoingHome(true);
-              try {
-                await updateStartMissionStep(START_MISSION_STEP.MISSION_COMPLETE);
-                router.replace("/(tabs)");
-              } finally {
-                setGoingHome(false);
-              }
-            }}
+            onPress={handleGoHome}
             onPressIn={() => {
               if (goingHome) return;
               goHomeScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });

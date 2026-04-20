@@ -13,6 +13,9 @@ import {
 import { getWeekOneRippedMapChapterId } from "@/services/startMissionOnboardingService";
 import { getActivityByName } from "@/services/packService";
 
+const LOADER_BACKGROUND = "#4F6F52";
+const LOADER_SPINNER = "#F4F0EB";
+
 type AuthGuardProps = {
   children: React.ReactNode;
 };
@@ -235,8 +238,8 @@ const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
   },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
+  fullScreenLoader: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#4F6F52",

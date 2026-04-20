@@ -6,7 +6,9 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  StyleSheet,
 } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
@@ -94,6 +96,14 @@ export default function SignUpTeamScreen() {
     card2Translate.value = withDelay(400, withSpring(0, springBounce));
   }, [width]);
 
+  const goToAddExplorers = () => {
+    router.replace("/sign-up/players");
+  };
+
+  const hasExplorers = hasExplorersForTeamStep(players, profiles);
+  const showProfileLoading = Boolean(user && profilesLoading);
+  const showNoExplorers = Boolean(user && !profilesLoading && !hasExplorers);
+
   const handleEnterHuntlyWorld = async () => {
     if (!selectedName) return;
     if (!user) {
@@ -105,8 +115,8 @@ export default function SignUpTeamScreen() {
     setCreating(true);
 
     try {
-      const profiles = await getProfiles(user.id);
-      if (players.length === 0 && profiles.length === 0) {
+      const freshProfiles = await getProfiles(user.id);
+      if (!hasExplorersForTeamStep(players, freshProfiles)) {
         Alert.alert("Add explorers", "Please go back and add at least one explorer.");
         return;
       }
@@ -147,6 +157,98 @@ export default function SignUpTeamScreen() {
     }
   };
 
+  if (showProfileLoading) {
+    return (
+      <>
+        <StatusBar style="light" />
+        <Stack.Screen options={{ title: "Choose your team", headerShown: false }} />
+        <SafeAreaView style={{ flex: 1, backgroundColor: HUNTLY_GREEN }} edges={["top", "left", "right"]}>
+          <View style={{ flex: 1, paddingHorizontal: scaleW(24), paddingTop: scaleW(8) }}>
+            <Pressable
+              onPress={goToAddExplorers}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Back to add explorers"
+              style={styles.backRow}
+            >
+              <MaterialIcons name="arrow-back" size={scaleW(28)} color="#FFFFFF" />
+            </Pressable>
+            <View style={styles.loadingCenter}>
+              <ActivityIndicator size="large" color={CREAM} />
+              <ThemedText
+                lightColor="#FFFFFF"
+                darkColor="#FFFFFF"
+                style={{ marginTop: scaleW(16), fontSize: scaleW(16), textAlign: "center" }}
+              >
+                Loading your explorers…
+              </ThemedText>
+            </View>
+          </View>
+        </SafeAreaView>
+      </>
+    );
+  }
+
+  if (showNoExplorers) {
+    return (
+      <>
+        <StatusBar style="light" />
+        <Stack.Screen options={{ title: "Choose your team", headerShown: false }} />
+        <SafeAreaView style={{ flex: 1, backgroundColor: HUNTLY_GREEN }} edges={["top", "left", "right"]}>
+          <View style={{ flex: 1, paddingHorizontal: scaleW(24), paddingTop: scaleW(8) }}>
+            <Pressable
+              onPress={goToAddExplorers}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Back to add explorers"
+              style={styles.backRow}
+            >
+              <MaterialIcons name="arrow-back" size={scaleW(28)} color="#FFFFFF" />
+            </Pressable>
+            <View style={styles.emptyCenter}>
+              <ThemedText
+                type="heading"
+                lightColor="#FFFFFF"
+                darkColor="#FFFFFF"
+                style={{ fontSize: scaleW(22), fontWeight: "600", textAlign: "center", marginBottom: scaleW(12) }}
+              >
+                Add an explorer first
+              </ThemedText>
+              <ThemedText
+                lightColor="#FFFFFF"
+                darkColor="#FFFFFF"
+                style={{ fontSize: scaleW(16), textAlign: "center", lineHeight: scaleW(24), opacity: 0.95, marginBottom: scaleW(28) }}
+              >
+                You need at least one explorer before you can choose a team. Add one now, then come back to continue.
+              </ThemedText>
+              <Pressable
+                onPress={goToAddExplorers}
+                style={{
+                  backgroundColor: CREAM,
+                  paddingVertical: scaleW(16),
+                  paddingHorizontal: scaleW(32),
+                  borderRadius: scaleW(50),
+                  alignSelf: "center",
+                  minWidth: scaleW(220),
+                  alignItems: "center",
+                }}
+              >
+                <ThemedText
+                  type="heading"
+                  lightColor={HUNTLY_GREEN}
+                  darkColor={HUNTLY_GREEN}
+                  style={{ fontSize: scaleW(18), fontWeight: "600" }}
+                >
+                  Add explorers
+                </ThemedText>
+              </Pressable>
+            </View>
+          </View>
+        </SafeAreaView>
+      </>
+    );
+  }
+
   return (
     <>
       <StatusBar style="light" />
@@ -163,6 +265,15 @@ export default function SignUpTeamScreen() {
           }}
           showsVerticalScrollIndicator={false}
         >
+          <Pressable
+            onPress={goToAddExplorers}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Back to add explorers"
+            style={[styles.backRow, { marginBottom: scaleW(16) }]}
+          >
+            <MaterialIcons name="arrow-back" size={scaleW(28)} color="#FFFFFF" />
+          </Pressable>
           <Animated.View entering={FadeInDown.duration(500).delay(0)}>
             <ThemedText
               type="heading"
@@ -323,3 +434,21 @@ export default function SignUpTeamScreen() {
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  backRow: {
+    alignSelf: "flex-start",
+    paddingVertical: 4,
+  },
+  loadingCenter: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingBottom: 48,
+  },
+  emptyCenter: {
+    flex: 1,
+    justifyContent: "center",
+    paddingBottom: 48,
+  },
+});

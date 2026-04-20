@@ -105,7 +105,7 @@ function StoryTabPulse({ size }: { size: number }) {
 
 export default function TabLayout() {
   const { user } = useAuth();
-  const { profiles } = usePlayer();
+  const { profiles, loading: profilesLoading } = usePlayer();
   const { userData, loading: userLoading, updateWeeklyEmail, updateLastSeenSeasonId } =
     useUser();
   const {
@@ -138,11 +138,16 @@ export default function TabLayout() {
   const hasCheckedNotificationPromptRef = useRef(false);
   const hasCheckedSeasonAnnouncementRef = useRef(false);
 
-  // If user has no team set, redirect to team selection
+  // If user has no team set, send them to add explorers first, then team selection (matches AuthGuard)
   useEffect(() => {
     if (!user?.id || userLoading || !userData || userData.team != null) return;
+    if (profilesLoading) return;
+    if (profiles.length === 0) {
+      router.replace("/sign-up/players");
+      return;
+    }
     router.replace("/sign-up/team");
-  }, [user?.id, userLoading, userData]);
+  }, [user?.id, userLoading, userData, profiles.length, profilesLoading]);
 
   // On clubhouse/tabs load: if user has no tutorial achievement (check first profile), show the tutorial
   const firstProfileId = profiles[0]?.id ?? null;

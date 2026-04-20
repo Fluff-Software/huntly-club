@@ -5,6 +5,7 @@ import { useActionState, useState, useRef, useEffect } from "react";
 import { Button } from "@/components/Button";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { uploadActivityImage } from "@/lib/upload-actions";
+import { resizeImageFileForUpload } from "@/lib/client-image-resize";
 
 export type CategoryOption = {
   id: number;
@@ -117,7 +118,30 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
       prev.map((s, i) => (i === index ? { ...s, _uploading: true, _uploadError: null } : s))
     );
     const formData = new FormData();
-    formData.set("file", file);
+    let fileToUpload = file;
+    try {
+      fileToUpload = await resizeImageFileForUpload(file, {
+        maxBytes: 4_800_000,
+        maxWidth: 2560,
+        maxHeight: 2560,
+        outputType: "image/webp",
+      });
+    } catch (err) {
+      setStepsList((prev) =>
+        prev.map((s, i) =>
+          i === index
+            ? {
+                ...s,
+                _uploading: false,
+                _uploadError: err instanceof Error ? err.message : "Failed to process image",
+              }
+            : s
+        )
+      );
+      return;
+    }
+
+    formData.set("file", fileToUpload);
     const result = await uploadActivityImage(formData);
     setStepsList((prev) =>
       prev.map((s, i) =>

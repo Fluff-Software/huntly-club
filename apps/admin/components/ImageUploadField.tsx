@@ -6,6 +6,7 @@ import {
   uploadSeasonImage,
   uploadActivityImage,
 } from "@/lib/upload-actions";
+import { resizeImageFileForUpload } from "@/lib/client-image-resize";
 
 type ImageUploadFieldProps = {
   name: string;
@@ -36,8 +37,21 @@ export function ImageUploadField({
 
     setUploadError(null);
     startTransition(async () => {
+      let fileToUpload = file;
+      try {
+        fileToUpload = await resizeImageFileForUpload(file, {
+          // Keep under Server Action and server-side MAX_SIZE.
+          maxBytes: 4_800_000,
+          maxWidth: 2560,
+          maxHeight: 2560,
+          outputType: "image/webp",
+        });
+      } catch (err) {
+        setUploadError(err instanceof Error ? err.message : "Failed to process image");
+        return;
+      }
       const formData = new FormData();
-      formData.set("file", file);
+      formData.set("file", fileToUpload);
       if (uploadKind === "season") formData.set("prefix", prefix);
       const result =
         uploadKind === "activity"

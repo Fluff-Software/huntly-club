@@ -413,6 +413,52 @@ export type Database = {
         }
         Relationships: []
       }
+      user_data: {
+        Row: {
+          last_seen_season_id: number | null
+          start_mission_step: number
+          team: number | null
+          user_id: string
+          weekly_email: boolean
+        }
+        Insert: {
+          last_seen_season_id?: number | null
+          start_mission_step?: number
+          team?: number | null
+          user_id: string
+          weekly_email?: boolean
+        }
+        Update: {
+          last_seen_season_id?: number | null
+          start_mission_step?: number
+          team?: number | null
+          user_id?: string
+          weekly_email?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_data_last_seen_season_id_fkey"
+            columns: ["last_seen_season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_data_team_fkey"
+            columns: ["team"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_data_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_activity_progress: {
         Row: {
           activity_id: number

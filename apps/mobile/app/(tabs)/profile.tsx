@@ -1213,6 +1213,7 @@ export default function ProfileScreen() {
                   onPress: async () => {
                     try {
                       await signOut();
+                      router.replace("/auth");
                     } catch {
                       Alert.alert("Error", "Failed to log out");
                     }

@@ -224,3 +224,19 @@ export const getActivityById = async (
 
   return transformActivity(data);
 };
+
+export const getActivityByName = async (activityName: string): Promise<Activity | null> => {
+  const { data, error } = await supabase
+    .from("activities")
+    .select("*")
+    .eq("name", activityName)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error fetching activity by name:", error);
+    throw new Error(`Failed to fetch activity: ${error.message}`);
+  }
+
+  if (!data) return null;
+  return transformActivity(data);
+};

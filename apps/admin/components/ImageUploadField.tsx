@@ -7,6 +7,7 @@ import {
   uploadActivityImage,
 } from "@/lib/upload-actions";
 import { resizeImageFileForUpload } from "@/lib/client-image-resize";
+import { ImageCropModal } from "@/components/ImageCropModal";
 
 type ImageUploadFieldProps = {
   name: string;
@@ -30,16 +31,36 @@ export function ImageUploadField({
   const [hasValidPreview, setHasValidPreview] = useState(true);
   const [isPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [cropOpen, setCropOpen] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setUploadError(null);
+    setPendingFile(file);
+    setCropOpen(true);
+  }
+
+  function resetFileInput() {
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function handleCancelCrop() {
+    if (isPending) return;
+    setCropOpen(false);
+    setPendingFile(null);
+    resetFileInput();
+  }
+
+  function handleConfirmCrop(croppedFile: File) {
+    setCropOpen(false);
+    setPendingFile(null);
     startTransition(async () => {
-      let fileToUpload = file;
+      let fileToUpload = croppedFile;
       try {
-        fileToUpload = await resizeImageFileForUpload(file, {
+        fileToUpload = await resizeImageFileForUpload(croppedFile, {
           // Keep under Server Action and server-side MAX_SIZE.
           maxBytes: 4_800_000,
           maxWidth: 2560,
@@ -65,7 +86,7 @@ export function ImageUploadField({
         setUrl(result.url);
         setHasValidPreview(true);
       }
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      resetFileInput();
     });
   }
 
@@ -107,6 +128,14 @@ export function ImageUploadField({
           />
         </div>
       )}
+      <ImageCropModal
+        open={cropOpen}
+        file={pendingFile}
+        title="Crop activity image"
+        aspect={16 / 9}
+        onCancel={handleCancelCrop}
+        onConfirm={handleConfirmCrop}
+      />
     </div>
   );
 }

@@ -7,6 +7,8 @@ export const JOURNAL_XP_PER_ENTRY = 5;
 
 export const ACTIVITY_TAGS = [
   "Walk",
+  "Cycle",
+  "Mission",
   "Nature spotting",
   "Den building",
   "Water",

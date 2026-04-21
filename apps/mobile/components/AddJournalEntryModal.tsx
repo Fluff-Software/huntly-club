@@ -69,12 +69,14 @@ interface AddJournalEntryModalProps {
   visible: boolean;
   onClose: () => void;
   onSuccess: (entry: JournalEntry) => void;
+  initialActivityTag?: ActivityTag;
 }
 
 export function AddJournalEntryModal({
   visible,
   onClose,
   onSuccess,
+  initialActivityTag,
 }: AddJournalEntryModalProps) {
   const { scaleW } = useLayoutScale();
   const { user } = useAuth();
@@ -103,7 +105,7 @@ export function AddJournalEntryModal({
     if (visible) {
       setTitle("");
       setNotes("");
-      setActivityTag("Walk");
+      setActivityTag(initialActivityTag ?? "Walk");
       setEntryDate(todayISODate());
       setPhotoUri(null);
       setSaving(false);
@@ -113,7 +115,7 @@ export function AddJournalEntryModal({
         setSelectedProfileId(null);
       }
     }
-  }, [visible, profiles]);
+  }, [visible, profiles, initialActivityTag]);
 
   const handleTakePhoto = useCallback(async () => {
     try {

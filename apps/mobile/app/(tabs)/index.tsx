@@ -18,6 +18,12 @@ import AnimatedReanimated, {
   useSharedValue,
   withSpring,
   withDelay,
+  withTiming,
+  Easing,
+  FadeIn,
+  FadeOut,
+  FadeInDown,
+  FadeOutDown,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
@@ -25,11 +31,13 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { MissionCard } from "@/components/MissionCard";
 import { StatCard } from "@/components/StatCard";
+import { AddJournalEntryModal } from "@/components/AddJournalEntryModal";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useCurrentChapterActivities } from "@/hooks/useCurrentChapterActivities";
 import { useUser } from "@/contexts/UserContext";
 import { getRandomClubPhotos, type ClubPhotoCardItem } from "@/services/activityProgressService";
 import { getTeamCardConfig } from "@/utils/teamUtils";
+import type { ActivityTag } from "@/services/journalService";
 
 type HomeMode = "profile" | "activity" | "missions";
 const HOME_MODES: HomeMode[] = ["profile", "activity", "missions"];
@@ -41,6 +49,11 @@ const HUNTLY_GREEN = "#4F6F52";
 
 const CLUB_CARDS_PAGE_SIZE = 6;
 const CLUB_CARDS_MAX = 24;
+
+/** Must match team card slide `withTiming` duration */
+const TEAM_CARD_SLIDE_DURATION_MS = 420;
+/** Pause after team card motion finishes, then club section fades in */
+const CLUB_SECTION_PAUSE_AFTER_TEAM_MS = 500;
 
 /** Pastel/bright author badge colors (white text) for club cards */
 const CLUB_CARD_AUTHOR_COLORS = [
@@ -61,12 +74,21 @@ const TEAM_CARD_MESSAGES = [
 
 export default function HomeScreen() {
   const { scaleW, width, height } = useLayoutScale();
-  const { team, daysPlayed, pointsEarned } = useUser();
-  const { latestMission, loading: missionLoading, refetch: refetchMissions } = useCurrentChapterActivities(null);
+  const { team, teamId, daysPlayed, pointsEarned } = useUser();
+  const {
+    latestMission,
+    latestUnfinishedMission,
+    loading: missionLoading,
+    refetch: refetchMissions,
+  } = useCurrentChapterActivities(null);
   const [clubCards, setClubCards] = useState<ClubPhotoCardItem[]>([]);
   const [clubCardsLoading, setClubCardsLoading] = useState(true);
   const [loadingMoreClubCards, setLoadingMoreClubCards] = useState(false);
   const [clubImageStatus, setClubImageStatus] = useState<Record<string, "loading" | "loaded" | "error">>({});
+  const [showClubSection, setShowClubSection] = useState(false);
+  const [showQuickAddMenu, setShowQuickAddMenu] = useState(false);
+  const [showAddEntryModal, setShowAddEntryModal] = useState(false);
+  const [initialActivityTag, setInitialActivityTag] = useState<ActivityTag>("Walk");
   const initialIndex = 1; // activity (Welcome back)
   const [currentIndex, setCurrentIndex] = useState<number>(initialIndex);
   const currentMode = HOME_MODES[currentIndex] ?? "activity";
@@ -129,18 +151,110 @@ export default function HomeScreen() {
   const profileButtonScale = useSharedValue(1);
   const missionsButtonScale = useSharedValue(1);
   const navScale = useSharedValue(1);
-  const bearCardTranslateX = useSharedValue(200);
+  const [showTeamCard, setShowTeamCard] = useState(false);
+  const teamSlideStartedAtRef = useRef<number | null>(null);
+  const clubScheduleRetryRef = useRef(0);
+  const teamCardTranslateX = useSharedValue(240);
+  const teamCardOpacity = useSharedValue(0);
+  const fabRotation = useSharedValue(0);
 
   const profileButtonStyle = useAnimatedStyle(() => ({ transform: [{ scale: profileButtonScale.value }] }));
   const missionsButtonStyle = useAnimatedStyle(() => ({ transform: [{ scale: missionsButtonScale.value }] }));
   const navButtonStyle = useAnimatedStyle(() => ({ transform: [{ scale: navScale.value }] }));
-  const bearCardStyle = useAnimatedStyle(() => ({ transform: [{ translateX: bearCardTranslateX.value }] }));
+  const teamCardStyle = useAnimatedStyle(() => ({
+    opacity: teamCardOpacity.value,
+    transform: [{ translateX: teamCardTranslateX.value }],
+  }));
+  const fabIconStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${fabRotation.value}deg` }],
+  }));
 
   useEffect(() => {
-    if (width > 0 && teamCardConfig) {
-      bearCardTranslateX.value = 0;
+    if (!teamCardConfig) {
+      setShowTeamCard(false);
+      teamSlideStartedAtRef.current = null;
+      teamCardTranslateX.value = 240;
+      teamCardOpacity.value = 0;
+      return;
     }
-  }, [width, teamCardConfig]);
+
+    // Wait until we have config, then mount and slide in.
+    setShowTeamCard(true);
+    teamSlideStartedAtRef.current = Date.now();
+    teamCardTranslateX.value = 240;
+    teamCardOpacity.value = 0;
+    teamCardTranslateX.value = withTiming(0, {
+      duration: TEAM_CARD_SLIDE_DURATION_MS,
+      easing: Easing.out(Easing.cubic),
+    });
+    teamCardOpacity.value = withTiming(1, {
+      duration: 300,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [teamCardConfig, teamCardOpacity, teamCardTranslateX]);
+
+  // "From around the club": data must be loaded, then after team slide finishes + 0.5s (or 0.5s if no team card)
+  useEffect(() => {
+    setShowClubSection(false);
+    clubScheduleRetryRef.current = 0;
+    let cancelled = false;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    const clubDataReady = !clubCardsLoading && clubCards.length > 0;
+    if (!clubDataReady) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const scheduleShow = () => {
+      if (cancelled) return;
+
+      if (!teamCardConfig) {
+        timers.push(
+          setTimeout(() => {
+            if (!cancelled) setShowClubSection(true);
+          }, CLUB_SECTION_PAUSE_AFTER_TEAM_MS)
+        );
+        return;
+      }
+
+      const slideStart = teamSlideStartedAtRef.current;
+      if (slideStart == null) {
+        clubScheduleRetryRef.current += 1;
+        if (clubScheduleRetryRef.current > 40) {
+          const fallbackDelay =
+            TEAM_CARD_SLIDE_DURATION_MS + CLUB_SECTION_PAUSE_AFTER_TEAM_MS;
+          timers.push(
+            setTimeout(() => {
+              if (!cancelled) setShowClubSection(true);
+            }, fallbackDelay)
+          );
+          return;
+        }
+        timers.push(setTimeout(scheduleShow, 16));
+        return;
+      }
+
+      const targetTime =
+        slideStart +
+        TEAM_CARD_SLIDE_DURATION_MS +
+        CLUB_SECTION_PAUSE_AFTER_TEAM_MS;
+      const delay = Math.max(0, targetTime - Date.now());
+      timers.push(
+        setTimeout(() => {
+          if (!cancelled) setShowClubSection(true);
+        }, delay)
+      );
+    };
+
+    timers.push(setTimeout(scheduleShow, 0));
+
+    return () => {
+      cancelled = true;
+      timers.forEach(clearTimeout);
+    };
+  }, [clubCardsLoading, clubCards.length, teamCardConfig]);
 
   const resetToActivityPage = useCallback(() => {
     if (width <= 0) return;
@@ -227,6 +341,49 @@ export default function HomeScreen() {
     pagerRef.current?.scrollTo({ x: width * nextIndex, animated: true });
     setCurrentIndex(nextIndex);
   };
+
+  /**
+   * First load only: once missions have loaded once for this team, keep CTA mounted.
+   * Tab focus refetches set missionLoading true again — hiding the CTA would blink.
+   */
+  const [ctaMissionsReady, setCtaMissionsReady] = useState(false);
+  useEffect(() => {
+    setCtaMissionsReady(false);
+  }, [teamId]);
+  useEffect(() => {
+    if (teamId != null && !missionLoading) {
+      setCtaMissionsReady(true);
+    }
+  }, [teamId, missionLoading]);
+
+  const showFab = teamId != null && ctaMissionsReady;
+
+  const openAddEntry = useCallback((tag: ActivityTag) => {
+    setInitialActivityTag(tag);
+    setShowQuickAddMenu(false);
+    setShowAddEntryModal(true);
+  }, []);
+
+  const goToMission = useCallback(() => {
+    const mission = latestUnfinishedMission ?? latestMission;
+    if (!mission?.id) return;
+    setShowQuickAddMenu(false);
+    router.push({
+      pathname: "/(tabs)/activity/mission",
+      params: { id: mission.id },
+    } as Parameters<typeof router.push>[0]);
+  }, [latestUnfinishedMission, latestMission]);
+
+  useEffect(() => {
+    fabRotation.value = withTiming(showQuickAddMenu ? 45 : 0, {
+      duration: 160,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [showQuickAddMenu, fabRotation]);
+
+  useEffect(() => {
+    if (!showFab) setShowQuickAddMenu(false);
+  }, [showFab]);
 
   const styles = useMemo(
     () =>
@@ -315,6 +472,56 @@ export default function HomeScreen() {
           paddingLeft: missionCardsPaddingHorizontal,
           paddingRight: missionCardsPaddingHorizontal,
           paddingBottom: scaleW(8),
+        },
+        fab: {
+          position: "absolute",
+          bottom: scaleW(24),
+          right: scaleW(24),
+          width: scaleW(56),
+          height: scaleW(56),
+          borderRadius: scaleW(28),
+          backgroundColor: CREAM,
+          alignItems: "center",
+          justifyContent: "center",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: scaleW(3) },
+          shadowOpacity: 0.2,
+          shadowRadius: scaleW(6),
+          elevation: 6,
+        },
+        menuOverlay: {
+          ...StyleSheet.absoluteFillObject,
+          backgroundColor: "transparent",
+        },
+        quickAddMenu: {
+          position: "absolute",
+          right: scaleW(24),
+          bottom: scaleW(24) + scaleW(56) + scaleW(12),
+          width: scaleW(160),
+          gap: scaleW(10),
+        },
+        quickAddButton: {
+          backgroundColor: CREAM,
+          borderRadius: scaleW(32),
+          paddingVertical: scaleW(12),
+          paddingHorizontal: scaleW(14),
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: scaleW(2) },
+          shadowOpacity: 0.16,
+          shadowRadius: scaleW(4),
+          elevation: 4,
+        },
+        quickAddButtonText: {
+          fontSize: scaleW(15),
+          fontWeight: "700",
+          color: HUNTLY_GREEN,
+          textAlign: "center",
+        },
+        ctaLayer: {
+          ...StyleSheet.absoluteFillObject,
+          zIndex: 30,
+          elevation: 30,
+          pointerEvents: "box-none" as const,
         },
       }),
     [scaleW, width, height, clubCardsPaddingHorizontal, missionCardsPaddingHorizontal]
@@ -512,8 +719,8 @@ export default function HomeScreen() {
           Welcome back, Explorer!
         </ThemedText>
 
-        {teamCardConfig && (
-          <AnimatedReanimated.View style={bearCardStyle}>
+        {teamCardConfig && showTeamCard && (
+          <AnimatedReanimated.View style={teamCardStyle}>
             <View style={[styles.bearsCard, { backgroundColor: teamCardConfig.backgroundColor, borderWidth: 4, borderColor: "#FFF" }]}>
               <View className="flex-row items-center flex-1 p-4 overflow-hidden">
                 <View style={{ flex: 1, paddingRight: scaleW(8) }}>
@@ -534,68 +741,30 @@ export default function HomeScreen() {
           </AnimatedReanimated.View>
         )}
 
-        {(clubCardsLoading || clubCards.length > 0) && (
-          <View
-            style={{
-              backgroundColor: "#BBE5EB",
-              borderRadius: scaleW(15),
-              paddingTop: scaleW(16),
-              paddingBottom: scaleW(32),
-              borderWidth: 4,
-              borderColor: "#FFF",
-              shadowColor: "#000",
-              shadowOpacity: 0.3,
-              shadowRadius: 2,
-              shadowOffset: { width: 0, height: 2 },
-              elevation: 2,
-              overflow: Platform.OS === "android" ? "visible" : undefined,
-            }}
-            collapsable={Platform.OS !== "android"}
+        {showClubSection && (
+          <AnimatedReanimated.View
+            entering={FadeIn.duration(420).easing(Easing.out(Easing.cubic))}
           >
-            <ThemedText type="heading" style={{ color: "#000", fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(32), textAlign: "center", lineHeight: scaleW(28) }}>
-              From around the club
-            </ThemedText>
-            {clubCardsLoading && clubCards.length === 0 ? (
-              <View
-                style={{
-                  minHeight: scaleW(220),
-                  justifyContent: "center",
-                  alignItems: "center",
-                  paddingVertical: scaleW(32),
-                }}
-              >
-                <View
-                  style={{
-                    backgroundColor: HUNTLY_GREEN,
-                    borderRadius: scaleW(24),
-                    paddingVertical: scaleW(18),
-                    paddingHorizontal: scaleW(24),
-                    alignItems: "center",
-                    justifyContent: "center",
-                    shadowColor: "#000",
-                    shadowOpacity: 0.35,
-                    shadowRadius: 4,
-                    shadowOffset: { width: 0, height: 3 },
-                    elevation: 3,
-                  }}
-                >
-                  <ActivityIndicator size="large" color="#FFFFFF" />
-                  <ThemedText
-                    type="body"
-                    style={{
-                      marginTop: scaleW(12),
-                      color: "#FFFFFF",
-                      fontSize: scaleW(14),
-                      fontWeight: "600",
-                      textAlign: "center",
-                    }}
-                  >
-                    Loading photos from around the club…
-                  </ThemedText>
-                </View>
-              </View>
-            ) : (
-            <>
+            <View
+              style={{
+                backgroundColor: "#BBE5EB",
+                borderRadius: scaleW(15),
+                paddingTop: scaleW(16),
+                paddingBottom: scaleW(32),
+                borderWidth: 4,
+                borderColor: "#FFF",
+                shadowColor: "#000",
+                shadowOpacity: 0.3,
+                shadowRadius: 2,
+                shadowOffset: { width: 0, height: 2 },
+                elevation: 2,
+                overflow: Platform.OS === "android" ? "visible" : undefined,
+              }}
+              collapsable={Platform.OS !== "android"}
+            >
+              <ThemedText type="heading" style={{ color: "#000", fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(32), textAlign: "center", lineHeight: scaleW(28) }}>
+                From around the club
+              </ThemedText>
             <Animated.ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -695,9 +864,8 @@ export default function HomeScreen() {
                 </View>
               )}
             </Animated.ScrollView>
-            </>
-            )}
           </View>
+          </AnimatedReanimated.View>
         )}
       </View>
     </ScrollView>
@@ -820,6 +988,71 @@ export default function HomeScreen() {
         </View>
         </View>
       </SafeAreaView>
+
+      {teamId != null && (
+        <AddJournalEntryModal
+          visible={showAddEntryModal}
+          onClose={() => setShowAddEntryModal(false)}
+          onSuccess={() => setShowAddEntryModal(false)}
+          initialActivityTag={initialActivityTag}
+        />
+      )}
+
+      {showFab && (
+        <AnimatedReanimated.View
+          style={styles.ctaLayer}
+          entering={FadeIn.duration(340).easing(Easing.out(Easing.cubic))}
+          exiting={FadeOut.duration(160).easing(Easing.in(Easing.cubic))}
+        >
+          {showQuickAddMenu && (
+            <Pressable
+              style={styles.menuOverlay}
+              onPress={() => setShowQuickAddMenu(false)}
+            />
+          )}
+
+          {showQuickAddMenu && (
+            <AnimatedReanimated.View
+              entering={FadeInDown.duration(180)}
+              exiting={FadeOutDown.duration(160)}
+              style={styles.quickAddMenu}
+            >
+              <Pressable style={styles.quickAddButton} onPress={() => openAddEntry("Walk")}>
+                <ThemedText type="heading" style={styles.quickAddButtonText}>Walk</ThemedText>
+              </Pressable>
+              <Pressable
+                style={styles.quickAddButton}
+                onPress={() => openAddEntry("Cycle" as ActivityTag)}
+              >
+                <ThemedText type="heading" style={styles.quickAddButtonText}>Cycle</ThemedText>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.quickAddButton,
+                  !latestMission && !latestUnfinishedMission ? { opacity: 0.6 } : null,
+                ]}
+                disabled={!latestMission && !latestUnfinishedMission}
+                onPress={goToMission}
+              >
+                <ThemedText type="heading" style={styles.quickAddButtonText}>Mission</ThemedText>
+              </Pressable>
+            </AnimatedReanimated.View>
+          )}
+
+          <Pressable
+            style={styles.fab}
+            onPress={() => setShowQuickAddMenu((v) => !v)}
+          >
+            <AnimatedReanimated.View style={fabIconStyle}>
+              <MaterialIcons
+                name="add"
+                size={scaleW(28)}
+                color={HUNTLY_GREEN}
+              />
+            </AnimatedReanimated.View>
+          </Pressable>
+        </AnimatedReanimated.View>
+      )}
     </View>
   );
 }

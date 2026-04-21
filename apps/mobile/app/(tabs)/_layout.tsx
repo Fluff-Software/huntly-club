@@ -9,6 +9,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
+import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
@@ -17,6 +18,7 @@ import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useFirstSeason } from "@/hooks/useFirstSeason";
 import { NewPlayerTutorial } from "@/components/NewPlayerTutorial";
+import { SlideUpTabBar } from "@/components/SlideUpTabBar";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/ui/Button";
 import {
@@ -411,9 +413,21 @@ export default function TabLayout() {
   const showNotificationUI =
     showNotificationPrompt && !notificationPromptChecking;
 
+  const renderTabBar = useCallback(
+    (props: BottomTabBarProps) => (
+      <SlideUpTabBar
+        {...props}
+        onboardingActive={onboardingActive}
+        tabBarSlideDistance={tabBarHeight}
+      />
+    ),
+    [onboardingActive, tabBarHeight]
+  );
+
   return (
     <View style={styles.layoutWrapper}>
       <Tabs
+      tabBar={renderTabBar}
       screenOptions={({ route }) => ({
         tabBarActiveTintColor: activeColor,
         tabBarInactiveTintColor: inactiveColor,
@@ -422,6 +436,11 @@ export default function TabLayout() {
           ...(onboardingActive
             ? { display: "none", height: 0, paddingTop: 0, paddingBottom: 0, borderTopWidth: 0 }
             : {
+                /* Float over content so nothing reserves a bottom strip while the bar slides in */
+                position: "absolute",
+                left: 0,
+                right: 0,
+                bottom: 0,
                 borderTopWidth: 0,
                 height: tabBarHeight,
                 paddingTop: scaleW(16),

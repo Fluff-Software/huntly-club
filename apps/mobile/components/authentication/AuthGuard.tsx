@@ -220,14 +220,18 @@ export function AuthGuard({ children }: AuthGuardProps) {
     setCheckingProfiles(false);
   }, [user, session, loading, segments, subscriptionInfo.isSubscribed, purchasesLoading]);
 
-  const showOverlay = loading || (checkingProfiles && segments[0] !== "onboarding");
+  // We still validate profiles/userData during normal navigation, but we don't want a blocking
+  // full-screen spinner during tab switches. Keep the UI responsive and only block during
+  // the initial auth bootstrap / non-tab flows.
+  const showOverlay =
+    loading || (checkingProfiles && segments[0] !== "(tabs)" && segments[0] !== "onboarding");
 
   return (
     <View style={styles.wrapper}>
       {children}
       {showOverlay && (
         <View style={styles.overlay} pointerEvents="none">
-          <ActivityIndicator size="large" />
+          <ActivityIndicator size="large" color={LOADER_SPINNER} />
         </View>
       )}
     </View>
@@ -243,5 +247,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#4F6F52",
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: LOADER_BACKGROUND,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

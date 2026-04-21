@@ -96,6 +96,11 @@ export function UsersListWithModal({
     setSelectedUserId(null);
   }
 
+  function handleUserDeleted(deletedUserId: string) {
+    setUsers((prev) => prev.filter((u) => u.id !== deletedUserId));
+    closeModal();
+  }
+
   return (
     <>
       <div className="mb-4 max-w-2xl">
@@ -198,6 +203,7 @@ export function UsersListWithModal({
         userId={selectedUserId}
         open={modalOpen}
         onClose={closeModal}
+        onDeleted={handleUserDeleted}
       />
     </>
   );

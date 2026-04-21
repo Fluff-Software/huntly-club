@@ -1,6 +1,7 @@
 "use server";
 
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { revalidatePath } from "next/cache";
 
 export type UserListItem = {
   id: string;
@@ -312,6 +313,111 @@ export async function getUserImages(userId: string): Promise<UserImagesResult> {
   } catch (e) {
     return {
       error: e instanceof Error ? e.message : "Failed to load images",
+    };
+  }
+}
+
+const USER_PHOTOS_BUCKET = "user-activity-photos";
+const USERS_REVALIDATE_PATH = "/users";
+
+/** Extract storage file path from a Supabase public URL (object/public/bucket/path). */
+function getStoragePathFromPublicUrl(url: string, bucket: string): string | null {
+  if (!url || typeof url !== "string") return null;
+  const prefix = `/object/public/${bucket}/`;
+  const i = url.indexOf(prefix);
+  if (i === -1) return null;
+  return url.slice(i + prefix.length).trim() || null;
+}
+
+export type DeleteUserResult = { error?: string; success?: boolean };
+
+export async function deleteUserAdmin(userId: string): Promise<DeleteUserResult> {
+  try {
+    const supabase = createServerSupabaseClient();
+
+    const { data: profiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("user_id", userId);
+    if (profilesError) return { error: profilesError.message };
+    const profileIds = (profiles ?? []).map((p) => p.id);
+
+    // Best-effort: remove user photo objects before deleting rows.
+    // We try both approaches:
+    // - list by `${userId}/...` (canonical upload path)
+    // - derive from `photo_url` in case legacy paths exist
+    try {
+      const { data: list } = await supabase.storage
+        .from(USER_PHOTOS_BUCKET)
+        .list(userId, { limit: 1000 });
+      const fileNames = list?.map((f) => f.name) ?? [];
+      if (fileNames.length > 0) {
+        await supabase.storage
+          .from(USER_PHOTOS_BUCKET)
+          .remove(fileNames.map((name) => `${userId}/${name}`));
+      }
+    } catch {
+      // ignore
+    }
+
+    if (profileIds.length > 0) {
+      try {
+        const { data: photoRows } = await supabase
+          .from("user_activity_photos")
+          .select("photo_url")
+          .in("profile_id", profileIds);
+        const paths =
+          photoRows
+            ?.map((r) => (r.photo_url ? getStoragePathFromPublicUrl(r.photo_url, USER_PHOTOS_BUCKET) : null))
+            .filter((p): p is string => Boolean(p)) ?? [];
+        if (paths.length > 0) {
+          await supabase.storage.from(USER_PHOTOS_BUCKET).remove(paths);
+        }
+      } catch {
+        // ignore
+      }
+
+      // Child tables keyed by profile_id
+      await supabase
+        .from("user_activity_photos")
+        .delete()
+        .in("profile_id", profileIds);
+      await supabase
+        .from("user_activity_progress")
+        .delete()
+        .in("profile_id", profileIds);
+      await supabase
+        .from("user_achievements")
+        .delete()
+        .in("profile_id", profileIds);
+    }
+
+    // Tables keyed by user_id
+    await supabase.from("user_badges").delete().eq("user_id", userId);
+    await supabase.from("user_data").delete().eq("user_id", userId);
+    await supabase
+      .from("account_removal_requests")
+      .delete()
+      .eq("user_id", userId);
+
+    // Profiles last so their cascades can run for profile_id FKs.
+    await supabase.from("profiles").delete().eq("user_id", userId);
+
+    // Revoke all sessions so the user is logged out on all devices (best-effort).
+    try {
+      await supabase.rpc("revoke_user_sessions", { p_user_id: userId });
+    } catch {
+      // ignore
+    }
+
+    const { error: deleteAuthError } = await supabase.auth.admin.deleteUser(userId);
+    if (deleteAuthError) return { error: deleteAuthError.message };
+
+    revalidatePath(USERS_REVALIDATE_PATH);
+    return { success: true };
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Failed to delete user",
     };
   }
 }

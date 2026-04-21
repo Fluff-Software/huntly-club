@@ -7,6 +7,7 @@ import {
   getUserProfiles,
   getUserImages,
   verifyUserEmail,
+  deleteUserAdmin,
   type UserDetailsResult,
   type UserProfilesResult,
   type UserImagesResult,
@@ -24,14 +25,18 @@ type Props = {
   userId: string | null;
   open: boolean;
   onClose: () => void;
+  onDeleted: (userId: string) => void;
 };
 
-export function UserDetailModal({ userId, open, onClose }: Props) {
+export function UserDetailModal({ userId, open, onClose, onDeleted }: Props) {
   const [activeTab, setActiveTab] = useState<(typeof MODAL_TABS)[number]["value"]>("details");
   const [details, setDetails] = useState<UserDetailsResult | null>(null);
   const [profiles, setProfiles] = useState<UserProfilesResult | null>(null);
   const [images, setImages] = useState<UserImagesResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || !userId) return;
@@ -40,6 +45,9 @@ export function UserDetailModal({ userId, open, onClose }: Props) {
     setProfiles(null);
     setImages(null);
     setLoading(true);
+    setDeleteConfirmOpen(false);
+    setDeleting(false);
+    setDeleteError(null);
     Promise.all([
       getUserDetails(userId),
       getUserProfiles(userId),
@@ -58,14 +66,30 @@ export function UserDetailModal({ userId, open, onClose }: Props) {
     }
   };
 
+  async function handleDeleteConfirmed() {
+    if (!userId) return;
+    setDeleting(true);
+    setDeleteError(null);
+    const res = await deleteUserAdmin(userId);
+    if (res.error) {
+      setDeleting(false);
+      setDeleteError(res.error);
+      return;
+    }
+    onDeleted(userId);
+  }
+
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        if (deleteConfirmOpen) setDeleteConfirmOpen(false);
+        else onClose();
+      }
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose]);
+  }, [open, onClose, deleteConfirmOpen]);
 
   if (!open) return null;
 
@@ -85,16 +109,26 @@ export function UserDetailModal({ userId, open, onClose }: Props) {
           <h2 id="user-detail-title" className="text-lg font-semibold text-stone-900">
             User details
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1 text-stone-500 hover:bg-stone-100 hover:text-stone-700 focus:outline-none focus:ring-2 focus:ring-huntly-sage"
-            aria-label="Close"
-          >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setDeleteConfirmOpen(true)}
+              disabled={!userId || loading || deleting}
+              className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-red-300 focus:ring-offset-2"
+            >
+              Delete user
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg p-1 text-stone-500 hover:bg-stone-100 hover:text-stone-700 focus:outline-none focus:ring-2 focus:ring-huntly-sage"
+              aria-label="Close"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         <nav className="border-b border-stone-200 px-6" aria-label="User detail tabs">
@@ -132,6 +166,110 @@ export function UserDetailModal({ userId, open, onClose }: Props) {
           {!loading && activeTab === "images" && (
             <ImagesTab result={images} />
           )}
+        </div>
+      </div>
+
+      <ConfirmDeleteModal
+        open={deleteConfirmOpen}
+        onClose={() => !deleting && setDeleteConfirmOpen(false)}
+        onConfirm={handleDeleteConfirmed}
+        deleting={deleting}
+        error={deleteError}
+        userEmail={details?.user?.email ?? null}
+        profileCount={profiles?.profiles?.length ?? null}
+        imageCount={images?.images?.length ?? null}
+      />
+    </div>
+  );
+}
+
+function ConfirmDeleteModal({
+  open,
+  onClose,
+  onConfirm,
+  deleting,
+  error,
+  userEmail,
+  profileCount,
+  imageCount,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  deleting: boolean;
+  error: string | null;
+  userEmail: string | null;
+  profileCount: number | null;
+  imageCount: number | null;
+}) {
+  if (!open) return null;
+
+  const profileLine =
+    profileCount == null
+      ? "Profiles owned by this user"
+      : `${profileCount} profile${profileCount === 1 ? "" : "s"} owned by this user`;
+  const imageLine =
+    imageCount == null
+      ? "Uploaded activity photos by this user"
+      : `${imageCount} uploaded activity photo${imageCount === 1 ? "" : "s"} by this user`;
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
+      aria-modal="true"
+      role="dialog"
+      aria-labelledby="confirm-delete-user-title"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="border-b border-stone-200 px-6 py-4">
+          <h3 id="confirm-delete-user-title" className="text-base font-semibold text-stone-900">
+            Delete user{userEmail ? ` (${userEmail})` : ""}
+          </h3>
+          <p className="mt-1 text-sm text-stone-600">
+            This action is <span className="font-semibold text-red-700">permanent</span> and cannot be undone.
+          </p>
+        </div>
+
+        <div className="space-y-4 px-6 py-5">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+            <div className="font-semibold">What will happen</div>
+            <ul className="mt-2 list-disc space-y-1 pl-5">
+              <li>The user’s authentication account will be deleted.</li>
+              <li>{profileLine} will be deleted.</li>
+              <li>{imageLine} will be deleted from the database and storage.</li>
+              <li>Progress/achievements and related user records will be removed.</li>
+              <li>The user will be signed out on all devices.</li>
+            </ul>
+          </div>
+
+          {error && (
+            <p className="text-sm text-red-700" role="alert">
+              {error}
+            </p>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-2 border-t border-stone-200 px-6 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={deleting}
+            className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={deleting}
+            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-red-300 focus:ring-offset-2"
+          >
+            {deleting ? "Deleting…" : "Yes, delete user"}
+          </button>
         </div>
       </div>
     </div>

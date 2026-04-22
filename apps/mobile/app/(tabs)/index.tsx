@@ -55,6 +55,8 @@ const CLUB_CARDS_MAX = 24;
 const TEAM_CARD_SLIDE_DURATION_MS = 420;
 /** Pause after team card motion finishes, then club section fades in */
 const CLUB_SECTION_PAUSE_AFTER_TEAM_MS = 500;
+/** Wait after team image loads before sliding in (avoids image pop-in) */
+const TEAM_CARD_WAIT_AFTER_RENDER_MS = 500;
 
 /** Pastel/bright author badge colors (white text) for club cards */
 const CLUB_CARD_AUTHOR_COLORS = [
@@ -154,6 +156,8 @@ export default function HomeScreen() {
   const missionsButtonScale = useSharedValue(1);
   const navScale = useSharedValue(1);
   const [showTeamCard, setShowTeamCard] = useState(false);
+  const [teamCardImageReady, setTeamCardImageReady] = useState(false);
+  const [teamSlideHasStarted, setTeamSlideHasStarted] = useState(false);
   const teamSlideStartedAtRef = useRef<number | null>(null);
   const clubScheduleRetryRef = useRef(0);
   const teamCardTranslateX = useSharedValue(240);
@@ -174,26 +178,52 @@ export default function HomeScreen() {
   useEffect(() => {
     if (!teamCardConfig) {
       setShowTeamCard(false);
+      setTeamCardImageReady(false);
+      setTeamSlideHasStarted(false);
       teamSlideStartedAtRef.current = null;
       teamCardTranslateX.value = 240;
       teamCardOpacity.value = 0;
       return;
     }
 
-    // Wait until we have config, then mount and slide in.
+    // Mount immediately, but don't slide in until image is ready.
     setShowTeamCard(true);
-    teamSlideStartedAtRef.current = Date.now();
+    setTeamCardImageReady(false);
+    setTeamSlideHasStarted(false);
     teamCardTranslateX.value = 240;
     teamCardOpacity.value = 0;
-    teamCardTranslateX.value = withTiming(0, {
-      duration: TEAM_CARD_SLIDE_DURATION_MS,
-      easing: Easing.out(Easing.cubic),
-    });
-    teamCardOpacity.value = withTiming(1, {
-      duration: 300,
-      easing: Easing.out(Easing.cubic),
-    });
   }, [teamCardConfig, teamCardOpacity, teamCardTranslateX]);
+
+  useEffect(() => {
+    if (!teamCardConfig || !showTeamCard || !teamCardImageReady) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      if (cancelled) return;
+      setTeamSlideHasStarted(true);
+      teamSlideStartedAtRef.current = Date.now();
+      teamCardTranslateX.value = 240;
+      teamCardOpacity.value = 0;
+      teamCardTranslateX.value = withTiming(0, {
+        duration: TEAM_CARD_SLIDE_DURATION_MS,
+        easing: Easing.out(Easing.cubic),
+      });
+      teamCardOpacity.value = withTiming(1, {
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+      });
+    }, TEAM_CARD_WAIT_AFTER_RENDER_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [
+    teamCardConfig,
+    showTeamCard,
+    teamCardImageReady,
+    setTeamSlideHasStarted,
+    teamCardOpacity,
+    teamCardTranslateX,
+  ]);
 
   // "From around the club": data must be loaded, then after team slide finishes + 0.5s (or 0.5s if no team card)
   useEffect(() => {
@@ -257,6 +287,8 @@ export default function HomeScreen() {
       timers.forEach(clearTimeout);
     };
   }, [clubCardsLoading, clubCards.length, teamCardConfig]);
+
+  const shouldRenderClubSection = showClubSection && (!teamCardConfig || teamSlideHasStarted);
 
   const resetToActivityPage = useCallback(() => {
     if (width <= 0) return;
@@ -360,11 +392,10 @@ export default function HomeScreen() {
 
   const showFab = teamId != null && ctaMissionsReady;
 
-  // Tab bar floats over content (see Tabs layout), so keep FAB above it.
+  // Keep CTA above the device bottom safe area.
   const bottomInset =
     Platform.OS === "android" && insets.bottom === 0 ? scaleW(24) : insets.bottom;
-  const tabBarHeight = scaleW(72) + bottomInset;
-  const fabBottom = scaleW(24) + tabBarHeight;
+  const fabBottom = scaleW(24) + bottomInset;
 
   const openAddEntry = useCallback((tag: ActivityTag) => {
     setInitialActivityTag(tag);
@@ -748,6 +779,8 @@ export default function HomeScreen() {
                   <Image
                     source={teamCardConfig.waveImage}
                     resizeMode="contain"
+                    onLoadEnd={() => setTeamCardImageReady(true)}
+                    onError={() => setTeamCardImageReady(true)}
                     style={[styles.bearImage]}
                   />
                 </View>
@@ -756,7 +789,7 @@ export default function HomeScreen() {
           </AnimatedReanimated.View>
         )}
 
-        {showClubSection && (
+        {shouldRenderClubSection && (
           <AnimatedReanimated.View
             entering={FadeIn.duration(420).easing(Easing.out(Easing.cubic))}
           >
@@ -1032,7 +1065,7 @@ export default function HomeScreen() {
               exiting={FadeOutDown.duration(160)}
               style={styles.quickAddMenu}
             >
-              <Pressable style={styles.quickAddButton} onPress={() => openAddEntry("Walk")}>
+              <Pressable style={styles.quickAddButton} onPress={() => router.push("/(tabs)/activity/walk-prep")}>
                 <ThemedText type="heading" style={styles.quickAddButtonText}>Walk</ThemedText>
               </Pressable>
               <Pressable

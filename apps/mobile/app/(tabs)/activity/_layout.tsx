@@ -11,6 +11,13 @@ export default function ActivityLayout() {
         }}
       />
       <Stack.Screen
+        name="walk-prep"
+        options={{
+          title: "Walk",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="mission"
         options={{
           title: "Activity",

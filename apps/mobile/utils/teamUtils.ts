@@ -6,7 +6,8 @@ export type TeamName = "foxes" | "bears" | "otters";
 export type TeamCardConfig = {
   title: string;
   backgroundColor: string;
-  waveImage: ImageSourcePropType;
+  /** Bundled image module id from require(...) */
+  waveImage: number;
 };
 
 const TEAM_CARD_CONFIG: Record<string, TeamCardConfig> = {

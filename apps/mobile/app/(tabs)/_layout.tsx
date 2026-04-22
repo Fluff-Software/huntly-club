@@ -436,11 +436,6 @@ export default function TabLayout() {
           ...(onboardingActive
             ? { display: "none", height: 0, paddingTop: 0, paddingBottom: 0, borderTopWidth: 0 }
             : {
-                /* Float over content so nothing reserves a bottom strip while the bar slides in */
-                position: "absolute",
-                left: 0,
-                right: 0,
-                bottom: 0,
                 borderTopWidth: 0,
                 height: tabBarHeight,
                 paddingTop: scaleW(16),

@@ -26,6 +26,7 @@ import AnimatedReanimated, {
   FadeOutDown,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
@@ -74,6 +75,7 @@ const TEAM_CARD_MESSAGES = [
 
 export default function HomeScreen() {
   const { scaleW, width, height } = useLayoutScale();
+  const insets = useSafeAreaInsets();
   const { team, teamId, daysPlayed, pointsEarned } = useUser();
   const {
     latestMission,
@@ -358,6 +360,12 @@ export default function HomeScreen() {
 
   const showFab = teamId != null && ctaMissionsReady;
 
+  // Tab bar floats over content (see Tabs layout), so keep FAB above it.
+  const bottomInset =
+    Platform.OS === "android" && insets.bottom === 0 ? scaleW(24) : insets.bottom;
+  const tabBarHeight = scaleW(72) + bottomInset;
+  const fabBottom = scaleW(24) + tabBarHeight;
+
   const openAddEntry = useCallback((tag: ActivityTag) => {
     setInitialActivityTag(tag);
     setShowQuickAddMenu(false);
@@ -475,7 +483,7 @@ export default function HomeScreen() {
         },
         fab: {
           position: "absolute",
-          bottom: scaleW(24),
+          bottom: fabBottom,
           right: scaleW(24),
           width: scaleW(56),
           height: scaleW(56),
@@ -496,7 +504,7 @@ export default function HomeScreen() {
         quickAddMenu: {
           position: "absolute",
           right: scaleW(24),
-          bottom: scaleW(24) + scaleW(56) + scaleW(12),
+          bottom: fabBottom + scaleW(56) + scaleW(12),
           width: scaleW(160),
           gap: scaleW(10),
         },
@@ -524,7 +532,14 @@ export default function HomeScreen() {
           pointerEvents: "box-none" as const,
         },
       }),
-    [scaleW, width, height, clubCardsPaddingHorizontal, missionCardsPaddingHorizontal]
+    [
+      scaleW,
+      width,
+      height,
+      clubCardsPaddingHorizontal,
+      missionCardsPaddingHorizontal,
+      fabBottom,
+    ]
   );
 
   const wrapNavPressable = (onPress: () => void, children: React.ReactNode) => (

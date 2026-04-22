@@ -18,6 +18,13 @@ export default function ActivityLayout() {
         }}
       />
       <Stack.Screen
+        name="walk-map"
+        options={{
+          title: "Walk map",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="mission"
         options={{
           title: "Activity",

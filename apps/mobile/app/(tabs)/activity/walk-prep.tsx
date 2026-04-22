@@ -6,7 +6,6 @@ import { useRouter } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useUser } from "@/contexts/UserContext";
-import { AddJournalEntryModal } from "@/components/AddJournalEntryModal";
 
 const FOREST_DARK = "#2D4A35";
 const LIGHT_GREEN_BG = "#EEF5EE";
@@ -23,7 +22,6 @@ export default function WalkPrepScreen() {
   const insets = useSafeAreaInsets();
   const { teamId } = useUser();
   const [checked, setChecked] = useState<Record<number, boolean>>({});
-  const [showAddEntryModal, setShowAddEntryModal] = useState(false);
 
   const allChecked = WALK_CHECKLIST.every((_, i) => checked[i]);
   const toggleCheck = (index: number) => {
@@ -194,25 +192,13 @@ export default function WalkPrepScreen() {
         <Pressable
           style={styles.startButton}
           disabled={!allChecked || teamId == null}
-          onPress={() => setShowAddEntryModal(true)}
+          onPress={() => router.push("/(tabs)/activity/walk-map")}
         >
           <ThemedText type="heading" style={styles.startButtonText}>
             Let&apos;s Go!
           </ThemedText>
         </Pressable>
       </View>
-
-      {teamId != null && (
-        <AddJournalEntryModal
-          visible={showAddEntryModal}
-          onClose={() => setShowAddEntryModal(false)}
-          onSuccess={() => {
-            setShowAddEntryModal(false);
-            router.back();
-          }}
-          initialActivityTag="Walk"
-        />
-      )}
     </SafeAreaView>
   );
 }

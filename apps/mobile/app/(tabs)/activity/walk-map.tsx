@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { View, StyleSheet, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import MapView, { Marker } from "react-native-maps";
+import MapView, { Marker, Polyline } from "react-native-maps";
 import * as Location from "expo-location";
 import { Pedometer } from "expo-sensors";
 import { ThemedText } from "@/components/ThemedText";
@@ -18,6 +18,33 @@ type Coords = {
   longitude: number;
 };
 
+type LatLng = {
+  latitude: number;
+  longitude: number;
+};
+
+type MapRegion = {
+  latitude: number;
+  longitude: number;
+  latitudeDelta: number;
+  longitudeDelta: number;
+};
+
+function metersBetween(a: LatLng, b: LatLng): number {
+  const R = 6371000;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLon = toRad(b.longitude - a.longitude);
+  const lat1 = toRad(a.latitude);
+  const lat2 = toRad(b.latitude);
+  const sinDLat = Math.sin(dLat / 2);
+  const sinDLon = Math.sin(dLon / 2);
+  const h =
+    sinDLat * sinDLat +
+    Math.cos(lat1) * Math.cos(lat2) * (sinDLon * sinDLon);
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
 export default function WalkMapScreen() {
   const router = useRouter();
   const { scaleW } = useLayoutScale();
@@ -26,6 +53,9 @@ export default function WalkMapScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [stepsStatus, setStepsStatus] = useState<"loading" | "denied" | "unavailable" | "ready">("loading");
   const [steps, setSteps] = useState<number>(0);
+  const [trail, setTrail] = useState<LatLng[]>([]);
+  const mapRef = useRef<MapView | null>(null);
+  const [currentRegion, setCurrentRegion] = useState<MapRegion | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,6 +86,47 @@ export default function WalkMapScreen() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (status !== "ready") return;
+    let cancelled = false;
+    let subscription: Location.LocationSubscription | null = null;
+
+    (async () => {
+      try {
+        subscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.Balanced,
+            timeInterval: 2000,
+            distanceInterval: 3,
+          },
+          (pos) => {
+            if (cancelled) return;
+            const next: LatLng = {
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+            };
+            setCoords(next);
+            setTrail((prev) => {
+              if (prev.length === 0) return [next];
+              const last = prev[prev.length - 1]!;
+              if (metersBetween(last, next) < 2) return prev;
+              return prev.concat(next);
+            });
+          }
+        );
+      } catch (e) {
+        if (cancelled) return;
+        setErrorMessage(e instanceof Error ? e.message : "Failed to track your route");
+        setStatus("error");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      subscription?.remove();
+    };
+  }, [status]);
 
   useEffect(() => {
     let cancelled = false;
@@ -148,7 +219,7 @@ export default function WalkMapScreen() {
         stepsOverlay: {
           position: "absolute" as const,
           top: scaleW(12),
-          right: scaleW(12),
+          left: scaleW(12),
           backgroundColor: "rgba(0,0,0,0.35)",
           borderRadius: scaleW(18),
           paddingVertical: scaleW(8),
@@ -160,6 +231,19 @@ export default function WalkMapScreen() {
           elevation: 5,
         },
         stepsOverlayText: { color: "#FFF", fontWeight: "800" as const, fontSize: scaleW(13) },
+        recenterButton: {
+          position: "absolute" as const,
+          right: scaleW(12),
+          bottom: scaleW(12),
+          width: scaleW(44),
+          height: scaleW(44),
+          borderRadius: scaleW(22),
+          backgroundColor: "rgba(0,0,0,0.35)",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 6,
+          elevation: 6,
+        },
         retryButton: {
           marginTop: scaleW(16),
           backgroundColor: HUNTLY_GREEN,
@@ -181,6 +265,21 @@ export default function WalkMapScreen() {
       }
     : null;
 
+  const handleRecenter = () => {
+    if (!coords) return;
+    const r = currentRegion ?? region;
+    if (!r) return;
+    mapRef.current?.animateToRegion(
+      {
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        latitudeDelta: r.latitudeDelta,
+        longitudeDelta: r.longitudeDelta,
+      },
+      350
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <View style={styles.header}>
@@ -201,7 +300,22 @@ export default function WalkMapScreen() {
       <View style={styles.body}>
         {status === "ready" && region ? (
           <View style={styles.map}>
-            <MapView style={StyleSheet.absoluteFill} initialRegion={region} showsUserLocation>
+            <MapView
+              ref={(r) => {
+                mapRef.current = r;
+              }}
+              style={StyleSheet.absoluteFill}
+              initialRegion={region}
+              showsUserLocation
+              onRegionChangeComplete={(r) => setCurrentRegion(r as MapRegion)}
+            >
+              {trail.length >= 2 && (
+                <Polyline
+                  coordinates={trail}
+                  strokeColor="#2D5A27"
+                  strokeWidth={6}
+                />
+              )}
               <Marker coordinate={coords!} title="You are here" />
             </MapView>
             <View pointerEvents="none" style={styles.stepsOverlay}>
@@ -214,6 +328,14 @@ export default function WalkMapScreen() {
                   : "Steps off"}
               </ThemedText>
             </View>
+            <Pressable
+              onPress={handleRecenter}
+              style={styles.recenterButton}
+              accessibilityRole="button"
+              accessibilityLabel="Recenter map"
+            >
+              <MaterialIcons name="my-location" size={scaleW(20)} color="#FFF" />
+            </Pressable>
           </View>
         ) : (
           <View style={styles.loadingWrap}>

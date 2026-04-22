@@ -141,23 +141,25 @@ export default function WalkMapScreen() {
           textAlign: "center",
         },
         headerRightSpacer: { width: scaleW(42) },
-        stepsPill: {
-          position: "absolute" as const,
-          right: scaleW(14),
-          bottom: scaleW(12),
-          backgroundColor: "rgba(255,255,255,0.16)",
-          borderRadius: scaleW(18),
-          paddingVertical: scaleW(6),
-          paddingHorizontal: scaleW(10),
-          flexDirection: "row",
-          alignItems: "center",
-          gap: scaleW(6),
-        },
-        stepsText: { color: "#FFF", fontWeight: "800" as const, fontSize: scaleW(13) },
         body: { flex: 1, backgroundColor: LIGHT_GREEN_BG },
         loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center", padding: scaleW(24) },
         message: { textAlign: "center", fontSize: scaleW(15), color: "#2F3336", marginTop: scaleW(12) },
         map: { flex: 1 },
+        stepsOverlay: {
+          position: "absolute" as const,
+          top: scaleW(12),
+          right: scaleW(12),
+          backgroundColor: "rgba(0,0,0,0.35)",
+          borderRadius: scaleW(18),
+          paddingVertical: scaleW(8),
+          paddingHorizontal: scaleW(10),
+          flexDirection: "row",
+          alignItems: "center",
+          gap: scaleW(6),
+          zIndex: 5,
+          elevation: 5,
+        },
+        stepsOverlayText: { color: "#FFF", fontWeight: "800" as const, fontSize: scaleW(13) },
         retryButton: {
           marginTop: scaleW(16),
           backgroundColor: HUNTLY_GREEN,
@@ -194,23 +196,25 @@ export default function WalkMapScreen() {
           </ThemedText>
         </View>
         <View style={styles.headerRightSpacer} />
-        <View style={styles.stepsPill}>
-          <MaterialIcons name="directions-walk" size={scaleW(16)} color="#FFF" />
-          <ThemedText style={styles.stepsText}>
-            {stepsStatus === "ready"
-              ? `${steps} steps`
-              : stepsStatus === "loading"
-              ? "Steps…"
-              : "Steps off"}
-          </ThemedText>
-        </View>
       </View>
 
       <View style={styles.body}>
         {status === "ready" && region ? (
-          <MapView style={styles.map} initialRegion={region} showsUserLocation>
-            <Marker coordinate={coords!} title="You are here" />
-          </MapView>
+          <View style={styles.map}>
+            <MapView style={StyleSheet.absoluteFill} initialRegion={region} showsUserLocation>
+              <Marker coordinate={coords!} title="You are here" />
+            </MapView>
+            <View pointerEvents="none" style={styles.stepsOverlay}>
+              <MaterialIcons name="directions-walk" size={scaleW(16)} color="#FFF" />
+              <ThemedText style={styles.stepsOverlayText}>
+                {stepsStatus === "ready"
+                  ? `${steps} steps`
+                  : stepsStatus === "loading"
+                  ? "Steps…"
+                  : "Steps off"}
+              </ThemedText>
+            </View>
+          </View>
         ) : (
           <View style={styles.loadingWrap}>
             {status === "loading" ? <ActivityIndicator size="large" color={HUNTLY_GREEN} /> : null}

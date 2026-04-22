@@ -72,6 +72,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         "light": icon[variant],
         "tinted": iconTinted[variant],
       }
+    ,
+    infoPlist: {
+      NSMotionUsageDescription:
+        "Huntly World uses motion data to count your steps during walks.",
+    },
   },
   android: {
     adaptiveIcon: {
@@ -80,6 +85,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     package: androidPackage[variant],
     googleServicesFile: "./google-services.json",
+    permissions: ["ACTIVITY_RECOGNITION"],
     intentFilters: [
       {
         action: "VIEW",

@@ -5,6 +5,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import MapView, { Marker } from "react-native-maps";
 import * as Location from "expo-location";
+import { Pedometer } from "expo-sensors";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 
@@ -23,6 +24,8 @@ export default function WalkMapScreen() {
   const [status, setStatus] = useState<"loading" | "denied" | "ready" | "error">("loading");
   const [coords, setCoords] = useState<Coords | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [stepsStatus, setStepsStatus] = useState<"loading" | "denied" | "unavailable" | "ready">("loading");
+  const [steps, setSteps] = useState<number>(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,6 +54,54 @@ export default function WalkMapScreen() {
     })();
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    let subscription: { remove: () => void } | null = null;
+    const startedAt = new Date();
+
+    (async () => {
+      try {
+        const isAvailable = await Pedometer.isAvailableAsync();
+        if (cancelled) return;
+        if (!isAvailable) {
+          setStepsStatus("unavailable");
+          return;
+        }
+
+        const perm = await Pedometer.requestPermissionsAsync();
+        if (cancelled) return;
+        if (!perm.granted) {
+          setStepsStatus("denied");
+          return;
+        }
+
+        setStepsStatus("ready");
+
+        // Start with a baseline count since this screen opened.
+        try {
+          const initial = await Pedometer.getStepCountAsync(startedAt, new Date());
+          if (!cancelled) setSteps(initial.steps ?? 0);
+        } catch {
+          // ignore; live watch below will still update on supported devices
+        }
+
+        subscription = Pedometer.watchStepCount((result) => {
+          if (cancelled) return;
+          // Some platforms report steps since subscription start.
+          setSteps(result.steps ?? 0);
+        });
+      } catch {
+        if (cancelled) return;
+        setStepsStatus("unavailable");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      subscription?.remove();
     };
   }, []);
 
@@ -90,6 +141,19 @@ export default function WalkMapScreen() {
           textAlign: "center",
         },
         headerRightSpacer: { width: scaleW(42) },
+        stepsPill: {
+          position: "absolute" as const,
+          right: scaleW(14),
+          bottom: scaleW(12),
+          backgroundColor: "rgba(255,255,255,0.16)",
+          borderRadius: scaleW(18),
+          paddingVertical: scaleW(6),
+          paddingHorizontal: scaleW(10),
+          flexDirection: "row",
+          alignItems: "center",
+          gap: scaleW(6),
+        },
+        stepsText: { color: "#FFF", fontWeight: "800" as const, fontSize: scaleW(13) },
         body: { flex: 1, backgroundColor: LIGHT_GREEN_BG },
         loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center", padding: scaleW(24) },
         message: { textAlign: "center", fontSize: scaleW(15), color: "#2F3336", marginTop: scaleW(12) },
@@ -130,6 +194,16 @@ export default function WalkMapScreen() {
           </ThemedText>
         </View>
         <View style={styles.headerRightSpacer} />
+        <View style={styles.stepsPill}>
+          <MaterialIcons name="directions-walk" size={scaleW(16)} color="#FFF" />
+          <ThemedText style={styles.stepsText}>
+            {stepsStatus === "ready"
+              ? `${steps} steps`
+              : stepsStatus === "loading"
+              ? "Steps…"
+              : "Steps off"}
+          </ThemedText>
+        </View>
       </View>
 
       <View style={styles.body}>

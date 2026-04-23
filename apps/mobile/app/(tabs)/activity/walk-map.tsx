@@ -33,6 +33,21 @@ type MapRegion = {
   longitudeDelta: number;
 };
 
+function formatDurationMs(ms: number) {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes < 60) return `${minutes}m ${seconds}s`;
+  const hours = Math.floor(minutes / 60);
+  const remMins = minutes % 60;
+  return `${hours}h ${remMins}m`;
+}
+
+function formatDistance(meters: number) {
+  if (meters < 1000) return `${Math.round(meters)} m`;
+  return `${(meters / 1000).toFixed(2)} km`;
+}
+
 function metersBetween(a: LatLng, b: LatLng): number {
   const R = 6371000;
   const toRad = (deg: number) => (deg * Math.PI) / 180;
@@ -65,6 +80,7 @@ export default function WalkMapScreen() {
   const [confirmVisible, setConfirmVisible] = useState(false);
   const confirmBackdropOpacity = useRef(new Animated.Value(0)).current;
   const confirmSheetY = useRef(new Animated.Value(32)).current;
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
     let cancelled = false;
@@ -95,6 +111,12 @@ export default function WalkMapScreen() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (status !== "ready") return;
+    const id = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [status]);
 
   useEffect(() => {
     if (status !== "ready") return;
@@ -233,13 +255,14 @@ export default function WalkMapScreen() {
           borderRadius: scaleW(18),
           paddingVertical: scaleW(8),
           paddingHorizontal: scaleW(10),
-          flexDirection: "row",
-          alignItems: "center",
           gap: scaleW(6),
           zIndex: 5,
           elevation: 5,
         },
+        stepsRow: { flexDirection: "row", alignItems: "center", gap: scaleW(6) },
         stepsOverlayText: { color: "#FFF", fontWeight: "800" as const, fontSize: scaleW(13) },
+        statRow: { flexDirection: "row", alignItems: "center", gap: scaleW(6) },
+        statsSubText: { color: "rgba(255,255,255,0.9)", fontWeight: "800" as const, fontSize: scaleW(12) },
         recenterButton: {
           position: "absolute" as const,
           right: scaleW(12),
@@ -368,6 +391,8 @@ export default function WalkMapScreen() {
     return sum;
   }, [trail]);
 
+  const durationMs = nowMs - startedAt.getTime();
+
   const openConfirm = () => {
     setConfirmVisible(true);
     setConfirmOpen(true);
@@ -462,14 +487,24 @@ export default function WalkMapScreen() {
               )}
             </MapView>
             <View pointerEvents="none" style={styles.stepsOverlay}>
-              <MaterialIcons name="directions-walk" size={scaleW(16)} color="#FFF" />
-              <ThemedText style={styles.stepsOverlayText}>
-                {stepsStatus === "ready"
-                  ? `${steps} steps`
-                  : stepsStatus === "loading"
-                  ? "Steps…"
-                  : "Steps off"}
-              </ThemedText>
+              <View style={styles.stepsRow}>
+                <MaterialIcons name="directions-walk" size={scaleW(16)} color="#FFF" />
+                <ThemedText type="heading" style={styles.stepsOverlayText}>
+                  {stepsStatus === "ready"
+                    ? `${steps} steps`
+                    : stepsStatus === "loading"
+                    ? "Steps…"
+                    : "Steps off"}
+                </ThemedText>
+              </View>
+              <View style={styles.statRow}>
+                <MaterialIcons name="straighten" size={scaleW(15)} color="#FFF" />
+                <ThemedText type="heading" style={styles.statsSubText}>{formatDistance(distanceMeters)}</ThemedText>
+              </View>
+              <View style={styles.statRow}>
+                <MaterialIcons name="timer" size={scaleW(15)} color="#FFF" />
+                <ThemedText type="heading" style={styles.statsSubText}>{formatDurationMs(durationMs)}</ThemedText>
+              </View>
             </View>
             <Pressable
               onPress={handleRecenter}

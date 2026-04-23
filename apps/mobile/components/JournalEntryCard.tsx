@@ -1,5 +1,5 @@
-import React, { useMemo } from "react";
-import { View, Image, StyleSheet, Pressable } from "react-native";
+import React, { useMemo, useState } from "react";
+import { View, Image, Modal, StyleSheet, Pressable } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { MaterialIcons } from "@expo/vector-icons";
 import MapView, { Polyline } from "react-native-maps";
@@ -87,6 +87,7 @@ export function JournalEntryCard({
 }: JournalEntryCardProps) {
   const { scaleW } = useLayoutScale();
   const trackedMeta = useMemo(() => tryParseTrackedMeta(entry.notes), [entry.notes]);
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
   const trackedRegion = useMemo(() => {
     if (!trackedMeta || trackedMeta.route.length === 0) return null;
     return regionForRoute(trackedMeta.route);
@@ -215,6 +216,37 @@ export function JournalEntryCard({
           color: AMBER,
           fontWeight: "600",
         },
+        previewBackdrop: {
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.92)",
+          justifyContent: "center",
+          alignItems: "center",
+          padding: scaleW(16),
+        },
+        previewImage: {
+          width: "100%",
+          height: "100%",
+          borderRadius: scaleW(16),
+        },
+        previewClose: {
+          width: scaleW(56),
+          height: scaleW(56),
+          borderRadius: scaleW(28),
+          backgroundColor: "rgba(255,255,255,0.16)",
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        previewCloseWrap: {
+          position: "absolute" as const,
+          left: 0,
+          right: 0,
+          bottom: scaleW(28),
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 2,
+          elevation: 2,
+          pointerEvents: "box-none" as const,
+        },
       }),
     [scaleW]
   );
@@ -284,7 +316,14 @@ export function JournalEntryCard({
               {trackedMeta.photoUrls.length > 0 && (
                 <View style={styles.walkPhotoRow}>
                   {trackedMeta.photoUrls.slice(0, 4).map((url) => (
-                    <Image key={url} source={{ uri: url }} style={styles.walkPhoto} resizeMode="cover" />
+                    <Pressable
+                      key={url}
+                      onPress={() => setPreviewUri(url)}
+                      accessibilityRole="button"
+                      accessibilityLabel="View photo"
+                    >
+                      <Image source={{ uri: url }} style={styles.walkPhoto} resizeMode="cover" />
+                    </Pressable>
                   ))}
                 </View>
               )}
@@ -302,11 +341,13 @@ export function JournalEntryCard({
                 )}
               </View>
               {!!entry.photo_url && (
-                <Image
-                  source={{ uri: entry.photo_url }}
-                  style={styles.thumbnail}
-                  resizeMode="cover"
-                />
+                <Pressable
+                  onPress={() => setPreviewUri(entry.photo_url!)}
+                  accessibilityRole="button"
+                  accessibilityLabel="View photo"
+                >
+                  <Image source={{ uri: entry.photo_url }} style={styles.thumbnail} resizeMode="cover" />
+                </Pressable>
               )}
             </View>
           )}
@@ -322,6 +363,29 @@ export function JournalEntryCard({
           </View>
         </View>
       </Pressable>
+
+      <Modal
+        visible={previewUri != null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPreviewUri(null)}
+      >
+        <Pressable style={styles.previewBackdrop} onPress={() => setPreviewUri(null)}>
+          {previewUri != null && (
+            <Image source={{ uri: previewUri }} style={styles.previewImage} resizeMode="contain" />
+          )}
+          <View style={styles.previewCloseWrap}>
+            <Pressable
+              style={styles.previewClose}
+              onPress={() => setPreviewUri(null)}
+              accessibilityRole="button"
+              accessibilityLabel="Close photo preview"
+            >
+              <MaterialIcons name="close" size={scaleW(26)} color="#FFF" />
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
     </Animated.View>
   );
 }

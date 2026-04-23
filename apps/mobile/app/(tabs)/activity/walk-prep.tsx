@@ -139,7 +139,7 @@ export default function WalkPrepScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backButton}>
+        <Pressable onPress={() => router.replace("/(tabs)")} style={styles.backButton}>
           <MaterialIcons name="chevron-left" size={scaleW(28)} color="#FFF" />
         </Pressable>
         <View style={styles.headerTextWrap}>

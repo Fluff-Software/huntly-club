@@ -15,6 +15,7 @@ export default function ActivityLayout() {
         options={{
           title: "Walk",
           headerShown: false,
+          gestureEnabled: false,
         }}
       />
       <Stack.Screen
@@ -22,6 +23,14 @@ export default function ActivityLayout() {
         options={{
           title: "Walk map",
           headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="walk-summary"
+        options={{
+          title: "Walk summary",
+          headerShown: false,
+          gestureEnabled: false,
         }}
       />
       <Stack.Screen

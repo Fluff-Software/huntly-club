@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { View, StyleSheet, Pressable, ActivityIndicator } from "react-native";
+import { View, StyleSheet, Pressable, ActivityIndicator, Modal, Animated, Easing } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -8,10 +8,13 @@ import * as Location from "expo-location";
 import { Pedometer } from "expo-sensors";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { setCurrentWalkSession } from "../../../services/walkSessionService";
 
 const FOREST_DARK = "#2D4A35";
 const LIGHT_GREEN_BG = "#EEF5EE";
 const HUNTLY_GREEN = "#4F6F52";
+const CHECK_GREEN = "#2D5A27";
 
 type Coords = {
   latitude: number;
@@ -47,7 +50,8 @@ function metersBetween(a: LatLng, b: LatLng): number {
 
 export default function WalkMapScreen() {
   const router = useRouter();
-  const { scaleW } = useLayoutScale();
+  const { scaleW, isTablet } = useLayoutScale();
+  const insets = useSafeAreaInsets();
   const [status, setStatus] = useState<"loading" | "denied" | "ready" | "error">("loading");
   const [coords, setCoords] = useState<Coords | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -56,6 +60,11 @@ export default function WalkMapScreen() {
   const [trail, setTrail] = useState<LatLng[]>([]);
   const mapRef = useRef<MapView | null>(null);
   const [currentRegion, setCurrentRegion] = useState<MapRegion | null>(null);
+  const [startedAt] = useState<Date>(() => new Date());
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const confirmBackdropOpacity = useRef(new Animated.Value(0)).current;
+  const confirmSheetY = useRef(new Animated.Value(32)).current;
 
   useEffect(() => {
     let cancelled = false;
@@ -234,7 +243,7 @@ export default function WalkMapScreen() {
         recenterButton: {
           position: "absolute" as const,
           right: scaleW(12),
-          bottom: scaleW(12),
+          bottom: scaleW(12) + scaleW(104) + insets.bottom + (isTablet ? scaleW(20) : 0),
           width: scaleW(44),
           height: scaleW(44),
           borderRadius: scaleW(22),
@@ -244,6 +253,35 @@ export default function WalkMapScreen() {
           zIndex: 6,
           elevation: 6,
         },
+        footer: {
+          position: "absolute" as const,
+          bottom: 0,
+          left: 0,
+          right: 0,
+          paddingTop: scaleW(12),
+          paddingHorizontal: scaleW(20),
+          paddingBottom: insets.bottom + scaleW(12) + (isTablet ? scaleW(40) : 0),
+          backgroundColor: LIGHT_GREEN_BG,
+          borderTopWidth: 1,
+          borderTopColor: "rgba(79,111,82,0.1)",
+          zIndex: 10,
+          elevation: 10,
+        },
+        footerHint: {
+          fontSize: scaleW(14),
+          color: "#5a5a5a",
+          textAlign: "center",
+          marginBottom: scaleW(12),
+        },
+        completeButton: {
+          backgroundColor: HUNTLY_GREEN,
+          borderRadius: scaleW(28),
+          paddingVertical: scaleW(16),
+          paddingHorizontal: scaleW(32),
+          alignSelf: "stretch",
+          alignItems: "center",
+        },
+        completeButtonText: { fontSize: scaleW(18), fontWeight: "800", color: "#FFF" },
         retryButton: {
           marginTop: scaleW(16),
           backgroundColor: HUNTLY_GREEN,
@@ -252,8 +290,49 @@ export default function WalkMapScreen() {
           paddingHorizontal: scaleW(18),
         },
         retryText: { color: "#FFF", fontWeight: "800", textAlign: "center" as const },
+        modalBackdrop: {
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.45)",
+          justifyContent: "flex-end",
+        },
+        modalSheet: {
+          backgroundColor: LIGHT_GREEN_BG,
+          borderTopLeftRadius: scaleW(22),
+          borderTopRightRadius: scaleW(22),
+          padding: scaleW(18),
+          paddingBottom: insets.bottom + scaleW(16),
+          borderTopWidth: 1,
+          borderTopColor: "rgba(79,111,82,0.12)",
+        },
+        modalTitle: {
+          fontSize: scaleW(18),
+          fontWeight: "900",
+          color: "#1A2E1E",
+          textAlign: "center",
+        },
+        modalBody: {
+          marginTop: scaleW(8),
+          fontSize: scaleW(14),
+          color: "#3a3a3a",
+          textAlign: "center",
+        },
+        modalButtons: { marginTop: scaleW(16), gap: scaleW(10) },
+        modalPrimary: {
+          backgroundColor: CHECK_GREEN,
+          borderRadius: scaleW(28),
+          paddingVertical: scaleW(14),
+          alignItems: "center",
+        },
+        modalPrimaryText: { fontSize: scaleW(16), fontWeight: "900", color: "#FFF" },
+        modalSecondary: {
+          backgroundColor: "rgba(79,111,82,0.10)",
+          borderRadius: scaleW(28),
+          paddingVertical: scaleW(14),
+          alignItems: "center",
+        },
+        modalSecondaryText: { fontSize: scaleW(16), fontWeight: "900", color: HUNTLY_GREEN },
       }),
-    [scaleW]
+    [scaleW, insets.bottom, isTablet]
   );
 
   const region = coords
@@ -278,6 +357,71 @@ export default function WalkMapScreen() {
       },
       350
     );
+  };
+
+  const distanceMeters = useMemo(() => {
+    if (trail.length < 2) return 0;
+    let sum = 0;
+    for (let i = 1; i < trail.length; i++) {
+      sum += metersBetween(trail[i - 1]!, trail[i]!);
+    }
+    return sum;
+  }, [trail]);
+
+  const openConfirm = () => {
+    setConfirmVisible(true);
+    setConfirmOpen(true);
+    confirmBackdropOpacity.setValue(0);
+    confirmSheetY.setValue(32);
+    Animated.parallel([
+      Animated.timing(confirmBackdropOpacity, {
+        toValue: 1,
+        duration: 160,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(confirmSheetY, {
+        toValue: 0,
+        duration: 220,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const closeConfirm = () => {
+    Animated.parallel([
+      Animated.timing(confirmBackdropOpacity, {
+        toValue: 0,
+        duration: 120,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(confirmSheetY, {
+        toValue: 32,
+        duration: 160,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(({ finished }) => {
+      if (!finished) return;
+      setConfirmOpen(false);
+      setConfirmVisible(false);
+    });
+  };
+
+  const confirmComplete = () => {
+    const endedAt = new Date();
+    setCurrentWalkSession({
+      startedAt: startedAt.toISOString(),
+      endedAt: endedAt.toISOString(),
+      steps: stepsStatus === "ready" ? steps : null,
+      distanceMeters,
+      route: trail,
+      endedAtCoords: coords,
+    });
+    closeConfirm();
+    router.replace("/(tabs)/activity/walk-summary");
   };
 
   return (
@@ -336,6 +480,22 @@ export default function WalkMapScreen() {
             >
               <MaterialIcons name="my-location" size={scaleW(20)} color="#FFF" />
             </Pressable>
+
+            <View style={styles.footer} pointerEvents="box-none">
+              <ThemedText style={styles.footerHint}>
+                {trail.length >= 2 ? "Ready when you are — save your walk summary." : "Start walking to record your route."}
+              </ThemedText>
+              <Pressable
+                style={styles.completeButton}
+                onPress={openConfirm}
+                accessibilityRole="button"
+                accessibilityLabel="Complete walk"
+              >
+                <ThemedText type="heading" style={styles.completeButtonText}>
+                  Complete
+                </ThemedText>
+              </Pressable>
+            </View>
           </View>
         ) : (
           <View style={styles.loadingWrap}>
@@ -384,6 +544,53 @@ export default function WalkMapScreen() {
           </View>
         )}
       </View>
+
+      <Modal
+        visible={confirmVisible}
+        transparent
+        animationType="none"
+        onRequestClose={closeConfirm}
+      >
+        <View style={styles.modalBackdrop}>
+          <Animated.View
+            style={[
+              StyleSheet.absoluteFillObject,
+              { backgroundColor: "rgba(0,0,0,0.45)", opacity: confirmBackdropOpacity },
+            ]}
+          />
+          <Pressable style={StyleSheet.absoluteFill} onPress={closeConfirm} />
+          <Animated.View style={[styles.modalSheet, { transform: [{ translateY: confirmSheetY }] }]}>
+            <ThemedText type="heading" style={styles.modalTitle}>
+              Complete this walk?
+            </ThemedText>
+            <ThemedText style={styles.modalBody}>
+              You’ll be taken to a summary screen with your route and stats.
+            </ThemedText>
+            <View style={styles.modalButtons}>
+              <Pressable
+                style={styles.modalPrimary}
+                onPress={confirmComplete}
+                accessibilityRole="button"
+                accessibilityLabel="Yes, complete walk"
+              >
+                <ThemedText type="heading" style={styles.modalPrimaryText}>
+                  Yes, complete
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                style={styles.modalSecondary}
+                onPress={closeConfirm}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel"
+              >
+                <ThemedText type="heading" style={styles.modalSecondaryText}>
+                  Keep walking
+                </ThemedText>
+              </Pressable>
+            </View>
+          </Animated.View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

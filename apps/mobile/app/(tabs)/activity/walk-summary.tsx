@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
-import { BackHandler, View, StyleSheet, Pressable, ScrollView } from "react-native";
+import { BackHandler, Image, View, StyleSheet, Pressable, ScrollView } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -9,6 +9,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { clearCurrentWalkSession, getCurrentWalkSession } from "../../../services/walkSessionService";
 import { useFocusEffect } from "@react-navigation/native";
+import { usePlayer } from "@/contexts/PlayerContext";
 
 const FOREST_DARK = "#2D4A35";
 const LIGHT_GREEN_BG = "#EEF5EE";
@@ -50,6 +51,7 @@ export default function WalkSummaryScreen() {
   } | null>(null);
 
   const session = getCurrentWalkSession();
+  const { profiles } = usePlayer();
 
   useFocusEffect(
     React.useCallback(() => {
@@ -175,6 +177,28 @@ export default function WalkSummaryScreen() {
         },
         statLabel: { color: "#5a5a5a", fontSize: scaleW(13), fontWeight: "800" },
         statValue: { marginTop: scaleW(6), color: "#1A2E1E", fontSize: scaleW(20), fontWeight: "900" },
+        sectionTitle: {
+          marginTop: scaleW(14),
+          marginBottom: scaleW(10),
+          fontSize: scaleW(16),
+          fontWeight: "900",
+          color: "#1A2E1E",
+        },
+        chipRow: { flexDirection: "row", flexWrap: "wrap", gap: scaleW(8) },
+        chip: {
+          backgroundColor: CARD_BG,
+          borderRadius: scaleW(999),
+          paddingVertical: scaleW(8),
+          paddingHorizontal: scaleW(12),
+          shadowColor: "#2D4A35",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 6,
+          elevation: 1,
+        },
+        chipText: { fontSize: scaleW(13), fontWeight: "900", color: "#1A2E1E" },
+        photoGrid: { flexDirection: "row", flexWrap: "wrap", gap: scaleW(10) },
+        photoThumb: { width: scaleW(98), height: scaleW(98), borderRadius: scaleW(14), backgroundColor: "#E6E6E6" },
         confettiLayer: {
           ...StyleSheet.absoluteFillObject,
           zIndex: 9999,
@@ -232,6 +256,15 @@ export default function WalkSummaryScreen() {
       </SafeAreaView>
     );
   }
+
+  const selectedProfiles = session.selectedProfileIds ?? [];
+  const selectedChips = selectedProfiles
+    .map((id) => profiles.find((p) => p.id === id))
+    .filter(Boolean)
+    .map((p) => (p!.nickname || p!.name || "Explorer").trim())
+    .filter(Boolean);
+
+  const photoUris = session.photoUris ?? [];
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
@@ -328,6 +361,34 @@ export default function WalkSummaryScreen() {
               </ThemedText>
             </View>
           </View>
+
+          {selectedChips.length > 0 && (
+            <>
+              <ThemedText type="heading" style={styles.sectionTitle}>
+                Explorers
+              </ThemedText>
+              <View style={styles.chipRow}>
+                {selectedChips.map((name) => (
+                  <View key={name} style={styles.chip}>
+                    <ThemedText style={styles.chipText}>{name}</ThemedText>
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
+
+          {photoUris.length > 0 && (
+            <>
+              <ThemedText type="heading" style={styles.sectionTitle}>
+                Photos
+              </ThemedText>
+              <View style={styles.photoGrid}>
+                {photoUris.map((uri) => (
+                  <Image key={uri} source={{ uri }} style={styles.photoThumb} resizeMode="cover" />
+                ))}
+              </View>
+            </>
+          )}
         </ScrollView>
 
         <View style={styles.footer} pointerEvents="box-none">

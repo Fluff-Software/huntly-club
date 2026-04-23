@@ -6,10 +6,11 @@ import { useRouter } from "expo-router";
 import MapView, { Polyline } from "react-native-maps";
 import * as Location from "expo-location";
 import { Pedometer } from "expo-sensors";
+import * as ImagePicker from "expo-image-picker";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { setCurrentWalkSession } from "../../../services/walkSessionService";
+import { addWalkPhotoUri, getWalkPhotoUris, setCurrentWalkSession } from "../../../services/walkSessionService";
 
 const FOREST_DARK = "#2D4A35";
 const LIGHT_GREEN_BG = "#EEF5EE";
@@ -81,6 +82,7 @@ export default function WalkMapScreen() {
   const confirmBackdropOpacity = useRef(new Animated.Value(0)).current;
   const confirmSheetY = useRef(new Animated.Value(32)).current;
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [photoCount, setPhotoCount] = useState(() => getWalkPhotoUris().length);
 
   useEffect(() => {
     let cancelled = false;
@@ -276,6 +278,36 @@ export default function WalkMapScreen() {
           zIndex: 6,
           elevation: 6,
         },
+        cameraButton: {
+          position: "absolute" as const,
+          left: scaleW(12),
+          bottom: scaleW(12) + scaleW(104) + insets.bottom + (isTablet ? scaleW(20) : 0),
+          width: scaleW(44),
+          height: scaleW(44),
+          borderRadius: scaleW(22),
+          backgroundColor: "rgba(0,0,0,0.35)",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 6,
+          elevation: 6,
+        },
+        cameraBadge: {
+          position: "absolute" as const,
+          top: -scaleW(6),
+          right: -scaleW(6),
+          minWidth: scaleW(18),
+          height: scaleW(18),
+          borderRadius: scaleW(9),
+          backgroundColor: CHECK_GREEN,
+          paddingHorizontal: scaleW(5),
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 7,
+          elevation: 7,
+          borderWidth: 2,
+          borderColor: "rgba(255,255,255,0.9)",
+        },
+        cameraBadgeText: { color: "#FFF", fontWeight: "900" as const, fontSize: scaleW(10) },
         footer: {
           position: "absolute" as const,
           bottom: 0,
@@ -444,9 +476,27 @@ export default function WalkMapScreen() {
       distanceMeters,
       route: trail,
       endedAtCoords: coords,
+      photoUris: getWalkPhotoUris(),
     });
     closeConfirm();
-    router.replace("/(tabs)/activity/walk-summary");
+    router.replace("/(tabs)/activity/walk-finish");
+  };
+
+  const takeWalkPhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== "granted") return;
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets[0]?.uri) {
+        addWalkPhotoUri(result.assets[0]!.uri);
+        setPhotoCount(getWalkPhotoUris().length);
+      }
+    } catch {
+      // ignore
+    }
   };
 
   return (
@@ -513,6 +563,19 @@ export default function WalkMapScreen() {
               accessibilityLabel="Recenter map"
             >
               <MaterialIcons name="my-location" size={scaleW(20)} color="#FFF" />
+            </Pressable>
+            <Pressable
+              onPress={takeWalkPhoto}
+              style={styles.cameraButton}
+              accessibilityRole="button"
+              accessibilityLabel="Take a photo"
+            >
+              <MaterialIcons name="photo-camera" size={scaleW(20)} color="#FFF" />
+              {photoCount > 0 && (
+                <View pointerEvents="none" style={styles.cameraBadge}>
+                  <ThemedText style={styles.cameraBadgeText}>{photoCount}</ThemedText>
+                </View>
+              )}
             </Pressable>
 
             <View style={styles.footer} pointerEvents="box-none">

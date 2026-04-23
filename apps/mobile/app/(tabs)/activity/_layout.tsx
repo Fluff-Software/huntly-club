@@ -26,6 +26,14 @@ export default function ActivityLayout() {
         }}
       />
       <Stack.Screen
+        name="walk-finish"
+        options={{
+          title: "Finish walk",
+          headerShown: false,
+          gestureEnabled: false,
+        }}
+      />
+      <Stack.Screen
         name="walk-summary"
         options={{
           title: "Walk summary",

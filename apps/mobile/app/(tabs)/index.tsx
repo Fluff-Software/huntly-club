@@ -1070,7 +1070,7 @@ export default function HomeScreen() {
               </Pressable>
               <Pressable
                 style={styles.quickAddButton}
-                onPress={() => openAddEntry("Cycle" as ActivityTag)}
+                onPress={() => router.push("/(tabs)/activity/cycle-prep")}
               >
                 <ThemedText type="heading" style={styles.quickAddButtonText}>Cycle</ThemedText>
               </Pressable>

@@ -5,7 +5,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import MapView, { Polyline } from "react-native-maps";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
-import type { JournalEntry, WalkJournalMeta } from "@/services/journalService";
+import type { CycleJournalMeta, JournalEntry, WalkJournalMeta } from "@/services/journalService";
 
 const PARCHMENT = "#FFFDF7";
 const PARCHMENT_BORDER = "#D9C9A3";
@@ -22,12 +22,12 @@ function formatEntryDate(iso: string): string {
   return iso;
 }
 
-function tryParseWalkMeta(notes: string | null): WalkJournalMeta | null {
+function tryParseTrackedMeta(notes: string | null): WalkJournalMeta | CycleJournalMeta | null {
   if (!notes) return null;
   if (!notes.trim().startsWith("{")) return null;
   try {
-    const obj = JSON.parse(notes) as WalkJournalMeta;
-    if (obj && obj.type === "walk" && Array.isArray(obj.route)) return obj;
+    const obj = JSON.parse(notes) as WalkJournalMeta | CycleJournalMeta;
+    if (obj && (obj.type === "walk" || obj.type === "cycle") && Array.isArray(obj.route)) return obj;
     return null;
   } catch {
     return null;
@@ -86,17 +86,17 @@ export function JournalEntryCard({
   animationDelay = 0,
 }: JournalEntryCardProps) {
   const { scaleW } = useLayoutScale();
-  const walkMeta = useMemo(() => tryParseWalkMeta(entry.notes), [entry.notes]);
-  const walkRegion = useMemo(() => {
-    if (!walkMeta || walkMeta.route.length === 0) return null;
-    return regionForRoute(walkMeta.route);
-  }, [walkMeta]);
-  const walkDurationMs = useMemo(() => {
-    if (!walkMeta) return 0;
-    const started = new Date(walkMeta.startedAt).getTime();
-    const ended = new Date(walkMeta.endedAt).getTime();
+  const trackedMeta = useMemo(() => tryParseTrackedMeta(entry.notes), [entry.notes]);
+  const trackedRegion = useMemo(() => {
+    if (!trackedMeta || trackedMeta.route.length === 0) return null;
+    return regionForRoute(trackedMeta.route);
+  }, [trackedMeta]);
+  const trackedDurationMs = useMemo(() => {
+    if (!trackedMeta) return 0;
+    const started = new Date(trackedMeta.startedAt).getTime();
+    const ended = new Date(trackedMeta.endedAt).getTime();
     return Math.max(0, ended - started);
-  }, [walkMeta]);
+  }, [trackedMeta]);
 
   const styles = useMemo(
     () =>
@@ -234,52 +234,56 @@ export function JournalEntryCard({
             </ThemedText>
           </View>
 
-          {walkMeta ? (
+          {trackedMeta ? (
             <>
               <ThemedText style={styles.title} numberOfLines={2}>
-                Walk
+                {trackedMeta.type === "cycle" ? "Cycle" : "Walk"}
               </ThemedText>
               <View style={styles.walkStatsRow}>
                 <View style={styles.walkStatChip}>
                   <ThemedText style={styles.walkStatLabel}>Distance</ThemedText>
-                  <ThemedText style={styles.walkStatValue}>{formatDistance(walkMeta.distanceMeters)}</ThemedText>
+                  <ThemedText style={styles.walkStatValue}>{formatDistance(trackedMeta.distanceMeters)}</ThemedText>
                 </View>
                 <View style={styles.walkStatChip}>
                   <ThemedText style={styles.walkStatLabel}>Time</ThemedText>
-                  <ThemedText style={styles.walkStatValue}>{formatDurationMs(walkDurationMs)}</ThemedText>
+                  <ThemedText style={styles.walkStatValue}>{formatDurationMs(trackedDurationMs)}</ThemedText>
                 </View>
-                <View style={styles.walkStatChip}>
-                  <ThemedText style={styles.walkStatLabel}>Steps</ThemedText>
-                  <ThemedText style={styles.walkStatValue}>{walkMeta.steps == null ? "—" : `${walkMeta.steps}`}</ThemedText>
-                </View>
+                {"steps" in trackedMeta && (
+                  <View style={styles.walkStatChip}>
+                    <ThemedText style={styles.walkStatLabel}>Steps</ThemedText>
+                    <ThemedText style={styles.walkStatValue}>
+                      {trackedMeta.steps == null ? "—" : `${trackedMeta.steps}`}
+                    </ThemedText>
+                  </View>
+                )}
               </View>
-              {walkRegion && walkMeta.route.length >= 2 && (
+              {trackedRegion && trackedMeta.route.length >= 2 && (
                 <View style={styles.walkMapWrap}>
                   <MapView
                     style={styles.walkMap}
-                    initialRegion={walkRegion}
+                    initialRegion={trackedRegion}
                     scrollEnabled={false}
                     zoomEnabled={false}
                     rotateEnabled={false}
                     pitchEnabled={false}
                     pointerEvents="none"
                   >
-                    <Polyline coordinates={walkMeta.route} strokeColor="#2D5A27" strokeWidth={5} />
+                    <Polyline coordinates={trackedMeta.route} strokeColor="#2D5A27" strokeWidth={5} />
                   </MapView>
                 </View>
               )}
-              {walkMeta.selectedProfiles.length > 0 && (
+              {trackedMeta.selectedProfiles.length > 0 && (
                 <View style={styles.chipRow}>
-                  {walkMeta.selectedProfiles.slice(0, 6).map((p) => (
+                  {trackedMeta.selectedProfiles.slice(0, 6).map((p) => (
                     <View key={p.id} style={styles.chip}>
                       <ThemedText style={styles.chipText}>{p.nickname || "Explorer"}</ThemedText>
                     </View>
                   ))}
                 </View>
               )}
-              {walkMeta.photoUrls.length > 0 && (
+              {trackedMeta.photoUrls.length > 0 && (
                 <View style={styles.walkPhotoRow}>
-                  {walkMeta.photoUrls.slice(0, 4).map((url) => (
+                  {trackedMeta.photoUrls.slice(0, 4).map((url) => (
                     <Image key={url} source={{ uri: url }} style={styles.walkPhoto} resizeMode="cover" />
                   ))}
                 </View>
@@ -309,7 +313,7 @@ export function JournalEntryCard({
 
           <View style={styles.footer}>
             <ThemedText style={styles.byText}>
-              {!walkMeta && nickname ? `by ${nickname}` : ""}
+              {!trackedMeta && nickname ? `by ${nickname}` : ""}
             </ThemedText>
             <View style={styles.xpRow}>
               <MaterialIcons name="star" size={scaleW(14)} color={AMBER} />

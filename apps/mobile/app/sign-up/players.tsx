@@ -168,7 +168,7 @@ export default function SignUpPlayersScreen() {
                 marginBottom: scaleW(46),
               }}
             >
-              You can add more explorers anytime.
+              You can add more explorers at anytime.
             </ThemedText>
           </Animated.View>
 

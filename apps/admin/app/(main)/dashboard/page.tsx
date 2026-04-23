@@ -200,14 +200,25 @@ async function getStats() {
     recentCompletions: ((recentCompletionsRes.data ?? []) as Array<{
       id: number;
       completed_at: string | null;
-      activities: { title: string | null; name: string } | null;
-      profiles: { name: string; nickname: string | null } | null;
-    }>).map((row): RecentCompletion => ({
-      id: row.id,
-      completed_at: row.completed_at ?? new Date(0).toISOString(),
-      activityTitle: row.activities?.title?.trim() || row.activities?.name?.trim() || "Unknown mission",
-      profileName: row.profiles?.nickname?.trim() || row.profiles?.name?.trim() || "Unknown profile",
-    })),
+      activities:
+        | { title: string | null; name: string }
+        | Array<{ title: string | null; name: string }>
+        | null;
+      profiles:
+        | { name: string; nickname: string | null }
+        | Array<{ name: string; nickname: string | null }>
+        | null;
+    }>).map((row): RecentCompletion => {
+      const activity = Array.isArray(row.activities) ? row.activities[0] : row.activities;
+      const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+
+      return {
+        id: row.id,
+        completed_at: row.completed_at ?? new Date(0).toISOString(),
+        activityTitle: activity?.title?.trim() || activity?.name?.trim() || "Unknown mission",
+        profileName: profile?.nickname?.trim() || profile?.name?.trim() || "Unknown profile",
+      };
+    }),
     recentFeedback: (feedbackRecentRes.data ?? []) as RecentFeedback[],
     recentWaitlist: (recentWaitlistRes.data ?? []) as RecentWaitlistSignup[],
   };

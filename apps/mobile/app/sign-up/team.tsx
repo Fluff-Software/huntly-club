@@ -71,7 +71,7 @@ export default function SignUpTeamScreen() {
     setTutorialStep,
   } = useSignUp();
   const { user } = useAuth();
-  const { refreshProfiles } = usePlayer();
+  const { profiles, loading: profilesLoading, refreshProfiles } = usePlayer();
   const { refreshUserData, updateStartMissionStep } = useUser();
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);

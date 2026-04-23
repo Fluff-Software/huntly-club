@@ -3,7 +3,7 @@ import { View, StyleSheet, Pressable, ActivityIndicator, Modal, Animated, Easing
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import MapView, { Marker, Polyline } from "react-native-maps";
+import MapView, { Polyline } from "react-native-maps";
 import * as Location from "expo-location";
 import { Pedometer } from "expo-sensors";
 import { ThemedText } from "@/components/ThemedText";
@@ -460,7 +460,6 @@ export default function WalkMapScreen() {
                   strokeWidth={6}
                 />
               )}
-              <Marker coordinate={coords!} title="You are here" />
             </MapView>
             <View pointerEvents="none" style={styles.stepsOverlay}>
               <MaterialIcons name="directions-walk" size={scaleW(16)} color="#FFF" />
@@ -483,7 +482,7 @@ export default function WalkMapScreen() {
 
             <View style={styles.footer} pointerEvents="box-none">
               <ThemedText style={styles.footerHint}>
-                {trail.length >= 2 ? "Ready when you are — save your walk summary." : "Start walking to record your route."}
+                {trail.length >= 2 ? "Ready when you are!" : "Start walking to record your route."}
               </ThemedText>
               <Pressable
                 style={styles.completeButton}

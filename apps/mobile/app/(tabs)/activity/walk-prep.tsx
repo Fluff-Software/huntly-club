@@ -184,7 +184,7 @@ export default function WalkPrepScreen() {
       <View style={styles.footer} pointerEvents="box-none">
         <ThemedText style={styles.footerHint}>
           {teamId == null
-            ? "Join a team to save your walk in the journal."
+            ? "Join a team."
             : allChecked
             ? "Awesome — let’s go!"
             : "Check both boxes to continue."}

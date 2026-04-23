@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { BackHandler, View, StyleSheet, Pressable, ScrollView } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import MapView, { Marker, Polyline } from "react-native-maps";
+import MapView, { Polyline } from "react-native-maps";
 import ConfettiCannon from "react-native-confetti-cannon";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
@@ -30,11 +30,24 @@ function formatDistance(meters: number) {
   return `${(meters / 1000).toFixed(2)} km`;
 }
 
+function formatSpeedMps(mps: number) {
+  if (!Number.isFinite(mps) || mps <= 0) return "0 m/s";
+  if (mps < 10) return `${mps.toFixed(1)} m/s`;
+  return `${Math.round(mps)} m/s`;
+}
+
 export default function WalkSummaryScreen() {
   const router = useRouter();
   const { scaleW, isTablet } = useLayoutScale();
   const insets = useSafeAreaInsets();
   const [confettiKey, setConfettiKey] = useState(0);
+  const mapRef = useRef<MapView | null>(null);
+  const [currentRegion, setCurrentRegion] = useState<{
+    latitude: number;
+    longitude: number;
+    latitudeDelta: number;
+    longitudeDelta: number;
+  } | null>(null);
 
   const session = getCurrentWalkSession();
 
@@ -50,8 +63,12 @@ export default function WalkSummaryScreen() {
     if (!session) return null;
     const started = new Date(session.startedAt).getTime();
     const ended = new Date(session.endedAt).getTime();
+    const durationMs = Math.max(0, ended - started);
+    const durationSec = durationMs / 1000;
+    const avgSpeedMps = durationSec > 0 ? session.distanceMeters / durationSec : 0;
     return {
-      durationMs: Math.max(0, ended - started),
+      durationMs,
+      avgSpeedMps,
       region:
         session.route.length > 0
           ? {
@@ -65,6 +82,20 @@ export default function WalkSummaryScreen() {
       end: session.route.length > 0 ? session.route[session.route.length - 1]! : null,
     };
   }, [session]);
+
+  const handleRecenter = () => {
+    if (!computed?.end) return;
+    const r = currentRegion ?? computed.region;
+    mapRef.current?.animateToRegion(
+      {
+        latitude: computed.end.latitude,
+        longitude: computed.end.longitude,
+        latitudeDelta: r?.latitudeDelta ?? 0.01,
+        longitudeDelta: r?.longitudeDelta ?? 0.01,
+      },
+      350
+    );
+  };
 
   const styles = useMemo(
     () =>
@@ -117,6 +148,19 @@ export default function WalkSummaryScreen() {
           marginBottom: scaleW(12),
         },
         map: { height: scaleW(220), width: "100%" },
+        recenterButton: {
+          position: "absolute" as const,
+          right: scaleW(12),
+          bottom: scaleW(12),
+          width: scaleW(44),
+          height: scaleW(44),
+          borderRadius: scaleW(22),
+          backgroundColor: "rgba(0,0,0,0.35)",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 6,
+          elevation: 6,
+        },
         statsRow: { flexDirection: "row", gap: scaleW(10) },
         statCard: {
           flex: 1,
@@ -223,6 +267,9 @@ export default function WalkSummaryScreen() {
         >
           <View style={styles.mapCard}>
             <MapView
+              ref={(r) => {
+                mapRef.current = r;
+              }}
               style={styles.map}
               initialRegion={
                 computed.region ?? {
@@ -232,17 +279,24 @@ export default function WalkSummaryScreen() {
                   longitudeDelta: 0.01,
                 }
               }
-              scrollEnabled={false}
+              scrollEnabled
               rotateEnabled={false}
               pitchEnabled={false}
-              zoomEnabled={false}
+              zoomEnabled
+              onRegionChangeComplete={(r) => setCurrentRegion(r as any)}
             >
               {session.route.length >= 2 && (
                 <Polyline coordinates={session.route} strokeColor="#2D5A27" strokeWidth={6} />
               )}
-              {computed.start && <Marker coordinate={computed.start} title="Start" />}
-              {computed.end && <Marker coordinate={computed.end} title="Finish" />}
             </MapView>
+            <Pressable
+              onPress={handleRecenter}
+              style={styles.recenterButton}
+              accessibilityRole="button"
+              accessibilityLabel="Recenter map"
+            >
+              <MaterialIcons name="my-location" size={scaleW(20)} color="#FFF" />
+            </Pressable>
           </View>
 
           <View style={styles.statsRow}>
@@ -268,9 +322,9 @@ export default function WalkSummaryScreen() {
               </ThemedText>
             </View>
             <View style={styles.statCard}>
-              <ThemedText style={styles.statLabel}>Route points</ThemedText>
+              <ThemedText style={styles.statLabel}>Avg speed</ThemedText>
               <ThemedText type="heading" style={styles.statValue}>
-                {session.route.length}
+                {formatSpeedMps(computed.avgSpeedMps)}
               </ThemedText>
             </View>
           </View>

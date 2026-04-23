@@ -8,7 +8,10 @@ import { useFocusEffect } from "@react-navigation/native";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useUser } from "@/contexts/UserContext";
 import { clearWalkDraft, getCurrentWalkSession, updateCurrentWalkSession } from "../../../services/walkSessionService";
+import { createWalkJournalEntry } from "@/services/journalService";
 
 const FOREST_DARK = "#2D4A35";
 const LIGHT_GREEN_BG = "#EEF5EE";
@@ -22,12 +25,15 @@ export default function WalkFinishScreen() {
   const { scaleW, isTablet } = useLayoutScale();
   const insets = useSafeAreaInsets();
   const { profiles } = usePlayer();
+  const { user } = useAuth();
+  const { teamId } = useUser();
 
   const session = getCurrentWalkSession();
   const [selectedProfileIds, setSelectedProfileIds] = useState<number[]>(
     session?.selectedProfileIds ?? (profiles.length === 1 ? [profiles[0]!.id] : [])
   );
   const [photoUris, setPhotoUris] = useState<string[]>(session?.photoUris ?? []);
+  const [saving, setSaving] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -69,7 +75,15 @@ export default function WalkFinishScreen() {
     setPhotoUris((prev) => prev.filter((u) => u !== uri));
   };
 
-  const canContinue = selectedProfileIds.length > 0;
+  const canContinue = selectedProfileIds.length > 0 && !saving;
+
+  const entryDate = useMemo(() => {
+    const d = session?.endedAt ? new Date(session.endedAt) : new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }, [session?.endedAt]);
 
   const styles = useMemo(
     () =>
@@ -287,14 +301,41 @@ export default function WalkFinishScreen() {
           <Pressable
             style={styles.primaryButton}
             disabled={!canContinue}
-            onPress={() => {
-              updateCurrentWalkSession({ selectedProfileIds, photoUris });
-              clearWalkDraft();
-              router.replace("/(tabs)/activity/walk-summary");
+            onPress={async () => {
+              if (!session || !user?.id || teamId == null) {
+                updateCurrentWalkSession({ selectedProfileIds, photoUris });
+                clearWalkDraft();
+                router.replace("/(tabs)/activity/walk-summary");
+                return;
+              }
+              setSaving(true);
+              try {
+                updateCurrentWalkSession({ selectedProfileIds, photoUris });
+                await createWalkJournalEntry({
+                  userId: user.id,
+                  teamId,
+                  profileId: selectedProfileIds[0]!,
+                  entryDate,
+                  startedAt: session.startedAt,
+                  endedAt: session.endedAt,
+                  steps: session.steps,
+                  distanceMeters: session.distanceMeters,
+                  route: session.route,
+                  selectedProfiles: selectedProfileIds.map((id) => {
+                    const p = profiles.find((x) => x.id === id);
+                    return { id, nickname: (p?.nickname || p?.name || "Explorer").trim() };
+                  }),
+                  photoLocalUris: photoUris,
+                });
+              } finally {
+                clearWalkDraft();
+                setSaving(false);
+                router.replace("/(tabs)/activity/walk-summary");
+              }
             }}
           >
             <ThemedText type="heading" style={styles.primaryButtonText}>
-              Continue
+              {saving ? "Saving…" : "Continue"}
             </ThemedText>
           </Pressable>
         </View>

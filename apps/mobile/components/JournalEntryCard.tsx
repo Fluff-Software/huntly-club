@@ -2,9 +2,10 @@ import React, { useMemo } from "react";
 import { View, Image, StyleSheet, Pressable } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { MaterialIcons } from "@expo/vector-icons";
+import MapView, { Polyline } from "react-native-maps";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
-import type { JournalEntry } from "@/services/journalService";
+import type { JournalEntry, WalkJournalMeta } from "@/services/journalService";
 
 const PARCHMENT = "#FFFDF7";
 const PARCHMENT_BORDER = "#D9C9A3";
@@ -21,6 +22,58 @@ function formatEntryDate(iso: string): string {
   return iso;
 }
 
+function tryParseWalkMeta(notes: string | null): WalkJournalMeta | null {
+  if (!notes) return null;
+  if (!notes.trim().startsWith("{")) return null;
+  try {
+    const obj = JSON.parse(notes) as WalkJournalMeta;
+    if (obj && obj.type === "walk" && Array.isArray(obj.route)) return obj;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function formatDurationMs(ms: number) {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes < 60) return `${minutes}m ${seconds}s`;
+  const hours = Math.floor(minutes / 60);
+  const remMins = minutes % 60;
+  return `${hours}h ${remMins}m`;
+}
+
+function formatDistance(meters: number) {
+  if (meters < 1000) return `${Math.round(meters)} m`;
+  return `${(meters / 1000).toFixed(2)} km`;
+}
+
+function regionForRoute(route: { latitude: number; longitude: number }[]) {
+  if (route.length === 0) return null;
+  let minLat = route[0]!.latitude;
+  let maxLat = route[0]!.latitude;
+  let minLon = route[0]!.longitude;
+  let maxLon = route[0]!.longitude;
+  for (const p of route) {
+    if (p.latitude < minLat) minLat = p.latitude;
+    if (p.latitude > maxLat) maxLat = p.latitude;
+    if (p.longitude < minLon) minLon = p.longitude;
+    if (p.longitude > maxLon) maxLon = p.longitude;
+  }
+  const latitude = (minLat + maxLat) / 2;
+  const longitude = (minLon + maxLon) / 2;
+  const latDeltaRaw = Math.max(0.001, maxLat - minLat);
+  const lonDeltaRaw = Math.max(0.001, maxLon - minLon);
+  const padding = 1.6; // a little extra breathing room
+  return {
+    latitude,
+    longitude,
+    latitudeDelta: Math.max(0.01, latDeltaRaw * padding),
+    longitudeDelta: Math.max(0.01, lonDeltaRaw * padding),
+  };
+}
+
 interface JournalEntryCardProps {
   entry: JournalEntry;
   onPress?: () => void;
@@ -33,6 +86,17 @@ export function JournalEntryCard({
   animationDelay = 0,
 }: JournalEntryCardProps) {
   const { scaleW } = useLayoutScale();
+  const walkMeta = useMemo(() => tryParseWalkMeta(entry.notes), [entry.notes]);
+  const walkRegion = useMemo(() => {
+    if (!walkMeta || walkMeta.route.length === 0) return null;
+    return regionForRoute(walkMeta.route);
+  }, [walkMeta]);
+  const walkDurationMs = useMemo(() => {
+    if (!walkMeta) return 0;
+    const started = new Date(walkMeta.startedAt).getTime();
+    const ended = new Date(walkMeta.endedAt).getTime();
+    return Math.max(0, ended - started);
+  }, [walkMeta]);
 
   const styles = useMemo(
     () =>
@@ -79,6 +143,34 @@ export function JournalEntryCard({
           flexDirection: "row",
           gap: scaleW(12),
         },
+        walkMapWrap: {
+          backgroundColor: PARCHMENT_BORDER,
+          borderRadius: scaleW(12),
+          overflow: "hidden",
+          marginTop: scaleW(10),
+        },
+        walkMap: { width: "100%", height: scaleW(140) },
+        walkStatsRow: {
+          flexDirection: "row",
+          justifyContent: "space-between",
+          gap: scaleW(10),
+          marginTop: scaleW(10),
+        },
+        walkStatChip: {
+          flex: 1,
+          backgroundColor: "rgba(176,125,62,0.12)",
+          borderRadius: scaleW(12),
+          paddingVertical: scaleW(8),
+          paddingHorizontal: scaleW(10),
+          alignItems: "center",
+        },
+        walkStatLabel: { fontSize: scaleW(11), color: AMBER, fontWeight: "700" },
+        walkStatValue: { marginTop: 2, fontSize: scaleW(14), color: CHARCOAL, fontWeight: "800" },
+        walkPhotoRow: { flexDirection: "row", gap: scaleW(8), marginTop: scaleW(10) },
+        walkPhoto: { width: scaleW(54), height: scaleW(54), borderRadius: scaleW(10), backgroundColor: PARCHMENT_BORDER },
+        chipRow: { flexDirection: "row", flexWrap: "wrap", gap: scaleW(6), marginTop: scaleW(10) },
+        chip: { backgroundColor: "rgba(176,125,62,0.12)", borderRadius: scaleW(999), paddingVertical: scaleW(6), paddingHorizontal: scaleW(10) },
+        chipText: { fontSize: scaleW(12), fontWeight: "800", color: AMBER },
         textBlock: {
           flex: 1,
         },
@@ -142,29 +234,82 @@ export function JournalEntryCard({
             </ThemedText>
           </View>
 
-          <View style={styles.contentRow}>
-            <View style={styles.textBlock}>
+          {walkMeta ? (
+            <>
               <ThemedText style={styles.title} numberOfLines={2}>
-                {entry.title}
+                Walk
               </ThemedText>
-              {!!entry.notes && (
-                <ThemedText style={styles.notes} numberOfLines={2}>
-                  {entry.notes}
+              <View style={styles.walkStatsRow}>
+                <View style={styles.walkStatChip}>
+                  <ThemedText style={styles.walkStatLabel}>Distance</ThemedText>
+                  <ThemedText style={styles.walkStatValue}>{formatDistance(walkMeta.distanceMeters)}</ThemedText>
+                </View>
+                <View style={styles.walkStatChip}>
+                  <ThemedText style={styles.walkStatLabel}>Time</ThemedText>
+                  <ThemedText style={styles.walkStatValue}>{formatDurationMs(walkDurationMs)}</ThemedText>
+                </View>
+                <View style={styles.walkStatChip}>
+                  <ThemedText style={styles.walkStatLabel}>Steps</ThemedText>
+                  <ThemedText style={styles.walkStatValue}>{walkMeta.steps == null ? "—" : `${walkMeta.steps}`}</ThemedText>
+                </View>
+              </View>
+              {walkRegion && walkMeta.route.length >= 2 && (
+                <View style={styles.walkMapWrap}>
+                  <MapView
+                    style={styles.walkMap}
+                    initialRegion={walkRegion}
+                    scrollEnabled={false}
+                    zoomEnabled={false}
+                    rotateEnabled={false}
+                    pitchEnabled={false}
+                    pointerEvents="none"
+                  >
+                    <Polyline coordinates={walkMeta.route} strokeColor="#2D5A27" strokeWidth={5} />
+                  </MapView>
+                </View>
+              )}
+              {walkMeta.selectedProfiles.length > 0 && (
+                <View style={styles.chipRow}>
+                  {walkMeta.selectedProfiles.slice(0, 6).map((p) => (
+                    <View key={p.id} style={styles.chip}>
+                      <ThemedText style={styles.chipText}>{p.nickname || "Explorer"}</ThemedText>
+                    </View>
+                  ))}
+                </View>
+              )}
+              {walkMeta.photoUrls.length > 0 && (
+                <View style={styles.walkPhotoRow}>
+                  {walkMeta.photoUrls.slice(0, 4).map((url) => (
+                    <Image key={url} source={{ uri: url }} style={styles.walkPhoto} resizeMode="cover" />
+                  ))}
+                </View>
+              )}
+            </>
+          ) : (
+            <View style={styles.contentRow}>
+              <View style={styles.textBlock}>
+                <ThemedText style={styles.title} numberOfLines={2}>
+                  {entry.title}
                 </ThemedText>
+                {!!entry.notes && (
+                  <ThemedText style={styles.notes} numberOfLines={2}>
+                    {entry.notes}
+                  </ThemedText>
+                )}
+              </View>
+              {!!entry.photo_url && (
+                <Image
+                  source={{ uri: entry.photo_url }}
+                  style={styles.thumbnail}
+                  resizeMode="cover"
+                />
               )}
             </View>
-            {!!entry.photo_url && (
-              <Image
-                source={{ uri: entry.photo_url }}
-                style={styles.thumbnail}
-                resizeMode="cover"
-              />
-            )}
-          </View>
+          )}
 
           <View style={styles.footer}>
             <ThemedText style={styles.byText}>
-              {nickname ? `by ${nickname}` : ""}
+              {!walkMeta && nickname ? `by ${nickname}` : ""}
             </ThemedText>
             <View style={styles.xpRow}>
               <MaterialIcons name="star" size={scaleW(14)} color={AMBER} />

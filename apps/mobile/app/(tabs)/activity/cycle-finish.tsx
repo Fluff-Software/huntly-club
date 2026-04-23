@@ -10,8 +10,8 @@ import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUser } from "@/contexts/UserContext";
-import { clearWalkDraft, getCurrentWalkSession, updateCurrentWalkSession } from "../../../services/walkSessionService";
-import { createWalkJournalEntry } from "@/services/journalService";
+import { clearCycleDraft, getCurrentCycleSession, updateCurrentCycleSession } from "../../../services/cycleSessionService";
+import { createCycleJournalEntry } from "@/services/journalService";
 
 const FOREST_DARK = "#2D4A35";
 const LIGHT_GREEN_BG = "#EEF5EE";
@@ -20,7 +20,7 @@ const CARD_CHECKED_BG = "#D8EDD8";
 const HUNTLY_GREEN = "#4F6F52";
 const CHECK_GREEN = "#2D5A27";
 
-export default function WalkFinishScreen() {
+export default function CycleFinishScreen() {
   const router = useRouter();
   const { scaleW, isTablet } = useLayoutScale();
   const insets = useSafeAreaInsets();
@@ -28,7 +28,7 @@ export default function WalkFinishScreen() {
   const { user } = useAuth();
   const { teamId } = useUser();
 
-  const session = getCurrentWalkSession();
+  const session = getCurrentCycleSession();
   const [selectedProfileIds, setSelectedProfileIds] = useState<number[]>(
     session?.selectedProfileIds ?? (profiles.length === 1 ? [profiles[0]!.id] : [])
   );
@@ -49,13 +49,8 @@ export default function WalkFinishScreen() {
   const takePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") return;
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets[0]?.uri) {
-      setPhotoUris((prev) => prev.concat(result.assets[0]!.uri));
-    }
+    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
+    if (!result.canceled && result.assets[0]?.uri) setPhotoUris((prev) => prev.concat(result.assets[0]!.uri));
   };
 
   const pickPhotos = async () => {
@@ -71,9 +66,7 @@ export default function WalkFinishScreen() {
     }
   };
 
-  const removePhoto = (uri: string) => {
-    setPhotoUris((prev) => prev.filter((u) => u !== uri));
-  };
+  const removePhoto = (uri: string) => setPhotoUris((prev) => prev.filter((u) => u !== uri));
 
   const canContinue = selectedProfileIds.length > 0 && !saving;
 
@@ -101,27 +94,12 @@ export default function WalkFinishScreen() {
         },
         headerRightSpacer: { width: scaleW(42) },
         headerTextWrap: { flex: 1, alignItems: "center" },
-        headerTitle: {
-          fontSize: scaleW(22),
-          fontWeight: "700",
-          color: "#FFF",
-          textAlign: "center",
-        },
-        headerSubtext: {
-          marginTop: scaleW(4),
-          fontSize: scaleW(14),
-          color: "rgba(255,255,255,0.75)",
-          textAlign: "center",
-        },
+        headerTitle: { fontSize: scaleW(22), fontWeight: "700", color: "#FFF", textAlign: "center" },
+        headerSubtext: { marginTop: scaleW(4), fontSize: scaleW(14), color: "rgba(255,255,255,0.75)", textAlign: "center" },
         body: { flex: 1, backgroundColor: LIGHT_GREEN_BG },
         scroll: { flex: 1 },
         scrollContent: { padding: scaleW(16), paddingBottom: scaleW(160) },
-        sectionTitle: {
-          fontSize: scaleW(16),
-          fontWeight: "900",
-          color: "#1A2E1E",
-          marginBottom: scaleW(10),
-        },
+        sectionTitle: { fontSize: scaleW(16), fontWeight: "900", color: "#1A2E1E", marginBottom: scaleW(10) },
         card: {
           backgroundColor: CARD_BG,
           borderRadius: scaleW(16),
@@ -162,12 +140,7 @@ export default function WalkFinishScreen() {
           borderTopWidth: 1,
           borderTopColor: "rgba(79,111,82,0.1)",
         },
-        footerHint: {
-          fontSize: scaleW(14),
-          color: "#5a5a5a",
-          textAlign: "center",
-          marginBottom: scaleW(12),
-        },
+        footerHint: { fontSize: scaleW(14), color: "#5a5a5a", textAlign: "center", marginBottom: scaleW(12) },
         primaryButton: {
           backgroundColor: HUNTLY_GREEN,
           borderRadius: scaleW(28),
@@ -223,7 +196,7 @@ export default function WalkFinishScreen() {
         <View style={styles.headerRightSpacer} />
         <View style={styles.headerTextWrap}>
           <ThemedText type="heading" style={styles.headerTitle}>
-            Finish your walk
+            Finish your cycle
           </ThemedText>
           <ThemedText style={styles.headerSubtext}>Who was involved? Add any photos.</ThemedText>
         </View>
@@ -231,13 +204,7 @@ export default function WalkFinishScreen() {
       </View>
 
       <View style={styles.body}>
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          bounces={false}
-          overScrollMode="never"
-        >
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} bounces={false} overScrollMode="never">
           <ThemedText type="heading" style={styles.sectionTitle}>
             Explorers
           </ThemedText>
@@ -245,11 +212,7 @@ export default function WalkFinishScreen() {
           {profiles.map((p) => {
             const checked = selectedProfileIds.includes(p.id);
             return (
-              <Pressable
-                key={p.id}
-                style={[styles.card, checked && styles.cardChecked]}
-                onPress={() => toggleProfile(p.id)}
-              >
+              <Pressable key={p.id} style={[styles.card, checked && styles.cardChecked]} onPress={() => toggleProfile(p.id)}>
                 <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
                   {checked && <MaterialIcons name="check" size={scaleW(16)} color="#FFF" />}
                 </View>
@@ -303,22 +266,21 @@ export default function WalkFinishScreen() {
             disabled={!canContinue}
             onPress={async () => {
               if (!session || !user?.id || teamId == null) {
-                updateCurrentWalkSession({ selectedProfileIds, photoUris });
-                clearWalkDraft();
-                router.replace("/(tabs)/activity/walk-summary");
+                updateCurrentCycleSession({ selectedProfileIds, photoUris });
+                clearCycleDraft();
+                router.replace("/(tabs)/activity/cycle-summary");
                 return;
               }
               setSaving(true);
               try {
-                updateCurrentWalkSession({ selectedProfileIds, photoUris });
-                await createWalkJournalEntry({
+                updateCurrentCycleSession({ selectedProfileIds, photoUris });
+                await createCycleJournalEntry({
                   userId: user.id,
                   teamId,
                   profileId: selectedProfileIds[0]!,
                   entryDate,
                   startedAt: session.startedAt,
                   endedAt: session.endedAt,
-                  steps: session.steps,
                   distanceMeters: session.distanceMeters,
                   route: session.route,
                   selectedProfiles: selectedProfileIds.map((id) => {
@@ -328,9 +290,9 @@ export default function WalkFinishScreen() {
                   photoLocalUris: photoUris,
                 });
               } finally {
-                clearWalkDraft();
+                clearCycleDraft();
                 setSaving(false);
-                router.replace("/(tabs)/activity/walk-summary");
+                router.replace("/(tabs)/activity/cycle-summary");
               }
             }}
           >

@@ -19,9 +19,24 @@ export default function ActivityLayout() {
         }}
       />
       <Stack.Screen
+        name="cycle-prep"
+        options={{
+          title: "Cycle",
+          headerShown: false,
+          gestureEnabled: false,
+        }}
+      />
+      <Stack.Screen
         name="walk-map"
         options={{
           title: "Walk map",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="cycle-map"
+        options={{
+          title: "Cycle map",
           headerShown: false,
         }}
       />
@@ -34,9 +49,25 @@ export default function ActivityLayout() {
         }}
       />
       <Stack.Screen
+        name="cycle-finish"
+        options={{
+          title: "Finish cycle",
+          headerShown: false,
+          gestureEnabled: false,
+        }}
+      />
+      <Stack.Screen
         name="walk-summary"
         options={{
           title: "Walk summary",
+          headerShown: false,
+          gestureEnabled: false,
+        }}
+      />
+      <Stack.Screen
+        name="cycle-summary"
+        options={{
+          title: "Cycle summary",
           headerShown: false,
           gestureEnabled: false,
         }}

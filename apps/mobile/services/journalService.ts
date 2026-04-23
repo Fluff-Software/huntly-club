@@ -63,7 +63,7 @@ export interface CreateJournalEntryInput {
   entryDate: string; // 'YYYY-MM-DD'
 }
 
-async function uploadJournalPhoto(
+export async function uploadJournalPhoto(
   localUri: string,
   userId: string
 ): Promise<string> {
@@ -97,6 +97,27 @@ async function uploadJournalPhoto(
 
   return urlData.publicUrl;
 }
+
+export type WalkJournalMeta = {
+  type: "walk";
+  startedAt: string;
+  endedAt: string;
+  steps: number | null;
+  distanceMeters: number;
+  route: { latitude: number; longitude: number }[];
+  selectedProfiles: { id: number; nickname: string }[];
+  photoUrls: string[];
+};
+
+export type CycleJournalMeta = {
+  type: "cycle";
+  startedAt: string;
+  endedAt: string;
+  distanceMeters: number;
+  route: { latitude: number; longitude: number }[];
+  selectedProfiles: { id: number; nickname: string }[];
+  photoUrls: string[];
+};
 
 export async function createJournalEntry(
   input: CreateJournalEntryInput
@@ -137,6 +158,140 @@ export async function createJournalEntry(
   if (xpError) {
     console.error("Failed to award journal XP:", xpError);
     // Non-fatal: entry is saved, just XP failed
+  }
+
+  return newEntry as JournalEntry;
+}
+
+export async function createWalkJournalEntry(input: {
+  userId: string;
+  teamId: number;
+  profileId: number;
+  entryDate: string;
+  startedAt: string;
+  endedAt: string;
+  steps: number | null;
+  distanceMeters: number;
+  route: { latitude: number; longitude: number }[];
+  selectedProfiles: { id: number; nickname: string }[];
+  photoLocalUris: string[];
+}): Promise<JournalEntry> {
+  const urls: string[] = [];
+  for (const uri of input.photoLocalUris) {
+    try {
+      const url = await uploadJournalPhoto(uri, input.userId);
+      urls.push(url);
+    } catch (e) {
+      console.error("Failed to upload walk photo:", e);
+    }
+  }
+
+  const meta: WalkJournalMeta = {
+    type: "walk",
+    startedAt: input.startedAt,
+    endedAt: input.endedAt,
+    steps: input.steps,
+    distanceMeters: input.distanceMeters,
+    route: input.route,
+    selectedProfiles: input.selectedProfiles,
+    photoUrls: urls,
+  };
+
+  const { data: newEntry, error: insertError } = await supabase
+    .from("journal_entries")
+    .insert({
+      user_id: input.userId,
+      profile_id: input.profileId,
+      title: "Walk",
+      notes: JSON.stringify(meta),
+      photo_url: urls[0] ?? null,
+      activity_tag: "Walk",
+      entry_date: input.entryDate,
+    })
+    .select("*, profile:profiles!inner(nickname)")
+    .single();
+
+  if (insertError) {
+    throw new Error(`Failed to create walk journal entry: ${insertError.message}`);
+  }
+
+  const { error: xpError } = await supabase.from("user_achievements").insert({
+    profile_id: input.profileId,
+    team_id: input.teamId,
+    source: "journal",
+    source_id: newEntry.id,
+    message: "logged a walk",
+    xp: JOURNAL_XP_PER_ENTRY,
+  });
+
+  if (xpError) {
+    console.error("Failed to award walk journal XP:", xpError);
+  }
+
+  return newEntry as JournalEntry;
+}
+
+export async function createCycleJournalEntry(input: {
+  userId: string;
+  teamId: number;
+  profileId: number;
+  entryDate: string;
+  startedAt: string;
+  endedAt: string;
+  distanceMeters: number;
+  route: { latitude: number; longitude: number }[];
+  selectedProfiles: { id: number; nickname: string }[];
+  photoLocalUris: string[];
+}): Promise<JournalEntry> {
+  const urls: string[] = [];
+  for (const uri of input.photoLocalUris) {
+    try {
+      const url = await uploadJournalPhoto(uri, input.userId);
+      urls.push(url);
+    } catch (e) {
+      console.error("Failed to upload cycle photo:", e);
+    }
+  }
+
+  const meta: CycleJournalMeta = {
+    type: "cycle",
+    startedAt: input.startedAt,
+    endedAt: input.endedAt,
+    distanceMeters: input.distanceMeters,
+    route: input.route,
+    selectedProfiles: input.selectedProfiles,
+    photoUrls: urls,
+  };
+
+  const { data: newEntry, error: insertError } = await supabase
+    .from("journal_entries")
+    .insert({
+      user_id: input.userId,
+      profile_id: input.profileId,
+      title: "Cycle",
+      notes: JSON.stringify(meta),
+      photo_url: urls[0] ?? null,
+      activity_tag: "Cycle",
+      entry_date: input.entryDate,
+    })
+    .select("*, profile:profiles!inner(nickname)")
+    .single();
+
+  if (insertError) {
+    throw new Error(`Failed to create cycle journal entry: ${insertError.message}`);
+  }
+
+  const { error: xpError } = await supabase.from("user_achievements").insert({
+    profile_id: input.profileId,
+    team_id: input.teamId,
+    source: "journal",
+    source_id: newEntry.id,
+    message: "logged a cycle",
+    xp: JOURNAL_XP_PER_ENTRY,
+  });
+
+  if (xpError) {
+    console.error("Failed to award cycle journal XP:", xpError);
   }
 
   return newEntry as JournalEntry;

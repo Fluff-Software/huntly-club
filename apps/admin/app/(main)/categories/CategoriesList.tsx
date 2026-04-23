@@ -33,6 +33,7 @@ export function CategoriesList({ initial }: { initial: CategoryEditRow[] }) {
   const [modalForIndex, setModalForIndex] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const hasChanges = serialize(rows) !== savedSnapshot;
 
@@ -64,6 +65,7 @@ export function CategoriesList({ initial }: { initial: CategoryEditRow[] }) {
     if (!hasChanges) return;
     setSaving(true);
     setError(null);
+    setSaveSuccess(false);
     const toSave = rows.filter((r) => !r._deleted) as RowWithPending[];
     const resolvedRows: CategoryEditRow[] = [];
     for (const row of toSave) {
@@ -104,6 +106,7 @@ export function CategoriesList({ initial }: { initial: CategoryEditRow[] }) {
     setSavedSnapshot(serialize(next));
     router.refresh();
     setSaving(false);
+    setSaveSuccess(true);
   }, [hasChanges, rows, router]);
 
   const handleCancel = useCallback(() => {
@@ -112,9 +115,14 @@ export function CategoriesList({ initial }: { initial: CategoryEditRow[] }) {
       return JSON.parse(savedSnapshot);
     });
     setError(null);
+    setSaveSuccess(false);
   }, [savedSnapshot]);
 
   const visibleRows = rows.filter((r) => !r._deleted);
+
+  const handleSaveClick = () => {
+    void handleSave();
+  };
 
   return (
     <div className="space-y-4">
@@ -193,7 +201,8 @@ export function CategoriesList({ initial }: { initial: CategoryEditRow[] }) {
         </table>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
           onClick={addRow}
@@ -211,12 +220,18 @@ export function CategoriesList({ initial }: { initial: CategoryEditRow[] }) {
         </button>
         <button
           type="button"
-          onClick={handleSave}
+          onClick={handleSaveClick}
           disabled={!hasChanges || saving}
           className="rounded-lg bg-huntly-forest px-4 py-2 text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-huntly-leaf"
         >
-          {saving ? "Saving…" : "Save"}
+          {saving ? "Saving categories..." : "Save categories"}
         </button>
+        </div>
+        {saveSuccess && !saving && !error && (
+          <div className="text-sm text-green-700" role="status">
+            Categories saved successfully.
+          </div>
+        )}
       </div>
 
       <CategoryIconModal

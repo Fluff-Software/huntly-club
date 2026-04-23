@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { Button } from "@/components/Button";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { SlidePartsField, type SlidePart } from "@/components/SlidePartsField";
@@ -19,22 +20,29 @@ type ChapterFormProps = {
   chapterId?: number | null;
 };
 
+function SaveChapterButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <Button type="submit" size="lg" disabled={pending}>
+      {pending ? "Saving chapter..." : "Save chapter"}
+    </Button>
+  );
+}
+
 export function ChapterForm({ action, initial, chapterId }: ChapterFormProps) {
   const [state, formAction] = useActionState(
     async (_: { error?: string }, formData: FormData) => action(formData),
     { error: undefined }
   );
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
   return (
-    <form action={formAction} className="max-w-xl space-y-6">
-      {state?.error && (
-        <div
-          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-          role="alert"
-        >
-          {state.error}
-        </div>
-      )}
+    <form
+      action={formAction}
+      className="max-w-xl space-y-6"
+      onSubmit={() => setHasAttemptedSubmit(true)}
+    >
 
       <div>
         <label htmlFor="week_number" className="mb-1 block text-sm font-medium text-stone-700">
@@ -96,9 +104,22 @@ export function ChapterForm({ action, initial, chapterId }: ChapterFormProps) {
         uploadPrefix={chapterId != null ? `chapter-${chapterId}` : null}
       />
 
-      <Button type="submit" size="lg">
-        Save chapter
-      </Button>
+      <div className="space-y-3">
+        <SaveChapterButton />
+        {state?.error && (
+          <div
+            className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+            role="alert"
+          >
+            {state.error}
+          </div>
+        )}
+        {hasAttemptedSubmit && !state?.error && (
+          <div className="text-sm text-green-700" role="status">
+            Chapter saved successfully.
+          </div>
+        )}
+      </div>
     </form>
   );
 }

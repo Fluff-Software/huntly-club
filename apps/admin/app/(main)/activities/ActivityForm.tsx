@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useActionState, useState, useRef, useEffect } from "react";
+import { useFormStatus } from "react-dom";
 import { Button } from "@/components/Button";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { uploadActivityImage } from "@/lib/upload-actions";
@@ -76,11 +77,22 @@ const ChevronIcon = ({ open, className = "" }: { open: boolean; className?: stri
   </svg>
 );
 
+function SaveMissionButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <Button type="submit" size="lg" disabled={pending}>
+      {pending ? "Saving mission..." : "Save mission"}
+    </Button>
+  );
+}
+
 export function ActivityForm({ action, categoriesList, initial }: ActivityFormProps) {
   const [state, formAction] = useActionState(
     async (_: { error?: string }, formData: FormData) => action(formData),
     { error: undefined }
   );
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const [prepChecklistList, setPrepChecklistList] = useState<PrepItem[]>(() =>
     Array.isArray(initial?.prep_checklist) && initial.prep_checklist.length > 0
       ? initial.prep_checklist.map((p) => ({ title: p.title, description: p.description }))
@@ -158,16 +170,11 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
   }
 
   return (
-    <form action={formAction} className="max-w-2xl space-y-6">
-      {state?.error && (
-        <div
-          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-          role="alert"
-        >
-          {state.error}
-        </div>
-      )}
-
+    <form
+      action={formAction}
+      className="max-w-2xl space-y-6"
+      onSubmit={() => setHasAttemptedSubmit(true)}
+    >
       <div className="grid gap-6 sm:grid-cols-2">
         <div>
           <label htmlFor="name" className="mb-1 block text-sm font-medium text-stone-700">
@@ -649,9 +656,22 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
         ))}
       </div>
 
-      <Button type="submit" size="lg">
-        Save mission
-      </Button>
+      <div className="space-y-3">
+        <SaveMissionButton />
+        {state?.error && (
+          <div
+            className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+            role="alert"
+          >
+            {state.error}
+          </div>
+        )}
+        {hasAttemptedSubmit && !state?.error && (
+          <div className="text-sm text-green-700" role="status">
+            Mission saved successfully.
+          </div>
+        )}
+      </div>
     </form>
   );
 }

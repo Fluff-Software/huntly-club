@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { Button } from "@/components/Button";
 import { ImageUploadField } from "@/components/ImageUploadField";
 
@@ -12,6 +13,16 @@ type SeasonFormProps = {
   };
 };
 
+function SaveSeasonButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <Button type="submit" size="lg" disabled={pending}>
+      {pending ? "Saving season..." : "Save season"}
+    </Button>
+  );
+}
+
 export function SeasonForm({ action, initial }: SeasonFormProps) {
   const [state, formAction] = useActionState(
     async (_: { error?: string }, formData: FormData) => {
@@ -19,17 +30,14 @@ export function SeasonForm({ action, initial }: SeasonFormProps) {
     },
     { error: undefined }
   );
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
   return (
-    <form action={formAction} className="max-w-xl space-y-6">
-      {state?.error && (
-        <div
-          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-          role="alert"
-        >
-          {state.error}
-        </div>
-      )}
+    <form
+      action={formAction}
+      className="max-w-xl space-y-6"
+      onSubmit={() => setHasAttemptedSubmit(true)}
+    >
 
       <div>
         <label htmlFor="name" className="mb-1 block text-sm font-medium text-stone-700">
@@ -52,9 +60,22 @@ export function SeasonForm({ action, initial }: SeasonFormProps) {
         help="Upload to Supabase Storage or paste a URL."
       />
 
-      <Button type="submit" size="lg">
-        Save season
-      </Button>
+      <div className="space-y-3">
+        <SaveSeasonButton />
+        {state?.error && (
+          <div
+            className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+            role="alert"
+          >
+            {state.error}
+          </div>
+        )}
+        {hasAttemptedSubmit && !state?.error && (
+          <div className="text-sm text-green-700" role="status">
+            Season saved successfully.
+          </div>
+        )}
+      </div>
     </form>
   );
 }

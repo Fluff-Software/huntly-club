@@ -28,6 +28,7 @@ import { useUser } from "@/contexts/UserContext";
 import { getTeams, getProfiles, createProfile, updateUserDataTeam } from "@/services/profileService";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { START_MISSION_STEP } from "@/constants/startMissionOnboarding";
+import { hasExplorersForTeamStep } from "@/utils/hasExplorersForTeamStep";
 
 const HUNTLY_GREEN = "#4F6F52";
 const CREAM = "#F4F0EB";

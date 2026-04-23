@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { Button } from "@/components/Button";
 import { FileUploadField } from "@/components/FileUploadField";
 
@@ -15,22 +16,29 @@ type ResourceFormProps = {
   };
 };
 
+function SaveResourceButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <Button type="submit" size="lg" disabled={pending}>
+      {pending ? "Saving resource..." : "Save resource"}
+    </Button>
+  );
+}
+
 export function ResourceForm({ action, initial }: ResourceFormProps) {
   const [state, formAction] = useActionState(
     async (_: { error?: string }, formData: FormData) => action(formData),
     { error: undefined }
   );
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
   return (
-    <form action={formAction} className="max-w-xl space-y-6">
-      {state?.error && (
-        <div
-          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-          role="alert"
-        >
-          {state.error}
-        </div>
-      )}
+    <form
+      action={formAction}
+      className="max-w-xl space-y-6"
+      onSubmit={() => setHasAttemptedSubmit(true)}
+    >
 
       <div>
         <label htmlFor="title" className="mb-1 block text-sm font-medium text-stone-700">
@@ -97,9 +105,22 @@ export function ResourceForm({ action, initial }: ResourceFormProps) {
         </div>
       </div>
 
-      <Button type="submit" size="lg">
-        Save resource
-      </Button>
+      <div className="space-y-3">
+        <SaveResourceButton />
+        {state?.error && (
+          <div
+            className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+            role="alert"
+          >
+            {state.error}
+          </div>
+        )}
+        {hasAttemptedSubmit && !state?.error && (
+          <div className="text-sm text-green-700" role="status">
+            Resource saved successfully.
+          </div>
+        )}
+      </div>
     </form>
   );
 }

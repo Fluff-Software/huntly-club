@@ -145,7 +145,10 @@ export async function sendChapterPushNotification(
     const { data, error } = await supabase.functions.invoke("send-chapter-push", {
       body: { chapterId },
     });
-    if (error) return { error: error.message };
+    if (error) {
+      console.log("sendChapterPushNotification error", error.message);
+      return { error: error.message }
+    };
     const count = typeof (data as { count?: number })?.count === "number" ? (data as { count: number }).count : 0;
     return { count };
   } catch (e) {
@@ -159,11 +162,15 @@ export async function sendChapterEmailNotification(
 ): Promise<SendChapterEmailResult> {
   if (!Number.isFinite(chapterId)) return { error: "Invalid chapter" };
   try {
+    console.log("sendChapterEmailNotification", chapterId);
     const supabase = createServerSupabaseClient();
     const { data, error } = await supabase.functions.invoke("send-chapter-email", {
       body: { chapterId },
     });
-    if (error) return { error: error.message };
+    if (error) {
+      console.log("sendChapterEmailNotification error", error.message);
+      return { error: error.message }
+    };
     const count = typeof (data as { count?: number })?.count === "number" ? (data as { count: number }).count : 0;
     return { count };
   } catch (e) {

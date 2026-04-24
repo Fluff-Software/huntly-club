@@ -24,6 +24,7 @@ supabase secrets set FRONTEND_RESET_REDIRECT=https://www.huntly.world/auth/reset
 - **EMAIL_LOGO_URL**: Full URL to your logo for branded emails (e.g. `https://www.huntly.world/logo.png`). If unset, that default URL is used. Ensure it is publicly reachable so the image loads in email clients.
 - **MAILJET_REPLY_TO**: Reply-To address (e.g. `support@yourdomain.com`). If unset, `MAILJET_FROM_EMAIL` is used.
 - **ADMIN_NOTIFICATION_EMAIL**: Email address that receives a notification whenever a new user signs up. Defaults to `huntly@fluff.software` if not set.
+- **ADMIN_APP_URL**: Base URL for the admin app used in admin notification CTA links (e.g. `https://admin.huntly.world`). If unset, defaults to `https://admin.huntly.world`.
 
 `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are automatically available to Edge Functions; you do not need to set them manually.
 
@@ -34,6 +35,12 @@ supabase secrets set FRONTEND_RESET_REDIRECT=https://www.huntly.world/auth/reset
 ```
 
 Then redeploy the function: `supabase functions deploy resend-auth-email`. New reset emails will point to the website; existing emails will still have the old link.
+
+For photo moderation notifications, deploy:
+
+```bash
+supabase functions deploy photo-review-admin-email
+```
 
 ---
 

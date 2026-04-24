@@ -469,6 +469,18 @@ export const insertUserActivityPhotos = async (
     console.error("Error inserting activity photos:", error);
     throw new Error(`Failed to insert activity photos: ${error.message}`);
   }
+
+  // Best-effort: notify admins that new photos are waiting for review.
+  try {
+    await supabase.functions.invoke("photo-review-admin-email", {
+      body: {
+        photoCount: rows.length,
+        activityId: rows[0]?.activity_id ?? null,
+      },
+    });
+  } catch (notifyError) {
+    console.error("Error notifying admins about review photos:", notifyError);
+  }
 };
 
 export interface ActivityPhotoItem {

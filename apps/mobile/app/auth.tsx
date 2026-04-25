@@ -206,7 +206,7 @@ export default function AuthScreen() {
                 lineHeight: scaleW(36),
               }}
             >
-              Where curiosity grows.
+              Be curious. Be brave. Belong.
             </ThemedText>
           </Animated.View>
           <Animated.View

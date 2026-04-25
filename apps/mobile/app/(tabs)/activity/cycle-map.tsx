@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { View, StyleSheet, Pressable, ActivityIndicator, Modal, Animated, Easing } from "react-native";
+import { View, StyleSheet, Pressable, ActivityIndicator, Modal, Animated, Easing, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -451,6 +451,11 @@ export default function CycleMapScreen() {
                 }}
               >
                 <ThemedText style={styles.retryText}>Try again</ThemedText>
+              </Pressable>
+            )}
+            {status === "denied" && (
+              <Pressable style={styles.retryButton} onPress={() => Linking.openSettings()}>
+                <ThemedText style={styles.retryText}>Open Settings</ThemedText>
               </Pressable>
             )}
           </View>

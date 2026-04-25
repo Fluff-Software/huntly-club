@@ -28,6 +28,7 @@ import { useUser } from "@/contexts/UserContext";
 import { getTeams, getProfiles, createProfile, updateUserDataTeam } from "@/services/profileService";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { START_MISSION_STEP } from "@/constants/startMissionOnboarding";
+import { hasExplorersForTeamStep } from "@/utils/hasExplorersForTeamStep";
 
 const HUNTLY_GREEN = "#4F6F52";
 const CREAM = "#F4F0EB";
@@ -71,7 +72,7 @@ export default function SignUpTeamScreen() {
     setTutorialStep,
   } = useSignUp();
   const { user } = useAuth();
-  const { refreshProfiles } = usePlayer();
+  const { profiles, loading: profilesLoading, refreshProfiles } = usePlayer();
   const { refreshUserData, updateStartMissionStep } = useUser();
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);

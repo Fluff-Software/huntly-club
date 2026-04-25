@@ -16,8 +16,8 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import { router } from "expo-router";
-import { Stack } from "expo-router";
+import { router, Stack } from "expo-router";
+import { MaterialIcons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -142,6 +142,16 @@ export default function SignUpParentEmailScreen() {
           showsVerticalScrollIndicator={false}
           automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
         >
+          <Pressable
+            onPress={() => router.replace("/auth")}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Back to intro"
+            style={{ alignSelf: "flex-start", paddingVertical: 4, marginBottom: scaleW(16) }}
+          >
+            <MaterialIcons name="arrow-back" size={scaleW(28)} color="#FFFFFF" />
+          </Pressable>
+
           <Animated.View entering={FadeInDown.duration(500).delay(0)}>
             <ThemedText
               type="heading"

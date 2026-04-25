@@ -36,29 +36,50 @@ const CREAM = "#F4F0EB";
 const HARDCODED_TEAMS = [
   {
     name: "Bears",
-    description: "Guided by Bella, bears are brave and curious",
-    leaderName: "Bella",
+    leaderPossessive: "Bella's",
     backgroundColor: "#E8C4B8",
-    image: require("@/assets/images/bear-wave.png"),
-    imageOnLeft: false,
+    accentColor: "#A0572A",
+    leaderColor: "#C97B30",
+    bgImage: require("@/assets/images/bears-bg.png"),
+    badgeImage: require("@/assets/images/bears-badge.png"),
+    characterImage: require("@/assets/images/bella-close-smiling.png"),
+    traits: [
+      { icon: "shield" as const, label: "Brave" },
+      { icon: "favorite" as const, label: "Kind" },
+      { icon: "search" as const, label: "Curious" },
+    ],
   },
   {
     name: "Foxes",
-    description: "With Felix, foxes are quick and creative",
-    leaderName: "Felix",
+    leaderPossessive: "Felix's",
     backgroundColor: "#B8D4E8",
-    image: require("@/assets/images/fox.png"),
-    imageOnLeft: true,
+    accentColor: "#1E4C8A",
+    leaderColor: "#2A5FAB",
+    bgImage: require("@/assets/images/foxes-bg.png"),
+    badgeImage: require("@/assets/images/foxes-badge.png"),
+    characterImage: require("@/assets/images/felix-close-smiling.png"),
+    traits: [
+      { icon: "bolt" as const, label: "Quick" },
+      { icon: "edit" as const, label: "Creative" },
+      { icon: "lightbulb" as const, label: "Clever" },
+    ],
   },
   {
     name: "Otters",
-    description: "Led by Oli, otters are clever and playful",
-    leaderName: "Oli",
-    backgroundColor: "#E8E4B8",
-    image: require("@/assets/images/otter.png"),
-    imageOnLeft: false,
+    leaderPossessive: "Oli's",
+    backgroundColor: "#C8D8A8",
+    accentColor: "#3A6028",
+    leaderColor: "#4A7038",
+    bgImage: require("@/assets/images/otters-bg.png"),
+    badgeImage: require("@/assets/images/otters-badge.png"),
+    characterImage: require("@/assets/images/oli-close-smiling.png"),
+    traits: [
+      { icon: "sentiment-satisfied" as const, label: "Playful" },
+      { icon: "visibility" as const, label: "Observant" },
+      { icon: "explore" as const, label: "Adventurous" },
+    ],
   },
-] as const;
+];
 
 const springBounce = { damping: 25, stiffness: 200 };
 
@@ -74,18 +95,15 @@ export default function SignUpTeamScreen() {
   const { user } = useAuth();
   const { profiles, loading: profilesLoading, refreshProfiles } = usePlayer();
   const { refreshUserData, updateStartMissionStep } = useUser();
-  const [selectedName, setSelectedName] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
   const card0Translate = useSharedValue(400);
   const card1Translate = useSharedValue(-400);
   const card2Translate = useSharedValue(400);
-  const enterScale = useSharedValue(1);
 
   const card0Style = useAnimatedStyle(() => ({ transform: [{ translateX: card0Translate.value }] }));
   const card1Style = useAnimatedStyle(() => ({ transform: [{ translateX: card1Translate.value }] }));
   const card2Style = useAnimatedStyle(() => ({ transform: [{ translateX: card2Translate.value }] }));
-  const enterAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: enterScale.value }] }));
 
   useEffect(() => {
     if (width === 0) return;
@@ -105,14 +123,13 @@ export default function SignUpTeamScreen() {
   const showProfileLoading = Boolean(user && profilesLoading);
   const showNoExplorers = Boolean(user && !profilesLoading && !hasExplorers);
 
-  const handleEnterHuntlyWorld = async () => {
-    if (!selectedName) return;
+  const handleEnterHuntlyWorld = async (teamName: string) => {
     if (!user) {
       Alert.alert("Error", "You must be signed in to continue. Please verify your email.");
       return;
     }
 
-    setSelectedTeamName(selectedName);
+    setSelectedTeamName(teamName);
     setCreating(true);
 
     try {
@@ -123,7 +140,7 @@ export default function SignUpTeamScreen() {
       }
 
       const teams = await getTeams();
-      const team = teams.find((t) => t.name.toLowerCase() === selectedName.toLowerCase());
+      const team = teams.find((t) => t.name.toLowerCase() === teamName.toLowerCase());
       const teamId = team?.id ?? teams[0]?.id;
       if (!teams.length || !teamId) {
         Alert.alert(
@@ -156,6 +173,17 @@ export default function SignUpTeamScreen() {
     } finally {
       setCreating(false);
     }
+  };
+
+  const handleChooseTeam = (teamName: string) => {
+    Alert.alert(
+      `Continue with ${teamName}?`,
+      undefined,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Continue", onPress: () => handleEnterHuntlyWorld(teamName) },
+      ]
+    );
   };
 
   if (showProfileLoading) {
@@ -300,135 +328,138 @@ export default function SignUpTeamScreen() {
                 lineHeight: scaleW(24),
               }}
             >
-              You'll all explore together as one team.
+              Pick the team that feels most like you.
             </ThemedText>
           </Animated.View>
 
           {HARDCODED_TEAMS.map((team, index) => {
-            const isSelected = selectedName === team.name;
-            const descriptionParts = team.description.split(team.leaderName);
             const cardStyle = index === 0 ? card0Style : index === 1 ? card1Style : card2Style;
 
             return (
               <Animated.View key={team.name} style={cardStyle}>
-              <Pressable
-                onPress={() => setSelectedName(team.name)}
-                style={{
-                  backgroundColor: team.backgroundColor,
-                  borderRadius: scaleW(20),
-                  padding: scaleW(20),
-                  marginBottom: scaleW(16),
-                  flexDirection: "row",
-                  alignItems: "center",
-                  borderWidth: 3,
-                  borderColor: isSelected ? "#FFF" : "#0000",
-                  overflow: "hidden",
-                }}
-              >
-                {team.imageOnLeft ? (
-                  <View style={{ height: scaleW(100), flex: 1 }}>
-                    <Image
-                      source={team.image}
-                      resizeMode="contain"
-                      style={{
-                        position: "absolute",
-                        width: scaleW(170),
-                        height: scaleW(170),
-                        bottom: scaleW(-73),
-                      }}
-                    />
-                  </View>
-                ) : null}
-                  <View style={{ flex: 1 }}>
-                      <ThemedText
-                        type="heading"
-                        lightColor="#5C4033"
-                        darkColor="#5C4033"
+                <Pressable
+                  onPress={() => handleChooseTeam(team.name)}
+                  style={{
+                    backgroundColor: team.backgroundColor,
+                    borderRadius: scaleW(20),
+                    marginBottom: scaleW(16),
+                    overflow: "hidden",
+                    minHeight: scaleW(190),
+                  }}
+                >
+                  {/* Background scene image — left-anchored, full height */}
+                  <Image
+                    source={team.bgImage}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      right: 'auto',
+                      height: '100%',
+                    }}
+                  />
+
+                  {/* Character image — absolute to card, pinned bottom-right */}
+                  <Image
+                    source={team.characterImage}
+                    resizeMode="contain"
+                    style={{
+                      position: "absolute",
+                      bottom: -40,
+                      right: 0,
+                      width: scaleW(160),
+                      height: scaleW(210),
+                    }}
+                  />
+
+                  {/* Left column content — right margin keeps text clear of character */}
+                  <View style={{ padding: scaleW(16), marginRight: scaleW(130), justifyContent: "space-between", flex: 1 }}>
+                    {/* Badge + team name */}
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: scaleW(12) }}>
+                      <Image
+                        source={team.badgeImage}
                         style={{
-                          fontWeight: "600",
-                          fontSize: scaleW(20),
-                          marginBottom: scaleW(20),
-                          textAlign: team.imageOnLeft ? "right" : "left",
+                          width: scaleW(60),
+                          height: scaleW(60),
                         }}
-                      >
-                        {team.name}
-                      </ThemedText>
-                      <ThemedText
-                        lightColor="#5C4033"
-                        darkColor="#5C4033"
-                        style={{ fontSize: scaleW(18), textAlign: team.imageOnLeft ? "right" : "left", }}
-                      >
-                        {descriptionParts[0]}
+                        resizeMode="contain"
+                      />
+                      <View>
                         <ThemedText
                           type="heading"
-                          lightColor="#5C4033"
-                          darkColor="#5C4033"
-                          style={{ fontSize: scaleW(18), fontWeight: "600" }}
+                          lightColor={team.accentColor}
+                          darkColor={team.accentColor}
+                          style={{ fontWeight: "700", fontSize: scaleW(26), lineHeight: scaleW(30) }}
                         >
-                          {team.leaderName}
+                          {team.name}
                         </ThemedText>
-                        {descriptionParts[1]}
-                      </ThemedText>
+                        <ThemedText
+                          lightColor={team.leaderColor}
+                          darkColor={team.leaderColor}
+                          style={{ fontSize: scaleW(14), fontWeight: "600" }}
+                        >
+                          {team.leaderPossessive} team
+                        </ThemedText>
+                      </View>
                     </View>
-                {!team.imageOnLeft ? (
-                  <View style={{ height: scaleW(100), flex: 1 }}>
-                    <Image
-                      source={team.image}
-                      resizeMode="contain"
+
+                    {/* Trait chips */}
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: scaleW(6), marginTop: scaleW(12) }}>
+                      {team.traits.map((trait) => (
+                        <View
+                          key={trait.label}
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            backgroundColor: "rgba(255,255,255,0.65)",
+                            borderRadius: scaleW(20),
+                            paddingHorizontal: scaleW(10),
+                            paddingVertical: scaleW(4),
+                            gap: scaleW(4),
+                          }}
+                        >
+                          <MaterialIcons name={trait.icon} size={scaleW(14)} color={team.accentColor} />
+                          <ThemedText
+                            lightColor={team.accentColor}
+                            darkColor={team.accentColor}
+                            style={{ fontSize: scaleW(13), fontWeight: "600" }}
+                          >
+                            {trait.label}
+                          </ThemedText>
+                        </View>
+                      ))}
+                    </View>
+
+                    {/* Choose button */}
+                    <Pressable
+                      onPress={() => handleChooseTeam(team.name)}
                       style={{
-                        position: "absolute",
-                        width: scaleW(170),
-                        height: scaleW(170),
-                        bottom: scaleW(-75),
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: team.accentColor,
+                        borderRadius: scaleW(50),
+                        paddingVertical: scaleW(10),
+                        paddingHorizontal: scaleW(16),
+                        marginTop: scaleW(14),
+                        alignSelf: "flex-start",
                       }}
-                    />
+                    >
+                      <ThemedText
+                        type="heading"
+                        lightColor="#FFFFFF"
+                        darkColor="#FFFFFF"
+                        style={{ fontSize: scaleW(15), fontWeight: "700" }}
+                      >
+                        Choose {team.name}
+                      </ThemedText>
+                      <MaterialIcons name="chevron-right" size={scaleW(18)} color="#FFFFFF" />
+                    </Pressable>
                   </View>
-                ) : null}
-              </Pressable>
+                </Pressable>
               </Animated.View>
             );
           })}
-          <Animated.View entering={FadeInDown.duration(500).delay(380)}>
-            <Animated.View style={enterAnimatedStyle}>
-              <Pressable
-                onPress={handleEnterHuntlyWorld}
-                disabled={!selectedName || creating}
-                onPressIn={() => { enterScale.value = withSpring(0.96, { damping: 15, stiffness: 400 }); }}
-                onPressOut={() => { enterScale.value = withSpring(1, { damping: 15, stiffness: 400 }); }}
-                style={{
-                  alignSelf: "center",
-                  width: "100%",
-                  maxWidth: scaleW(260),
-                  paddingVertical: scaleW(18),
-                  borderRadius: scaleW(50),
-                  marginTop: scaleW(20),
-                  marginBottom: scaleW(40),
-                  backgroundColor: selectedName && !creating ? CREAM : "#9CA3AF",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 4,
-                  elevation: 2,
-                  opacity: creating ? 0.8 : 1,
-                }}
-              >
-                {creating ? (
-                  <ActivityIndicator size="small" color={HUNTLY_GREEN} />
-                ) : (
-                  <ThemedText
-                    type="heading"
-                    lightColor={selectedName ? HUNTLY_GREEN : "#6B7280"}
-                    darkColor={selectedName ? HUNTLY_GREEN : "#6B7280"}
-                    style={{ fontSize: scaleW(18), fontWeight: "600" }}
-                  >
-                    Enter Huntly World
-                  </ThemedText>
-                )}
-              </Pressable>
-            </Animated.View>
-          </Animated.View>
         </ScrollView>
       </View>
       </SafeAreaView>

@@ -2,28 +2,60 @@ import { ImageSourcePropType } from "react-native";
 
 export type TeamName = "foxes" | "bears" | "otters";
 
-/** Config for the home screen team card (wave mascot + background) */
+/** Config for the home screen team card */
 export type TeamCardConfig = {
   title: string;
+  leaderPossessive: string;
+  leaderName: string;
   backgroundColor: string;
-  /** Bundled image module id from require(...) */
+  accentColor: string;
+  leaderColor: string;
+  bgImage: number;
+  badgeImage: number;
+  characterImage: number;
+  standingImage: number;
+  /** Legacy wave mascot image — still used in social tab */
   waveImage: number;
 };
 
 const TEAM_CARD_CONFIG: Record<string, TeamCardConfig> = {
   bears: {
     title: "Bears",
-    backgroundColor: "#EBCDBB",
+    leaderPossessive: "Bella's",
+    leaderName: "Bella",
+    backgroundColor: "#E8C4B8",
+    accentColor: "#A0572A",
+    leaderColor: "#C97B30",
+    bgImage: require("@/assets/images/bears-bg.png"),
+    badgeImage: require("@/assets/images/bears-badge.png"),
+    characterImage: require("@/assets/images/bella-close-smiling.png"),
+    standingImage: require("@/assets/images/bella-standing.png"),
     waveImage: require("@/assets/images/bear-wave.png"),
   },
   foxes: {
     title: "Foxes",
-    backgroundColor: "#BBDCEB",
+    leaderPossessive: "Felix's",
+    leaderName: "Felix",
+    backgroundColor: "#B8D4E8",
+    accentColor: "#1E4C8A",
+    leaderColor: "#2A5FAB",
+    bgImage: require("@/assets/images/foxes-bg.png"),
+    badgeImage: require("@/assets/images/foxes-badge.png"),
+    characterImage: require("@/assets/images/felix-close-smiling.png"),
+    standingImage: require("@/assets/images/felix-standing.png"),
     waveImage: require("@/assets/images/fox-wave.png"),
   },
   otters: {
     title: "Otters",
-    backgroundColor: "#EBEBBB",
+    leaderPossessive: "Oli's",
+    leaderName: "Oli",
+    backgroundColor: "#C8D8A8",
+    accentColor: "#3A6028",
+    leaderColor: "#4A7038",
+    bgImage: require("@/assets/images/otters-bg.png"),
+    badgeImage: require("@/assets/images/otters-badge.png"),
+    characterImage: require("@/assets/images/oli-close-smiling.png"),
+    standingImage: require("@/assets/images/oli-standing.png"),
     waveImage: require("@/assets/images/otter-wave.png"),
   },
 };

@@ -16,27 +16,21 @@ import AnimatedReanimated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  withDelay,
   withTiming,
   Easing,
-  FadeIn,
-  FadeOut,
-  FadeInDown,
-  FadeOutDown } from "react-native-reanimated";
+  FadeIn } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { MissionCard } from "@/components/MissionCard";
-import { StatCard } from "@/components/StatCard";
-import { AddJournalEntryModal } from "@/components/AddJournalEntryModal";
+import { AdventureTile } from "@/components/AdventureTile";
+import { PastAdventuresTile } from "@/components/PastAdventuresTile";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useCurrentChapterActivities } from "@/hooks/useCurrentChapterActivities";
 import { useUser } from "@/contexts/UserContext";
 import { getRandomClubPhotos, type ClubPhotoCardItem } from "@/services/activityProgressService";
 import { getTeamCardConfig } from "@/utils/teamUtils";
-import type { ActivityTag } from "@/services/journalService";
 
 type HomeMode = "profile" | "activity" | "missions";
 const HOME_MODES: HomeMode[] = ["profile", "activity", "missions"];
@@ -49,12 +43,7 @@ const HUNTLY_GREEN = "#4F6F52";
 const CLUB_CARDS_PAGE_SIZE = 6;
 const CLUB_CARDS_MAX = 24;
 
-/** Must match team card slide `withTiming` duration */
 const TEAM_CARD_SLIDE_DURATION_MS = 420;
-/** Pause after team card motion finishes, then club section fades in */
-const CLUB_SECTION_PAUSE_AFTER_TEAM_MS = 500;
-/** Wait after team image loads before sliding in (avoids image pop-in) */
-const TEAM_CARD_WAIT_AFTER_RENDER_MS = 500;
 
 /** Pastel/bright author badge colors (white text) for club cards */
 const CLUB_CARD_AUTHOR_COLORS = [
@@ -73,9 +62,31 @@ const TEAM_CARD_MESSAGES = [
   "We're doing great with the outdoor missions!",
 ];
 
+const SPEECH_BUBBLE_MESSAGES = (leaderName: string) => [
+  `Welcome back, explorer! What will you do today?`,
+  `Ready for adventure? ${leaderName} is cheering you on.`,
+  `Time to get going, explorer.`,
+  `What kind of adventure are you in the mood for today?`,
+  `Your next mission starts when you do.`,
+  `Let's see where today takes you.`,
+  `Ready to explore something new today?`,
+  `Another day, another adventure.`,
+  `Let's make today an adventure.`,
+  `Where will you wander today?`,
+  `Boots on? Let's go.`,
+  `What will you discover today?`,
+  `Go on — pick something fun to do.`,
+  `The outdoors is waiting for you.`,
+  `A good day for an adventure, don't you think?`,
+  `Start small or go big — just get out there.`,
+  `What's your plan for today, explorer?`,
+  `Choose your path and let's get moving.`,
+  `Your adventure is waiting.`,
+  `Let's get out there and do something brilliant.`,
+];
+
 export default function HomeScreen() {
   const { scaleW, width, height } = useLayoutScale();
-  const insets = useSafeAreaInsets();
   const { team, teamId, daysPlayed, pointsEarned } = useUser();
   const {
     latestMission,
@@ -87,13 +98,15 @@ export default function HomeScreen() {
   const [loadingMoreClubCards, setLoadingMoreClubCards] = useState(false);
   const [clubImageStatus, setClubImageStatus] = useState<Record<string, "loading" | "loaded" | "error">>({});
   const [showClubSection, setShowClubSection] = useState(false);
-  const [showQuickAddMenu, setShowQuickAddMenu] = useState(false);
-  const [showAddEntryModal, setShowAddEntryModal] = useState(false);
-  const [initialActivityTag, setInitialActivityTag] = useState<ActivityTag>("Walk");
+  const [missionsTab, setMissionsTab] = useState<"missions" | "adventures">("missions");
   const initialIndex = 1; // activity (Welcome back)
   const [currentIndex, setCurrentIndex] = useState<number>(initialIndex);
   const currentMode = HOME_MODES[currentIndex] ?? "activity";
   const teamCardMessage = useMemo(() => TEAM_CARD_MESSAGES[Math.floor(Math.random() * TEAM_CARD_MESSAGES.length)], []);
+  const speechBubbleMessage = useMemo(() => {
+    const msgs = SPEECH_BUBBLE_MESSAGES(teamCardConfig?.leaderName ?? "");
+    return msgs[Math.floor(Math.random() * msgs.length)];
+  }, [teamCardConfig?.leaderName]);
 
   useEffect(() => {
     let cancelled = false;
@@ -147,141 +160,40 @@ export default function HomeScreen() {
   const missionViewportWidth = width - scaleW(48);
   const missionCardsPaddingHorizontal = Math.max(0, Math.round((missionViewportWidth - missionCardWidth) / 2));
 
-  const springLessBouncy = { damping: 15, stiffness: 120 };
   const buttonSpring = { damping: 15, stiffness: 400 };
   const profileButtonScale = useSharedValue(1);
   const missionsButtonScale = useSharedValue(1);
   const navScale = useSharedValue(1);
-  const [showTeamCard, setShowTeamCard] = useState(false);
-  const [teamCardImageReady, setTeamCardImageReady] = useState(false);
-  const [teamSlideHasStarted, setTeamSlideHasStarted] = useState(false);
-  const teamSlideStartedAtRef = useRef<number | null>(null);
-  const clubScheduleRetryRef = useRef(0);
   const teamCardTranslateX = useSharedValue(240);
   const teamCardOpacity = useSharedValue(0);
-  const fabRotation = useSharedValue(0);
-
-  const profileButtonStyle = useAnimatedStyle(() => ({ transform: [{ scale: profileButtonScale.value }] }));
   const missionsButtonStyle = useAnimatedStyle(() => ({ transform: [{ scale: missionsButtonScale.value }] }));
   const navButtonStyle = useAnimatedStyle(() => ({ transform: [{ scale: navScale.value }] }));
   const teamCardStyle = useAnimatedStyle(() => ({
     opacity: teamCardOpacity.value,
     transform: [{ translateX: teamCardTranslateX.value }] }));
-  const fabIconStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${fabRotation.value}deg` }] }));
 
+  // Slide the team card in after a short fixed delay — no image-load dependency.
   useEffect(() => {
-    if (!teamCardConfig) {
-      setShowTeamCard(false);
-      setTeamCardImageReady(false);
-      setTeamSlideHasStarted(false);
-      teamSlideStartedAtRef.current = null;
-      teamCardTranslateX.value = 240;
-      teamCardOpacity.value = 0;
-      return;
-    }
-
-    // Mount immediately, but don't slide in until image is ready.
-    setShowTeamCard(true);
-    setTeamCardImageReady(false);
-    setTeamSlideHasStarted(false);
     teamCardTranslateX.value = 240;
     teamCardOpacity.value = 0;
-  }, [teamCardConfig, teamCardOpacity, teamCardTranslateX]);
-
-  useEffect(() => {
-    if (!teamCardConfig || !showTeamCard || !teamCardImageReady) return;
+    if (!teamCardConfig) return;
     let cancelled = false;
     const timer = setTimeout(() => {
       if (cancelled) return;
-      setTeamSlideHasStarted(true);
-      teamSlideStartedAtRef.current = Date.now();
-      teamCardTranslateX.value = 240;
-      teamCardOpacity.value = 0;
-      teamCardTranslateX.value = withTiming(0, {
-        duration: TEAM_CARD_SLIDE_DURATION_MS,
-        easing: Easing.out(Easing.cubic) });
-      teamCardOpacity.value = withTiming(1, {
-        duration: 300,
-        easing: Easing.out(Easing.cubic) });
-    }, TEAM_CARD_WAIT_AFTER_RENDER_MS);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [
-    teamCardConfig,
-    showTeamCard,
-    teamCardImageReady,
-    setTeamSlideHasStarted,
-    teamCardOpacity,
-    teamCardTranslateX,
-  ]);
+      teamCardTranslateX.value = withTiming(0, { duration: TEAM_CARD_SLIDE_DURATION_MS, easing: Easing.out(Easing.cubic) });
+      teamCardOpacity.value = withTiming(1, { duration: 300, easing: Easing.out(Easing.cubic) });
+    }, 150);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [teamCardConfig, teamCardOpacity, teamCardTranslateX]);
 
-  // "From around the club": data must be loaded, then after team slide finishes + 0.5s (or 0.5s if no team card)
+  // Show club section as soon as data is ready.
   useEffect(() => {
     setShowClubSection(false);
-    clubScheduleRetryRef.current = 0;
+    if (clubCardsLoading || clubCards.length === 0) return;
     let cancelled = false;
-    const timers: ReturnType<typeof setTimeout>[] = [];
-
-    const clubDataReady = !clubCardsLoading && clubCards.length > 0;
-    if (!clubDataReady) {
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    const scheduleShow = () => {
-      if (cancelled) return;
-
-      if (!teamCardConfig) {
-        timers.push(
-          setTimeout(() => {
-            if (!cancelled) setShowClubSection(true);
-          }, CLUB_SECTION_PAUSE_AFTER_TEAM_MS)
-        );
-        return;
-      }
-
-      const slideStart = teamSlideStartedAtRef.current;
-      if (slideStart == null) {
-        clubScheduleRetryRef.current += 1;
-        if (clubScheduleRetryRef.current > 40) {
-          const fallbackDelay =
-            TEAM_CARD_SLIDE_DURATION_MS + CLUB_SECTION_PAUSE_AFTER_TEAM_MS;
-          timers.push(
-            setTimeout(() => {
-              if (!cancelled) setShowClubSection(true);
-            }, fallbackDelay)
-          );
-          return;
-        }
-        timers.push(setTimeout(scheduleShow, 16));
-        return;
-      }
-
-      const targetTime =
-        slideStart +
-        TEAM_CARD_SLIDE_DURATION_MS +
-        CLUB_SECTION_PAUSE_AFTER_TEAM_MS;
-      const delay = Math.max(0, targetTime - Date.now());
-      timers.push(
-        setTimeout(() => {
-          if (!cancelled) setShowClubSection(true);
-        }, delay)
-      );
-    };
-
-    timers.push(setTimeout(scheduleShow, 0));
-
-    return () => {
-      cancelled = true;
-      timers.forEach(clearTimeout);
-    };
-  }, [clubCardsLoading, clubCards.length, teamCardConfig]);
-
-  const shouldRenderClubSection = showClubSection && (!teamCardConfig || teamSlideHasStarted);
+    const timer = setTimeout(() => { if (!cancelled) setShowClubSection(true); }, 300);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [clubCardsLoading, clubCards.length]);
 
   const resetToActivityPage = useCallback(() => {
     if (width <= 0) return;
@@ -357,52 +269,6 @@ export default function HomeScreen() {
     setCurrentIndex(nextIndex);
   };
 
-  /**
-   * First load only: once missions have loaded once for this team, keep CTA mounted.
-   * Tab focus refetches set missionLoading true again — hiding the CTA would blink.
-   */
-  const [ctaMissionsReady, setCtaMissionsReady] = useState(false);
-  useEffect(() => {
-    setCtaMissionsReady(false);
-  }, [teamId]);
-  useEffect(() => {
-    if (teamId != null && !missionLoading) {
-      setCtaMissionsReady(true);
-    }
-  }, [teamId, missionLoading]);
-
-  const showFab = teamId != null && ctaMissionsReady;
-
-  // Keep CTA above the device bottom safe area.
-  const bottomInset =
-    Platform.OS === "android" && insets.bottom === 0 ? scaleW(24) : insets.bottom;
-  const fabBottom = scaleW(24) + bottomInset;
-
-  const openAddEntry = useCallback((tag: ActivityTag) => {
-    setInitialActivityTag(tag);
-    setShowQuickAddMenu(false);
-    setShowAddEntryModal(true);
-  }, []);
-
-  const goToMission = useCallback(() => {
-    const mission = latestUnfinishedMission ?? latestMission;
-    if (!mission?.id) return;
-    setShowQuickAddMenu(false);
-    router.push({
-      pathname: "/(tabs)/activity/mission",
-      params: { id: mission.id } } as Parameters<typeof router.push>[0]);
-  }, [latestUnfinishedMission, latestMission]);
-
-  useEffect(() => {
-    fabRotation.value = withTiming(showQuickAddMenu ? 45 : 0, {
-      duration: 160,
-      easing: Easing.out(Easing.cubic) });
-  }, [showQuickAddMenu, fabRotation]);
-
-  useEffect(() => {
-    if (!showFab) setShowQuickAddMenu(false);
-  }, [showFab]);
-
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -438,9 +304,7 @@ export default function HomeScreen() {
         bearsCard: {
           borderRadius: scaleW(15),
           marginBottom: scaleW(20),
-          paddingHorizontal: scaleW(14),
-          paddingVertical: scaleW(12),
-          minHeight: scaleW(180),
+          minHeight: scaleW(160),
           width: "100%",
           overflow: "hidden" as const,
           shadowColor: "#000",
@@ -450,8 +314,8 @@ export default function HomeScreen() {
           elevation: 2 },
         bearImage: {
           position: "absolute",
-          width: scaleW(110),
-          height: scaleW(110),
+          width: scaleW(150),
+          height: scaleW(200),
           right: 0,
           bottom: 0 },
         horizontalCardsContainer: {
@@ -481,58 +345,13 @@ export default function HomeScreen() {
         horizontalMissionCardsContainer: {
           paddingLeft: missionCardsPaddingHorizontal,
           paddingRight: missionCardsPaddingHorizontal,
-          paddingBottom: scaleW(8) },
-        fab: {
-          position: "absolute",
-          bottom: fabBottom,
-          right: scaleW(24),
-          width: scaleW(56),
-          height: scaleW(56),
-          borderRadius: scaleW(28),
-          backgroundColor: CREAM,
-          alignItems: "center",
-          justifyContent: "center",
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: scaleW(3) },
-          shadowOpacity: 0.2,
-          shadowRadius: scaleW(6),
-          elevation: 6 },
-        menuOverlay: {
-          ...StyleSheet.absoluteFillObject,
-          backgroundColor: "transparent" },
-        quickAddMenu: {
-          position: "absolute",
-          right: scaleW(24),
-          bottom: fabBottom + scaleW(56) + scaleW(12),
-          width: scaleW(160),
-          gap: scaleW(10) },
-        quickAddButton: {
-          backgroundColor: CREAM,
-          borderRadius: scaleW(32),
-          paddingVertical: scaleW(12),
-          paddingHorizontal: scaleW(14),
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: scaleW(2) },
-          shadowOpacity: 0.16,
-          shadowRadius: scaleW(4),
-          elevation: 4 },
-        quickAddButtonText: {
-          fontSize: scaleW(15),
-          fontWeight: "700",
-          color: HUNTLY_GREEN,
-          textAlign: "center" },
-        ctaLayer: {
-          ...StyleSheet.absoluteFillObject,
-          zIndex: 30,
-          elevation: 30,
-          pointerEvents: "box-none" as const } }),
+          paddingBottom: scaleW(8) } }),
     [
       scaleW,
       width,
       height,
       clubCardsPaddingHorizontal,
       missionCardsPaddingHorizontal,
-      fabBottom,
     ]
   );
 
@@ -623,49 +442,103 @@ export default function HomeScreen() {
       bounces={false}
       overScrollMode="never"
     >
-      <View style={{
-        paddingHorizontal: scaleW(24),
-        paddingTop: scaleW(120),
-        paddingBottom: scaleW(24) }}>
-        <ThemedText
-          lightColor="#FFFFFF"
-          darkColor="#FFFFFF"
-          type="heading"
-          className="text-white"
-          style={{
-              alignSelf: "center",
-              maxWidth: scaleW(200),
-              fontSize: scaleW(24),
-              lineHeight: scaleW(32),
-              fontWeight: "600",
-              textAlign: "center",
-              marginTop: scaleW(48),
-              marginBottom: scaleW(24),
-              textShadowColor: "#000",
-              textShadowRadius: 3,
-              textShadowOffset: { width: 0, height: 0 } }}
-        >
-          Your stats
-        </ThemedText>
-        <View style={{
-          flexDirection: "row",
-          justifyContent: "center",
-          marginBottom: scaleW(28),
-          gap: scaleW(16),
-          paddingHorizontal: scaleW(12) }}>
-          <StatCard
-            value={daysPlayed}
-            label="Days since started"
-            color="pink"
-          />
-          <StatCard
-            value={pointsEarned}
-            label="Points earned"
-            color="green"
-          />
+      <View style={{ paddingHorizontal: scaleW(24), paddingTop: scaleW(20), paddingBottom: scaleW(24), gap: scaleW(16) }}>
+        <AdventureTile />
+
+        {/* Stats row */}
+        <View style={{ flexDirection: "row", gap: scaleW(12) }}>
+          <View style={{
+            flex: 1,
+            backgroundColor: "rgba(255,255,255,0.9)",
+            borderRadius: scaleW(16),
+            borderWidth: 3,
+            borderColor: '#E07B20',
+            padding: scaleW(16),
+            alignItems: "center",
+            gap: scaleW(6),
+            shadowColor: "#000",
+            shadowOpacity: 0.12,
+            shadowRadius: 3,
+            shadowOffset: { width: 0, height: 1 },
+            elevation: 2 }}>
+            <View style={{ backgroundColor: "#FFF3E0", borderRadius: scaleW(12), padding: scaleW(8) }}>
+              <MaterialIcons name="star" size={scaleW(22)} color="#E07B20" />
+            </View>
+            <ThemedText type="heading" style={{ fontSize: scaleW(26), fontWeight: "800", color: "#E07B20" }}>
+              {pointsEarned}
+            </ThemedText>
+            <ThemedText style={{ fontSize: scaleW(12), fontWeight: "600", color: "#888", textAlign: "center" }}>
+              Points earned
+            </ThemedText>
+          </View>
+          <View style={{
+            flex: 1,
+            backgroundColor: "rgba(255,255,255,0.9)",
+            borderRadius: scaleW(16),
+            borderWidth: 3,
+            borderColor: '#4F6F52',
+            padding: scaleW(16),
+            alignItems: "center",
+            gap: scaleW(6),
+            shadowColor: "#000",
+            shadowOpacity: 0.12,
+            shadowRadius: 3,
+            shadowOffset: { width: 0, height: 1 },
+            elevation: 2 }}>
+            <View style={{ backgroundColor: "#E8F5E9", borderRadius: scaleW(12), padding: scaleW(8) }}>
+              <MaterialIcons name="eco" size={scaleW(22)} color="#4F6F52" />
+            </View>
+            <ThemedText type="heading" style={{ fontSize: scaleW(26), fontWeight: "800", color: "#4F6F52" }}>
+              {daysPlayed}
+            </ThemedText>
+            <ThemedText style={{ fontSize: scaleW(12), fontWeight: "600", color: "#888", textAlign: "center" }}>
+              Days exploring
+            </ThemedText>
+          </View>
         </View>
 
-        <AnimatedReanimated.View style={profileButtonStyle}>
+        {/* Your team compact card */}
+        {teamCardConfig && (
+          <View style={{
+            backgroundColor: teamCardConfig.backgroundColor,
+            borderRadius: scaleW(16),
+            padding: scaleW(16),
+            borderWidth: 3,
+            borderColor: '#FFF',
+            flexDirection: "row",
+            alignItems: "center",
+            gap: scaleW(14),
+            shadowColor: "#000",
+            shadowOpacity: 0.12,
+            shadowRadius: 3,
+            shadowOffset: { width: 0, height: 1 },
+            elevation: 2 }}>
+            <Image
+              source={teamCardConfig.badgeImage}
+              resizeMode="contain"
+              style={{ width: scaleW(52), height: scaleW(52) }}
+            />
+            <View style={{ flex: 1 }}>
+              <ThemedText
+                type="heading"
+                style={{ fontSize: scaleW(18), fontWeight: "800", color: teamCardConfig.accentColor }}
+              >
+                {teamCardConfig.title}
+              </ThemedText>
+              <ThemedText style={{ fontSize: scaleW(13), fontWeight: "600", color: teamCardConfig.leaderColor }}>
+                {teamCardConfig.leaderPossessive} team
+              </ThemedText>
+            </View>
+            <Image
+              source={teamCardConfig.characterImage}
+              resizeMode="contain"
+              style={{ width: scaleW(52), height: scaleW(52) }}
+            />
+          </View>
+        )}
+
+        {/* Profile button */}
+        <View>
           <Pressable
             onPress={() => router.push("/(tabs)/profile")}
             onPressIn={() => { profileButtonScale.value = withSpring(0.96, buttonSpring); }}
@@ -674,15 +547,12 @@ export default function HomeScreen() {
           >
             <ThemedText
               type="heading"
-              style={{
-                textAlign: "center",
-                fontSize: scaleW(16),
-                fontWeight: "600" }}
+              style={{ textAlign: "center", fontSize: scaleW(16), fontWeight: "600" }}
             >
               Your profile
             </ThemedText>
           </Pressable>
-        </AnimatedReanimated.View>
+        </View>
       </View>
     </ScrollView>
   );
@@ -696,48 +566,110 @@ export default function HomeScreen() {
       bounces={false}
       overScrollMode="never"
     >
-      <View style={{
-        paddingHorizontal: scaleW(24),
-        paddingTop: scaleW(8),
-        paddingBottom: scaleW(24) }}>
-        <ThemedText
-          lightColor="#FFFFFF"
-          darkColor="#FFFFFF"
-          type="heading"
-          className="text-white"
-          style={{
-              alignSelf: "center",
-              maxWidth: scaleW(220),
-              fontSize: scaleW(24),
-              lineHeight: scaleW(32),
-              fontWeight: "600",
-              textAlign: "center",
-              marginTop: 0,
-              marginBottom: scaleW(24),
-              textShadowColor: "#000",
-              textShadowRadius: 3,
-              textShadowOffset: { width: 0, height: 0 } }}
-        >
-          Welcome back, Explorer!
-        </ThemedText>
+      <View style={{ paddingHorizontal: scaleW(24), paddingTop: scaleW(8), paddingBottom: scaleW(24), gap: scaleW(16) }}>
 
-        {teamCardConfig && showTeamCard && (
+        {/* Header */}
+        <View style={{
+          alignSelf: "flex-start",
+          marginTop: scaleW(16),
+          backgroundColor: "rgba(0,0,0,0.45)",
+          borderRadius: scaleW(16),
+          paddingVertical: scaleW(10),
+          paddingHorizontal: scaleW(14),
+          gap: scaleW(3) }}>
+          <ThemedText
+            type="heading"
+            lightColor="#FFFFFF"
+            darkColor="#FFFFFF"
+            style={{ fontSize: scaleW(22), fontWeight: "800" }}
+          >
+            Welcome back, Explorer!
+          </ThemedText>
+          <ThemedText
+            lightColor="rgba(255,255,255,0.85)"
+            darkColor="rgba(255,255,255,0.85)"
+            style={{ fontSize: scaleW(14), fontWeight: "500" }}
+          >
+            Here's what's happening
+          </ThemedText>
+        </View>
+
+        {/* Character + speech bubble */}
+        {teamCardConfig && (
           <AnimatedReanimated.View style={teamCardStyle}>
-            <View style={[styles.bearsCard, { backgroundColor: teamCardConfig.backgroundColor, borderWidth: 4, borderColor: "#FFF" }]}>
-              <View className="flex-row items-center flex-1 p-4 overflow-hidden">
-                <View style={{ flex: 1, paddingRight: scaleW(8) }}>
-                  <ThemedText type="heading" style={{ color: "#000", fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(12), lineHeight: scaleW(28) }}>{teamCardConfig.title}</ThemedText>
-                  <ThemedText type="body" style={{ color: "#000", fontSize: scaleW(16), lineHeight: scaleW(24) }}>
-                    {teamCardMessage}
+            <View style={{
+              backgroundColor: teamCardConfig.backgroundColor,
+              borderRadius: scaleW(20),
+              borderWidth: 3,
+              borderColor: "#FFF",
+              overflow: "hidden",
+              minHeight: scaleW(200),
+              shadowColor: "#000",
+              shadowOpacity: 0.2,
+              shadowRadius: 4,
+              shadowOffset: { width: 0, height: 2 },
+              elevation: 3 }}>
+              {/* Background scene */}
+              <Image
+                source={teamCardConfig.bgImage}
+                resizeMode="cover"
+                style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+              />
+              {/* Standing character — right side, slightly overflowing top */}
+              <Image
+                source={teamCardConfig.standingImage}
+                resizeMode="contain"
+                style={{
+                  position: "absolute",
+                  bottom: 0,
+                  right: scaleW(-8),
+                  width: scaleW(170),
+                  height: scaleW(210) }}
+              />
+              {/* Left content */}
+              <View style={{ marginRight: scaleW(150), padding: scaleW(16), gap: scaleW(12) }}>
+                {/* Badge + name row */}
+                <View style={{ flexDirection: "row", alignItems: "center", gap: scaleW(8) }}>
+                  <Image
+                    source={teamCardConfig.badgeImage}
+                    resizeMode="contain"
+                    style={{ width: scaleW(36), height: scaleW(36) }}
+                  />
+                  <ThemedText
+                    type="heading"
+                    style={{ color: teamCardConfig.accentColor, fontSize: scaleW(18), fontWeight: "800" }}
+                  >
+                    {teamCardConfig.title}
                   </ThemedText>
                 </View>
-                <View style={{ width: scaleW(110), height: scaleW(110) }}>
-                  <Image
-                    source={teamCardConfig.waveImage}
-                    resizeMode="contain"
-                    onLoadEnd={() => setTeamCardImageReady(true)}
-                    onError={() => setTeamCardImageReady(true)}
-                    style={[styles.bearImage]}
+                {/* Speech bubble with tail */}
+                <View style={{ position: "relative" }}>
+                  <View style={{
+                    backgroundColor: "#FFFFFF",
+                    borderRadius: scaleW(14),
+                    padding: scaleW(12),
+                    shadowColor: "#000",
+                    shadowOpacity: 0.12,
+                    shadowRadius: 6,
+                    shadowOffset: { width: 0, height: 2 },
+                    elevation: 3 }}>
+                    <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(20), color: "#333", fontStyle: "italic" }}>
+                      "{speechBubbleMessage}"
+                    </ThemedText>
+                  </View>
+                  {/* Tail pointing right toward character */}
+                  <View style={{
+                    position: "absolute",
+                    right: scaleW(-10),
+                    top: scaleW(14),
+                    width: 0,
+                    height: 0,
+                    borderTopWidth: scaleW(8),
+                    borderBottomWidth: scaleW(8),
+                    borderLeftWidth: scaleW(10),
+                    borderTopColor: "transparent",
+                    borderBottomColor: "transparent",
+                    borderLeftColor: "#FFFFFF" }}
                   />
                 </View>
               </View>
@@ -745,125 +677,122 @@ export default function HomeScreen() {
           </AnimatedReanimated.View>
         )}
 
-        {shouldRenderClubSection && (
+        {/* Club photos */}
+        {showClubSection && (
           <AnimatedReanimated.View
             entering={FadeIn.duration(420).easing(Easing.out(Easing.cubic))}
           >
             <View
               style={{
                 backgroundColor: "#BBE5EB",
-                borderRadius: scaleW(15),
+                borderRadius: scaleW(16),
                 paddingTop: scaleW(16),
-                paddingBottom: scaleW(32),
-                borderWidth: 4,
+                paddingBottom: scaleW(20),
+                borderWidth: 3,
                 borderColor: "#FFF",
                 shadowColor: "#000",
-                shadowOpacity: 0.3,
-                shadowRadius: 2,
+                shadowOpacity: 0.15,
+                shadowRadius: 3,
                 shadowOffset: { width: 0, height: 2 },
                 elevation: 2,
                 overflow: Platform.OS === "android" ? "visible" : undefined }}
               collapsable={Platform.OS !== "android"}
             >
-              <ThemedText type="heading" style={{ color: "#000", fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(32), textAlign: "center", lineHeight: scaleW(28) }}>
+              <ThemedText type="heading" style={{ color: "#1A5C6B", fontSize: scaleW(16), fontWeight: "700", marginBottom: scaleW(14), textAlign: "center" }}>
                 From around the club
               </ThemedText>
-            <Animated.ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalCardsContainer}
-              style={{ overflow: "visible" }}
-              nestedScrollEnabled={Platform.OS === "android"}
-              removeClippedSubviews={false}
-              overScrollMode="never"
-              scrollEventThrottle={16}
-              onScroll={Animated.event(
-                [{ nativeEvent: { contentOffset: { x: clubCardsScrollX } } }],
-                { useNativeDriver: true, listener: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-                  const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
-                  const nearEnd = contentOffset.x + layoutMeasurement.width >= contentSize.width - scaleW(150);
-                  if (nearEnd) loadMoreClubCards();
-                } }
-              )}
-              snapToInterval={clubCardStep}
-              snapToAlignment="start"
-              decelerationRate="fast"
-            >
-              {clubCards.map((card, index) => {
-                const status = clubImageStatus[card.id] ?? "loading";
-                const centerScrollX = index === 0 ? 0 : getCenterScrollX(index);
-                const rotation = clubCardsScrollX.interpolate({
-                  inputRange: [
-                    centerScrollX - 120,
-                    centerScrollX,
-                    centerScrollX + 120,
-                  ],
-                  outputRange: ["-4deg", "0deg", "4deg"],
-                  extrapolate: "clamp" });
-                return (
-                  <Animated.View
-                    key={card.id}
-                    style={[
-                      styles.clubCard,
-                      {
-                        transform: [{ rotate: rotation }] },
-                    ]}
-                  >
-                    <Pressable style={{ flex: 1 }}>
-                      <View style={styles.clubCardImageWrap}>
-                        <ExpoImage
-                          source={{ uri: card.thumb_url || card.photo_url }}
-                          style={styles.clubCardImage}
-                          contentFit="cover"
-                          onLoadEnd={() => {
-                            setClubImageStatus((prev) => ({ ...prev, [card.id]: "loaded" }));
-                          }}
-                          onError={() => {
-                            setClubImageStatus((prev) => ({ ...prev, [card.id]: "error" }));
-                          }}
-                        />
-                        {status !== "loaded" && (
-                          <View style={styles.clubCardPlaceholder}>
-                            <ActivityIndicator size="small" color="#FFFFFF" />
-                          </View>
-                        )}
-                      <ThemedText type="heading" style={{
-                        position: "absolute",
-                        bottom: scaleW(40),
-                        left: scaleW(10),
-                        fontSize: scaleW(18),
-                        textAlign: "center",
-                        fontWeight: "600",
-                        backgroundColor: "#FFF",
-                        borderRadius: scaleW(20),
-                        paddingHorizontal: scaleW(5) }}>
-                        {card.title}
-                      </ThemedText>
-                      <ThemedText type="heading" style={{
-                        position: "absolute",
-                        bottom: scaleW(10),
-                        left: scaleW(10),
-                        fontSize: scaleW(16),
-                        textAlign: "center",
-                        fontWeight: "600",
-                        backgroundColor: CLUB_CARD_AUTHOR_COLORS[index % CLUB_CARD_AUTHOR_COLORS.length],
-                        color: "#FFF",
-                        borderRadius: scaleW(20),
-                        paddingHorizontal: scaleW(5) }}>
-                        by {card.author}
-                      </ThemedText>
-                    </View>
-                  </Pressable>
-                </Animated.View>
-              );
-            })}
-              {loadingMoreClubCards && (
-                <View style={[styles.clubCard, { justifyContent: "center", alignItems: "center", minWidth: scaleW(100) }]}>
-                  <ActivityIndicator size="small" color="#5B8A9E" />
-                </View>
-              )}
-            </Animated.ScrollView>
-          </View>
+              <Animated.ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.horizontalCardsContainer}
+                style={{ overflow: "visible" }}
+                nestedScrollEnabled={Platform.OS === "android"}
+                removeClippedSubviews={false}
+                overScrollMode="never"
+                scrollEventThrottle={16}
+                onScroll={Animated.event(
+                  [{ nativeEvent: { contentOffset: { x: clubCardsScrollX } } }],
+                  { useNativeDriver: true, listener: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+                    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+                    const nearEnd = contentOffset.x + layoutMeasurement.width >= contentSize.width - scaleW(150);
+                    if (nearEnd) loadMoreClubCards();
+                  } }
+                )}
+                snapToInterval={clubCardStep}
+                snapToAlignment="start"
+                decelerationRate="fast"
+              >
+                {clubCards.map((card, index) => {
+                  const status = clubImageStatus[card.id] ?? "loading";
+                  const centerScrollX = index === 0 ? 0 : getCenterScrollX(index);
+                  const rotation = clubCardsScrollX.interpolate({
+                    inputRange: [
+                      centerScrollX - 120,
+                      centerScrollX,
+                      centerScrollX + 120,
+                    ],
+                    outputRange: ["-4deg", "0deg", "4deg"],
+                    extrapolate: "clamp" });
+                  return (
+                    <Animated.View
+                      key={card.id}
+                      style={[styles.clubCard, { transform: [{ rotate: rotation }] }]}
+                    >
+                      <Pressable style={{ flex: 1 }}>
+                        <View style={styles.clubCardImageWrap}>
+                          <ExpoImage
+                            source={{ uri: card.thumb_url || card.photo_url }}
+                            style={styles.clubCardImage}
+                            contentFit="cover"
+                            onLoadEnd={() => {
+                              setClubImageStatus((prev) => ({ ...prev, [card.id]: "loaded" }));
+                            }}
+                            onError={() => {
+                              setClubImageStatus((prev) => ({ ...prev, [card.id]: "error" }));
+                            }}
+                          />
+                          {status !== "loaded" && (
+                            <View style={styles.clubCardPlaceholder}>
+                              <ActivityIndicator size="small" color="#FFFFFF" />
+                            </View>
+                          )}
+                          <ThemedText type="heading" style={{
+                            position: "absolute",
+                            bottom: scaleW(40),
+                            left: scaleW(10),
+                            fontSize: scaleW(18),
+                            textAlign: "center",
+                            fontWeight: "600",
+                            backgroundColor: "#FFF",
+                            borderRadius: scaleW(20),
+                            paddingHorizontal: scaleW(5) }}>
+                            {card.title}
+                          </ThemedText>
+                          <ThemedText type="heading" style={{
+                            position: "absolute",
+                            bottom: scaleW(10),
+                            left: scaleW(10),
+                            fontSize: scaleW(16),
+                            textAlign: "center",
+                            fontWeight: "600",
+                            backgroundColor: CLUB_CARD_AUTHOR_COLORS[index % CLUB_CARD_AUTHOR_COLORS.length],
+                            color: "#FFF",
+                            borderRadius: scaleW(20),
+                            paddingHorizontal: scaleW(5) }}>
+                            by {card.author}
+                          </ThemedText>
+                        </View>
+                      </Pressable>
+                    </Animated.View>
+                  );
+                })}
+                {loadingMoreClubCards && (
+                  <View style={[styles.clubCard, { justifyContent: "center", alignItems: "center", minWidth: scaleW(100) }]}>
+                    <ActivityIndicator size="small" color="#5B8A9E" />
+                  </View>
+                )}
+              </Animated.ScrollView>
+            </View>
           </AnimatedReanimated.View>
         )}
       </View>
@@ -879,30 +808,78 @@ export default function HomeScreen() {
       bounces={false}
       overScrollMode="never"
     >
-      <View style={{ paddingHorizontal: scaleW(24), paddingTop: scaleW(8) }}>
-        <ThemedText
-          lightColor="#FFFFFF"
-          darkColor="#FFFFFF"
-          type="heading"
-          className="text-white"
-          style={{
-              alignSelf: "center",
-              fontSize: scaleW(24),
-              lineHeight: scaleW(32),
-              fontWeight: "600",
-              textAlign: "center",
-              marginTop: scaleW(48),
-              marginBottom: scaleW(24),
-              textShadowColor: "#000",
-              textShadowRadius: 3,
-              textShadowOffset: { width: 0, height: 0 } }}
-        >
-          Latest Mission
-        </ThemedText>
+      <View style={{ paddingHorizontal: scaleW(24), paddingTop: scaleW(8), paddingBottom: scaleW(24), gap: scaleW(16) }}>
+        {/* Header */}
+        <View style={{
+          alignSelf: "flex-start",
+          marginTop: scaleW(16),
+          backgroundColor: "rgba(0,0,0,0.45)",
+          borderRadius: scaleW(16),
+          paddingVertical: scaleW(10),
+          paddingHorizontal: scaleW(14),
+          gap: scaleW(3) }}>
+          <ThemedText
+            type="heading"
+            lightColor="#FFFFFF"
+            darkColor="#FFFFFF"
+            style={{ fontSize: scaleW(22), fontWeight: "800" }}
+          >
+            Your help is needed!
+          </ThemedText>
+          <ThemedText
+            lightColor="rgba(255,255,255,0.85)"
+            darkColor="rgba(255,255,255,0.85)"
+            style={{ fontSize: scaleW(14), fontWeight: "500" }}
+          >
+            Choose a mission or adventure
+          </ThemedText>
+        </View>
 
-        <View collapsable={Platform.OS !== "android"} style={{ alignItems: "center", marginBottom: scaleW(24) }}>
+        {/* Missions / Adventures tabs */}
+        {/* <View style={{
+          flexDirection: "row",
+          backgroundColor: "rgba(0,0,0,0.25)",
+          borderRadius: scaleW(14),
+          padding: scaleW(4),
+          gap: scaleW(4) }}>
+          <Pressable
+            onPress={() => setMissionsTab("missions")}
+            style={{
+              flex: 1,
+              paddingVertical: scaleW(10),
+              borderRadius: scaleW(10),
+              alignItems: "center",
+              backgroundColor: missionsTab === "missions" ? CREAM : "transparent",
+              flexDirection: "row",
+              justifyContent: "center",
+              gap: scaleW(6) }}
+          >
+            <ThemedText style={{ fontSize: scaleW(14), fontWeight: "700", color: missionsTab === "missions" ? HUNTLY_GREEN : "rgba(255,255,255,0.8)" }}>
+              Missions
+            </ThemedText>
+            <View style={{ backgroundColor: "#E07B20", borderRadius: scaleW(8), paddingHorizontal: scaleW(6), paddingVertical: scaleW(1) }}>
+              <ThemedText style={{ fontSize: scaleW(10), fontWeight: "800", color: "#FFF" }}>New!</ThemedText>
+            </View>
+          </Pressable>
+          <Pressable
+            onPress={() => setMissionsTab("adventures")}
+            style={{
+              flex: 1,
+              paddingVertical: scaleW(10),
+              borderRadius: scaleW(10),
+              alignItems: "center",
+              backgroundColor: missionsTab === "adventures" ? CREAM : "transparent" }}
+          >
+            <ThemedText style={{ fontSize: scaleW(14), fontWeight: "700", color: missionsTab === "adventures" ? HUNTLY_GREEN : "rgba(255,255,255,0.8)" }}>
+              Adventures
+            </ThemedText>
+          </Pressable>
+        </View> */}
+
+        {/* Mission card */}
+        <View collapsable={Platform.OS !== "android"} style={{ alignItems: "center" }}>
           {missionLoading ? (
-            <View style={{ paddingVertical: scaleW(48), alignItems: "center" }}>
+            <View style={{ paddingVertical: scaleW(32), alignItems: "center" }}>
               <ActivityIndicator size="large" color="#FFF" />
             </View>
           ) : latestMission ? (
@@ -910,18 +887,22 @@ export default function HomeScreen() {
           ) : null}
         </View>
 
-        <AnimatedReanimated.View style={missionsButtonStyle}>
-          <Pressable
-            onPress={() => router.push("/(tabs)/missions")}
-            onPressIn={() => { missionsButtonScale.value = withSpring(0.96, buttonSpring); }}
-            onPressOut={() => { missionsButtonScale.value = withSpring(1, buttonSpring); }}
-            style={styles.creamButton}
-          >
-            <ThemedText type="defaultSemiBold" className="text-huntly-forest text-center font-jua">
-              See all missions
+        {/* OR divider */}
+        <View style={{ alignItems: "center" }}>
+          <View style={{
+            backgroundColor: "rgba(0,0,0,0.45)",
+            borderRadius: scaleW(20),
+            paddingVertical: scaleW(5),
+            paddingHorizontal: scaleW(18) }}>
+            <ThemedText lightColor="#FFFFFF" darkColor="#FFFFFF" style={{ fontSize: scaleW(13), fontWeight: "700" }}>
+              OR
             </ThemedText>
-          </Pressable>
-        </AnimatedReanimated.View>
+          </View>
+        </View>
+
+        <AdventureTile />
+
+        <PastAdventuresTile />
       </View>
     </ScrollView>
   );
@@ -986,69 +967,6 @@ export default function HomeScreen() {
         </View>
       </SafeAreaView>
 
-      {teamId != null && (
-        <AddJournalEntryModal
-          visible={showAddEntryModal}
-          onClose={() => setShowAddEntryModal(false)}
-          onSuccess={() => setShowAddEntryModal(false)}
-          initialActivityTag={initialActivityTag}
-        />
-      )}
-
-      {showFab && (
-        <AnimatedReanimated.View
-          style={styles.ctaLayer}
-          entering={FadeIn.duration(340).easing(Easing.out(Easing.cubic))}
-          exiting={FadeOut.duration(160).easing(Easing.in(Easing.cubic))}
-        >
-          {showQuickAddMenu && (
-            <Pressable
-              style={styles.menuOverlay}
-              onPress={() => setShowQuickAddMenu(false)}
-            />
-          )}
-
-          {showQuickAddMenu && (
-            <AnimatedReanimated.View
-              exiting={FadeOutDown.duration(160)}
-              style={styles.quickAddMenu}
-            >
-              <Pressable style={styles.quickAddButton} onPress={() => router.push("/(tabs)/activity/walk-prep")}>
-                <ThemedText type="heading" style={styles.quickAddButtonText}>Walk</ThemedText>
-              </Pressable>
-              <Pressable
-                style={styles.quickAddButton}
-                onPress={() => router.push("/(tabs)/activity/cycle-prep")}
-              >
-                <ThemedText type="heading" style={styles.quickAddButtonText}>Cycle</ThemedText>
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.quickAddButton,
-                  !latestMission && !latestUnfinishedMission ? { opacity: 0.6 } : null,
-                ]}
-                disabled={!latestMission && !latestUnfinishedMission}
-                onPress={goToMission}
-              >
-                <ThemedText type="heading" style={styles.quickAddButtonText}>Mission</ThemedText>
-              </Pressable>
-            </AnimatedReanimated.View>
-          )}
-
-          <Pressable
-            style={styles.fab}
-            onPress={() => setShowQuickAddMenu((v) => !v)}
-          >
-            <AnimatedReanimated.View style={fabIconStyle}>
-              <MaterialIcons
-                name="add"
-                size={scaleW(28)}
-                color={HUNTLY_GREEN}
-              />
-            </AnimatedReanimated.View>
-          </Pressable>
-        </AnimatedReanimated.View>
-      )}
     </View>
   );
 }

@@ -10,6 +10,12 @@ export default function ActivityLayout() {
           headerShown: false }}
       />
       <Stack.Screen
+        name="pick-activity"
+        options={{
+          title: "Go on an Adventure",
+          headerShown: false }}
+      />
+      <Stack.Screen
         name="walk-prep"
         options={{
           title: "Walk",

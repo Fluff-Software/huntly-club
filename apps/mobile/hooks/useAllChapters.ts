@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/services/supabase";
+import { ukTodayForChapterUnlockGate } from "@/utils/ukChapterTime";
 
 export type StorySlide =
   | { type: "text"; value: string }
@@ -29,7 +30,7 @@ export function useAllChapters(seasonId?: number | null): {
   const fetchData = useCallback(async () => {
     setError(null);
     setLoading(true);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = ukTodayForChapterUnlockGate();
 
     let query = supabase
       .from("chapters")

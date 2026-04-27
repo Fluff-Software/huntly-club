@@ -12,8 +12,7 @@ import { PRIVACY_POLICY_SECTIONS } from "@/constants/privacyPolicy";
 const COLORS = {
   darkGreen: "#4F6F52",
   white: "#FFFFFF",
-  slate: "#5a6b5d",
-};
+  slate: "#5a6b5d" };
 
 export default function PrivacyScreen() {
   const { scaleW } = useLayoutScale();
@@ -24,8 +23,7 @@ export default function PrivacyScreen() {
       <Stack.Screen
         options={{
           title: "Privacy Policy",
-          headerShown: false,
-        }}
+          headerShown: false }}
       />
       <View style={[styles.header, { paddingHorizontal: scaleW(16), paddingVertical: scaleW(12) }]}>
         <Pressable
@@ -34,8 +32,7 @@ export default function PrivacyScreen() {
             styles.backButton,
             { 
               padding: scaleW(8),
-              opacity: pressed ? 0.7 : 1,
-            },
+              opacity: pressed ? 0.7 : 1 },
           ]}
         >
           <MaterialIcons name="arrow-back" size={scaleW(24)} color={COLORS.darkGreen} />
@@ -47,8 +44,7 @@ export default function PrivacyScreen() {
           styles.content,
           {
             padding: scaleW(24),
-            paddingBottom: scaleW(40),
-          },
+            paddingBottom: scaleW(40) },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -82,5 +78,4 @@ const styles = StyleSheet.create({
   title: { color: COLORS.darkGreen },
   intro: { color: COLORS.slate },
   sectionTitle: { color: COLORS.darkGreen, marginBottom: 6 },
-  sectionBody: { color: COLORS.slate },
-});
+  sectionBody: { color: COLORS.slate } });

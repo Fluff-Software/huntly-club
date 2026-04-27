@@ -77,12 +77,10 @@ export default function WalkSummaryScreen() {
               latitude: session.route[session.route.length - 1]!.latitude,
               longitude: session.route[session.route.length - 1]!.longitude,
               latitudeDelta: 0.01,
-              longitudeDelta: 0.01,
-            }
+              longitudeDelta: 0.01 }
           : null,
       start: session.route[0] ?? null,
-      end: session.route.length > 0 ? session.route[session.route.length - 1]! : null,
-    };
+      end: session.route.length > 0 ? session.route[session.route.length - 1]! : null };
   }, [session]);
 
   const handleRecenter = () => {
@@ -93,8 +91,7 @@ export default function WalkSummaryScreen() {
         latitude: computed.end.latitude,
         longitude: computed.end.longitude,
         latitudeDelta: r?.latitudeDelta ?? 0.01,
-        longitudeDelta: r?.longitudeDelta ?? 0.01,
-      },
+        longitudeDelta: r?.longitudeDelta ?? 0.01 },
       350
     );
   };
@@ -111,29 +108,25 @@ export default function WalkSummaryScreen() {
           borderBottomLeftRadius: scaleW(28),
           borderBottomRightRadius: scaleW(28),
           flexDirection: "row",
-          alignItems: "center",
-        },
+          alignItems: "center" },
         backButton: {
           width: scaleW(42),
           height: scaleW(42),
           borderRadius: scaleW(21),
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: "rgba(255,255,255,0.14)",
-        },
+          backgroundColor: "rgba(255,255,255,0.14)" },
         headerTextWrap: { flex: 1, alignItems: "center" },
         headerTitle: {
           fontSize: scaleW(22),
           fontWeight: "700",
           color: "#FFF",
-          textAlign: "center",
-        },
+          textAlign: "center" },
         headerSubtext: {
           marginTop: scaleW(4),
           fontSize: scaleW(14),
           color: "rgba(255,255,255,0.75)",
-          textAlign: "center",
-        },
+          textAlign: "center" },
         headerRightSpacer: { width: scaleW(42) },
         body: { flex: 1, backgroundColor: LIGHT_GREEN_BG },
         scroll: { flex: 1 },
@@ -147,8 +140,7 @@ export default function WalkSummaryScreen() {
           shadowOpacity: 0.08,
           shadowRadius: 8,
           elevation: 2,
-          marginBottom: scaleW(12),
-        },
+          marginBottom: scaleW(12) },
         map: { height: scaleW(220), width: "100%" },
         recenterButton: {
           position: "absolute" as const,
@@ -161,8 +153,7 @@ export default function WalkSummaryScreen() {
           alignItems: "center",
           justifyContent: "center",
           zIndex: 6,
-          elevation: 6,
-        },
+          elevation: 6 },
         statsRow: { flexDirection: "row", gap: scaleW(10) },
         statCard: {
           flex: 1,
@@ -173,8 +164,7 @@ export default function WalkSummaryScreen() {
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.08,
           shadowRadius: 8,
-          elevation: 2,
-        },
+          elevation: 2 },
         statLabel: { color: "#5a5a5a", fontSize: scaleW(13), fontWeight: "800" },
         statValue: { marginTop: scaleW(6), color: "#1A2E1E", fontSize: scaleW(20), fontWeight: "900" },
         sectionTitle: {
@@ -182,8 +172,7 @@ export default function WalkSummaryScreen() {
           marginBottom: scaleW(10),
           fontSize: scaleW(16),
           fontWeight: "900",
-          color: "#1A2E1E",
-        },
+          color: "#1A2E1E" },
         chipRow: { flexDirection: "row", flexWrap: "wrap", gap: scaleW(8) },
         chip: {
           backgroundColor: CARD_BG,
@@ -194,8 +183,7 @@ export default function WalkSummaryScreen() {
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.06,
           shadowRadius: 6,
-          elevation: 1,
-        },
+          elevation: 1 },
         chipText: { fontSize: scaleW(13), fontWeight: "900", color: "#1A2E1E" },
         photoGrid: { flexDirection: "row", flexWrap: "wrap", gap: scaleW(10) },
         photoThumb: { width: scaleW(98), height: scaleW(98), borderRadius: scaleW(14), backgroundColor: "#E6E6E6" },
@@ -203,8 +191,7 @@ export default function WalkSummaryScreen() {
           ...StyleSheet.absoluteFillObject,
           zIndex: 9999,
           elevation: 9999,
-          pointerEvents: "none" as const,
-        },
+          pointerEvents: "none" as const },
         footer: {
           position: "absolute",
           bottom: 0,
@@ -215,20 +202,17 @@ export default function WalkSummaryScreen() {
           paddingBottom: insets.bottom + scaleW(12) + (isTablet ? scaleW(40) : 0),
           backgroundColor: LIGHT_GREEN_BG,
           borderTopWidth: 1,
-          borderTopColor: "rgba(79,111,82,0.1)",
-        },
+          borderTopColor: "rgba(79,111,82,0.1)" },
         doneButton: {
           backgroundColor: HUNTLY_GREEN,
           borderRadius: scaleW(28),
           paddingVertical: scaleW(16),
           paddingHorizontal: scaleW(32),
           alignSelf: "stretch",
-          alignItems: "center",
-        },
+          alignItems: "center" },
         doneButtonText: { fontSize: scaleW(18), fontWeight: "800", color: "#FFF" },
         emptyWrap: { flex: 1, alignItems: "center", justifyContent: "center", padding: scaleW(24) },
-        emptyText: { textAlign: "center", fontSize: scaleW(15), color: "#2F3336", marginTop: scaleW(12) },
-      }),
+        emptyText: { textAlign: "center", fontSize: scaleW(15), color: "#2F3336", marginTop: scaleW(12) } }),
     [scaleW, insets.bottom, isTablet]
   );
 
@@ -309,8 +293,7 @@ export default function WalkSummaryScreen() {
                   latitude: 0,
                   longitude: 0,
                   latitudeDelta: 0.01,
-                  longitudeDelta: 0.01,
-                }
+                  longitudeDelta: 0.01 }
               }
               scrollEnabled
               rotateEnabled={false}

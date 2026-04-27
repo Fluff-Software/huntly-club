@@ -5,15 +5,13 @@ import {
   Image,
   Pressable,
   StyleSheet,
-  ActivityIndicator,
-} from "react-native";
+  ActivityIndicator } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
+  withSpring } from "react-native-reanimated";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
@@ -75,15 +73,13 @@ export default function IntroScreen() {
 
   const buttonScale = useSharedValue(1);
   const buttonStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: buttonScale.value }],
-  }));
+    transform: [{ scale: buttonScale.value }] }));
 
   const handleAccept = () => {
     if (!activity?.id) return;
     router.push({
       pathname: "/(tabs)/activity/mission/prep",
-      params: { id: String(activity.id) },
-    });
+      params: { id: String(activity.id) } });
   };
 
   const styles = useMemo(
@@ -94,34 +90,29 @@ export default function IntroScreen() {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          padding: scaleW(24),
-        },
+          padding: scaleW(24) },
         errorText: { fontSize: scaleW(17), color: "#FFF", textAlign: "center" },
         scroll: { flex: 1 },
         scrollContent: { paddingHorizontal: scaleW(20), paddingBottom: scaleW(120) },
         urgentBannerWrap: {
           marginHorizontal: -scaleW(28),
           marginTop: scaleW(8),
-          marginBottom: scaleW(28),
-        },
+          marginBottom: scaleW(28) },
         urgentBanner: {
           backgroundColor: URGENT_RED,
           paddingVertical: scaleW(16),
-          transform: [{ rotate: "-1deg" }],
-        },
+          transform: [{ rotate: "-1deg" }] },
         urgentText: {
           fontSize: scaleW(17),
           fontWeight: "800",
           color: "#FFF",
           textAlign: "center",
-          letterSpacing: 0.5,
-        },
+          letterSpacing: 0.5 },
         characterRow: {
           flexDirection: "row",
           alignItems: "center",
           gap: scaleW(12),
-          marginBottom: scaleW(16),
-        },
+          marginBottom: scaleW(16) },
         avatar: {
           width: scaleW(48),
           height: scaleW(48),
@@ -130,39 +121,33 @@ export default function IntroScreen() {
           overflow: "hidden",
           padding: scaleW(6),
           alignItems: "center",
-          justifyContent: "center",
-        },
+          justifyContent: "center" },
         avatarImage: {
           width: scaleW(48),
           height: scaleW(48),
           borderRadius: scaleW(24),
-          overflow: "hidden",
-        },
+          overflow: "hidden" },
         characterName: { fontSize: scaleW(18), fontWeight: "600", color: "#FFF" },
         speechBubble: {
           backgroundColor: HUNTLY_GREEN,
           borderRadius: scaleW(20),
           padding: scaleW(20),
-          marginBottom: scaleW(20),
-        },
+          marginBottom: scaleW(20) },
         dialogueText: {
           fontSize: scaleW(16),
           color: "#FFF",
-          lineHeight: scaleW(24),
-        },
+          lineHeight: scaleW(24) },
         missionCard: {
           backgroundColor: HUNTLY_GREEN,
           borderRadius: scaleW(20),
           padding: scaleW(24),
-          marginBottom: scaleW(24),
-        },
+          marginBottom: scaleW(24) },
         missionLabel: {
           fontSize: scaleW(12),
           fontWeight: "600",
           color: "rgba(255,255,255,0.8)",
           letterSpacing: 1,
-          marginBottom: scaleW(8),
-        },
+          marginBottom: scaleW(8) },
         missionTitle: { fontSize: scaleW(22), fontWeight: "700", color: "#FFF", marginBottom: scaleW(4) },
         missionDesc: { fontSize: scaleW(15), color: "rgba(255,255,255,0.9)", marginBottom: scaleW(8) },
         metaRow: { fontSize: scaleW(13), color: "rgba(255,255,255,0.75)" },
@@ -174,8 +159,7 @@ export default function IntroScreen() {
           paddingVertical: scaleW(16),
           paddingHorizontal: scaleW(32),
           alignSelf: "center",
-          marginTop: scaleW(8),
-        },
+          marginTop: scaleW(8) },
         acceptButtonText: { fontSize: scaleW(18), fontWeight: "700", color: "#FFF" },
         footer: {
           position: "absolute",
@@ -186,9 +170,7 @@ export default function IntroScreen() {
           paddingBottom:
             insets.bottom +
             (onboardingActive ? scaleW(28) : scaleW(24)) +
-            (isTablet ? scaleW(40) : 0),
-        },
-      }),
+            (isTablet ? scaleW(40) : 0) } }),
     [scaleW, insets.bottom, onboardingActive, isTablet]
   );
 
@@ -224,13 +206,13 @@ export default function IntroScreen() {
         bounces={false}
       >
         {hasUrgent && (
-          <Animated.View entering={FadeInDown.duration(400)} style={styles.urgentBannerWrap}>
+          <Animated.View style={styles.urgentBannerWrap}>
             <View style={styles.urgentBanner}>
               <ThemedText style={styles.urgentText}>{activity.intro_urgent_message}</ThemedText>
             </View>
           </Animated.View>
         )}
-        <Animated.View entering={FadeInDown.duration(420).delay(80)} style={styles.characterRow}>
+        <Animated.View style={styles.characterRow}>
           {avatarUrl ? (
             <Image
               source={{ uri: avatarUrl }}
@@ -249,11 +231,11 @@ export default function IntroScreen() {
           <ThemedText style={styles.characterName}>{characterName}</ThemedText>
         </Animated.View>
         {activity.intro_dialogue != null && activity.intro_dialogue.trim() !== "" && (
-          <Animated.View entering={FadeInDown.duration(420).delay(120)} style={styles.speechBubble}>
+          <Animated.View style={styles.speechBubble}>
             <ThemedText style={styles.dialogueText}>{activity.intro_dialogue}</ThemedText>
           </Animated.View>
         )}
-        <Animated.View entering={FadeInDown.duration(420).delay(160)} style={styles.missionCard}>
+        <Animated.View style={styles.missionCard}>
           <ThemedText style={styles.missionLabel}>YOUR MISSION</ThemedText>
           <ThemedText type="heading" style={styles.missionTitle}>
             {activity.title}

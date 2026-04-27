@@ -5,15 +5,13 @@ import {
   Pressable,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
-} from "react-native";
+  ScrollView } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
+  withSpring } from "react-native-reanimated";
 import { Stack, useLocalSearchParams, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { BlurView } from "expo-blur";
@@ -31,8 +29,7 @@ const BUTTON_BG = "#F4F0EB";
 enum AuthScreenMode {
   WELCOME,
   LOGIN,
-  SIGNUP,
-}
+  SIGNUP }
 
 export default function AuthScreen() {
   const [mode, setMode] = useState(AuthScreenMode.WELCOME);
@@ -45,11 +42,9 @@ export default function AuthScreen() {
   const loginScale = useSharedValue(1);
 
   const getStartedAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: getStartedScale.value }],
-  }));
+    transform: [{ scale: getStartedScale.value }] }));
   const loginAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: loginScale.value }],
-  }));
+    transform: [{ scale: loginScale.value }] }));
 
   useEffect(() => {
     if (params.mode === "signup") setMode(AuthScreenMode.SIGNUP);
@@ -72,8 +67,7 @@ export default function AuthScreen() {
               flexGrow: 1,
               justifyContent: "center",
               paddingHorizontal: scaleW(20),
-              paddingVertical: scaleW(24),
-            }}
+              paddingVertical: scaleW(24) }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
             automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
@@ -109,8 +103,7 @@ export default function AuthScreen() {
             right: 0,
             bottom: 0,
             width,
-            height: heroHeight,
-          }}
+            height: heroHeight }}
         />
       </View>
       {/* Characters + banner in front of bottom section */}
@@ -121,17 +114,14 @@ export default function AuthScreen() {
           width,
           alignItems: "center",
           justifyContent: "center",
-          zIndex: 2,
-        }}
+          zIndex: 2 }}
       >
         <Animated.View
-          entering={FadeInDown.duration(600).delay(0)}
           style={{
             width: scaleW(350),
             height: scaleW(228),
             position: "relative",
-            marginTop: scaleW(-100),
-          }}
+            marginTop: scaleW(-100) }}
         >
           {/* Logo - centered in 350-wide container */}
           <View
@@ -141,8 +131,7 @@ export default function AuthScreen() {
               top: scaleW(-160),
               width: scaleW(350),
               height: scaleW(350),
-              zIndex: 1,
-            }}
+              zIndex: 1 }}
           >
             <Image
               source={require("@/assets/images/logo.png")}
@@ -165,8 +154,7 @@ export default function AuthScreen() {
           borderTopLeftRadius: width,
           borderTopRightRadius: width,
           zIndex: 1,
-          overflow: "hidden",
-        }}
+          overflow: "hidden" }}
       >
         <LinearGradient
           colors={[GRADIENT_TOP, "transparent"]}
@@ -176,8 +164,7 @@ export default function AuthScreen() {
             right: 0,
             top: 0,
             height: "100%",
-            opacity: 0.25,
-          }}
+            opacity: 0.25 }}
         />
         <View
           style={{
@@ -189,8 +176,7 @@ export default function AuthScreen() {
             paddingTop: scaleW(24),
             paddingBottom: Math.max(insets.bottom, scaleW(24)),
             alignItems: "center",
-            width: width,
-          }}
+            width: width }}
         >
           <Animated.View entering={FadeInDown.duration(500).delay(150)}>
             <ThemedText
@@ -203,14 +189,12 @@ export default function AuthScreen() {
                 textAlign: "center",
                 fontWeight: "600",
                 fontSize: scaleW(28),
-                lineHeight: scaleW(36),
-              }}
+                lineHeight: scaleW(36) }}
             >
               Be curious. Be brave. Belong.
             </ThemedText>
           </Animated.View>
           <Animated.View
-            entering={FadeInDown.duration(500).delay(280)}
             style={getStartedAnimatedStyle}
           >
             <Pressable
@@ -233,8 +217,7 @@ export default function AuthScreen() {
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.5,
                 shadowRadius: 4,
-                elevation: 2,
-              }}
+                elevation: 2 }}
             >
               <ThemedText type="heading" style={{ color: HUNTLY_GREEN, fontSize: scaleW(16), fontWeight: "600" }}>
                 Get started
@@ -242,7 +225,6 @@ export default function AuthScreen() {
             </Pressable>
           </Animated.View>
           <Animated.View
-            entering={FadeInDown.duration(500).delay(380)}
             style={loginAnimatedStyle}
           >
             <Pressable
@@ -264,8 +246,7 @@ export default function AuthScreen() {
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.5,
                 shadowRadius: 4,
-                elevation: 2,
-              }}
+                elevation: 2 }}
             >
               <ThemedText type="heading" style={{ color: HUNTLY_GREEN, fontSize: scaleW(16), fontWeight: "600" }}>
                 I already have an account

@@ -5,8 +5,7 @@ import {
   TextInput,
   ScrollView,
   Platform,
-  Alert,
-} from "react-native";
+  Alert } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -20,8 +19,7 @@ import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { generateNickname } from "@/services/nicknameGenerator";
 import {
   PROFILE_COLOR_OPTIONS,
-  getTailwindColorHex,
-} from "@/constants/Colors";
+  getTailwindColorHex } from "@/constants/Colors";
 
 const HUNTLY_GREEN = "#4F6F52";
 const CREAM = "#F4F0EB";
@@ -56,14 +54,12 @@ export default function SignUpPlayersScreen() {
       replacePlayer(editingIndex, {
         name: name.trim(),
         nickname: nickname.trim() || generateNickname(),
-        colour: selectedColor,
-      });
+        colour: selectedColor });
     } else if (editingIndex === null && name.trim()) {
       addPlayer({
         name: name.trim(),
         nickname: nickname.trim() || generateNickname(),
-        colour: selectedColor,
-      });
+        colour: selectedColor });
     }
     const p = players[index];
     setName(p.name);
@@ -85,8 +81,7 @@ export default function SignUpPlayersScreen() {
     const playerData = {
       name: name.trim(),
       nickname: nickname.trim() || generateNickname(),
-      colour: selectedColor,
-    };
+      colour: selectedColor };
     if (editingIndex !== null) {
       replacePlayer(editingIndex, playerData);
     } else {
@@ -102,8 +97,7 @@ export default function SignUpPlayersScreen() {
       const playerData = {
         name: currentName,
         nickname: nickname.trim() || generateNickname(),
-        colour: selectedColor,
-      };
+        colour: selectedColor };
       if (editingIndex !== null) {
         replacePlayer(editingIndex, playerData);
       } else {
@@ -137,8 +131,7 @@ export default function SignUpPlayersScreen() {
           contentContainerStyle={{
             paddingHorizontal: scaleW(24),
             paddingTop: scaleW(24),
-            paddingBottom: scaleW(24),
-          }}
+            paddingBottom: scaleW(24) }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
@@ -151,8 +144,7 @@ export default function SignUpPlayersScreen() {
               style={{
                 textAlign: "center",
                 fontWeight: "600",
-                fontSize: scaleW(20),
-              }}
+                fontSize: scaleW(20) }}
             >
               Who's playing today?
             </ThemedText>
@@ -165,8 +157,7 @@ export default function SignUpPlayersScreen() {
                 opacity: 0.95,
                 marginHorizontal: scaleW(20),
                 marginTop: scaleW(20),
-                marginBottom: scaleW(46),
-              }}
+                marginBottom: scaleW(46) }}
             >
               You can add more explorers at anytime.
             </ThemedText>
@@ -184,15 +175,13 @@ export default function SignUpPlayersScreen() {
                   backgroundColor: CREAM,
                   borderRadius: scaleW(16),
                   marginBottom: scaleW(12),
-                  overflow: "hidden",
-                }}
+                  overflow: "hidden" }}
               >
                 <View
                   style={{
                     width: scaleW(20),
                     alignSelf: "stretch",
-                    backgroundColor: isExpanded ? selectedColor : player.colour,
-                  }}
+                    backgroundColor: isExpanded ? selectedColor : player.colour }}
                 />
                 <View style={{ flex: 1 }}>
                   {isExpanded ? (
@@ -203,8 +192,7 @@ export default function SignUpPlayersScreen() {
                           flexDirection: "row",
                           alignItems: "flex-start",
                           justifyContent: "space-between",
-                          marginBottom: scaleW(4),
-                        }}
+                          marginBottom: scaleW(4) }}
                       >
                         <View>
                           <ThemedText
@@ -213,8 +201,7 @@ export default function SignUpPlayersScreen() {
                             darkColor="#36454F"
                             style={{
                               fontWeight: "600",
-                              fontSize: scaleW(16),
-                            }}
+                              fontSize: scaleW(16) }}
                           >
                             Name
                           </ThemedText>
@@ -253,8 +240,7 @@ export default function SignUpPlayersScreen() {
                           color: "#36454F",
                           backgroundColor: "#FFFFFF",
                           marginTop: scaleW(8),
-                          marginBottom: scaleW(20),
-                        }}
+                          marginBottom: scaleW(20) }}
                       />
                       <ThemedText
                         type="heading"
@@ -263,8 +249,7 @@ export default function SignUpPlayersScreen() {
                         style={{
                           fontWeight: "600",
                           fontSize: scaleW(16),
-                          marginBottom: scaleW(4),
-                        }}
+                          marginBottom: scaleW(4) }}
                       >
                         Explorer Nickname
                       </ThemedText>
@@ -279,8 +264,7 @@ export default function SignUpPlayersScreen() {
                         style={{
                           flexDirection: "row",
                           alignItems: "center",
-                          marginBottom: scaleW(20),
-                        }}
+                          marginBottom: scaleW(20) }}
                       >
                         <View
                           style={{
@@ -291,8 +275,7 @@ export default function SignUpPlayersScreen() {
                             borderBottomLeftRadius: scaleW(12),
                             justifyContent: "center",
                             paddingHorizontal: scaleW(16),
-                            marginRight: scaleW(-22),
-                          }}
+                            marginRight: scaleW(-22) }}
                         >
                           <ThemedText
                             lightColor="#36454F"
@@ -311,8 +294,7 @@ export default function SignUpPlayersScreen() {
                             height: scaleW(48),
                             paddingHorizontal: scaleW(16),
                             backgroundColor: HUNTLY_GREEN,
-                            borderRadius: scaleW(24),
-                          }}
+                            borderRadius: scaleW(24) }}
                         >
                           <ThemedText
                             lightColor="#FFFFFF"
@@ -335,8 +317,7 @@ export default function SignUpPlayersScreen() {
                         style={{
                           fontWeight: "600",
                           fontSize: scaleW(16),
-                          marginBottom: scaleW(12),
-                        }}
+                          marginBottom: scaleW(12) }}
                       >
                         Colour
                       </ThemedText>
@@ -344,8 +325,7 @@ export default function SignUpPlayersScreen() {
                         style={{
                           flexDirection: "row",
                           flexWrap: "wrap",
-                          gap: scaleW(12),
-                        }}
+                          gap: scaleW(12) }}
                       >
                         {PROFILE_COLOR_OPTIONS.map((opt) => {
                           const hex = getTailwindColorHex(opt.value);
@@ -360,8 +340,7 @@ export default function SignUpPlayersScreen() {
                                 borderRadius: scaleW(22),
                                 backgroundColor: hex,
                                 borderWidth: isSelected ? 3 : 0,
-                                borderColor: HUNTLY_GREEN,
-                              }}
+                                borderColor: HUNTLY_GREEN }}
                             />
                           );
                         })}
@@ -375,8 +354,7 @@ export default function SignUpPlayersScreen() {
                         flexDirection: "row",
                         alignItems: "center",
                         paddingVertical: scaleW(16),
-                        paddingHorizontal: scaleW(20),
-                      }}
+                        paddingHorizontal: scaleW(20) }}
                     >
                       <View style={{ flex: 1 }}>
                         <ThemedText
@@ -385,8 +363,7 @@ export default function SignUpPlayersScreen() {
                           darkColor="#111827"
                           style={{
                             fontWeight: "700",
-                            fontSize: scaleW(18),
-                          }}
+                            fontSize: scaleW(18) }}
                         >
                           {player.name}
                         </ThemedText>
@@ -395,8 +372,7 @@ export default function SignUpPlayersScreen() {
                           darkColor="#374151"
                           style={{
                             fontSize: scaleW(14),
-                            marginTop: scaleW(2),
-                          }}
+                            marginTop: scaleW(2) }}
                         >
                           {player.nickname}
                         </ThemedText>
@@ -418,7 +394,6 @@ export default function SignUpPlayersScreen() {
           {(editingIndex !== null ||
             (editingIndex === null && !showAddForm)) && (
             <Animated.View
-              entering={FadeInDown.duration(500).delay(280)}
               style={{ marginTop: scaleW(4) }}
             >
               <Pressable
@@ -432,15 +407,13 @@ export default function SignUpPlayersScreen() {
                   borderRadius: scaleW(16),
                   marginBottom: scaleW(12),
                   overflow: "hidden",
-                  minHeight: scaleW(64),
-                }}
+                  minHeight: scaleW(64) }}
               >
                 <View
                   style={{
                     width: scaleW(20),
                     alignSelf: "stretch",
-                    backgroundColor: LIGHT_GREEN,
-                  }}
+                    backgroundColor: LIGHT_GREEN }}
                 />
                 <View
                   style={{
@@ -448,8 +421,7 @@ export default function SignUpPlayersScreen() {
                     flexDirection: "row",
                     alignItems: "center",
                     paddingVertical: scaleW(16),
-                    paddingHorizontal: scaleW(20),
-                  }}
+                    paddingHorizontal: scaleW(20) }}
                 >
                   <ThemedText
                     type="heading"
@@ -457,8 +429,7 @@ export default function SignUpPlayersScreen() {
                     darkColor="#111827"
                     style={{
                       fontWeight: "700",
-                      fontSize: scaleW(18),
-                    }}
+                      fontSize: scaleW(18) }}
                   >
                     Add a new player
                   </ThemedText>
@@ -466,8 +437,7 @@ export default function SignUpPlayersScreen() {
                 <View
                   style={{
                     justifyContent: "center",
-                    marginRight: scaleW(16),
-                  }}
+                    marginRight: scaleW(16) }}
                 >
                   <MaterialIcons
                     name="add"
@@ -482,21 +452,18 @@ export default function SignUpPlayersScreen() {
           {/* Add-new form card: only when not editing any player and form is shown */}
           {editingIndex === null && showAddForm && (
             <Animated.View
-              entering={FadeInDown.duration(500).delay(280)}
               style={{
                 backgroundColor: CREAM,
                 borderRadius: scaleW(24),
                 padding: scaleW(24),
-                marginBottom: scaleW(24),
-              }}
+                marginBottom: scaleW(24) }}
             >
               <View
                 style={{
                   flexDirection: "row",
                   alignItems: "flex-start",
                   justifyContent: "space-between",
-                  marginBottom: scaleW(4),
-                }}
+                  marginBottom: scaleW(4) }}
               >
                 <View>
                   <ThemedText
@@ -505,8 +472,7 @@ export default function SignUpPlayersScreen() {
                     darkColor="#36454F"
                     style={{
                       fontWeight: "600",
-                      fontSize: scaleW(16),
-                    }}
+                      fontSize: scaleW(16) }}
                   >
                     Name
                   </ThemedText>
@@ -547,8 +513,7 @@ export default function SignUpPlayersScreen() {
                   color: "#36454F",
                   backgroundColor: "#FFFFFF",
                   marginTop: scaleW(8),
-                  marginBottom: scaleW(20),
-                }}
+                  marginBottom: scaleW(20) }}
               />
               <ThemedText
                 type="heading"
@@ -557,8 +522,7 @@ export default function SignUpPlayersScreen() {
                 style={{
                   fontWeight: "600",
                   fontSize: scaleW(16),
-                  marginBottom: scaleW(4),
-                }}
+                  marginBottom: scaleW(4) }}
               >
                 Explorer Nickname
               </ThemedText>
@@ -574,8 +538,7 @@ export default function SignUpPlayersScreen() {
                   flexDirection: "row",
                   alignItems: "center",
                   gap: scaleW(12),
-                  marginBottom: scaleW(20),
-                }}
+                  marginBottom: scaleW(20) }}
               >
                 <View
                   style={{
@@ -586,8 +549,7 @@ export default function SignUpPlayersScreen() {
                     borderBottomLeftRadius: scaleW(12),
                     justifyContent: "center",
                     paddingHorizontal: scaleW(16),
-                    marginRight: scaleW(-34),
-                  }}
+                    marginRight: scaleW(-34) }}
                 >
                   <ThemedText
                     lightColor="#36454F"
@@ -606,8 +568,7 @@ export default function SignUpPlayersScreen() {
                     height: scaleW(48),
                     paddingHorizontal: scaleW(16),
                     backgroundColor: HUNTLY_GREEN,
-                    borderRadius: scaleW(24),
-                  }}
+                    borderRadius: scaleW(24) }}
                 >
                   <ThemedText
                     lightColor="#FFFFFF"
@@ -630,8 +591,7 @@ export default function SignUpPlayersScreen() {
                 style={{
                   fontWeight: "600",
                   fontSize: scaleW(16),
-                  marginBottom: scaleW(12),
-                }}
+                  marginBottom: scaleW(12) }}
               >
                 Colour
               </ThemedText>
@@ -639,8 +599,7 @@ export default function SignUpPlayersScreen() {
                 style={{
                   flexDirection: "row",
                   flexWrap: "wrap",
-                  gap: scaleW(12),
-                }}
+                  gap: scaleW(12) }}
               >
                 {PROFILE_COLOR_OPTIONS.map((opt) => {
                   const hex = getTailwindColorHex(opt.value);
@@ -655,8 +614,7 @@ export default function SignUpPlayersScreen() {
                         borderRadius: scaleW(22),
                         backgroundColor: hex,
                         borderWidth: isSelected ? 3 : 0,
-                        borderColor: HUNTLY_GREEN,
-                      }}
+                        borderColor: HUNTLY_GREEN }}
                     />
                   );
                 })}
@@ -678,8 +636,7 @@ export default function SignUpPlayersScreen() {
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: canAddPlayer ? 0.3 : 0.1,
                   shadowRadius: 4,
-                  elevation: 2,
-                }}
+                  elevation: 2 }}
               >
                 <ThemedText
                   type="heading"
@@ -695,11 +652,9 @@ export default function SignUpPlayersScreen() {
 
           {/* Continue: on scroll page */}
           <Animated.View
-            entering={FadeInDown.duration(500).delay(380)}
             style={{
               paddingTop: scaleW(16),
-              paddingBottom: scaleW(24),
-            }}
+              paddingBottom: scaleW(24) }}
           >
             <Pressable
               onPress={handleContinue}
@@ -717,8 +672,7 @@ export default function SignUpPlayersScreen() {
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: canContinue ? 0.3 : 0.1,
                 shadowRadius: 4,
-                elevation: 2,
-              }}
+                elevation: 2 }}
             >
               <ThemedText
                 type="heading"
@@ -743,16 +697,14 @@ export default function SignUpPlayersScreen() {
                       } catch {
                         router.replace("/auth");
                       }
-                    },
-                  },
+                    } },
                 ]);
               }}
               style={{
                 alignSelf: "center",
                 marginTop: scaleW(20),
                 paddingVertical: scaleW(10),
-                paddingHorizontal: scaleW(20),
-              }}
+                paddingHorizontal: scaleW(20) }}
             >
               <ThemedText
                 lightColor="#FFFFFF"
@@ -761,8 +713,7 @@ export default function SignUpPlayersScreen() {
                   fontSize: scaleW(15),
                   fontWeight: "600",
                   textDecorationLine: "underline",
-                  opacity: 0.9,
-                }}
+                  opacity: 0.9 }}
               >
                 Log out
               </ThemedText>

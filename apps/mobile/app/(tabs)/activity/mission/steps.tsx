@@ -6,15 +6,13 @@ import {
   Pressable,
   StyleSheet,
   ActivityIndicator,
-  Text,
-} from "react-native";
+  Text } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
+  withSpring } from "react-native-reanimated";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
@@ -86,8 +84,7 @@ export default function StepsScreen() {
     } else {
       router.replace({
         pathname: "/(tabs)/activity/mission/prep",
-        params: { id: String(activity.id) },
-      });
+        params: { id: String(activity.id) } });
     }
   };
 
@@ -96,8 +93,7 @@ export default function StepsScreen() {
     if (isLastStep) {
       router.push({
         pathname: "/(tabs)/activity/mission/completion",
-        params: { id: String(activity.id) },
-      });
+        params: { id: String(activity.id) } });
     } else {
       router.setParams({ step: String(stepIndex + 1) });
     }
@@ -111,8 +107,7 @@ export default function StepsScreen() {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          padding: scaleW(24),
-        },
+          padding: scaleW(24) },
         errorText: { fontSize: scaleW(17), color: "#FFF", textAlign: "center" },
         header: {
           backgroundColor: LIGHT_GREEN_HEADER,
@@ -120,30 +115,25 @@ export default function StepsScreen() {
           paddingBottom: scaleW(24),
           paddingHorizontal: scaleW(20),
           borderBottomLeftRadius: scaleW(24),
-          borderBottomRightRadius: scaleW(24),
-        },
+          borderBottomRightRadius: scaleW(24) },
         missionTitle: {
           fontSize: scaleW(16),
           color: "rgba(47,51,54,0.8)",
-          marginBottom: scaleW(8),
-        },
+          marginBottom: scaleW(8) },
         stepLabel: {
           fontSize: scaleW(28),
           fontWeight: "800",
-          color: "#FFF",
-        },
+          color: "#FFF" },
         stepLabelSmall: { fontSize: scaleW(18), fontWeight: "600", color: "rgba(255,255,255,0.8)" },
         progressRow: {
           flexDirection: "row",
           gap: scaleW(8),
-          marginTop: scaleW(12),
-        },
+          marginTop: scaleW(12) },
         progressLine: {
           flex: 1,
           height: scaleW(4),
           borderRadius: 2,
-          backgroundColor: "rgba(255,255,255,0.5)",
-        },
+          backgroundColor: "rgba(255,255,255,0.5)" },
         progressLineDone: { backgroundColor: "#FFF" },
         scroll: { flex: 1, backgroundColor: DARK_BG },
         scrollContent: { padding: scaleW(20), paddingBottom: scaleW(24) },
@@ -157,29 +147,25 @@ export default function StepsScreen() {
           borderStyle: "dashed",
           borderColor: "rgba(255,255,255,0.3)",
           alignItems: "center",
-          justifyContent: "center",
-        },
+          justifyContent: "center" },
         mediaImage: {
           width: "100%",
           height: scaleW(220),
           borderRadius: scaleW(16),
-          marginBottom: scaleW(20),
-        },
+          marginBottom: scaleW(20) },
         instructionText: {
           fontSize: scaleW(20),
           fontWeight: "700",
           color: "#FFF",
           marginBottom: scaleW(16),
-          lineHeight: scaleW(28),
-        },
+          lineHeight: scaleW(28) },
         tipCard: {
           backgroundColor: TIP_BG,
           borderRadius: scaleW(14),
           paddingVertical: scaleW(12),
           paddingHorizontal: scaleW(16),
           borderLeftWidth: scaleW(4),
-          borderLeftColor: HUNTLY_GREEN,
-        },
+          borderLeftColor: HUNTLY_GREEN },
         tipText: { fontSize: scaleW(15), color: "rgba(255,255,255,0.9)", lineHeight: scaleW(22) },
         footer: {
           flexDirection: "row",
@@ -191,26 +177,22 @@ export default function StepsScreen() {
             insets.bottom +
             (onboardingActive ? scaleW(20) : scaleW(12)) +
             (isTablet ? scaleW(36) : 0),
-          marginBottom: onboardingActive ? 0 : scaleW(24),
-        },
+          marginBottom: onboardingActive ? 0 : scaleW(24) },
         backButton: {
           flex: 1,
           backgroundColor: "rgba(255,255,255,0.15)",
           borderRadius: scaleW(24),
           minHeight: scaleW(56),
           alignItems: "center",
-          justifyContent: "center",
-        },
+          justifyContent: "center" },
         doneButton: {
           flex: 1,
           backgroundColor: HUNTLY_GREEN,
           borderRadius: scaleW(24),
           minHeight: scaleW(56),
           alignItems: "center",
-          justifyContent: "center",
-        },
-        buttonText: { fontSize: scaleW(16), fontWeight: "700", color: "#FFF", lineHeight: scaleW(20) },
-      }),
+          justifyContent: "center" },
+        buttonText: { fontSize: scaleW(16), fontWeight: "700", color: "#FFF", lineHeight: scaleW(20) } }),
     [scaleW, insets.bottom, onboardingActive, isTablet]
   );
 
@@ -234,8 +216,7 @@ export default function StepsScreen() {
   if (totalSteps === 0) {
     router.replace({
       pathname: "/(tabs)/activity/mission/completion",
-      params: { id: String(activity.id) },
-    });
+      params: { id: String(activity.id) } });
     return null;
   }
 
@@ -271,7 +252,7 @@ export default function StepsScreen() {
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        <Animated.View entering={FadeInDown.duration(400)}>
+        <Animated.View>
           {mediaUrl ? (
             <Image
               source={{ uri: mediaUrl }}

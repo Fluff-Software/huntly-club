@@ -6,8 +6,7 @@ export default function SignUpLayout() {
       screenOptions={{
         headerShown: false,
         gestureEnabled: true,
-        animation: "slide_from_right",
-      }}
+        animation: "slide_from_right" }}
     >
       <Stack.Screen name="index" />
       <Stack.Screen name="verify-email" />

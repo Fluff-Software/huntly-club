@@ -7,15 +7,13 @@ import {
   Image,
   StyleSheet,
   Animated as RNAnimated,
-  ActivityIndicator,
-} from "react-native";
+  ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
+  withSpring } from "react-native-reanimated";
 import { useFocusEffect } from "expo-router";
 import { BaseLayout } from "@/components/layout/BaseLayout";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
@@ -25,8 +23,7 @@ import {
   getAllTeamsWithXp,
   getTeamAchievements,
   getTeamAchievementTotals,
-  TeamInfo,
-} from "@/services/teamActivityService";
+  TeamInfo } from "@/services/teamActivityService";
 import { useUser } from "@/contexts/UserContext";
 import { getTeamCardConfig } from "@/utils/teamUtils";
 
@@ -69,8 +66,7 @@ function mapAchievementsToItems(achievements: { id: number; profile_name: string
     id: `ach-${a.id}`,
     type: "activity" as const,
     title: `${a.profile_name} ${a.message}`,
-    points: a.xp,
-  }));
+    points: a.xp }));
 }
 
 export default function SocialScreen() {
@@ -94,8 +90,7 @@ export default function SocialScreen() {
   const TEAM_FACE_BY_NAME: Record<string, typeof BEAR_FACE_IMAGE> = {
     bears: BEAR_FACE_IMAGE,
     foxes: FOX_FACE_IMAGE,
-    otters: OTTER_FACE_IMAGE,
-  };
+    otters: OTTER_FACE_IMAGE };
 
   /** Teams sorted by points (highest first) for the chart. */
   const sortedTeamsForChart = useMemo(() => {
@@ -116,8 +111,7 @@ export default function SocialScreen() {
         name,
         total,
         face: TEAM_FACE_BY_NAME[name],
-        color,
-      };
+        color };
     });
     return withTotals.sort((a, b) => b.total - a.total);
   }, [allTeams, teamAchievementTotals]);
@@ -139,16 +133,13 @@ export default function SocialScreen() {
 
   const bar1Style = useAnimatedStyle(() => ({
     height: chartProgress.value * barHeights[0],
-    backgroundColor: barColors[0],
-  }));
+    backgroundColor: barColors[0] }));
   const bar2Style = useAnimatedStyle(() => ({
     height: chartProgress.value * barHeights[1],
-    backgroundColor: barColors[1],
-  }));
+    backgroundColor: barColors[1] }));
   const bar3Style = useAnimatedStyle(() => ({
     height: chartProgress.value * barHeights[2],
-    backgroundColor: barColors[2],
-  }));
+    backgroundColor: barColors[2] }));
 
   useEffect(() => {
     if (width === 0) return;
@@ -157,8 +148,7 @@ export default function SocialScreen() {
       toValue: 0,
       useNativeDriver: true,
       tension: 45,
-      friction: 8,
-    }).start();
+      friction: 8 }).start();
   }, [width]);
 
   useEffect(() => {
@@ -245,61 +235,51 @@ export default function SocialScreen() {
         header: {
           backgroundColor: HEADER_PURPLE,
           paddingHorizontal: scaleW(24),
-          overflow: "hidden",
-        },
+          overflow: "hidden" },
         headerRow: {
           flexDirection: "row",
           alignItems: "flex-end",
-          paddingVertical: scaleW(isTablet ? 70 : 40),
-        },
+          paddingVertical: scaleW(isTablet ? 70 : 40) },
         headerBearWrap: {
           bottom: scaleW(isTablet ? -27 : 0),
           width: scaleW(140),
           alignItems: "center",
-          justifyContent: "center",
-        },
+          justifyContent: "center" },
         headerBear: {
           position: "absolute",
           width: scaleW(140),
-          height: scaleW(200),
-        },
+          height: scaleW(200) },
         headerText: {
           flex: 1,
           marginLeft: scaleW(16),
-          paddingBottom: scaleW(8),
-        },
+          paddingBottom: scaleW(8) },
         headerTitle: {
           marginHorizontal: scaleW(12),
           fontSize: scaleW(22),
           fontWeight: "600",
           color: "#000",
-          lineHeight: scaleW(26),
-        },
+          lineHeight: scaleW(26) },
         sectionTitle: {
           fontSize: scaleW(22),
           fontWeight: "700",
           color: "#000",
           textAlign: "center",
           marginTop: scaleW(32),
-          marginBottom: scaleW(24),
-        },
+          marginBottom: scaleW(24) },
         chartRow: {
           flexDirection: "row",
           justifyContent: "center",
           paddingHorizontal: scaleW(24),
-          gap: scaleW(20),
-        },
+          gap: scaleW(20) },
         chartBarWrap: {
           alignItems: "center",
           justifyContent: "flex-end",
-          overflow: "hidden",
-        },
+          overflow: "hidden" },
         chartBar: {
           borderTopLeftRadius: scaleW(12),
           borderTopRightRadius: scaleW(12),
           alignItems: "center",
-          padding: scaleW(16),
-        },
+          padding: scaleW(16) },
         chartFace: {
           width: scaleW(48),
           height: scaleW(48),
@@ -307,14 +287,12 @@ export default function SocialScreen() {
           backgroundColor: "#FFF",
           overflow: "hidden",
           padding: scaleW(6),
-          zIndex: 1,
-        },
+          zIndex: 1 },
         chartBaseline: {
           height: 10,
           backgroundColor: CHART_BASELINE,
           marginHorizontal: scaleW(40),
-          borderRadius: 10,
-        },
+          borderRadius: 10 },
         chartSubtitle: {
           fontSize: scaleW(16),
           color: "#000",
@@ -322,22 +300,19 @@ export default function SocialScreen() {
           marginHorizontal: scaleW(64),
           marginTop: scaleW(32),
           marginBottom: scaleW(8),
-          opacity: 0.85,
-        },
+          opacity: 0.85 },
         achievementsTitle: {
           fontSize: scaleW(24),
           fontWeight: "700",
           color: POINTS_PURPLE,
           marginTop: scaleW(40),
           marginBottom: scaleW(24),
-          marginLeft: scaleW(24),
-        },
+          marginLeft: scaleW(24) },
         timeline: {
           paddingHorizontal: scaleW(20),
           paddingBottom: scaleW(64),
           alignItems: "center",
-          gap: scaleW(20),
-        },
+          gap: scaleW(20) },
         achievementCard: {
           width: "100%",
           maxWidth: scaleW(340),
@@ -351,81 +326,67 @@ export default function SocialScreen() {
           shadowOffset: { width: 0, height: 4 },
           elevation: 3,
           borderWidth: 3,
-          borderColor: "rgba(255,255,255,0.9)",
-        },
+          borderColor: "rgba(255,255,255,0.9)" },
         achievementIcon: {
           width: scaleW(56),
           height: scaleW(56),
           borderRadius: scaleW(28),
           alignItems: "center",
           justifyContent: "center",
-          marginRight: scaleW(16),
-        },
+          marginRight: scaleW(16) },
         achievementIconImage: {
           width: scaleW(32),
-          height: scaleW(32),
-        },
+          height: scaleW(32) },
         achievementText: {
           flex: 1,
           justifyContent: "center",
-          paddingVertical: scaleW(4),
-        },
+          paddingVertical: scaleW(4) },
         achievementTitle: {
           fontSize: scaleW(16),
           fontWeight: "600",
           color: "#1a1a1a",
           marginBottom: scaleW(4),
-          lineHeight: scaleW(22),
-        },
+          lineHeight: scaleW(22) },
         achievementPoints: {
           fontSize: scaleW(15),
           fontWeight: "700",
-          color: POINTS_PURPLE,
-        },
+          color: POINTS_PURPLE },
         emptyStateContainer: {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          padding: scaleW(24),
-        },
+          padding: scaleW(24) },
         emptyStateTitle: {
           fontSize: scaleW(24),
           fontWeight: "700",
           color: POINTS_PURPLE,
           textAlign: "center",
-          marginBottom: scaleW(16),
-        },
+          marginBottom: scaleW(16) },
         emptyStateBody: {
           fontSize: scaleW(14),
           color: "#36454F",
-          textAlign: "center",
-        },
+          textAlign: "center" },
         loadingText: {
           fontSize: scaleW(18),
           fontWeight: "600",
-          color: POINTS_PURPLE,
-        },
+          color: POINTS_PURPLE },
         errorText: {
           fontSize: scaleW(18),
           fontWeight: "600",
           color: "#dc2626",
           textAlign: "center",
-          marginBottom: scaleW(8),
-        },
+          marginBottom: scaleW(8) },
         loadingMoreWrap: {
           paddingVertical: scaleW(24),
           alignItems: "center",
-          justifyContent: "center",
-        },
+          justifyContent: "center" },
         noMoreAchievements: {
           fontSize: scaleW(14),
           color: "#000",
           opacity: 0.6,
           textAlign: "center",
           marginTop: scaleW(16),
-          marginBottom: scaleW(8),
-        },
-      }),
+          marginBottom: scaleW(8) } }),
     [scaleW, isTablet]
   );
 
@@ -481,7 +442,6 @@ export default function SocialScreen() {
         }
       >
         <Animated.View
-          entering={FadeInDown.duration(600).delay(0)}
           style={styles.header}
         >
           <View style={styles.headerRow}>
@@ -512,7 +472,6 @@ export default function SocialScreen() {
         </Animated.View>
 
         <Animated.View
-          entering={FadeInDown.duration(500).delay(280)}
           style={styles.chartRow}
         >
           {sortedTeamsForChart.map((bar, index) => {
@@ -544,7 +503,6 @@ export default function SocialScreen() {
             return (
               <Animated.View
                 key={item.id}
-                entering={FadeInDown.duration(400).delay(450 + index * 60)}
                 style={{ zIndex: 1, width: "100%", alignItems: "center" }}
               >
                 <View
@@ -552,8 +510,7 @@ export default function SocialScreen() {
                     styles.achievementCard,
                     {
                       backgroundColor: cardBg,
-                      transform: [{ rotate: index % 2 === 0 ? "-1.5deg" : "1.5deg" }],
-                    },
+                      transform: [{ rotate: index % 2 === 0 ? "-1.5deg" : "1.5deg" }] },
                   ]}
                 >
                   <View style={[styles.achievementIcon, { backgroundColor: iconBg }]}>

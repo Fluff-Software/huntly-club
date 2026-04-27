@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Pressable,
@@ -6,16 +6,9 @@ import {
   Image,
   Alert,
   ActivityIndicator,
-  StyleSheet,
-} from "react-native";
+  StyleSheet } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import Animated, {
-  FadeInDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withDelay,
-} from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -47,8 +40,7 @@ const HARDCODED_TEAMS = [
       { icon: "shield" as const, label: "Brave" },
       { icon: "favorite" as const, label: "Kind" },
       { icon: "search" as const, label: "Curious" },
-    ],
-  },
+    ] },
   {
     name: "Foxes",
     leaderPossessive: "Felix's",
@@ -62,8 +54,7 @@ const HARDCODED_TEAMS = [
       { icon: "bolt" as const, label: "Quick" },
       { icon: "edit" as const, label: "Creative" },
       { icon: "lightbulb" as const, label: "Clever" },
-    ],
-  },
+    ] },
   {
     name: "Otters",
     leaderPossessive: "Oli's",
@@ -77,11 +68,8 @@ const HARDCODED_TEAMS = [
       { icon: "sentiment-satisfied" as const, label: "Playful" },
       { icon: "visibility" as const, label: "Observant" },
       { icon: "explore" as const, label: "Adventurous" },
-    ],
-  },
+    ] },
 ];
-
-const springBounce = { damping: 25, stiffness: 200 };
 
 export default function SignUpTeamScreen() {
   const { scaleW, width } = useLayoutScale();
@@ -90,30 +78,11 @@ export default function SignUpTeamScreen() {
     setSelectedTeamName,
     clearSignUpData,
     setShowPostSignUpWelcome,
-    setTutorialStep,
-  } = useSignUp();
+    setTutorialStep } = useSignUp();
   const { user } = useAuth();
   const { profiles, loading: profilesLoading, refreshProfiles } = usePlayer();
   const { refreshUserData, updateStartMissionStep } = useUser();
   const [creating, setCreating] = useState(false);
-
-  const card0Translate = useSharedValue(400);
-  const card1Translate = useSharedValue(-400);
-  const card2Translate = useSharedValue(400);
-
-  const card0Style = useAnimatedStyle(() => ({ transform: [{ translateX: card0Translate.value }] }));
-  const card1Style = useAnimatedStyle(() => ({ transform: [{ translateX: card1Translate.value }] }));
-  const card2Style = useAnimatedStyle(() => ({ transform: [{ translateX: card2Translate.value }] }));
-
-  useEffect(() => {
-    if (width === 0) return;
-    card0Translate.value = width;
-    card1Translate.value = -width;
-    card2Translate.value = width;
-    card0Translate.value = withDelay(0, withSpring(0, springBounce));
-    card1Translate.value = withDelay(200, withSpring(0, springBounce));
-    card2Translate.value = withDelay(400, withSpring(0, springBounce));
-  }, [width]);
 
   const goToAddExplorers = () => {
     router.replace("/sign-up/players");
@@ -158,8 +127,7 @@ export default function SignUpTeamScreen() {
           user_id: user.id,
           name: player.name,
           colour: player.colour,
-          nickname: player.nickname,
-        });
+          nickname: player.nickname });
       }
       await refreshProfiles();
       clearSignUpData();
@@ -259,8 +227,7 @@ export default function SignUpTeamScreen() {
                   borderRadius: scaleW(50),
                   alignSelf: "center",
                   minWidth: scaleW(220),
-                  alignItems: "center",
-                }}
+                  alignItems: "center" }}
               >
                 <ThemedText
                   type="heading"
@@ -290,8 +257,7 @@ export default function SignUpTeamScreen() {
             flexGrow: 1,
             justifyContent: "center",
             paddingHorizontal: scaleW(24),
-            paddingVertical: scaleW(24),
-          }}
+            paddingVertical: scaleW(24) }}
           showsVerticalScrollIndicator={false}
         >
           <Pressable
@@ -303,7 +269,7 @@ export default function SignUpTeamScreen() {
           >
             <MaterialIcons name="arrow-back" size={scaleW(28)} color="#FFFFFF" />
           </Pressable>
-          <Animated.View entering={FadeInDown.duration(500).delay(0)}>
+          <Animated.View>
             <ThemedText
               type="heading"
               lightColor="#FFFFFF"
@@ -311,8 +277,7 @@ export default function SignUpTeamScreen() {
               style={{
                 textAlign: "center",
                 fontWeight: "600",
-                fontSize: scaleW(24),
-              }}
+                fontSize: scaleW(24) }}
             >
               Choose your team
             </ThemedText>
@@ -325,18 +290,15 @@ export default function SignUpTeamScreen() {
                 opacity: 0.95,
                 marginTop: scaleW(8),
                 marginBottom: scaleW(32),
-                lineHeight: scaleW(24),
-              }}
+                lineHeight: scaleW(24) }}
             >
               Pick the team that feels most like you.
             </ThemedText>
           </Animated.View>
 
-          {HARDCODED_TEAMS.map((team, index) => {
-            const cardStyle = index === 0 ? card0Style : index === 1 ? card1Style : card2Style;
-
+          {HARDCODED_TEAMS.map((team) => {
             return (
-              <Animated.View key={team.name} style={cardStyle}>
+              <View key={team.name}>
                 <Pressable
                   onPress={() => handleChooseTeam(team.name)}
                   style={{
@@ -344,8 +306,7 @@ export default function SignUpTeamScreen() {
                     borderRadius: scaleW(20),
                     marginBottom: scaleW(16),
                     overflow: "hidden",
-                    minHeight: scaleW(190),
-                  }}
+                    minHeight: scaleW(190) }}
                 >
                   {/* Background scene image — left-anchored, full height */}
                   <Image
@@ -355,8 +316,7 @@ export default function SignUpTeamScreen() {
                       top: 0,
                       left: 0,
                       right: 'auto',
-                      height: '100%',
-                    }}
+                      height: '100%' }}
                   />
 
                   {/* Character image — absolute to card, pinned bottom-right */}
@@ -368,8 +328,7 @@ export default function SignUpTeamScreen() {
                       bottom: -40,
                       right: 0,
                       width: scaleW(160),
-                      height: scaleW(210),
-                    }}
+                      height: scaleW(210) }}
                   />
 
                   {/* Left column content — right margin keeps text clear of character */}
@@ -380,8 +339,7 @@ export default function SignUpTeamScreen() {
                         source={team.badgeImage}
                         style={{
                           width: scaleW(60),
-                          height: scaleW(60),
-                        }}
+                          height: scaleW(60) }}
                         resizeMode="contain"
                       />
                       <View>
@@ -415,8 +373,7 @@ export default function SignUpTeamScreen() {
                             borderRadius: scaleW(20),
                             paddingHorizontal: scaleW(10),
                             paddingVertical: scaleW(4),
-                            gap: scaleW(4),
-                          }}
+                            gap: scaleW(4) }}
                         >
                           <MaterialIcons name={trait.icon} size={scaleW(14)} color={team.accentColor} />
                           <ThemedText
@@ -442,8 +399,7 @@ export default function SignUpTeamScreen() {
                         paddingVertical: scaleW(10),
                         paddingHorizontal: scaleW(16),
                         marginTop: scaleW(14),
-                        alignSelf: "flex-start",
-                      }}
+                        alignSelf: "flex-start" }}
                     >
                       <ThemedText
                         type="heading"
@@ -457,7 +413,7 @@ export default function SignUpTeamScreen() {
                     </Pressable>
                   </View>
                 </Pressable>
-              </Animated.View>
+              </View>
             );
           })}
         </ScrollView>
@@ -470,17 +426,13 @@ export default function SignUpTeamScreen() {
 const styles = StyleSheet.create({
   backRow: {
     alignSelf: "flex-start",
-    paddingVertical: 4,
-  },
+    paddingVertical: 4 },
   loadingCenter: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingBottom: 48,
-  },
+    paddingBottom: 48 },
   emptyCenter: {
     flex: 1,
     justifyContent: "center",
-    paddingBottom: 48,
-  },
-});
+    paddingBottom: 48 } });

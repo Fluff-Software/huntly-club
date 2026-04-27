@@ -3,15 +3,13 @@ import React, {
   useCallback,
   useRef,
   useMemo,
-  useEffect,
-} from "react";
+  useEffect } from "react";
 import {
   View,
   ScrollView,
   StyleSheet,
   Pressable,
-  ActivityIndicator,
-} from "react-native";
+  ActivityIndicator } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
@@ -27,8 +25,7 @@ import { useUser } from "@/contexts/UserContext";
 import {
   getJournalTimeline,
   type JournalEntry,
-  type JournalTimelineItem,
-} from "@/services/journalService";
+  type JournalTimelineItem } from "@/services/journalService";
 
 const JOURNAL_AMBER = "#B07D3E";
 const CREAM = "#F4F0EB";
@@ -85,8 +82,7 @@ export default function JournalScreen() {
     const newItem: JournalTimelineItem = {
       type: "manual",
       sortDate: `${newEntry.entry_date}T23:59:59`,
-      entry: newEntry,
-    };
+      entry: newEntry };
     setTimeline((prev) => [newItem, ...prev]);
   }, []);
 
@@ -95,8 +91,7 @@ export default function JournalScreen() {
       StyleSheet.create({
         container: {
           flex: 1,
-          backgroundColor: JOURNAL_AMBER,
-        },
+          backgroundColor: JOURNAL_AMBER },
         scrollContent: {
           flexGrow: 1,
           paddingTop: scaleW(12),
@@ -107,50 +102,42 @@ export default function JournalScreen() {
           fontWeight: "700",
           color: "#FFF",
           textAlign: "center",
-          marginBottom: scaleW(4),
-        },
+          marginBottom: scaleW(4) },
         subtitle: {
           fontSize: scaleW(14),
           color: "rgba(255,255,255,0.8)",
           textAlign: "center",
-          marginBottom: scaleW(20),
-        },
+          marginBottom: scaleW(20) },
         loadingContainer: {
           paddingVertical: scaleW(48),
-          alignItems: "center",
-        },
+          alignItems: "center" },
         emptyContainer: {
           paddingVertical: scaleW(48),
           paddingHorizontal: scaleW(32),
-          alignItems: "center",
-        },
+          alignItems: "center" },
         emptyTitle: {
           fontSize: scaleW(20),
           fontWeight: "700",
           color: "#FFF",
           textAlign: "center",
           marginTop: scaleW(16),
-          marginBottom: scaleW(8),
-        },
+          marginBottom: scaleW(8) },
         emptyBody: {
           fontSize: scaleW(14),
           color: "rgba(255,255,255,0.8)",
           textAlign: "center",
           lineHeight: scaleW(20),
-          marginBottom: scaleW(8),
-        },
+          marginBottom: scaleW(8) },
         emptyAddButton: {
           marginTop: scaleW(20),
           backgroundColor: CREAM,
           borderRadius: scaleW(28),
           paddingVertical: scaleW(14),
-          paddingHorizontal: scaleW(28),
-        },
+          paddingHorizontal: scaleW(28) },
         emptyAddButtonText: {
           fontSize: scaleW(15),
           fontWeight: "700",
-          color: JOURNAL_AMBER,
-        },
+          color: JOURNAL_AMBER },
         fab: {
           position: "absolute",
           bottom: scaleW(24),
@@ -165,9 +152,7 @@ export default function JournalScreen() {
           shadowOffset: { width: 0, height: scaleW(3) },
           shadowOpacity: 0.2,
           shadowRadius: scaleW(6),
-          elevation: 6,
-        },
-      }),
+          elevation: 6 } }),
     [scaleW]
   );
 
@@ -200,7 +185,6 @@ export default function JournalScreen() {
 
         {hasLoadedOnce && timeline.length === 0 && (
           <Animated.View
-            entering={FadeInDown.duration(400).delay(100)}
             style={styles.emptyContainer}
           >
             <MaterialIcons name="eco" size={scaleW(48)} color={CREAM} />

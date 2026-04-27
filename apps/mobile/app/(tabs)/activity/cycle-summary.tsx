@@ -76,11 +76,9 @@ export default function CycleSummaryScreen() {
               latitude: session.route[session.route.length - 1]!.latitude,
               longitude: session.route[session.route.length - 1]!.longitude,
               latitudeDelta: 0.01,
-              longitudeDelta: 0.01,
-            }
+              longitudeDelta: 0.01 }
           : null,
-      end: session.route.length > 0 ? session.route[session.route.length - 1]! : null,
-    };
+      end: session.route.length > 0 ? session.route[session.route.length - 1]! : null };
   }, [session]);
 
   const handleRecenter = () => {
@@ -91,8 +89,7 @@ export default function CycleSummaryScreen() {
         latitude: computed.end.latitude,
         longitude: computed.end.longitude,
         latitudeDelta: r?.latitudeDelta ?? 0.01,
-        longitudeDelta: r?.longitudeDelta ?? 0.01,
-      },
+        longitudeDelta: r?.longitudeDelta ?? 0.01 },
       350
     );
   };
@@ -109,8 +106,7 @@ export default function CycleSummaryScreen() {
           borderBottomLeftRadius: scaleW(28),
           borderBottomRightRadius: scaleW(28),
           flexDirection: "row",
-          alignItems: "center",
-        },
+          alignItems: "center" },
         headerTextWrap: { flex: 1, alignItems: "center" },
         headerTitle: { fontSize: scaleW(22), fontWeight: "700", color: "#FFF", textAlign: "center" },
         headerSubtext: { marginTop: scaleW(4), fontSize: scaleW(14), color: "rgba(255,255,255,0.75)", textAlign: "center" },
@@ -127,8 +123,7 @@ export default function CycleSummaryScreen() {
           shadowOpacity: 0.08,
           shadowRadius: 8,
           elevation: 2,
-          marginBottom: scaleW(12),
-        },
+          marginBottom: scaleW(12) },
         map: { height: scaleW(220), width: "100%" },
         recenterButton: {
           position: "absolute" as const,
@@ -141,8 +136,7 @@ export default function CycleSummaryScreen() {
           alignItems: "center",
           justifyContent: "center",
           zIndex: 6,
-          elevation: 6,
-        },
+          elevation: 6 },
         statsRow: { flexDirection: "row", gap: scaleW(10) },
         statCard: {
           flex: 1,
@@ -153,8 +147,7 @@ export default function CycleSummaryScreen() {
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.08,
           shadowRadius: 8,
-          elevation: 2,
-        },
+          elevation: 2 },
         statLabel: { color: "#5a5a5a", fontSize: scaleW(13), fontWeight: "800" },
         statValue: { marginTop: scaleW(6), color: "#1A2E1E", fontSize: scaleW(20), fontWeight: "900" },
         sectionTitle: { marginTop: scaleW(14), marginBottom: scaleW(10), fontSize: scaleW(16), fontWeight: "900", color: "#1A2E1E" },
@@ -174,20 +167,17 @@ export default function CycleSummaryScreen() {
           paddingBottom: insets.bottom + scaleW(12) + (isTablet ? scaleW(40) : 0),
           backgroundColor: LIGHT_GREEN_BG,
           borderTopWidth: 1,
-          borderTopColor: "rgba(79,111,82,0.1)",
-        },
+          borderTopColor: "rgba(79,111,82,0.1)" },
         doneButton: {
           backgroundColor: HUNTLY_GREEN,
           borderRadius: scaleW(28),
           paddingVertical: scaleW(16),
           paddingHorizontal: scaleW(32),
           alignSelf: "stretch",
-          alignItems: "center",
-        },
+          alignItems: "center" },
         doneButtonText: { fontSize: scaleW(18), fontWeight: "800", color: "#FFF" },
         emptyWrap: { flex: 1, alignItems: "center", justifyContent: "center", padding: scaleW(24) },
-        emptyText: { textAlign: "center", fontSize: scaleW(15), color: "#2F3336", marginTop: scaleW(12) },
-      }),
+        emptyText: { textAlign: "center", fontSize: scaleW(15), color: "#2F3336", marginTop: scaleW(12) } }),
     [scaleW, insets.bottom, isTablet]
   );
 
@@ -261,8 +251,7 @@ export default function CycleSummaryScreen() {
                   latitude: 0,
                   longitude: 0,
                   latitudeDelta: 0.01,
-                  longitudeDelta: 0.01,
-                }
+                  longitudeDelta: 0.01 }
               }
               scrollEnabled
               rotateEnabled={false}

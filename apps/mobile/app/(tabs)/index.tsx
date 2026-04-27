@@ -10,8 +10,7 @@ import {
   Platform,
   ActivityIndicator,
   type NativeSyntheticEvent,
-  type NativeScrollEvent,
-} from "react-native";
+  type NativeScrollEvent } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 import AnimatedReanimated, {
   useAnimatedStyle,
@@ -23,8 +22,7 @@ import AnimatedReanimated, {
   FadeIn,
   FadeOut,
   FadeInDown,
-  FadeOutDown,
-} from "react-native-reanimated";
+  FadeOutDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
@@ -83,8 +81,7 @@ export default function HomeScreen() {
     latestMission,
     latestUnfinishedMission,
     loading: missionLoading,
-    refetch: refetchMissions,
-  } = useCurrentChapterActivities(null);
+    refetch: refetchMissions } = useCurrentChapterActivities(null);
   const [clubCards, setClubCards] = useState<ClubPhotoCardItem[]>([]);
   const [clubCardsLoading, setClubCardsLoading] = useState(true);
   const [loadingMoreClubCards, setLoadingMoreClubCards] = useState(false);
@@ -169,11 +166,9 @@ export default function HomeScreen() {
   const navButtonStyle = useAnimatedStyle(() => ({ transform: [{ scale: navScale.value }] }));
   const teamCardStyle = useAnimatedStyle(() => ({
     opacity: teamCardOpacity.value,
-    transform: [{ translateX: teamCardTranslateX.value }],
-  }));
+    transform: [{ translateX: teamCardTranslateX.value }] }));
   const fabIconStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${fabRotation.value}deg` }],
-  }));
+    transform: [{ rotate: `${fabRotation.value}deg` }] }));
 
   useEffect(() => {
     if (!teamCardConfig) {
@@ -205,12 +200,10 @@ export default function HomeScreen() {
       teamCardOpacity.value = 0;
       teamCardTranslateX.value = withTiming(0, {
         duration: TEAM_CARD_SLIDE_DURATION_MS,
-        easing: Easing.out(Easing.cubic),
-      });
+        easing: Easing.out(Easing.cubic) });
       teamCardOpacity.value = withTiming(1, {
         duration: 300,
-        easing: Easing.out(Easing.cubic),
-      });
+        easing: Easing.out(Easing.cubic) });
     }, TEAM_CARD_WAIT_AFTER_RENDER_MS);
     return () => {
       cancelled = true;
@@ -321,50 +314,38 @@ export default function HomeScreen() {
         opacity: pagerX.interpolate({
           inputRange: [0, fadeEdge, w],
           outputRange: [1, 0.6, inactiveOpacity],
-          extrapolate: "clamp",
-        }),
+          extrapolate: "clamp" }),
         transform: [
           {
             translateY: pagerX.interpolate({
               inputRange: [0, w],
               outputRange: [0, inactiveOffset],
-              extrapolate: "clamp",
-            }),
-          },
-        ],
-      },
+              extrapolate: "clamp" }) },
+        ] },
       {
         opacity: pagerX.interpolate({
           inputRange: [0, w - fadeEdge, w, w + fadeEdge, w * 2],
           outputRange: [inactiveOpacity, 0.6, 1, 0.6, inactiveOpacity],
-          extrapolate: "clamp",
-        }),
+          extrapolate: "clamp" }),
         transform: [
           {
             translateY: pagerX.interpolate({
               inputRange: [0, w, w * 2],
               outputRange: [inactiveOffset, 0, inactiveOffset],
-              extrapolate: "clamp",
-            }),
-          },
-        ],
-      },
+              extrapolate: "clamp" }) },
+        ] },
       {
         opacity: pagerX.interpolate({
           inputRange: [w, w * 2 - fadeEdge, w * 2],
           outputRange: [inactiveOpacity, 0.6, 1],
-          extrapolate: "clamp",
-        }),
+          extrapolate: "clamp" }),
         transform: [
           {
             translateY: pagerX.interpolate({
               inputRange: [w, w * 2],
               outputRange: [inactiveOffset, 0],
-              extrapolate: "clamp",
-            }),
-          },
-        ],
-      },
+              extrapolate: "clamp" }) },
+        ] },
     ] as const;
   }, [width, pagerX]);
 
@@ -409,15 +390,13 @@ export default function HomeScreen() {
     setShowQuickAddMenu(false);
     router.push({
       pathname: "/(tabs)/activity/mission",
-      params: { id: mission.id },
-    } as Parameters<typeof router.push>[0]);
+      params: { id: mission.id } } as Parameters<typeof router.push>[0]);
   }, [latestUnfinishedMission, latestMission]);
 
   useEffect(() => {
     fabRotation.value = withTiming(showQuickAddMenu ? 45 : 0, {
       duration: 160,
-      easing: Easing.out(Easing.cubic),
-    });
+      easing: Easing.out(Easing.cubic) });
   }, [showQuickAddMenu, fabRotation]);
 
   useEffect(() => {
@@ -433,13 +412,11 @@ export default function HomeScreen() {
           width: width * 3,
           height,
           left: 0,
-          top: 0,
-        },
+          top: 0 },
         backgroundImage: { width: width * 3, height },
         backgroundOverlay: {
           flex: 1,
-          backgroundColor: "rgba(0, 0, 0, 0.1)",
-        },
+          backgroundColor: "rgba(0, 0, 0, 0.1)" },
         contentContainer: { paddingBottom: scaleW(40) },
         pager: { flex: 1 },
         pagerContent: { width: width * HOME_MODES.length },
@@ -457,8 +434,7 @@ export default function HomeScreen() {
           shadowOpacity: 0.3,
           shadowRadius: 2,
           shadowOffset: { width: 0, height: 2 },
-          elevation: 2,
-        },
+          elevation: 2 },
         bearsCard: {
           borderRadius: scaleW(15),
           marginBottom: scaleW(20),
@@ -471,20 +447,17 @@ export default function HomeScreen() {
           shadowOpacity: 0.3,
           shadowRadius: 2,
           shadowOffset: { width: 0, height: 2 },
-          elevation: 2,
-        },
+          elevation: 2 },
         bearImage: {
           position: "absolute",
           width: scaleW(110),
           height: scaleW(110),
           right: 0,
-          bottom: 0,
-        },
+          bottom: 0 },
         horizontalCardsContainer: {
           paddingLeft: clubCardsPaddingHorizontal,
           paddingRight: clubCardsPaddingHorizontal,
-          paddingBottom: scaleW(8),
-        },
+          paddingBottom: scaleW(8) },
         clubCard: { width: scaleW(250), marginRight: scaleW(12) },
         clubCardImageWrap: {
           width: scaleW(250),
@@ -498,20 +471,17 @@ export default function HomeScreen() {
           shadowOpacity: 0.3,
           shadowRadius: 2,
           shadowOffset: { width: 0, height: 2 },
-          elevation: 2,
-        },
+          elevation: 2 },
         clubCardImage: { width: "100%", height: "100%" },
         clubCardPlaceholder: {
           ...StyleSheet.absoluteFillObject,
           backgroundColor: HUNTLY_GREEN,
           justifyContent: "center",
-          alignItems: "center",
-        },
+          alignItems: "center" },
         horizontalMissionCardsContainer: {
           paddingLeft: missionCardsPaddingHorizontal,
           paddingRight: missionCardsPaddingHorizontal,
-          paddingBottom: scaleW(8),
-        },
+          paddingBottom: scaleW(8) },
         fab: {
           position: "absolute",
           bottom: fabBottom,
@@ -526,19 +496,16 @@ export default function HomeScreen() {
           shadowOffset: { width: 0, height: scaleW(3) },
           shadowOpacity: 0.2,
           shadowRadius: scaleW(6),
-          elevation: 6,
-        },
+          elevation: 6 },
         menuOverlay: {
           ...StyleSheet.absoluteFillObject,
-          backgroundColor: "transparent",
-        },
+          backgroundColor: "transparent" },
         quickAddMenu: {
           position: "absolute",
           right: scaleW(24),
           bottom: fabBottom + scaleW(56) + scaleW(12),
           width: scaleW(160),
-          gap: scaleW(10),
-        },
+          gap: scaleW(10) },
         quickAddButton: {
           backgroundColor: CREAM,
           borderRadius: scaleW(32),
@@ -548,21 +515,17 @@ export default function HomeScreen() {
           shadowOffset: { width: 0, height: scaleW(2) },
           shadowOpacity: 0.16,
           shadowRadius: scaleW(4),
-          elevation: 4,
-        },
+          elevation: 4 },
         quickAddButtonText: {
           fontSize: scaleW(15),
           fontWeight: "700",
           color: HUNTLY_GREEN,
-          textAlign: "center",
-        },
+          textAlign: "center" },
         ctaLayer: {
           ...StyleSheet.absoluteFillObject,
           zIndex: 30,
           elevation: 30,
-          pointerEvents: "box-none" as const,
-        },
-      }),
+          pointerEvents: "box-none" as const } }),
     [
       scaleW,
       width,
@@ -585,8 +548,7 @@ export default function HomeScreen() {
           paddingHorizontal: scaleW(16),
           paddingVertical: scaleW(10),
           flexDirection: "row",
-          alignItems: "center",
-        }}
+          alignItems: "center" }}
       >
         {children}
       </Pressable>
@@ -664,8 +626,7 @@ export default function HomeScreen() {
       <View style={{
         paddingHorizontal: scaleW(24),
         paddingTop: scaleW(120),
-        paddingBottom: scaleW(24),
-      }}>
+        paddingBottom: scaleW(24) }}>
         <ThemedText
           lightColor="#FFFFFF"
           darkColor="#FFFFFF"
@@ -682,8 +643,7 @@ export default function HomeScreen() {
               marginBottom: scaleW(24),
               textShadowColor: "#000",
               textShadowRadius: 3,
-              textShadowOffset: { width: 0, height: 0 },
-            }}
+              textShadowOffset: { width: 0, height: 0 } }}
         >
           Your stats
         </ThemedText>
@@ -692,8 +652,7 @@ export default function HomeScreen() {
           justifyContent: "center",
           marginBottom: scaleW(28),
           gap: scaleW(16),
-          paddingHorizontal: scaleW(12),
-        }}>
+          paddingHorizontal: scaleW(12) }}>
           <StatCard
             value={daysPlayed}
             label="Days since started"
@@ -718,8 +677,7 @@ export default function HomeScreen() {
               style={{
                 textAlign: "center",
                 fontSize: scaleW(16),
-                fontWeight: "600",
-              }}
+                fontWeight: "600" }}
             >
               Your profile
             </ThemedText>
@@ -741,8 +699,7 @@ export default function HomeScreen() {
       <View style={{
         paddingHorizontal: scaleW(24),
         paddingTop: scaleW(8),
-        paddingBottom: scaleW(24),
-      }}>
+        paddingBottom: scaleW(24) }}>
         <ThemedText
           lightColor="#FFFFFF"
           darkColor="#FFFFFF"
@@ -759,8 +716,7 @@ export default function HomeScreen() {
               marginBottom: scaleW(24),
               textShadowColor: "#000",
               textShadowRadius: 3,
-              textShadowOffset: { width: 0, height: 0 },
-            }}
+              textShadowOffset: { width: 0, height: 0 } }}
         >
           Welcome back, Explorer!
         </ThemedText>
@@ -806,8 +762,7 @@ export default function HomeScreen() {
                 shadowRadius: 2,
                 shadowOffset: { width: 0, height: 2 },
                 elevation: 2,
-                overflow: Platform.OS === "android" ? "visible" : undefined,
-              }}
+                overflow: Platform.OS === "android" ? "visible" : undefined }}
               collapsable={Platform.OS !== "android"}
             >
               <ThemedText type="heading" style={{ color: "#000", fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(32), textAlign: "center", lineHeight: scaleW(28) }}>
@@ -844,16 +799,14 @@ export default function HomeScreen() {
                     centerScrollX + 120,
                   ],
                   outputRange: ["-4deg", "0deg", "4deg"],
-                  extrapolate: "clamp",
-                });
+                  extrapolate: "clamp" });
                 return (
                   <Animated.View
                     key={card.id}
                     style={[
                       styles.clubCard,
                       {
-                        transform: [{ rotate: rotation }],
-                      },
+                        transform: [{ rotate: rotation }] },
                     ]}
                   >
                     <Pressable style={{ flex: 1 }}>
@@ -883,8 +836,7 @@ export default function HomeScreen() {
                         fontWeight: "600",
                         backgroundColor: "#FFF",
                         borderRadius: scaleW(20),
-                        paddingHorizontal: scaleW(5),
-                      }}>
+                        paddingHorizontal: scaleW(5) }}>
                         {card.title}
                       </ThemedText>
                       <ThemedText type="heading" style={{
@@ -897,8 +849,7 @@ export default function HomeScreen() {
                         backgroundColor: CLUB_CARD_AUTHOR_COLORS[index % CLUB_CARD_AUTHOR_COLORS.length],
                         color: "#FFF",
                         borderRadius: scaleW(20),
-                        paddingHorizontal: scaleW(5),
-                      }}>
+                        paddingHorizontal: scaleW(5) }}>
                         by {card.author}
                       </ThemedText>
                     </View>
@@ -944,8 +895,7 @@ export default function HomeScreen() {
               marginBottom: scaleW(24),
               textShadowColor: "#000",
               textShadowRadius: 3,
-              textShadowOffset: { width: 0, height: 0 },
-            }}
+              textShadowOffset: { width: 0, height: 0 } }}
         >
           Latest Mission
         </ThemedText>
@@ -982,8 +932,7 @@ export default function HomeScreen() {
         style={[
           styles.backgroundContainer,
           {
-            transform: [{ translateX: backgroundTranslateX }],
-          },
+            transform: [{ translateX: backgroundTranslateX }] },
         ]}
       >
         <ImageBackground
@@ -1061,7 +1010,6 @@ export default function HomeScreen() {
 
           {showQuickAddMenu && (
             <AnimatedReanimated.View
-              entering={FadeInDown.duration(180)}
               exiting={FadeOutDown.duration(160)}
               style={styles.quickAddMenu}
             >

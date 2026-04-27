@@ -13,8 +13,7 @@ import {
   Dimensions,
   Platform,
   TouchableOpacity,
-  BackHandler,
-} from "react-native";
+  BackHandler } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
   Easing,
@@ -23,8 +22,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  withTiming,
-} from "react-native-reanimated";
+  withTiming } from "react-native-reanimated";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -38,8 +36,7 @@ import {
   completeProgressRows,
   insertUserActivityPhotos,
   insertUserAchievementsForMission,
-  updateProgressDebrief,
-} from "@/services/activityProgressService";
+  updateProgressDebrief } from "@/services/activityProgressService";
 import { compressImageAsync } from "@/utils/imageCompression";
 import { uploadUserActivityPhoto } from "@/services/storageService";
 import type { Activity as BaseActivity } from "@/types/activity";
@@ -67,8 +64,7 @@ type MissionDebriefActivity = BaseActivity & {
 
 function ExpandableSection({
   isSelected,
-  children,
-}: {
+  children }: {
   isSelected: boolean;
   children: React.ReactNode;
 }) {
@@ -82,8 +78,7 @@ function ExpandableSection({
       if (measuredHeight > 0) {
         height.value = withTiming(measuredHeight, {
           duration: EXPAND_DURATION,
-          easing: TIMING_EASING,
-        });
+          easing: TIMING_EASING });
       }
     } else {
       height.value = withTiming(
@@ -100,8 +95,7 @@ function ExpandableSection({
 
   const animatedStyle = useAnimatedStyle(() => ({
     height: height.value,
-    overflow: "hidden" as const,
-  }));
+    overflow: "hidden" as const }));
 
   return (
     <Animated.View style={animatedStyle}>
@@ -117,8 +111,7 @@ function ExpandableSection({
             right: 0,
             top: 0,
             opacity: 0,
-            zIndex: -1,
-          }}
+            zIndex: -1 }}
           onLayout={(e) => setMeasuredHeight(e.nativeEvent.layout.height)}
           pointerEvents="none"
         >
@@ -154,8 +147,7 @@ export default function CompletionScreen() {
   const setPlayerDebriefField = (profileId: number, field: "answer1" | "answer2", value: string) => {
     setPlayerDebrief((prev) => ({
       ...prev,
-      [profileId]: { ...getPlayerDebrief(profileId), [field]: value },
-    }));
+      [profileId]: { ...getPlayerDebrief(profileId), [field]: value } }));
   };
 
   const getPlayerPhotos = (playerId: number) => playerPhotos[playerId] ?? [];
@@ -180,15 +172,12 @@ export default function CompletionScreen() {
   const completeScale = useSharedValue(1);
   const cameraAnimatedStyle = useAnimatedStyle(() => ({
     flex: 1,
-    transform: [{ scale: cameraScale.value }],
-  }));
+    transform: [{ scale: cameraScale.value }] }));
   const galleryAnimatedStyle = useAnimatedStyle(() => ({
     flex: 1,
-    transform: [{ scale: galleryScale.value }],
-  }));
+    transform: [{ scale: galleryScale.value }] }));
   const completeAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: completeScale.value }],
-  }));
+    transform: [{ scale: completeScale.value }] }));
 
   const togglePlayerSelection = (id: number) => {
     setSelectedPlayerIds((prev) =>
@@ -208,13 +197,11 @@ export default function CompletionScreen() {
       }
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
-      });
+        quality: 0.8 });
       if (!result.canceled && result.assets[0]) {
         setPlayerPhotos((prev) => ({
           ...prev,
-          [playerId]: [...(prev[playerId] ?? []), result.assets[0].uri],
-        }));
+          [playerId]: [...(prev[playerId] ?? []), result.assets[0].uri] }));
       }
     } catch (error) {
       console.error("Camera error:", error);
@@ -236,16 +223,14 @@ export default function CompletionScreen() {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsMultipleSelection: true,
-        quality: 0.8,
-      });
+        quality: 0.8 });
       if (!result.canceled && result.assets.length > 0) {
         setPlayerPhotos((prev) => ({
           ...prev,
           [playerId]: [
             ...(prev[playerId] ?? []),
             ...result.assets.map((asset) => asset.uri),
-          ],
-        }));
+          ] }));
       }
     } catch (error) {
       console.error("Image picker error:", error);
@@ -281,8 +266,7 @@ export default function CompletionScreen() {
     if (galleryPlayerId == null) return;
     setPlayerPhotos((prev) => ({
       ...prev,
-      [galleryPlayerId]: (prev[galleryPlayerId] ?? []).filter((_, i) => i !== index),
-    }));
+      [galleryPlayerId]: (prev[galleryPlayerId] ?? []).filter((_, i) => i !== index) }));
     setFullScreenPhotoIndex(null);
     if (modalPhotoUris.length === 1) closeGalleryModal();
   };
@@ -293,8 +277,7 @@ export default function CompletionScreen() {
       ...prev,
       [galleryPlayerId]: (prev[galleryPlayerId] ?? []).filter(
         (_, i) => !selectedIndices.includes(i)
-      ),
-    }));
+      ) }));
     setSelectedIndices([]);
     setSelectMode(false);
     if (selectedIndices.length === modalPhotoUris.length) closeGalleryModal();
@@ -325,8 +308,7 @@ export default function CompletionScreen() {
       id: p.id,
       name: p.name ?? "Player",
       nickname: p.nickname ?? "",
-      colour: p.colour || fallbackColours[i % fallbackColours.length],
-    }));
+      colour: p.colour || fallbackColours[i % fallbackColours.length] }));
   }, [profiles]);
 
   const canComplete =
@@ -367,8 +349,7 @@ export default function CompletionScreen() {
               profile_id: row.profile_id,
               team_id: teamId,
               source_id: progressIdByProfile[row.profile_id],
-              xp: activityXp,
-            }))
+              xp: activityXp }))
           );
         } else {
           console.warn(
@@ -396,8 +377,7 @@ export default function CompletionScreen() {
           const fileObject = {
             uri: uploadUri,
             type: "image/jpeg",
-            name: tempFileName,
-          };
+            name: tempFileName };
           const result = await uploadUserActivityPhoto(
             fileObject,
             tempFileName,
@@ -416,24 +396,20 @@ export default function CompletionScreen() {
           profile_id: profileId,
           user_activity_id: userActivityIdByProfile[profileId],
           activity_id: activity.id,
-          photo_url: photoUrl,
-        }))
+          photo_url: photoUrl }))
       );
 
       const achievementsForReward = newlyCompleting.map((row) => ({
         profile_name:
           profiles.find((p) => p.id === row.profile_id)?.nickname ?? "Explorer",
         message: "completed a mission",
-        xp: activity.xp ?? 0,
-      }));
+        xp: activity.xp ?? 0 }));
 
       router.push({
         pathname: "/(tabs)/activity/mission/reward" as const,
         params: {
           activityId: String(activity.id),
-          achievements: JSON.stringify(achievementsForReward),
-        },
-      });
+          achievements: JSON.stringify(achievementsForReward) } });
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Something went wrong.";
@@ -451,21 +427,18 @@ export default function CompletionScreen() {
           flex: 1,
           paddingHorizontal: scaleW(24),
           paddingTop: scaleW(24),
-          paddingBottom: scaleW(32),
-        },
+          paddingBottom: scaleW(32) },
         debriefHeaderLabel: {
           fontSize: scaleW(12),
           fontWeight: "600",
           color: "rgba(255,255,255,0.7)",
           letterSpacing: 1,
-          marginBottom: scaleW(4),
-        },
+          marginBottom: scaleW(4) },
         debriefHeading: {
           fontSize: scaleW(24),
           fontWeight: "700",
           color: "#FFF",
-          marginBottom: scaleW(24),
-        },
+          marginBottom: scaleW(24) },
         photoUploadCard: {
           backgroundColor: HUNTLY_GREEN,
           borderRadius: scaleW(20),
@@ -475,31 +448,26 @@ export default function CompletionScreen() {
           paddingVertical: scaleW(32),
           paddingHorizontal: scaleW(24),
           alignItems: "center",
-          marginBottom: scaleW(20),
-        },
+          marginBottom: scaleW(20) },
         photoUploadCardLabel: {
           fontSize: scaleW(16),
           fontWeight: "700",
           color: "#FFF",
           marginTop: scaleW(12),
-          marginBottom: scaleW(4),
-        },
+          marginBottom: scaleW(4) },
         photoUploadCardHint: {
           fontSize: scaleW(14),
-          color: "rgba(255,255,255,0.8)",
-        },
+          color: "rgba(255,255,255,0.8)" },
         debriefInputCard: {
           backgroundColor: HUNTLY_GREEN,
           borderRadius: scaleW(16),
           padding: scaleW(16),
-          marginBottom: scaleW(16),
-        },
+          marginBottom: scaleW(16) },
         debriefInputLabel: {
           fontSize: scaleW(15),
           fontWeight: "600",
           color: "#FFF",
-          marginBottom: scaleW(8),
-        },
+          marginBottom: scaleW(8) },
         debriefInput: {
           backgroundColor: "rgba(0,0,0,0.2)",
           borderRadius: scaleW(12),
@@ -507,51 +475,43 @@ export default function CompletionScreen() {
           paddingHorizontal: scaleW(16),
           fontSize: scaleW(16),
           color: "#FFF",
-          minHeight: scaleW(44),
-        },
+          minHeight: scaleW(44) },
         debriefInputMultiline: {
           minHeight: scaleW(80),
-          textAlignVertical: "top",
-        },
+          textAlignVertical: "top" },
         title: {
           fontSize: scaleW(20),
           fontWeight: "600",
           color: "#FFF",
           textAlign: "center",
-          marginBottom: scaleW(32),
-        },
+          marginBottom: scaleW(32) },
         subtitle: {
           fontSize: scaleW(16),
           fontWeight: "600",
           color: "#FFFFFF",
           textAlign: "center",
-          marginBottom: scaleW(12),
-        },
+          marginBottom: scaleW(12) },
         pointsHint: {
           marginHorizontal: scaleW(12),
           marginBottom: scaleW(16),
           paddingVertical: scaleW(8),
           paddingHorizontal: scaleW(12),
           backgroundColor: "rgba(255,255,255,0.15)",
-          borderRadius: scaleW(12),
-        },
+          borderRadius: scaleW(12) },
         pointsHintText: {
           fontSize: scaleW(13),
           color: "rgba(255,255,255,0.85)",
           textAlign: "center",
-          flex: 1,
-        },
+          flex: 1 },
         photoStackContainer: {
           marginBottom: scaleW(16),
           width: "100%",
-          overflow: "visible" as const,
-        },
+          overflow: "visible" as const },
         photoStackInner: {
           width: "100%",
           aspectRatio: 4 / 3,
           position: "relative" as const,
-          overflow: "visible" as const,
-        },
+          overflow: "visible" as const },
         photoStackCard: {
           position: "absolute" as const,
           left: 0,
@@ -564,70 +524,59 @@ export default function CompletionScreen() {
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.3,
           shadowRadius: 2,
-          elevation: 2,
-        },
+          elevation: 2 },
         photoImage: {
           width: "100%",
           height: "100%",
-          borderRadius: scaleW(16),
-        },
+          borderRadius: scaleW(16) },
         photoUploadBox: {
           backgroundColor: "#FFF",
           borderRadius: scaleW(24),
           borderWidth: 2,
           borderStyle: "dashed",
           borderColor: "#000",
-          marginBottom: scaleW(32),
-        },
+          marginBottom: scaleW(32) },
         photoUploadRow: { flexDirection: "row" },
         photoOptionCell: {
           alignItems: "center",
-          justifyContent: "center",
-        },
+          justifyContent: "center" },
         photoOptionTouchable: {
           flex: 1,
           alignSelf: "stretch",
           alignItems: "center",
           justifyContent: "center",
           paddingVertical: scaleW(102),
-          paddingHorizontal: scaleW(16),
-        },
+          paddingHorizontal: scaleW(16) },
         photoOptionContent: {
           alignItems: "center",
-          justifyContent: "center",
-        },
+          justifyContent: "center" },
         photoOptionDivider: {
           borderStyle: "dashed",
           borderColor: "#C7C7C7",
-          borderWidth: 1,
-        },
+          borderWidth: 1 },
         photoOptionIcon: {
           width: scaleW(24),
           height: scaleW(24),
-          marginBottom: scaleW(12),
-        },
+          marginBottom: scaleW(12) },
         photoOptionLabel: {
           fontSize: scaleW(14),
           fontWeight: "600",
           color: "#1a1a1a",
           marginTop: scaleW(8),
           textAlign: "center" as const,
-          minHeight: scaleW(20),
-        },
+          minHeight: scaleW(20) },
         whoHeading: {
           fontSize: scaleW(16),
           fontWeight: "600",
           color: "rgba(255,255,255,0.95)",
           textAlign: "center",
-          marginBottom: scaleW(16),
-        },
+          marginBottom: scaleW(16) },
         playerSectionHeading: {
           fontSize: scaleW(16),
           fontWeight: "600",
           color: "rgba(255,255,255,0.95)",
           marginBottom: scaleW(12),
-          marginTop: scaleW(24),
-        },
+          marginTop: scaleW(24) },
         playerCardContainer: { gap: scaleW(12), marginBottom: scaleW(24) },
         playerCard: {
           flexDirection: "row",
@@ -635,31 +584,26 @@ export default function CompletionScreen() {
           borderRadius: scaleW(12),
           overflow: "hidden",
           borderWidth: 3,
-          borderColor: "#FFF",
-        },
+          borderColor: "#FFF" },
         playerCardBar: {
           width: scaleW(20),
-          borderRadius: scaleW(2),
-        },
+          borderRadius: scaleW(2) },
         playerCardContent: {
           flex: 1,
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
           paddingVertical: scaleW(14),
-          paddingHorizontal: scaleW(16),
-        },
+          paddingHorizontal: scaleW(16) },
         playerCardNames: { flex: 1 },
         playerCardName: {
           fontSize: scaleW(16),
           fontWeight: "700",
-          color: TEXT_SECONDARY,
-        },
+          color: TEXT_SECONDARY },
         playerCardNickname: {
           fontSize: scaleW(14),
           color: TEXT_SECONDARY,
-          marginTop: 2,
-        },
+          marginTop: 2 },
         checkbox: {
           width: scaleW(24),
           height: scaleW(24),
@@ -667,8 +611,7 @@ export default function CompletionScreen() {
           borderColor: TEXT_SECONDARY,
           borderRadius: scaleW(4),
           alignItems: "center",
-          justifyContent: "center",
-        },
+          justifyContent: "center" },
         checkboxChecked: { backgroundColor: TEXT_SECONDARY },
         completeButton: {
           backgroundColor: "#8BC79A",
@@ -684,33 +627,28 @@ export default function CompletionScreen() {
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.3,
           shadowRadius: 2,
-          elevation: 2,
-        },
+          elevation: 2 },
         completeButtonDisabled: {
           backgroundColor: "rgba(255,255,255,0.3)",
           borderColor: "rgba(255,255,255,0.5)",
-          opacity: 1,
-        },
+          opacity: 1 },
         completeButtonText: {
           fontSize: scaleW(17),
           fontWeight: "700",
-          color: "#174B2A",
-        },
+          color: "#174B2A" },
         // Gallery modal
         modalOverlay: {
           flex: 1,
           backgroundColor: "rgba(0,0,0,0.7)",
           justifyContent: "center",
-          padding: scaleW(16),
-        },
+          padding: scaleW(16) },
         modalOverlayAndroid: {
           position: "absolute" as const,
           top: 0,
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: "rgba(0,0,0,0.85)",
-        },
+          backgroundColor: "rgba(0,0,0,0.85)" },
         androidOverlayRoot: {
           position: "absolute" as const,
           top: 0,
@@ -719,15 +657,13 @@ export default function CompletionScreen() {
           bottom: 0,
           zIndex: 9999,
           elevation: 9999,
-          backgroundColor: "rgba(0,0,0,0.85)",
-        },
+          backgroundColor: "rgba(0,0,0,0.85)" },
         modalContent: {
           backgroundColor: "#FFF",
           borderRadius: scaleW(20),
           overflow: "hidden",
           maxHeight: "90%",
-          flex: 1,
-        },
+          flex: 1 },
         modalHeader: {
           flexDirection: "row",
           alignItems: "center",
@@ -735,44 +671,37 @@ export default function CompletionScreen() {
           paddingHorizontal: scaleW(16),
           paddingVertical: scaleW(14),
           borderBottomWidth: 1,
-          borderBottomColor: "#E5E5E5",
-        },
+          borderBottomColor: "#E5E5E5" },
         modalHeaderTitle: {
           fontSize: scaleW(18),
           fontWeight: "600",
-          color: TEXT_SECONDARY,
-        },
+          color: TEXT_SECONDARY },
         modalHeaderActions: { flexDirection: "row", alignItems: "center", gap: scaleW(12) },
         modalBtn: {
           paddingVertical: scaleW(8),
           paddingHorizontal: scaleW(14),
-          borderRadius: scaleW(8),
-        },
+          borderRadius: scaleW(8) },
         modalSelectBtn: {
           paddingVertical: scaleW(10),
           paddingHorizontal: scaleW(18),
           borderRadius: scaleW(10),
           backgroundColor: "#DDD",
           alignItems: "center" as const,
-          justifyContent: "center" as const,
-        },
+          justifyContent: "center" as const },
         modalSelectBtnActive: {
           backgroundColor: LIGHT_GREEN,
-          borderColor: LIGHT_GREEN,
-        },
+          borderColor: LIGHT_GREEN },
         modalBtnText: { fontSize: scaleW(15), fontWeight: "600", color: TEXT_SECONDARY },
         modalDeleteBtnText: { color: "#C62828" },
         galleryList: { padding: scaleW(12) },
         galleryItem: {
           borderRadius: scaleW(12),
           overflow: "hidden",
-          backgroundColor: "#EEE",
-        },
+          backgroundColor: "#EEE" },
         galleryItemImage: {
           width: "100%",
           height: "100%",
-          borderRadius: scaleW(12),
-        },
+          borderRadius: scaleW(12) },
         galleryItemCheckbox: {
           position: "absolute" as const,
           top: scaleW(8),
@@ -784,8 +713,7 @@ export default function CompletionScreen() {
           borderColor: "#FFF",
           backgroundColor: "rgba(0,0,0,0.3)",
           alignItems: "center",
-          justifyContent: "center",
-        },
+          justifyContent: "center" },
         galleryItemCheckboxSelected: { backgroundColor: LIGHT_GREEN, borderColor: "#FFF" },
         fullScreenWrap: {
           flex: 1,
@@ -793,12 +721,10 @@ export default function CompletionScreen() {
           borderRadius: scaleW(24),
           overflow: "hidden" as const,
           justifyContent: "center",
-          alignItems: "center",
-        },
+          alignItems: "center" },
         fullScreenImage: {
           width: "100%",
-          height: "100%",
-        },
+          height: "100%" },
         fullScreenToolbar: {
           position: "absolute" as const,
           top: 0,
@@ -809,20 +735,17 @@ export default function CompletionScreen() {
           alignItems: "center",
           paddingHorizontal: scaleW(16),
           paddingTop: scaleW(50),
-          paddingBottom: scaleW(16),
-        },
+          paddingBottom: scaleW(16) },
         fullScreenBackBtn: {
           paddingVertical: scaleW(10),
           paddingHorizontal: scaleW(16),
           borderRadius: scaleW(8),
-          backgroundColor: "rgba(0,0,0,0.5)",
-        },
+          backgroundColor: "rgba(0,0,0,0.5)" },
         fullScreenDeleteBtn: {
           paddingVertical: scaleW(10),
           paddingHorizontal: scaleW(16),
           borderRadius: scaleW(8),
-          backgroundColor: "rgba(198,40,40,0.9)",
-        },
+          backgroundColor: "rgba(198,40,40,0.9)" },
         fullScreenBtnText: { fontSize: scaleW(16), fontWeight: "600", color: "#FFF" },
         fullScreenPageIndicator: {
           position: "absolute" as const,
@@ -832,21 +755,17 @@ export default function CompletionScreen() {
           flexDirection: "row" as const,
           justifyContent: "center",
           alignItems: "center",
-          gap: scaleW(8),
-        },
+          gap: scaleW(8) },
         fullScreenPageDot: {
           width: scaleW(8),
           height: scaleW(8),
           borderRadius: scaleW(4),
-          backgroundColor: "rgba(255,255,255,0.5)",
-        },
+          backgroundColor: "rgba(255,255,255,0.5)" },
         fullScreenPageDotActive: {
           backgroundColor: "#FFF",
           width: scaleW(10),
           height: scaleW(10),
-          borderRadius: scaleW(5),
-        },
-      }),
+          borderRadius: scaleW(5) } }),
     [scaleW]
   );
 
@@ -908,7 +827,6 @@ export default function CompletionScreen() {
           return (
             <Animated.View
               key={profile.id}
-              entering={FadeInDown.duration(400).delay(150 + profileIndex * 80)}
             >
               <View style={styles.playerCardContainer}>
                 <Pressable
@@ -949,16 +867,14 @@ export default function CompletionScreen() {
                     borderRadius: scaleW(12),
                     paddingVertical: scaleW(8),
                     paddingHorizontal: scaleW(12),
-                    marginBottom: scaleW(16),
-                  }}
+                    marginBottom: scaleW(16) }}
                 >
                   <Text
                     style={{
                       fontSize: scaleW(13),
                       color: "rgba(255,255,255,0.85)",
                       lineHeight: scaleW(18),
-                      textAlign: "center",
-                    }}
+                      textAlign: "center" }}
                   >
                     To keep everyone safe - no faces please!
                   </Text>
@@ -980,8 +896,7 @@ export default function CompletionScreen() {
                                 styles.photoStackCard,
                                 {
                                   zIndex: index,
-                                  transform: [{ rotate: `${rotation}deg` }],
-                                },
+                                  transform: [{ rotate: `${rotation}deg` }] },
                               ]}
                             >
                               <Image
@@ -1091,7 +1006,6 @@ export default function CompletionScreen() {
         })}
 
         <Animated.View
-          entering={FadeInDown.duration(500).delay(580)}
           style={completeAnimatedStyle}
         >
           <Pressable
@@ -1124,8 +1038,7 @@ export default function CompletionScreen() {
             styles.androidOverlayRoot,
             {
               width: Dimensions.get("window").width,
-              height: Dimensions.get("window").height,
-            },
+              height: Dimensions.get("window").height },
           ]}
           collapsable={false}
         >
@@ -1150,8 +1063,7 @@ export default function CompletionScreen() {
                 getItemLayout={(_, index) => ({
                   length: fullScreenViewerWidth,
                   offset: fullScreenViewerWidth * index,
-                  index,
-                })}
+                  index })}
                 onMomentumScrollEnd={(e) => {
                   const index = Math.round(
                     e.nativeEvent.contentOffset.x / fullScreenViewerWidth
@@ -1163,8 +1075,7 @@ export default function CompletionScreen() {
                   <View
                     style={{
                       width: fullScreenViewerWidth,
-                      height: fullScreenViewerHeight,
-                    }}
+                      height: fullScreenViewerHeight }}
                   >
                     <Image
                       source={{ uri }}
@@ -1272,8 +1183,7 @@ export default function CompletionScreen() {
                 contentContainerStyle={styles.galleryList}
                 columnWrapperStyle={{
                   marginBottom: galleryGap,
-                  gap: galleryGap,
-                }}
+                  gap: galleryGap }}
                 removeClippedSubviews={Platform.OS !== "android"}
                 nestedScrollEnabled={Platform.OS === "android"}
                 renderItem={({ item: uri, index }) => (
@@ -1286,8 +1196,7 @@ export default function CompletionScreen() {
                         minWidth: galleryItemSize,
                         maxWidth: galleryItemSize,
                         minHeight: galleryItemSize,
-                        maxHeight: galleryItemSize,
-                      },
+                        maxHeight: galleryItemSize },
                     ]}
                     onPress={() => {
                       if (selectMode) {
@@ -1351,8 +1260,7 @@ export default function CompletionScreen() {
                   getItemLayout={(_, index) => ({
                     length: fullScreenViewerWidth,
                     offset: fullScreenViewerWidth * index,
-                    index,
-                  })}
+                    index })}
                   onMomentumScrollEnd={(e) => {
                     const index = Math.round(
                       e.nativeEvent.contentOffset.x / fullScreenViewerWidth
@@ -1366,8 +1274,7 @@ export default function CompletionScreen() {
                     <View
                       style={{
                         width: fullScreenViewerWidth,
-                        height: fullScreenViewerHeight,
-                      }}
+                        height: fullScreenViewerHeight }}
                     >
                       <Image
                         source={{ uri }}
@@ -1474,8 +1381,7 @@ export default function CompletionScreen() {
                     contentContainerStyle={styles.galleryList}
                     columnWrapperStyle={{
                       marginBottom: galleryGap,
-                      gap: galleryGap,
-                    }}
+                      gap: galleryGap }}
                     removeClippedSubviews={true}
                     renderItem={({ item: uri, index }) => (
                       <TouchableOpacity
@@ -1487,8 +1393,7 @@ export default function CompletionScreen() {
                             minWidth: galleryItemSize,
                             maxWidth: galleryItemSize,
                             minHeight: galleryItemSize,
-                            maxHeight: galleryItemSize,
-                          },
+                            maxHeight: galleryItemSize },
                         ]}
                         onPress={() => {
                           if (selectMode) {

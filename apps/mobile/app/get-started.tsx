@@ -1,19 +1,16 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState } from "react";
 import {
   View,
   Image,
   Pressable,
   FlatList,
   NativeSyntheticEvent,
-  NativeScrollEvent,
-} from "react-native";
+  NativeScrollEvent } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
-  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
+  withSpring } from "react-native-reanimated";
 import { router } from "expo-router";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -33,8 +30,7 @@ const INTRO_SLIDES = [
     bgImage: require("@/assets/images/intro-step1-bg.png"),
     bgHeight: 420,
     characterImage: require("@/assets/images/bella-standing.png"),
-    characterAlign: "left" as const,
-  },
+    characterAlign: "left" as const },
   {
     id: "2",
     titleLine1: "Your world",
@@ -46,8 +42,7 @@ const INTRO_SLIDES = [
     bgImage: require("@/assets/images/intro-step2-bg.png"),
     bgHeight: 420,
     characterImage: require("@/assets/images/felix-standing.png"),
-    characterAlign: "center" as const,
-  },
+    characterAlign: "center" as const },
   {
     id: "3",
     titleLine1: "Exploring",
@@ -59,8 +54,7 @@ const INTRO_SLIDES = [
     bgImage: require("@/assets/images/intro-step3-bg.png"),
     bgHeight: 400,
     characterImage: require("@/assets/images/oli-standing.png"),
-    characterAlign: "right" as const,
-  },
+    characterAlign: "right" as const },
 ];
 
 const PAGINATION_ACTIVE = "#6B6B6B";
@@ -70,49 +64,21 @@ export default function GetStartedScreen() {
   const { scaleW, width } = useLayoutScale();
   const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [visitedIndices, setVisitedIndices] = useState<Set<number>>(() => new Set([0]));
-
   const skipScale = useSharedValue(1);
   const continueScale = useSharedValue(1);
   const skipAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: skipScale.value }] }));
   const continueAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: continueScale.value }] }));
 
-  const slideOpacity1 = useSharedValue(0);
-  const slideTranslateY1 = useSharedValue(24);
-  const slideOpacity2 = useSharedValue(0);
-  const slideTranslateY2 = useSharedValue(24);
-  const slide1Style = useAnimatedStyle(() => ({
-    opacity: slideOpacity1.value,
-    transform: [{ translateY: slideTranslateY1.value }],
-  }));
-  const slide2Style = useAnimatedStyle(() => ({
-    opacity: slideOpacity2.value,
-    transform: [{ translateY: slideTranslateY2.value }],
-  }));
-
-  useEffect(() => {
-    if (visitedIndices.has(1)) {
-      slideOpacity1.value = withSpring(1, { damping: 18, stiffness: 120 });
-      slideTranslateY1.value = withSpring(0, { damping: 18, stiffness: 120 });
-    }
-    if (visitedIndices.has(2)) {
-      slideOpacity2.value = withSpring(1, { damping: 18, stiffness: 120 });
-      slideTranslateY2.value = withSpring(0, { damping: 18, stiffness: 120 });
-    }
-  }, [visitedIndices]);
-
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const index = Math.round(e.nativeEvent.contentOffset.x / width);
     setCurrentIndex(index);
-    setVisitedIndices((prev) => (prev.has(index) ? prev : new Set([...prev, index])));
   };
 
   const goNext = () => {
     if (currentIndex < INTRO_SLIDES.length - 1) {
       flatListRef.current?.scrollToOffset({
         offset: (currentIndex + 1) * width,
-        animated: true,
-      });
+        animated: true });
     } else {
       router.replace("/sign-up");
     }
@@ -122,8 +88,6 @@ export default function GetStartedScreen() {
 
   const renderSlide = ({ item, index }: { item: (typeof INTRO_SLIDES)[0]; index: number }) => {
     const isLast = index === INTRO_SLIDES.length - 1;
-    const slideContentStyle =
-      index === 1 ? slide1Style : index === 2 ? slide2Style : undefined;
 
     const characterLeft =
       item.characterAlign === "left"
@@ -140,10 +104,7 @@ export default function GetStartedScreen() {
 
     return (
       <View style={{ width, flex: 1, backgroundColor: item.background }}>
-        <Animated.View
-          entering={index === 0 ? FadeInDown.duration(500).delay(0) : undefined}
-          style={[slideContentStyle, { flex: 1 }]}
-        >
+        <View style={{ flex: 1 }}>
           {/* Background scene — bottom-anchored, full width */}
           <Image
             source={item.bgImage}
@@ -154,8 +115,7 @@ export default function GetStartedScreen() {
               left: 0,
               right: 0,
               height: scaleW(item.bgHeight),
-              width: '100%',
-            }}
+              width: '100%' }}
           />
 
           {/* Character — sitting on the bg */}
@@ -169,8 +129,7 @@ export default function GetStartedScreen() {
               right: characterRight,
               alignSelf: characterAlignSelf,
               width: scaleW(280),
-              height: scaleW(380),
-            }}
+              height: scaleW(380) }}
           />
 
           {/* Top content */}
@@ -184,16 +143,14 @@ export default function GetStartedScreen() {
                       width: scaleW(10),
                       height: scaleW(10),
                       borderRadius: scaleW(5),
-                      backgroundColor: i === index ? PAGINATION_ACTIVE : PAGINATION_INACTIVE,
-                    }}
+                      backgroundColor: i === index ? PAGINATION_ACTIVE : PAGINATION_INACTIVE }}
                   />
                   {i < INTRO_SLIDES.length - 1 && (
                     <View
                       style={{
                         width: scaleW(24),
                         height: scaleW(2),
-                        backgroundColor: i < index ? PAGINATION_ACTIVE : PAGINATION_INACTIVE,
-                      }}
+                        backgroundColor: i < index ? PAGINATION_ACTIVE : PAGINATION_INACTIVE }}
                     />
                   )}
                 </React.Fragment>
@@ -230,8 +187,7 @@ export default function GetStartedScreen() {
                 paddingHorizontal: scaleW(16),
                 fontSize: scaleW(16),
                 lineHeight: scaleW(24),
-                opacity: 0.85,
-              }}
+                opacity: 0.85 }}
             >
               {item.body}
             </ThemedText>
@@ -248,8 +204,7 @@ export default function GetStartedScreen() {
               paddingHorizontal: scaleW(24),
               paddingVertical: scaleW(20),
               flexDirection: "row",
-              gap: scaleW(12),
-            }}
+              gap: scaleW(12) }}
           >
             <Animated.View style={[{ flex: 1 }, skipAnimatedStyle]}>
               <Pressable
@@ -262,8 +217,7 @@ export default function GetStartedScreen() {
                   borderWidth: 2,
                   borderColor: item.accentColor,
                   alignItems: "center",
-                  justifyContent: "center",
-                }}
+                  justifyContent: "center" }}
               >
                 <ThemedText
                   type="heading"
@@ -291,8 +245,7 @@ export default function GetStartedScreen() {
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: 0.2,
                   shadowRadius: 3,
-                  elevation: 2,
-                }}
+                  elevation: 2 }}
               >
                 <ThemedText
                   type="heading"
@@ -305,7 +258,7 @@ export default function GetStartedScreen() {
               </Pressable>
             </Animated.View>
           </View>
-        </Animated.View>
+        </View>
       </View>
     );
   };

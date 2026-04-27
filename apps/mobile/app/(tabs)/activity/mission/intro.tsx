@@ -21,6 +21,8 @@ import { getActivityById, getActivityImageSource } from "@/services/packService"
 import { useUser } from "@/contexts/UserContext";
 import { isStartMissionOnboardingActive } from "@/constants/startMissionOnboarding";
 import type { Activity } from "@/types/activity";
+import { ACTIVITY_CATEGORIES } from "@/types/activity";
+import { getCategoryColor, getCategoryLabel } from "@/utils/categoryUtils";
 
 const BEAR_FACE = require("@/assets/images/bear-face.png");
 const FOX_FACE = require("@/assets/images/fox-face.png");
@@ -164,6 +166,21 @@ export default function IntroScreen() {
           marginBottom: scaleW(8),
         },
         missionTitle: { fontSize: scaleW(22), fontWeight: "700", color: "#FFF", marginBottom: scaleW(4) },
+        categoryBadges: {
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: scaleW(8),
+          marginTop: scaleW(8),
+          marginBottom: scaleW(10),
+        },
+        categoryBadge: {
+          borderRadius: scaleW(999),
+          paddingVertical: scaleW(6),
+          paddingHorizontal: scaleW(10),
+          borderWidth: 1,
+          borderColor: "rgba(255,255,255,0.18)",
+        },
+        categoryBadgeText: { fontSize: scaleW(12), fontWeight: "700", color: "#FFF" },
         missionDesc: { fontSize: scaleW(15), color: "rgba(255,255,255,0.9)", marginBottom: scaleW(8) },
         metaRow: { fontSize: scaleW(13), color: "rgba(255,255,255,0.75)" },
         acceptButton: {
@@ -214,6 +231,13 @@ export default function IntroScreen() {
   const hasUrgent = activity.intro_urgent_message != null && activity.intro_urgent_message.trim() !== "";
   const characterName = activity.intro_character_name?.trim() || "Mission";
   const avatarUrl = activity.intro_character_avatar_url?.trim();
+  const categories = (activity.categories ?? [])
+    .map((cat) => {
+      if (typeof cat === "number") return ACTIVITY_CATEGORIES[cat]?.category;
+      if (typeof cat === "string") return cat;
+      return undefined;
+    })
+    .filter((cat): cat is string => typeof cat === "string" && cat.trim() !== "");
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
@@ -258,6 +282,21 @@ export default function IntroScreen() {
           <ThemedText type="heading" style={styles.missionTitle}>
             {activity.title}
           </ThemedText>
+          {categories.length > 0 && (
+            <View style={styles.categoryBadges}>
+              {categories.map((category) => (
+                <View
+                  key={category}
+                  style={[
+                    styles.categoryBadge,
+                    { backgroundColor: `${getCategoryColor(category)}33` },
+                  ]}
+                >
+                  <ThemedText style={styles.categoryBadgeText}>{getCategoryLabel(category)}</ThemedText>
+                </View>
+              ))}
+            </View>
+          )}
           {activity.description != null && activity.description.trim() !== "" && (
             <ThemedText style={styles.missionDesc}>{activity.description}</ThemedText>
           )}

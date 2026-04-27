@@ -321,3 +321,9 @@ verify_jwt = false
 
 [functions.account-removal-email]
 verify_jwt = false
+
+[functions.send-weekly-chapter-preparation]
+verify_jwt = false
+
+[functions.send-weekly-chapter-reminder]
+verify_jwt = false

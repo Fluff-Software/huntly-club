@@ -39,6 +39,10 @@ type ActivityFormProps = {
     intro_dialogue?: string | null;
     estimated_duration?: string | null;
     optional_items?: string | null;
+    prep_notif_title?: string | null;
+    prep_notif_description?: string | null;
+    remind_notif_title?: string | null;
+    remind_notif_description?: string | null;
     prep_checklist?: PrepItem[] | null;
     steps?: StepItem[] | null;
     debrief_heading?: string | null;
@@ -296,6 +300,79 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
               type="text"
               defaultValue={initial?.optional_items ?? ""}
               placeholder="e.g. String & stickers optional"
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-4 rounded-lg border border-stone-200 bg-stone-50/50 p-4">
+        <h3 className="text-sm font-semibold text-stone-800">Notifications (content only)</h3>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <h4 className="text-xs font-semibold text-stone-700">Preparation notification</h4>
+            <p className="mt-1 text-xs text-stone-500">
+              This notification will be sent to users on Fridays
+            </p>
+          </div>
+          <div>
+            <label htmlFor="prep_notif_title" className="mb-1 block text-xs font-medium text-stone-600">
+              Title
+            </label>
+            <input
+              id="prep_notif_title"
+              name="prep_notif_title"
+              type="text"
+              defaultValue={initial?.prep_notif_title ?? ""}
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+            />
+            <p className="mt-1 text-[11px] leading-4 text-stone-500">
+              This field is only shown for email notifications
+            </p>
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="prep_notif_description" className="mb-1 block text-xs font-medium text-stone-600">
+              Message
+            </label>
+            <textarea
+              id="prep_notif_description"
+              name="prep_notif_description"
+              rows={3}
+              defaultValue={initial?.prep_notif_description ?? ""}
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+            />
+          </div>
+
+          <div className="sm:col-span-2">
+            <h4 className="text-xs font-semibold text-stone-700">Reminder notification</h4>
+            <p className="mt-1 text-xs text-stone-500">
+              This notification will be sent to users on Saturdays
+            </p>
+          </div>
+          <div>
+            <label htmlFor="remind_notif_title" className="mb-1 block text-xs font-medium text-stone-600">
+              Title
+            </label>
+            <input
+              id="remind_notif_title"
+              name="remind_notif_title"
+              type="text"
+              defaultValue={initial?.remind_notif_title ?? ""}
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+            />
+            <p className="mt-1 text-[11px] leading-4 text-stone-500">
+              This field is only shown for email notifications
+            </p>
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="remind_notif_description" className="mb-1 block text-xs font-medium text-stone-600">
+              Message
+            </label>
+            <textarea
+              id="remind_notif_description"
+              name="remind_notif_description"
+              rows={3}
+              defaultValue={initial?.remind_notif_description ?? ""}
               className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
             />
           </div>

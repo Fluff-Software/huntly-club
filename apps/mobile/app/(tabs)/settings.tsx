@@ -54,7 +54,7 @@ export default function SettingsScreen() {
   const setShowPostSignUpWelcome = signUpContext?.setShowPostSignUpWelcome;
   const setTutorialStep = signUpContext?.setTutorialStep;
   const setReplayTutorialRequested = signUpContext?.setReplayTutorialRequested;
-  const weeklyEmail = userData?.weekly_email ?? false;
+  const weeklyEmail = userData?.weekly_email ?? true;
   const [weeklyEmailToggling, setWeeklyEmailToggling] = useState(false);
   const [pushNotifications, setPushNotifications] = useState(false);
   const [pushNotificationsLoading, setPushNotificationsLoading] = useState(true);

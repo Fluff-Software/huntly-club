@@ -17,14 +17,45 @@ async function getForReviewPhotos(): Promise<ReviewPhoto[]> {
       activity_id,
       profile_id,
       activities ( title ),
-      profiles ( nickname )
+      profiles ( nickname, user_id )
     `
     )
     .eq("status", STATUS_FOR_REVIEW)
     .order("uploaded_at", { ascending: true });
 
   if (error) throw new Error(error.message);
-  return (data ?? []) as unknown as ReviewPhoto[];
+
+  const rows = (data ?? []) as unknown as Array<
+    Omit<ReviewPhoto, "uploader_email"> & { profiles: { nickname: string | null; user_id?: string | null } | null }
+  >;
+
+  const userIds = Array.from(
+    new Set(
+      rows
+        .map((r) => r.profiles?.user_id ?? null)
+        .filter((id): id is string => typeof id === "string" && id.length > 0)
+    )
+  );
+
+  const emailByUserId = new Map<string, string>();
+  await Promise.all(
+    userIds.map(async (userId) => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.admin.getUserById(userId);
+        if (user?.email) emailByUserId.set(userId, user.email);
+      } catch {
+        // Best-effort; omit email if lookup fails.
+      }
+    })
+  );
+
+  return rows.map((r) => ({
+    ...r,
+    uploader_email:
+      r.profiles?.user_id != null ? emailByUserId.get(r.profiles.user_id) ?? null : null,
+  }));
 }
 
 function reorderWithPhotoFirst(photos: ReviewPhoto[], photoId: number | null): ReviewPhoto[] {

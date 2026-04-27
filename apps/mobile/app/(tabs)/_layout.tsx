@@ -108,8 +108,7 @@ function StoryTabPulse({ size }: { size: number }) {
 export default function TabLayout() {
   const { user } = useAuth();
   const { profiles, loading: profilesLoading } = usePlayer();
-  const { userData, loading: userLoading, updateWeeklyEmail, updateLastSeenSeasonId } =
-    useUser();
+  const { userData, loading: userLoading, updateLastSeenSeasonId } = useUser();
   const {
     firstSeason,
     heroImageSource,
@@ -124,11 +123,6 @@ export default function TabLayout() {
   const setTutorialStep = signUpContext?.setTutorialStep;
   const replayTutorialRequested = signUpContext?.replayTutorialRequested ?? false;
   const setReplayTutorialRequested = signUpContext?.setReplayTutorialRequested;
-  const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
-  const [notificationPromptChecking, setNotificationPromptChecking] = useState(true);
-  const [notificationSaving, setNotificationSaving] = useState(false);
-  const [emailOptIn, setEmailOptIn] = useState(false);
-  const [pushOptIn, setPushOptIn] = useState(false);
   const [showSeasonAnnouncementModal, setShowSeasonAnnouncementModal] =
     useState(false);
   const [seasonAnnouncementSaving, setSeasonAnnouncementSaving] = useState(false);
@@ -137,7 +131,6 @@ export default function TabLayout() {
   const [hasCompletedTutorial, setHasCompletedTutorial] = useState<boolean | null>(null);
   const onboardingActive = isStartMissionOnboardingActive(userData?.start_mission_step);
 
-  const hasCheckedNotificationPromptRef = useRef(false);
   const hasCheckedSeasonAnnouncementRef = useRef(false);
 
   // If user has no team set, send them to add explorers first, then team selection (matches AuthGuard)
@@ -194,41 +187,42 @@ export default function TabLayout() {
     };
   }, [showPostSignUpWelcome, firstProfileId, replayTutorialRequested, onboardingActive, setShowPostSignUpWelcome]);
 
-  // Only consider showing the notification prompt when the tutorial is not visible.
-  // After the tutorial is dismissed we wait a short moment so the user lands on the clubhouse first, then show the prompt.
-  const NOTIFICATION_PROMPT_DELAY_MS = 600;
+  // After a modal/tour is dismissed we wait a short moment so the user lands on the clubhouse first.
+  const POST_MODAL_DELAY_MS = 600;
 
-  const maybeShowNotificationPrompt = useCallback(() => {
-    if (!user?.id) {
-      setNotificationPromptChecking(false);
-      return;
-    }
+  // One-time automatic push permission request after sign-in.
+  // We avoid prompting while onboarding/tutorial/season modals are visible.
+  const hasRequestedPushPermissionRef = useRef(false);
+  const maybeRequestPushPermission = useCallback(async () => {
+    if (!user?.id) return;
     if (showSeasonAnnouncementModal || seasonAnnouncementChecking) return;
-    if (hasCheckedNotificationPromptRef.current) return;
-    hasCheckedNotificationPromptRef.current = true;
-    setNotificationPromptChecking(false);
-    hasAskedPushOptIn(user.id)
-      .then((asked) => {
-        if (!asked) {
-          // First-run prompt should start fully opt-out.
-          setEmailOptIn(false);
-          setPushOptIn(false);
-          // Safety: if backend/user_data came through as true for any reason, normalize it.
-          if (userData?.weekly_email === true) {
-            void updateWeeklyEmail(false);
-          }
-          setShowNotificationPrompt(true);
-        }
-      })
-      .catch(() => {
-        // Don't block the UI if the check fails; user can still be prompted from settings
-      });
+    if (showPostSignUpWelcome) return;
+    if (onboardingActive) return;
+    if (hasRequestedPushPermissionRef.current) return;
+    hasRequestedPushPermissionRef.current = true;
+
+    try {
+      const asked = await hasAskedPushOptIn(user.id);
+      if (asked) return;
+
+      const token = await registerForPushNotificationsAsync();
+      if (token) {
+        await setPushEnabled(true, token);
+      } else {
+        // User denied permission (or push not available) — ensure backend is disabled.
+        await setPushEnabled(false);
+      }
+
+      await setPushOptInAsked(user.id);
+    } catch {
+      // If anything fails, don't block the UI and don't loop prompts this session.
+    }
   }, [
     user?.id,
-    userData?.weekly_email,
-    updateWeeklyEmail,
     showSeasonAnnouncementModal,
     seasonAnnouncementChecking,
+    showPostSignUpWelcome,
+    onboardingActive,
   ]);
 
   const maybeShowSeasonAnnouncement = useCallback(async () => {
@@ -272,6 +266,7 @@ export default function TabLayout() {
     hasCheckedSeasonAnnouncementRef.current = false;
     setSeasonAnnouncementChecking(true);
     setShowSeasonAnnouncementModal(false);
+    hasRequestedPushPermissionRef.current = false;
   }, [user?.id]);
 
   useEffect(() => {
@@ -279,68 +274,8 @@ export default function TabLayout() {
   }, [maybeShowSeasonAnnouncement]);
 
   useEffect(() => {
-    if (!user?.id) {
-      setNotificationPromptChecking(false);
-      return;
-    }
-    if (showPostSignUpWelcome) {
-      return;
-    }
-    if (onboardingActive) {
-      return;
-    }
-    if (showSeasonAnnouncementModal || seasonAnnouncementChecking) {
-      return;
-    }
-    const timer = setTimeout(() => {
-      maybeShowNotificationPrompt();
-    }, NOTIFICATION_PROMPT_DELAY_MS);
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [
-    user?.id,
-    showPostSignUpWelcome,
-    maybeShowNotificationPrompt,
-    showSeasonAnnouncementModal,
-    seasonAnnouncementChecking,
-    onboardingActive,
-  ]);
-
-  const handleNotificationPromptSave = async () => {
-    if (!user?.id) return;
-    if (notificationSaving) return;
-    setNotificationSaving(true);
-    try {
-      await updateWeeklyEmail(emailOptIn);
-      if (pushOptIn) {
-        const token = await registerForPushNotificationsAsync();
-        if (token) {
-          await setPushEnabled(true, token);
-        }
-      } else {
-        await setPushEnabled(false);
-      }
-      await setPushOptInAsked(user.id);
-      setShowNotificationPrompt(false);
-    } finally {
-      setNotificationSaving(false);
-    }
-  };
-
-  const handleNotificationPromptNotNow = async () => {
-    if (!user?.id) return;
-    if (notificationSaving) return;
-    setNotificationSaving(true);
-    try {
-      await updateWeeklyEmail(false);
-      await setPushEnabled(false);
-      await setPushOptInAsked(user.id);
-      setShowNotificationPrompt(false);
-    } finally {
-      setNotificationSaving(false);
-    }
-  };
+    void maybeRequestPushPermission();
+  }, [maybeRequestPushPermission]);
 
   const activeColor = "#FFFFFF";
   const inactiveColor = "rgba(255,255,255,0.6)";
@@ -389,8 +324,8 @@ export default function TabLayout() {
     router.replace("/(tabs)");
     setTimeout(() => {
       void maybeShowSeasonAnnouncement();
-      maybeShowNotificationPrompt();
-    }, NOTIFICATION_PROMPT_DELAY_MS);
+      void maybeRequestPushPermission();
+    }, POST_MODAL_DELAY_MS);
   };
 
   const handleSeasonAnnouncementDismiss = async () => {
@@ -406,12 +341,9 @@ export default function TabLayout() {
     }
     setSeasonAnnouncementSaving(false);
     setTimeout(() => {
-      maybeShowNotificationPrompt();
-    }, NOTIFICATION_PROMPT_DELAY_MS);
+      void maybeRequestPushPermission();
+    }, POST_MODAL_DELAY_MS);
   };
-
-  const showNotificationUI =
-    showNotificationPrompt && !notificationPromptChecking;
 
   const renderTabBar = useCallback(
     (props: BottomTabBarProps) => (
@@ -667,142 +599,6 @@ export default function TabLayout() {
           </View>
         </Modal>
       ) : null}
-      {Platform.OS === "ios" ? (
-        <Modal
-          visible={showNotificationUI}
-          transparent
-          animationType="fade"
-          onRequestClose={handleNotificationPromptNotNow}
-        >
-          <View style={styles.notificationPromptOverlay}>
-            <View
-              style={[
-                styles.notificationPromptCard,
-                { padding: scaleW(24), borderRadius: scaleW(16) },
-              ]}
-            >
-              <ThemedText
-                type="subtitle"
-                style={{ marginBottom: scaleW(16), textAlign: "center" }}
-                lightColor={HUNTLY_GREEN}
-                darkColor={CREAM}
-              >
-                Would you like to be notified when new chapters are available?
-              </ThemedText>
-              <View style={{ gap: scaleW(12) }}>
-                <Pressable
-                  style={styles.notificationOptionRow}
-                  onPress={() => setEmailOptIn((current) => !current)}
-                  disabled={notificationSaving}
-                >
-                  <ThemedText lightColor={HUNTLY_CHARCOAL} darkColor={CREAM}>
-                    Email updates
-                  </ThemedText>
-                  <View style={styles.notificationCheckbox}>
-                    {emailOptIn ? (
-                      <MaterialIcons name="check" size={scaleW(18)} color={HUNTLY_GREEN} />
-                    ) : null}
-                  </View>
-                </Pressable>
-                <Pressable
-                  style={styles.notificationOptionRow}
-                  onPress={() => setPushOptIn((current) => !current)}
-                  disabled={notificationSaving}
-                >
-                  <ThemedText lightColor={HUNTLY_CHARCOAL} darkColor={CREAM}>
-                    Push notifications
-                  </ThemedText>
-                  <View style={styles.notificationCheckbox}>
-                    {pushOptIn ? (
-                      <MaterialIcons name="check" size={scaleW(18)} color={HUNTLY_GREEN} />
-                    ) : null}
-                  </View>
-                </Pressable>
-                <Button
-                  variant="secondary"
-                  onPress={handleNotificationPromptSave}
-                >
-                  Save preferences
-                </Button>
-                <Button
-                  variant="white"
-                  onPress={handleNotificationPromptNotNow}
-                >
-                  Not now
-                </Button>
-              </View>
-            </View>
-          </View>
-        </Modal>
-      ) : (
-        showNotificationUI && (
-          <View
-            style={[
-              StyleSheet.absoluteFill,
-              styles.notificationPromptOverlay,
-              { zIndex: 9999, elevation: 9999 },
-            ]}
-          >
-            <View
-              style={[
-                styles.notificationPromptCard,
-                { padding: scaleW(24), borderRadius: scaleW(16) },
-              ]}
-            >
-              <ThemedText
-                type="subtitle"
-                style={{ marginBottom: scaleW(16), textAlign: "center" }}
-                lightColor={HUNTLY_GREEN}
-                darkColor={CREAM}
-              >
-                Would you like to be notified when new chapters are available?
-              </ThemedText>
-              <View style={{ gap: scaleW(12) }}>
-                <Pressable
-                  style={styles.notificationOptionRow}
-                  onPress={() => setEmailOptIn((current) => !current)}
-                  disabled={notificationSaving}
-                >
-                  <ThemedText lightColor={HUNTLY_CHARCOAL} darkColor={CREAM}>
-                    Email updates
-                  </ThemedText>
-                  <View style={styles.notificationCheckbox}>
-                    {emailOptIn ? (
-                      <MaterialIcons name="check" size={scaleW(18)} color={HUNTLY_GREEN} />
-                    ) : null}
-                  </View>
-                </Pressable>
-                <Pressable
-                  style={styles.notificationOptionRow}
-                  onPress={() => setPushOptIn((current) => !current)}
-                  disabled={notificationSaving}
-                >
-                  <ThemedText lightColor={HUNTLY_CHARCOAL} darkColor={CREAM}>
-                    Push notifications
-                  </ThemedText>
-                  <View style={styles.notificationCheckbox}>
-                    {pushOptIn ? (
-                      <MaterialIcons name="check" size={scaleW(18)} color={HUNTLY_GREEN} />
-                    ) : null}
-                  </View>
-                </Pressable>
-                <Button
-                  variant="secondary"
-                  onPress={handleNotificationPromptSave}
-                >
-                  Save preferences
-                </Button>
-                <Button
-                  variant="white"
-                  onPress={handleNotificationPromptNotNow}
-                >
-                  Not now
-                </Button>
-              </View>
-            </View>
-          </View>
-        )
-      )}
     </View>
   );
 }
@@ -837,24 +633,5 @@ const styles = StyleSheet.create({
     backgroundColor: CREAM,
     maxWidth: 360,
     width: "100%",
-  },
-  notificationOptionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  notificationCheckbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: HUNTLY_GREEN,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FFFFFF",
   },
 });

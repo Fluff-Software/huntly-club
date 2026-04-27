@@ -756,6 +756,21 @@ export default function HomeScreen() {
                               <ActivityIndicator size="small" color="#FFFFFF" />
                             </View>
                           )}
+                          {card.team_name && (() => {
+                            const cfg = getTeamCardConfig(card.team_name);
+                            return (
+                              <Image
+                                source={cfg.badgeImage}
+                                resizeMode="contain"
+                                style={{
+                                  position: "absolute",
+                                  bottom: scaleW(8),
+                                  right: scaleW(8),
+                                  width: scaleW(36),
+                                  height: scaleW(36) }}
+                              />
+                            );
+                          })()}
                           <ThemedText type="heading" style={{
                             position: "absolute",
                             bottom: scaleW(40),

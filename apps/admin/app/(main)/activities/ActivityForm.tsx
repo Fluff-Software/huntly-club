@@ -39,10 +39,8 @@ type ActivityFormProps = {
     intro_dialogue?: string | null;
     estimated_duration?: string | null;
     optional_items?: string | null;
-    prep_notif_title?: string | null;
-    prep_notif_description?: string | null;
-    remind_notif_title?: string | null;
-    remind_notif_description?: string | null;
+    preparation_message?: string | null;
+    reminder_message?: string | null;
     prep_checklist?: PrepItem[] | null;
     steps?: StepItem[] | null;
     debrief_heading?: string | null;
@@ -315,30 +313,15 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
               This notification will be sent to users on Fridays
             </p>
           </div>
-          <div>
-            <label htmlFor="prep_notif_title" className="mb-1 block text-xs font-medium text-stone-600">
-              Title
-            </label>
-            <input
-              id="prep_notif_title"
-              name="prep_notif_title"
-              type="text"
-              defaultValue={initial?.prep_notif_title ?? ""}
-              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-            />
-            <p className="mt-1 text-[11px] leading-4 text-stone-500">
-              This field is only shown for email notifications
-            </p>
-          </div>
           <div className="sm:col-span-2">
-            <label htmlFor="prep_notif_description" className="mb-1 block text-xs font-medium text-stone-600">
+            <label htmlFor="preparation_message" className="mb-1 block text-xs font-medium text-stone-600">
               Message
             </label>
             <textarea
-              id="prep_notif_description"
-              name="prep_notif_description"
+              id="preparation_message"
+              name="preparation_message"
               rows={3}
-              defaultValue={initial?.prep_notif_description ?? ""}
+              defaultValue={initial?.preparation_message ?? ""}
               className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
             />
           </div>
@@ -349,30 +332,15 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
               This notification will be sent to users on Saturdays
             </p>
           </div>
-          <div>
-            <label htmlFor="remind_notif_title" className="mb-1 block text-xs font-medium text-stone-600">
-              Title
-            </label>
-            <input
-              id="remind_notif_title"
-              name="remind_notif_title"
-              type="text"
-              defaultValue={initial?.remind_notif_title ?? ""}
-              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-            />
-            <p className="mt-1 text-[11px] leading-4 text-stone-500">
-              This field is only shown for email notifications
-            </p>
-          </div>
           <div className="sm:col-span-2">
-            <label htmlFor="remind_notif_description" className="mb-1 block text-xs font-medium text-stone-600">
+            <label htmlFor="reminder_message" className="mb-1 block text-xs font-medium text-stone-600">
               Message
             </label>
             <textarea
-              id="remind_notif_description"
-              name="remind_notif_description"
+              id="reminder_message"
+              name="reminder_message"
               rows={3}
-              defaultValue={initial?.remind_notif_description ?? ""}
+              defaultValue={initial?.reminder_message ?? ""}
               className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
             />
           </div>

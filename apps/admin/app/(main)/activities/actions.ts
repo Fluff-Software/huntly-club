@@ -44,10 +44,8 @@ export async function createActivity(
   const introDialogue = (formData.get("intro_dialogue") as string)?.trim() || null;
   const estimatedDuration = (formData.get("estimated_duration") as string)?.trim() || null;
   const optionalItems = (formData.get("optional_items") as string)?.trim() || null;
-  const prepNotifTitle = (formData.get("prep_notif_title") as string)?.trim() || null;
-  const prepNotifDescription = (formData.get("prep_notif_description") as string)?.trim() || null;
-  const remindNotifTitle = (formData.get("remind_notif_title") as string)?.trim() || null;
-  const remindNotifDescription = (formData.get("remind_notif_description") as string)?.trim() || null;
+  const preparationMessage = (formData.get("preparation_message") as string)?.trim() || null;
+  const reminderMessage = (formData.get("reminder_message") as string)?.trim() || null;
   const debriefHeading = (formData.get("debrief_heading") as string)?.trim() || null;
   const debriefPhotoLabel = (formData.get("debrief_photo_label") as string)?.trim() || null;
   const debriefQuestion1 = (formData.get("debrief_question_1") as string)?.trim() || null;
@@ -89,10 +87,8 @@ export async function createActivity(
       intro_dialogue: introDialogue,
       estimated_duration: estimatedDuration,
       optional_items: optionalItems,
-      prep_notif_title: prepNotifTitle,
-      prep_notif_description: prepNotifDescription,
-      remind_notif_title: remindNotifTitle,
-      remind_notif_description: remindNotifDescription,
+      preparation_message: preparationMessage,
+      reminder_message: reminderMessage,
       prep_checklist: prepChecklist,
       steps,
       debrief_heading: debriefHeading,
@@ -132,10 +128,8 @@ export async function updateActivity(
   const introDialogue = (formData.get("intro_dialogue") as string)?.trim() || null;
   const estimatedDuration = (formData.get("estimated_duration") as string)?.trim() || null;
   const optionalItems = (formData.get("optional_items") as string)?.trim() || null;
-  const prepNotifTitle = (formData.get("prep_notif_title") as string)?.trim() || null;
-  const prepNotifDescription = (formData.get("prep_notif_description") as string)?.trim() || null;
-  const remindNotifTitle = (formData.get("remind_notif_title") as string)?.trim() || null;
-  const remindNotifDescription = (formData.get("remind_notif_description") as string)?.trim() || null;
+  const preparationMessage = (formData.get("preparation_message") as string)?.trim() || null;
+  const reminderMessage = (formData.get("reminder_message") as string)?.trim() || null;
   const debriefHeading = (formData.get("debrief_heading") as string)?.trim() || null;
   const debriefPhotoLabel = (formData.get("debrief_photo_label") as string)?.trim() || null;
   const debriefQuestion1 = (formData.get("debrief_question_1") as string)?.trim() || null;
@@ -179,10 +173,8 @@ export async function updateActivity(
         intro_dialogue: introDialogue,
         estimated_duration: estimatedDuration,
         optional_items: optionalItems,
-        prep_notif_title: prepNotifTitle,
-        prep_notif_description: prepNotifDescription,
-        remind_notif_title: remindNotifTitle,
-        remind_notif_description: remindNotifDescription,
+        preparation_message: preparationMessage,
+        reminder_message: reminderMessage,
         prep_checklist: prepChecklist,
         steps,
         debrief_heading: debriefHeading,

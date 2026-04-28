@@ -262,9 +262,6 @@ export default function SocialScreen() {
                 const isUserTeam = bar.name === teamInfo?.name?.toLowerCase();
                 return (
                   <View key={bar.name} style={{ alignItems: "center", gap: scaleW(6) }}>
-                    <ThemedText style={{ fontSize: scaleW(12), fontWeight: "700", color: bar.config.accentColor }}>
-                      {bar.total}
-                    </ThemedText>
                     <AnimatedReanimated.View style={[{
                       width: scaleW(72),
                       backgroundColor: bar.config.backgroundColor,

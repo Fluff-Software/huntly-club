@@ -14,7 +14,7 @@ export type TeamCardConfig = {
   badgeImage: number;
   characterImage: number;
   standingImage: number;
-  /** Legacy wave mascot image — still used in social tab */
+  /** Legacy wave captain image — still used in social tab */
   waveImage: number;
 };
 

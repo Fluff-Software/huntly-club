@@ -24,7 +24,8 @@ export function UsersListWithModal({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const sentinelRef = useRef<HTMLTableRowElement | null>(null);
+  const tableSentinelRef = useRef<HTMLTableRowElement | null>(null);
+  const cardSentinelRef = useRef<HTMLDivElement | null>(null);
   const initialLoadDone = useRef(false);
 
   useEffect(() => {
@@ -74,15 +75,17 @@ export function UsersListWithModal({
 
   useEffect(() => {
     if (!sentinelVisible) return;
-    const el = sentinelRef.current;
-    if (!el) return;
+    const elements = [tableSentinelRef.current, cardSentinelRef.current].filter(
+      (el): el is HTMLTableRowElement | HTMLDivElement => el !== null
+    );
+    if (elements.length === 0) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting) loadMore();
+        if (entries.some((e) => e.isIntersecting)) loadMore();
       },
       { rootMargin: "200px", threshold: 0 }
     );
-    observer.observe(el);
+    for (const el of elements) observer.observe(el);
     return () => observer.disconnect();
   }, [loadMore, sentinelVisible]);
 
@@ -117,7 +120,66 @@ export function UsersListWithModal({
           aria-label="Search users by email"
         />
       </div>
-      <div className="max-w-2xl overflow-x-auto rounded-xl border border-stone-200 bg-white shadow-sm">
+
+      {/* Mobile: card list */}
+      <div className="max-w-2xl space-y-3 sm:hidden">
+        {searchLoading ? (
+          <div className="rounded-xl border border-stone-200 bg-white px-4 py-6 text-center text-sm text-stone-500 shadow-sm">
+            Searching…
+          </div>
+        ) : users.length === 0 ? (
+          <div className="rounded-xl border border-stone-200 bg-white px-4 py-6 text-center text-sm text-stone-500 shadow-sm">
+            {searchQuery.trim() ? "No users match your search." : "No users."}
+          </div>
+        ) : (
+          <>
+            {users.map((user) => (
+              <button
+                key={user.id}
+                type="button"
+                onClick={() => openModal(user.id)}
+                className="w-full rounded-xl border border-stone-200 bg-white p-4 text-left shadow-sm transition-colors hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-huntly-sage"
+              >
+                <div className="min-w-0">
+                  <p
+                    className="truncate text-sm font-medium text-stone-900"
+                    title={user.email ?? user.id}
+                  >
+                    {user.email ?? user.id}
+                  </p>
+                  <div className="mt-2 grid grid-cols-2 gap-3">
+                    <div className="rounded-lg border border-stone-200 bg-stone-50/40 px-3 py-2">
+                      <p className="text-xs font-medium text-stone-500">Profiles</p>
+                      <p className="mt-0.5 text-sm text-stone-900">{user.profile_count}</p>
+                    </div>
+                    <div className="rounded-lg border border-stone-200 bg-stone-50/40 px-3 py-2">
+                      <p className="text-xs font-medium text-stone-500">Joined</p>
+                      <p className="mt-0.5 text-sm text-stone-900">
+                        {new Date(user.created_at).toLocaleString("en-GB", {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </button>
+            ))}
+
+            {hasMore && (
+              <div
+                ref={cardSentinelRef}
+                className="rounded-xl border border-dashed border-stone-200 bg-white px-4 py-5 text-center text-sm text-stone-500 shadow-sm"
+              >
+                {loading ? "Loading more…" : "Scroll to load more"}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden max-w-2xl overflow-x-auto rounded-xl border border-stone-200 bg-white shadow-sm sm:block">
         <table className="w-full divide-y divide-stone-200">
           <thead>
             <tr>
@@ -170,7 +232,10 @@ export function UsersListWithModal({
                     }}
                     className="cursor-pointer transition-colors hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-huntly-sage focus:ring-inset"
                   >
-                    <td className="max-w-[240px] truncate px-4 py-2.5 text-sm font-medium text-stone-900" title={user.email ?? user.id}>
+                    <td
+                      className="max-w-[240px] truncate px-4 py-2.5 text-sm font-medium text-stone-900"
+                      title={user.email ?? user.id}
+                    >
                       {user.email ?? user.id}
                     </td>
                     <td className="whitespace-nowrap px-4 py-2.5 text-sm text-stone-600">
@@ -185,7 +250,7 @@ export function UsersListWithModal({
                   </tr>
                 ))}
                 {hasMore && (
-                  <tr ref={sentinelRef}>
+                  <tr ref={tableSentinelRef}>
                     <td colSpan={3} className="px-4 py-3 text-center">
                       <span className="text-sm text-stone-500">
                         {loading ? "Loading more…" : "Scroll to load more"}

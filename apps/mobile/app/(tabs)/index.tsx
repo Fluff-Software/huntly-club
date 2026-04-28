@@ -898,7 +898,14 @@ export default function HomeScreen() {
         ) : latestMission ? (
           <Pressable
             onPress={() => router.push({ pathname: "/(tabs)/activity/mission", params: { id: latestMission.id } } as Parameters<typeof router.push>[0])}
-            style={({ pressed }) => [{ borderRadius: scaleW(20), overflow: "hidden" }, pressed && { opacity: 0.88 }]}
+            style={({ pressed }) => [{
+              borderRadius: scaleW(20),
+              shadowColor: "#000",
+              shadowOpacity: 0.22,
+              shadowRadius: 6,
+              shadowOffset: { width: 0, height: 3 },
+              elevation: 4 },
+            pressed && { opacity: 0.88 }]}
           >
             <View style={{
               backgroundColor: "#FFF",
@@ -907,12 +914,7 @@ export default function HomeScreen() {
               borderColor: "#7FAF8A",
               overflow: "hidden",
               flexDirection: "row",
-              minHeight: scaleW(130),
-              shadowColor: "#000",
-              shadowOpacity: 0.18,
-              shadowRadius: 4,
-              shadowOffset: { width: 0, height: 2 },
-              elevation: 3 }}>
+              minHeight: scaleW(130) }}>
               <Image
                 source={latestMission.image}
                 resizeMode="cover"

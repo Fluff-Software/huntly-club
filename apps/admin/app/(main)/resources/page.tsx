@@ -58,76 +58,127 @@ export default async function ResourcesPage({
           No resources yet. Create one to get started.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white shadow-sm">
-          <table className="min-w-full divide-y divide-stone-200">
-            <thead>
-              <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500"
-                >
-                  Title
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500"
-                >
-                  Description
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500"
-                >
-                  Type
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500"
-                >
-                  Created
-                </th>
-                <th scope="col" className="relative px-6 py-3">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-200">
-              {resources.map((r) => (
-                <tr key={r.id}>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-stone-900">
-                    {r.title}
-                  </td>
-                  <td className="max-w-xs truncate px-6 py-4 text-sm text-stone-700">
-                    {r.description || "–"}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-stone-500">
-                    {fileTypeLabel(r.file_url)}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-stone-500">
-                    {new Date(r.created_at).toLocaleDateString("en-GB")}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        href={`/resources/${r.id}/edit`}
-                        variant="secondary"
-                        size="sm"
-                      >
-                        Edit
-                      </Button>
-                      <form action={deleteResourceAction} className="inline">
-                        <input type="hidden" name="id" value={r.id} />
-                        <Button type="submit" variant="secondary" size="sm">
-                          Delete
-                        </Button>
-                      </form>
-                    </div>
-                  </td>
+        <>
+          {/* Mobile: card list */}
+          <div className="space-y-3 sm:hidden">
+            {resources.map((r) => (
+              <article
+                key={r.id}
+                className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-stone-500">Resource</p>
+                    <p className="mt-0.5 text-sm font-medium text-stone-900">{r.title}</p>
+                    <p className="mt-1 text-sm text-stone-700">
+                      {r.description || "–"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <div className="rounded-lg border border-stone-200 bg-stone-50/40 px-3 py-2">
+                    <p className="text-xs font-medium text-stone-500">Type</p>
+                    <p className="mt-0.5 text-sm text-stone-900">
+                      {fileTypeLabel(r.file_url)}
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border border-stone-200 bg-stone-50/40 px-3 py-2">
+                    <p className="text-xs font-medium text-stone-500">Created</p>
+                    <p className="mt-0.5 text-sm text-stone-900">
+                      {new Date(r.created_at).toLocaleDateString("en-GB")}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button href={`/resources/${r.id}/edit`} variant="secondary" size="sm">
+                    Edit
+                  </Button>
+                  <form action={deleteResourceAction} className="inline">
+                    <input type="hidden" name="id" value={r.id} />
+                    <Button type="submit" variant="secondary" size="sm">
+                      Delete
+                    </Button>
+                  </form>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          {/* Desktop: table */}
+          <div className="hidden overflow-x-auto rounded-xl border border-stone-200 bg-white shadow-sm sm:block">
+            <table className="min-w-full divide-y divide-stone-200">
+              <thead>
+                <tr>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500"
+                  >
+                    Title
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500"
+                  >
+                    Description
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500"
+                  >
+                    Type
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500"
+                  >
+                    Created
+                  </th>
+                  <th scope="col" className="relative px-6 py-3">
+                    <span className="sr-only">Actions</span>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-stone-200">
+                {resources.map((r) => (
+                  <tr key={r.id}>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-stone-900">
+                      {r.title}
+                    </td>
+                    <td className="max-w-xs truncate px-6 py-4 text-sm text-stone-700">
+                      {r.description || "–"}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-stone-500">
+                      {fileTypeLabel(r.file_url)}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-stone-500">
+                      {new Date(r.created_at).toLocaleDateString("en-GB")}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          href={`/resources/${r.id}/edit`}
+                          variant="secondary"
+                          size="sm"
+                        >
+                          Edit
+                        </Button>
+                        <form action={deleteResourceAction} className="inline">
+                          <input type="hidden" name="id" value={r.id} />
+                          <Button type="submit" variant="secondary" size="sm">
+                            Delete
+                          </Button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );

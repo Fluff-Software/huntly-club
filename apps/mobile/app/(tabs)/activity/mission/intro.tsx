@@ -159,29 +159,29 @@ export default function IntroScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: FOREST_DARK }} edges={["top", "left", "right"]}>
 
-      {/* Urgent banner */}
-      {hasUrgent && (
-        <View style={{
-          backgroundColor: URGENT_RED,
-          paddingVertical: scaleW(14),
-          transform: [{ rotate: "-1deg" }],
-          marginHorizontal: -scaleW(4),
-          marginBottom: scaleW(4) }}>
-          <ThemedText
-            lightColor="#FFF"
-            darkColor="#FFF"
-            style={{ fontSize: scaleW(16), fontWeight: "800", textAlign: "center", letterSpacing: 0.5 }}>
-            ⚡ {activity.intro_urgent_message}
-          </ThemedText>
-        </View>
-      )}
-
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: scaleW(20), paddingBottom: scaleW(120), paddingTop: scaleW(8) }}
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
+        {/* Urgent banner */}
+        {hasUrgent && (
+          <View style={{
+            backgroundColor: URGENT_RED,
+            paddingVertical: scaleW(14),
+            transform: [{ rotate: "-1deg" }],
+            marginHorizontal: -scaleW(20),
+            marginBottom: scaleW(16) }}>
+            <ThemedText
+              lightColor="#FFF"
+              darkColor="#FFF"
+              style={{ fontSize: scaleW(16), fontWeight: "800", textAlign: "center", letterSpacing: 0.5 }}>
+              ⚡ {activity.intro_urgent_message}
+            </ThemedText>
+          </View>
+        )}
+
         {/* Character section */}
         <View style={{ minHeight: scaleW(260), marginBottom: scaleW(20) }}>
           {/* Full-body captain image — absolute right */}
@@ -192,9 +192,9 @@ export default function IntroScreen() {
               style={{
                 position: "absolute",
                 right: -scaleW(16),
-                bottom: 0,
-                width: width * 0.52,
-                height: scaleW(270) }}
+                bottom: -scaleW(20),
+                width: width * 0.42,
+                height: scaleW(220) }}
             />
           )}
 
@@ -230,7 +230,7 @@ export default function IntroScreen() {
 
           {/* Speech bubble */}
           {hasDialogue && (
-            <View style={{ marginRight: bodySource ? width * 0.44 : 0 }}>
+            <View style={{ marginRight: bodySource ? width * 0.36 : 0 }}>
               <View style={{
                 backgroundColor: "#FFF",
                 borderRadius: scaleW(16),

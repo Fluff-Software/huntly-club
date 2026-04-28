@@ -6,8 +6,7 @@ import {
   Pressable,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
-} from "react-native";
+  ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, router } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
@@ -60,8 +59,7 @@ export default function ResetPasswordScreen() {
           contentContainerStyle={{
             flexGrow: 1,
             justifyContent: "center",
-            padding: 24,
-          }}
+            padding: 24 }}
           keyboardShouldPersistTaps="handled"
           automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
         >

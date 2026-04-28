@@ -522,6 +522,8 @@ export interface ClubPhotoCardItem {
   photo_url: string;
   title: string;
   author: string;
+  /** Lowercase team name for badge display ("bears", "foxes", "otters"). */
+  team_name?: string;
 }
 
 function buildThumbnailUrl(originalUrl: string): string {
@@ -561,13 +563,15 @@ export const getRandomClubPhotos = async (
   const excludeSet = new Set(excludeIds);
   const profileIds = [...new Set((list as { profile_id?: number }[]).map((r) => r.profile_id).filter((id): id is number => id != null))];
   const nicknamesByProfileId: Record<number, string> = {};
+  const teamNameByProfileId: Record<number, string> = {};
   if (profileIds.length > 0) {
     const { data: profilesData } = await supabase
       .from("profile_public")
-      .select("id, nickname")
+      .select("id, nickname, team_name")
       .in("id", profileIds);
     for (const p of profilesData ?? []) {
       nicknamesByProfileId[p.id] = p.nickname ?? "";
+      teamNameByProfileId[p.id] = (p.team_name as string | null)?.toLowerCase() ?? "";
     }
   }
 
@@ -582,6 +586,7 @@ export const getRandomClubPhotos = async (
     const title = Array.isArray(activity) ? activity[0]?.title : (activity as { title?: string } | null)?.title;
     const profileId = row.profile_id as number | undefined;
     const nickname = profileId != null ? nicknamesByProfileId[profileId] ?? "" : "";
+    const teamName = profileId != null ? teamNameByProfileId[profileId] ?? "" : "";
     const photoUrl = String(row.photo_url ?? "");
     return {
       id: String(row.photo_id ?? Math.random()),
@@ -589,6 +594,7 @@ export const getRandomClubPhotos = async (
       photo_url: photoUrl,
       title: typeof title === "string" ? title : "",
       author: typeof nickname === "string" ? nickname : "",
+      team_name: teamName || undefined,
     };
   });
 };

@@ -32,8 +32,7 @@ export default function TestingScreen() {
         screen: "testing_tab",
         profileId: profileId ?? undefined,
         teamId: teamId ?? undefined,
-        userId: user?.id ?? undefined,
-      });
+        userId: user?.id ?? undefined });
       if (!result.ok) {
         Alert.alert(
           "Couldn’t send feedback",
@@ -60,8 +59,7 @@ export default function TestingScreen() {
           style={[
             styles.inner,
             {
-              maxWidth: isTablet ? Math.min(scaleW(420), width * 0.85) : scaleW(360),
-            },
+              maxWidth: isTablet ? Math.min(scaleW(420), width * 0.85) : scaleW(360) },
           ]}
         >
           <Image
@@ -70,8 +68,7 @@ export default function TestingScreen() {
               width: scaleW(160),
               height: scaleW(240),
               marginBottom: scaleW(5),
-              alignSelf: "center",
-            }}
+              alignSelf: "center" }}
             resizeMode="contain"
           />
 
@@ -86,8 +83,7 @@ export default function TestingScreen() {
               fontSize: scaleW(15),
               lineHeight: scaleW(22),
               marginBottom: scaleW(16),
-              textAlign: "center",
-            }}
+              textAlign: "center" }}
           >
             Tell us what feels
             great, what&apos;s confusing, or anything that doesn&apos;t quite
@@ -103,8 +99,7 @@ export default function TestingScreen() {
               styles.input,
               {
                 minHeight: scaleW(120),
-                padding: scaleW(12),
-              },
+                padding: scaleW(12) },
             ]}
             textAlignVertical="top"
             returnKeyType="done"
@@ -126,8 +121,7 @@ export default function TestingScreen() {
               fontSize: scaleW(12),
               marginTop: scaleW(12),
               opacity: 0.7,
-              textAlign: "center",
-            }}
+              textAlign: "center" }}
           >
             We collect basic details like your app version, device and team
             alongside your message so we can understand and fix issues.
@@ -141,16 +135,13 @@ export default function TestingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F4F0EB",
-  },
+    backgroundColor: "#F4F0EB" },
   content: {
     flex: 1,
     alignItems: "center",
-    justifyContent: "center",
-  },
+    justifyContent: "center" },
   inner: {
-    width: "100%",
-  },
+    width: "100%" },
   input: {
     borderRadius: 12,
     backgroundColor: "#FFFFFF",
@@ -161,12 +152,7 @@ const styles = StyleSheet.create({
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.06,
-        shadowRadius: 4,
-      },
+        shadowRadius: 4 },
       android: {
-        elevation: 2,
-      },
-    }),
-  },
-});
+        elevation: 2 } }) } });
 

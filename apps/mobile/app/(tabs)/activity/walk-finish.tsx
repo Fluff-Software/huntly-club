@@ -51,8 +51,7 @@ export default function WalkFinishScreen() {
     if (status !== "granted") return;
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-    });
+      quality: 0.8 });
     if (!result.canceled && result.assets[0]?.uri) {
       setPhotoUris((prev) => prev.concat(result.assets[0]!.uri));
     }
@@ -64,8 +63,7 @@ export default function WalkFinishScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
-      quality: 0.8,
-    });
+      quality: 0.8 });
     if (!result.canceled && result.assets.length > 0) {
       setPhotoUris((prev) => prev.concat(result.assets.map((a) => a.uri).filter(Boolean)));
     }
@@ -97,22 +95,19 @@ export default function WalkFinishScreen() {
           borderBottomLeftRadius: scaleW(28),
           borderBottomRightRadius: scaleW(28),
           flexDirection: "row",
-          alignItems: "center",
-        },
+          alignItems: "center" },
         headerRightSpacer: { width: scaleW(42) },
         headerTextWrap: { flex: 1, alignItems: "center" },
         headerTitle: {
           fontSize: scaleW(22),
           fontWeight: "700",
           color: "#FFF",
-          textAlign: "center",
-        },
+          textAlign: "center" },
         headerSubtext: {
           marginTop: scaleW(4),
           fontSize: scaleW(14),
           color: "rgba(255,255,255,0.75)",
-          textAlign: "center",
-        },
+          textAlign: "center" },
         body: { flex: 1, backgroundColor: LIGHT_GREEN_BG },
         scroll: { flex: 1 },
         scrollContent: { padding: scaleW(16), paddingBottom: scaleW(160) },
@@ -120,8 +115,7 @@ export default function WalkFinishScreen() {
           fontSize: scaleW(16),
           fontWeight: "900",
           color: "#1A2E1E",
-          marginBottom: scaleW(10),
-        },
+          marginBottom: scaleW(10) },
         card: {
           backgroundColor: CARD_BG,
           borderRadius: scaleW(16),
@@ -134,8 +128,7 @@ export default function WalkFinishScreen() {
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.08,
           shadowRadius: 8,
-          elevation: 2,
-        },
+          elevation: 2 },
         cardChecked: { backgroundColor: CARD_CHECKED_BG },
         checkbox: {
           width: scaleW(28),
@@ -145,8 +138,7 @@ export default function WalkFinishScreen() {
           borderColor: HUNTLY_GREEN,
           alignItems: "center",
           justifyContent: "center",
-          flexShrink: 0,
-        },
+          flexShrink: 0 },
         checkboxChecked: { backgroundColor: CHECK_GREEN, borderColor: CHECK_GREEN },
         cardTitle: { fontSize: scaleW(16), fontWeight: "800", color: "#1A2E1E" },
         cardSub: { marginTop: 2, fontSize: scaleW(13), color: "rgba(26,46,30,0.7)", fontWeight: "700" as const },
@@ -160,14 +152,12 @@ export default function WalkFinishScreen() {
           paddingBottom: insets.bottom + scaleW(12) + (isTablet ? scaleW(40) : 0),
           backgroundColor: LIGHT_GREEN_BG,
           borderTopWidth: 1,
-          borderTopColor: "rgba(79,111,82,0.1)",
-        },
+          borderTopColor: "rgba(79,111,82,0.1)" },
         footerHint: {
           fontSize: scaleW(14),
           color: "#5a5a5a",
           textAlign: "center",
-          marginBottom: scaleW(12),
-        },
+          marginBottom: scaleW(12) },
         primaryButton: {
           backgroundColor: HUNTLY_GREEN,
           borderRadius: scaleW(28),
@@ -175,8 +165,7 @@ export default function WalkFinishScreen() {
           paddingHorizontal: scaleW(32),
           alignSelf: "stretch",
           alignItems: "center",
-          opacity: canContinue ? 1 : 0.6,
-        },
+          opacity: canContinue ? 1 : 0.6 },
         primaryButtonText: { fontSize: scaleW(18), fontWeight: "800", color: "#FFF" },
         photoRow: { flexDirection: "row", gap: scaleW(10), marginBottom: scaleW(12) },
         photoBtn: {
@@ -192,8 +181,7 @@ export default function WalkFinishScreen() {
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.08,
           shadowRadius: 8,
-          elevation: 2,
-        },
+          elevation: 2 },
         photoBtnText: { fontSize: scaleW(14), fontWeight: "900", color: "#1A2E1E" },
         photoGrid: { flexDirection: "row", flexWrap: "wrap", gap: scaleW(10) },
         photoThumbWrap: { position: "relative" as const },
@@ -211,9 +199,7 @@ export default function WalkFinishScreen() {
           shadowColor: "#000",
           shadowOpacity: 0.15,
           shadowRadius: scaleW(3),
-          elevation: 2,
-        },
-      }),
+          elevation: 2 } }),
     [scaleW, insets.bottom, isTablet, canContinue]
   );
 
@@ -325,8 +311,7 @@ export default function WalkFinishScreen() {
                     const p = profiles.find((x) => x.id === id);
                     return { id, nickname: (p?.nickname || p?.name || "Explorer").trim() };
                   }),
-                  photoLocalUris: photoUris,
-                });
+                  photoLocalUris: photoUris });
               } finally {
                 clearWalkDraft();
                 setSaving(false);

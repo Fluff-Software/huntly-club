@@ -9,8 +9,7 @@ import {
   Dimensions,
   type ImageSourcePropType,
   ActivityIndicator,
-  InteractionManager,
-} from "react-native";
+  InteractionManager } from "react-native";
 import ConfettiCannon from "react-native-confetti-cannon";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
@@ -21,8 +20,7 @@ import Animated, {
   withSequence,
   withDelay,
   withTiming,
-  Easing,
-} from "react-native-reanimated";
+  Easing } from "react-native-reanimated";
 import { useRouter, useNavigation, useLocalSearchParams } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
@@ -85,8 +83,7 @@ export default function RewardScreen() {
           id: String(activity.id),
           image: imageSource ?? DEFAULT_CARD_IMAGE,
           title: activity.title,
-          description: activity.description ?? "",
-        });
+          description: activity.description ?? "" });
         setActivityXp(activity.xp ?? null);
       })
       .catch(() => {
@@ -116,15 +113,12 @@ export default function RewardScreen() {
   const stampOpacity = useSharedValue(0);
 
   const cardCelebrateStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: celebrateScale.value }],
-  }));
+    transform: [{ scale: celebrateScale.value }] }));
   const goHomeAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: goHomeScale.value }],
-  }));
+    transform: [{ scale: goHomeScale.value }] }));
   const stampAnimatedStyle = useAnimatedStyle(() => ({
     opacity: stampOpacity.value,
-    transform: [{ rotate: "-12deg" }, { scale: stampScale.value }],
-  }));
+    transform: [{ rotate: "-12deg" }, { scale: stampScale.value }] }));
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", (e) => {
@@ -178,13 +172,11 @@ export default function RewardScreen() {
           flex: 1,
           paddingHorizontal: scaleW(24),
           paddingTop: scaleW(60),
-          paddingBottom: scaleW(48),
-        },
+          paddingBottom: scaleW(48) },
         cardWrap: {
           alignSelf: "center",
           marginBottom: scaleW(52),
-          position: "relative",
-        },
+          position: "relative" },
         completionBadge: {
           position: "absolute",
           right: scaleW(-8),
@@ -200,19 +192,16 @@ export default function RewardScreen() {
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.3,
           shadowRadius: 2,
-          elevation: 2,
-        },
+          elevation: 2 },
         completionBadgeImage: {
           width: scaleW(56),
           height: scaleW(56),
-          padding: scaleW(4),
-        },
+          padding: scaleW(4) },
         stampOverlay: {
           ...StyleSheet.absoluteFillObject,
           justifyContent: "center",
           alignItems: "center",
-          zIndex: 2,
-        },
+          zIndex: 2 },
         stampBox: {
           borderWidth: scaleW(3),
           borderColor: STAMP_GREEN,
@@ -220,48 +209,41 @@ export default function RewardScreen() {
           paddingHorizontal: scaleW(20),
           paddingVertical: scaleW(12),
           minWidth: scaleW(260),
-          alignItems: "center",
-        },
+          alignItems: "center" },
         stampTextContainer: {
           padding: scaleW(1),
           overflow: "visible" as const,
-          position: "relative" as const,
-        },
+          position: "relative" as const },
         stampTextStroke: {
           position: "absolute" as const,
           fontSize: scaleW(28),
           fontWeight: "800",
           color: "#000",
-          letterSpacing: scaleW(2),
-        },
+          letterSpacing: scaleW(2) },
         stampTextFill: {
           fontSize: scaleW(28),
           fontWeight: "800",
           color: STAMP_GREEN,
-          letterSpacing: scaleW(2),
-        },
+          letterSpacing: scaleW(2) },
         wellDoneHeading: {
           fontSize: scaleW(26),
           fontWeight: "700",
           color: "#FFF",
           textAlign: "center",
-          marginBottom: scaleW(28),
-        },
+          marginBottom: scaleW(28) },
         approvalNote: {
           fontSize: scaleW(14),
           lineHeight: scaleW(20),
           color: "rgba(255,255,255,0.85)",
           textAlign: "center",
           marginBottom: scaleW(8),
-          marginHorizontal: scaleW(24),
-        },
+          marginHorizontal: scaleW(24) },
         achievementTimeline: {
           alignItems: "center",
           gap: scaleW(20),
           paddingBottom: scaleW(24),
           paddingHorizontal: scaleW(20),
-          position: "relative" as const,
-        },
+          position: "relative" as const },
         achievementCard: {
           width: "100%",
           maxWidth: scaleW(340),
@@ -275,37 +257,31 @@ export default function RewardScreen() {
           shadowOffset: { width: 0, height: 4 },
           elevation: 3,
           borderWidth: 3,
-          borderColor: "rgba(255,255,255,0.9)",
-        },
+          borderColor: "rgba(255,255,255,0.9)" },
         achievementIcon: {
           width: scaleW(56),
           height: scaleW(56),
           borderRadius: scaleW(28),
           alignItems: "center",
           justifyContent: "center",
-          marginRight: scaleW(16),
-        },
+          marginRight: scaleW(16) },
         achievementIconImage: {
           width: scaleW(32),
-          height: scaleW(32),
-        },
+          height: scaleW(32) },
         achievementText: {
           flex: 1,
           justifyContent: "center",
-          paddingVertical: scaleW(4),
-        },
+          paddingVertical: scaleW(4) },
         achievementTitle: {
           fontSize: scaleW(16),
           fontWeight: "600",
           color: "#1a1a1a",
           marginBottom: scaleW(4),
-          lineHeight: scaleW(22),
-        },
+          lineHeight: scaleW(22) },
         achievementPoints: {
           fontSize: scaleW(15),
           fontWeight: "700",
-          color: POINTS_GREEN,
-        },
+          color: POINTS_GREEN },
         goHomeButton: {
           backgroundColor: "#FFF",
           paddingVertical: scaleW(14),
@@ -318,14 +294,11 @@ export default function RewardScreen() {
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.3,
           shadowRadius: 2,
-          elevation: 2,
-        },
+          elevation: 2 },
         goHomeButtonText: {
           fontSize: scaleW(17),
           fontWeight: "600",
-          color: HUNTLY_GREEN,
-        },
-      }),
+          color: HUNTLY_GREEN } }),
     [scaleW]
   );
 
@@ -339,7 +312,6 @@ export default function RewardScreen() {
         overScrollMode="never"
       >
         <Animated.View
-          entering={FadeInDown.duration(500).delay(0)}
           style={[styles.cardWrap, cardCelebrateStyle]}
         >
           {activityCard && (
@@ -395,7 +367,6 @@ export default function RewardScreen() {
 
         {achievements.length > 0 && (
           <Animated.View
-            entering={FadeInDown.duration(500).delay(350)}
             style={styles.achievementTimeline}
           >
             {achievements.map((item, index) => {
@@ -404,7 +375,6 @@ export default function RewardScreen() {
               return (
                 <Animated.View
                   key={`${item.profile_name}-${index}`}
-                  entering={FadeInDown.duration(400).delay(450 + index * 60)}
                   style={{ zIndex: 1, width: "100%", alignItems: "center" }}
                 >
                   <View
@@ -412,8 +382,7 @@ export default function RewardScreen() {
                       styles.achievementCard,
                       {
                         backgroundColor: cardBg,
-                        transform: [{ rotate: index % 2 === 0 ? "-1.5deg" : "1.5deg" }],
-                      },
+                        transform: [{ rotate: index % 2 === 0 ? "-1.5deg" : "1.5deg" }] },
                     ]}
                   >
                     <View style={[styles.achievementIcon, { backgroundColor: iconBg }]}>
@@ -437,7 +406,6 @@ export default function RewardScreen() {
         )}
 
         <Animated.View
-          entering={FadeInDown.duration(500).delay(550)}
           style={goHomeAnimatedStyle}
         >
           <Pressable

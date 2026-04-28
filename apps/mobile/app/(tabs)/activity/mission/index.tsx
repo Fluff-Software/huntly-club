@@ -5,24 +5,21 @@ import {
   Image,
   Pressable,
   StyleSheet,
-  ActivityIndicator,
-} from "react-native";
+  ActivityIndicator } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
+  withSpring } from "react-native-reanimated";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { getActivityById, getActivityImageSource } from "@/services/packService";
 import {
   getRandomActivityPhotos,
-  type ActivityPhotoItem,
-} from "@/services/activityProgressService";
+  type ActivityPhotoItem } from "@/services/activityProgressService";
 import { getCategories, getCategoryById, type Category } from "@/services/categoriesService";
 import type { Activity } from "@/types/activity";
 
@@ -47,8 +44,7 @@ export default function InstructionScreen() {
 
   const nextScale = useSharedValue(1);
   const nextAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: nextScale.value }],
-  }));
+    transform: [{ scale: nextScale.value }] }));
 
   const loadActivity = useCallback(async () => {
     if (!id) {
@@ -93,15 +89,13 @@ export default function InstructionScreen() {
     if (hasIntro) {
       router.replace({
         pathname: "/(tabs)/activity/mission/intro",
-        params: { id: String(activity.id) },
-      } as Parameters<typeof router.replace>[0]);
+        params: { id: String(activity.id) } } as Parameters<typeof router.replace>[0]);
       return;
     }
     if (hasPrep || hasSteps) {
       router.replace({
         pathname: "/(tabs)/activity/mission/prep",
-        params: { id: String(activity.id) },
-      } as Parameters<typeof router.replace>[0]);
+        params: { id: String(activity.id) } } as Parameters<typeof router.replace>[0]);
     }
   }, [activity?.id, activity?.intro_dialogue, activity?.intro_character_name, activity?.prep_checklist, activity?.steps, id, router]);
 
@@ -114,13 +108,11 @@ export default function InstructionScreen() {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          padding: scaleW(24),
-        },
+          padding: scaleW(24) },
         errorText: {
           fontSize: scaleW(17),
           color: TEXT_SECONDARY,
-          textAlign: "center",
-        },
+          textAlign: "center" },
         hero: {
           paddingTop: scaleW(20),
           paddingBottom: scaleW(24),
@@ -130,16 +122,14 @@ export default function InstructionScreen() {
           borderBottomRightRadius: scaleW(24),
           alignItems: "center",
           backgroundColor: LIGHT_GREEN,
-          overflow: "hidden",
-        },
+          overflow: "hidden" },
         titleText: {
           fontSize: scaleW(24),
           fontWeight: "700",
           color: TEXT_SECONDARY,
           marginBottom: scaleW(14),
           textAlign: "center",
-          paddingHorizontal: scaleW(8),
-        },
+          paddingHorizontal: scaleW(8) },
         mainImageWrap: {
           width: "100%",
           borderRadius: scaleW(20),
@@ -149,13 +139,11 @@ export default function InstructionScreen() {
           shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.2,
           shadowRadius: 8,
-          elevation: 4,
-        },
+          elevation: 4 },
         mainImage: {
           width: "100%",
           height: scaleW(220),
-          borderRadius: scaleW(20),
-        },
+          borderRadius: scaleW(20) },
         tagsRow: {
           flexDirection: "row",
           flexWrap: "wrap",
@@ -164,21 +152,18 @@ export default function InstructionScreen() {
           alignSelf: "stretch",
           gap: scaleW(10),
           marginTop: scaleW(16),
-          paddingHorizontal: scaleW(4),
-        },
+          paddingHorizontal: scaleW(4) },
         tag: {
           flexDirection: "row",
           alignItems: "center",
           paddingVertical: scaleW(6),
           paddingHorizontal: scaleW(10),
           borderRadius: scaleW(20),
-          gap: scaleW(6),
-        },
+          gap: scaleW(6) },
         tagNeutral: {
           backgroundColor: "#FFF",
           borderWidth: 1,
-          borderColor: "rgba(0,0,0,0.08)",
-        },
+          borderColor: "rgba(0,0,0,0.08)" },
         tagText: { fontSize: scaleW(13), color: "#374151", fontWeight: "500" },
         descriptionCard: {
           backgroundColor: CREAM,
@@ -188,29 +173,24 @@ export default function InstructionScreen() {
           marginTop: scaleW(16),
           marginHorizontal: scaleW(4),
           borderLeftWidth: scaleW(4),
-          borderLeftColor: HUNTLY_GREEN,
-        },
+          borderLeftColor: HUNTLY_GREEN },
         descriptionText: {
           fontSize: scaleW(17),
           color: "#1a1a1a",
           textAlign: "center",
-          lineHeight: scaleW(26),
-        },
+          lineHeight: scaleW(26) },
         section: {
           marginHorizontal: scaleW(20),
-          marginBottom: scaleW(28),
-        },
+          marginBottom: scaleW(28) },
         sectionTitle: {
           fontSize: scaleW(20),
           fontWeight: "700",
-          color: TEXT_SECONDARY,
-        },
+          color: TEXT_SECONDARY },
         sectionTitleRow: {
           flexDirection: "row",
           alignItems: "center",
           gap: scaleW(8),
-          marginBottom: scaleW(14),
-        },
+          marginBottom: scaleW(14) },
         stepCard: {
           backgroundColor: "#FFF",
           borderRadius: scaleW(16),
@@ -224,35 +204,30 @@ export default function InstructionScreen() {
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.06,
           shadowRadius: 8,
-          elevation: 2,
-        },
+          elevation: 2 },
         stepNumber: {
           width: scaleW(36),
           height: scaleW(36),
           borderRadius: scaleW(18),
           backgroundColor: STEP_ACCENT,
           alignItems: "center",
-          justifyContent: "center",
-        },
+          justifyContent: "center" },
         stepNumberText: {
           fontSize: scaleW(17),
           fontWeight: "800",
-          color: "#FFF",
-        },
+          color: "#FFF" },
         stepBody: { flex: 1 },
         stepText: {
           fontSize: scaleW(17),
           color: TEXT_SECONDARY,
-          lineHeight: scaleW(25),
-        },
+          lineHeight: scaleW(25) },
         inlineImage: {
           width: "100%",
           height: scaleW(180),
           borderRadius: scaleW(14),
           backgroundColor: "#e5e7eb",
           marginTop: scaleW(12),
-          marginBottom: scaleW(8),
-        },
+          marginBottom: scaleW(8) },
         longDescBlock: {
           backgroundColor: "#FFF",
           borderRadius: scaleW(16),
@@ -262,13 +237,11 @@ export default function InstructionScreen() {
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.06,
           shadowRadius: 6,
-          elevation: 2,
-        },
+          elevation: 2 },
         taskText: {
           fontSize: scaleW(17),
           color: TEXT_SECONDARY,
-          lineHeight: scaleW(25),
-        },
+          lineHeight: scaleW(25) },
         tipCard: {
           backgroundColor: TIP_BG,
           borderRadius: scaleW(14),
@@ -279,14 +252,12 @@ export default function InstructionScreen() {
           alignItems: "flex-start",
           gap: scaleW(10),
           borderLeftWidth: scaleW(4),
-          borderLeftColor: LIGHT_GREEN,
-        },
+          borderLeftColor: LIGHT_GREEN },
         tipBullet: {
           fontSize: scaleW(17),
           color: TEXT_SECONDARY,
           lineHeight: scaleW(25),
-          flex: 1,
-        },
+          flex: 1 },
         altCard: {
           backgroundColor: ALT_BG,
           borderRadius: scaleW(14),
@@ -294,20 +265,17 @@ export default function InstructionScreen() {
           paddingHorizontal: scaleW(16),
           marginBottom: scaleW(10),
           borderWidth: 1,
-          borderColor: "rgba(79, 111, 82, 0.2)",
-        },
+          borderColor: "rgba(79, 111, 82, 0.2)" },
         altText: {
           fontSize: scaleW(16),
           color: TEXT_SECONDARY,
-          lineHeight: scaleW(24),
-        },
+          lineHeight: scaleW(24) },
         triviaCard: {
           backgroundColor: "rgba(245, 245, 240, 0.9)",
           borderRadius: scaleW(14),
           padding: scaleW(16),
           marginBottom: scaleW(10),
-          fontStyle: "italic",
-        },
+          fontStyle: "italic" },
         teamRow: { gap: scaleW(24), flexDirection: "row", flexWrap: "wrap", justifyContent: "center" },
         polaroid: {
           shadowColor: "#000",
@@ -315,16 +283,14 @@ export default function InstructionScreen() {
           shadowOpacity: 0.25,
           shadowRadius: 6,
           elevation: 3,
-          transform: [{ rotate: "-2deg" }],
-        },
+          transform: [{ rotate: "-2deg" }] },
         polaroidSecond: { marginLeft: scaleW(40), transform: [{ rotate: "2deg" }] },
         polaroidImage: {
           width: scaleW(220),
           height: scaleW(160),
           borderRadius: scaleW(10),
           borderWidth: 2,
-          borderColor: "#FFF",
-        },
+          borderColor: "#FFF" },
         nextButton: {
           alignSelf: "center",
           backgroundColor: HUNTLY_GREEN,
@@ -337,23 +303,19 @@ export default function InstructionScreen() {
           shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.35,
           shadowRadius: 8,
-          elevation: 4,
-        },
+          elevation: 4 },
         nextButtonText: {
           textAlign: "center",
           fontSize: scaleW(18),
           fontWeight: "700",
-          color: "#FFF",
-        },
+          color: "#FFF" },
         floatingFooter: {
           position: "absolute",
           bottom: 0,
           left: 0,
           right: 0,
-          paddingHorizontal: scaleW(20),
-        },
-        floatingFooterInner: {},
-      }),
+          paddingHorizontal: scaleW(20) },
+        floatingFooterInner: {} }),
     [scaleW]
   );
 
@@ -402,7 +364,6 @@ export default function InstructionScreen() {
         overScrollMode="never"
       >
         <Animated.View
-          entering={FadeInDown.duration(520).springify().damping(18)}
           style={styles.hero}
         >
           <ThemedText type="heading" style={styles.titleText}>
@@ -428,8 +389,7 @@ export default function InstructionScreen() {
                       style={{
                         width: 14,
                         height: 14,
-                        borderRadius: 2,
-                      }}
+                        borderRadius: 2 }}
                       resizeMode="cover"
                     />
                   ) : (
@@ -456,7 +416,6 @@ export default function InstructionScreen() {
 
         {clubPhotos.length > 0 && (
           <Animated.View
-            entering={FadeInDown.duration(420).delay(420).springify().damping(18)}
             style={styles.section}
           >
             <View style={styles.sectionTitleRow}>
@@ -492,7 +451,6 @@ export default function InstructionScreen() {
       <View style={styles.floatingFooter} pointerEvents="box-none">
         <SafeAreaView edges={["bottom"]} style={styles.floatingFooterInner}>
           <Animated.View
-            entering={FadeInDown.duration(480).delay(440).springify().damping(18)}
             style={nextAnimatedStyle}
           >
             <Pressable
@@ -500,14 +458,12 @@ export default function InstructionScreen() {
               onPress={() =>
                 router.push({
                   pathname: "/(tabs)/activity/mission/completion",
-                  params: { id: String(activity.id) },
-                } as Parameters<typeof router.push>[0])
+                  params: { id: String(activity.id) } } as Parameters<typeof router.push>[0])
               }
               onPressIn={() => {
                 nextScale.value = withSpring(0.96, {
                   damping: 15,
-                  stiffness: 400,
-                });
+                  stiffness: 400 });
               }}
               onPressOut={() => {
                 nextScale.value = withSpring(1, { damping: 15, stiffness: 400 });

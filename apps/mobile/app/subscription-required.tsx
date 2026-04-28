@@ -19,8 +19,7 @@ export default function SubscriptionRequiredScreen() {
     subscriptionInfo,
     isLoading,
     presentPaywall,
-    refreshSubscriptionStatus,
-  } = usePurchases();
+    refreshSubscriptionStatus } = usePurchases();
 
   // When they become subscribed (e.g. after purchase or restore), send them into the app
   useEffect(() => {

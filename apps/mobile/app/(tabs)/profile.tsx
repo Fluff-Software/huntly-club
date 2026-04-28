@@ -8,14 +8,12 @@ import {
   Image,
   StyleSheet,
   Modal,
-  ActivityIndicator,
-} from "react-native";
+  ActivityIndicator } from "react-native";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
+  withSpring } from "react-native-reanimated";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
@@ -29,15 +27,13 @@ import {
   getTeams,
   updateProfile,
   type Profile,
-  type Team,
-} from "@/services/profileService";
+  type Team } from "@/services/profileService";
 import { generateNickname } from "@/services/nicknameGenerator";
 import { getTeamImageSource } from "@/utils/teamUtils";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import {
   getRecentCompletedActivities,
-  type RecentCompletedActivity,
-} from "@/services/activityProgressService";
+  type RecentCompletedActivity } from "@/services/activityProgressService";
 import { getXpByProfileIds } from "@/services/teamActivityService";
 import { MaterialIcons } from "@expo/vector-icons";
 
@@ -51,8 +47,7 @@ const COLORS = {
   arrow: "#C98D8D",
   white: "#FFFFFF",
   black: "#000000",
-  charcoal: "#333333",
-};
+  charcoal: "#333333" };
 
 const PLAYER_ACCENTS = [COLORS.accentBlue, COLORS.accentGreen];
 
@@ -97,17 +92,13 @@ export default function ProfileScreen() {
   const settingsScale = useSharedValue(1);
   const logOutScale = useSharedValue(1);
   const editAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: editScale.value }],
-  }));
+    transform: [{ scale: editScale.value }] }));
   const parentZoneAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: parentZoneScale.value }],
-  }));
+    transform: [{ scale: parentZoneScale.value }] }));
   const settingsAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: settingsScale.value }],
-  }));
+    transform: [{ scale: settingsScale.value }] }));
   const logOutAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: logOutScale.value }],
-  }));
+    transform: [{ scale: logOutScale.value }] }));
 
   useFocusEffect(
     React.useCallback(() => {
@@ -156,8 +147,7 @@ export default function ProfileScreen() {
           (activities, i) =>
             activities.map((a) => ({
               ...a,
-              profileName: profiles[i].name,
-            }))
+              profileName: profiles[i].name }))
         );
         const sorted = withProfile.sort(
           (a, b) =>
@@ -206,8 +196,7 @@ export default function ProfileScreen() {
       await createProfile({
         user_id: user.id,
         name: name.trim(),
-        colour: selectedColor,
-      });
+        colour: selectedColor });
       await refreshProfiles();
       setName("");
       setShowAddExplorer(false);
@@ -243,8 +232,7 @@ export default function ProfileScreen() {
       await updateProfile(editingProfileId, {
         name: editName.trim(),
         nickname: editNickname.trim(),
-        colour: editColor,
-      });
+        colour: editColor });
       await refreshProfiles();
       setEditingProfileId(null);
       Alert.alert("Success", "Explorer updated successfully!");
@@ -297,8 +285,7 @@ export default function ProfileScreen() {
         user_id: user.id,
         name: name.trim(),
         nickname: addNickname.trim() || generateNickname(),
-        colour: selectedColor,
-      });
+        colour: selectedColor });
       await refreshProfiles();
       setName("");
       setAddNickname(generateNickname());
@@ -347,52 +334,41 @@ export default function ProfileScreen() {
       StyleSheet.create({
         safeArea: {
           flex: 1,
-          backgroundColor: COLORS.darkGreen,
-        },
+          backgroundColor: COLORS.darkGreen },
         headerBar: {
-          backgroundColor: COLORS.darkGreen,
-        },
+          backgroundColor: COLORS.darkGreen },
         scrollView: {
-          flex: 1,
-        },
+          flex: 1 },
         scrollContent: {
           paddingHorizontal: scaleW(20),
           paddingTop: scaleW(8),
-          paddingBottom: scaleW(32),
-        },
+          paddingBottom: scaleW(32) },
         section: {
-          marginBottom: scaleW(24),
-        },
+          marginBottom: scaleW(24) },
         sectionHeader: {
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          marginBottom: scaleW(12),
-        },
+          marginBottom: scaleW(12) },
         sectionTitle: {
           fontSize: scaleW(18),
           fontWeight: "600",
           color: COLORS.white,
-          marginBottom: scaleW(12),
-        },
+          marginBottom: scaleW(12) },
         editIconWrap: {
-          padding: scaleW(4),
-        },
+          padding: scaleW(4) },
         cardCream: {
           backgroundColor: COLORS.cream,
           borderRadius: scaleW(20),
-          padding: scaleW(16),
-        },
+          padding: scaleW(16) },
         cardTextPrimary: {
           fontSize: scaleW(16),
           fontWeight: "600",
-          color: COLORS.black,
-        },
+          color: COLORS.black },
         cardTextSecondary: {
           fontSize: scaleW(14),
           color: COLORS.charcoal,
-          marginTop: scaleW(4),
-        },
+          marginTop: scaleW(4) },
         playerCard: {
           flexDirection: "row",
           backgroundColor: COLORS.cream,
@@ -401,52 +377,42 @@ export default function ProfileScreen() {
           overflow: "hidden",
           minHeight: scaleW(64),
           borderWidth: 3,
-          borderColor: "#FFF",
-        },
+          borderColor: "#FFF" },
         playerAccent: {
           width: scaleW(20),
-          borderRadius: scaleW(2),
-        },
+          borderRadius: scaleW(2) },
         playerCardContent: {
           flex: 1,
           paddingVertical: scaleW(12),
           paddingHorizontal: scaleW(16),
-          justifyContent: "center",
-        },
+          justifyContent: "center" },
         playerName: {
           fontSize: scaleW(18),
           fontWeight: "600",
-          color: COLORS.black,
-        },
+          color: COLORS.black },
         playerNickname: {
           fontSize: scaleW(14),
           color: COLORS.charcoal,
-          marginTop: scaleW(2),
-        },
+          marginTop: scaleW(2) },
         playerScoreWrap: {
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "flex-end",
-          paddingHorizontal: scaleW(12),
-        },
+          paddingHorizontal: scaleW(12) },
         playerScore: {
           fontSize: scaleW(18),
           fontWeight: "700",
-          color: COLORS.darkGreen,
-        },
+          color: COLORS.darkGreen },
         playerScoreLabel: {
           fontSize: scaleW(12),
           color: COLORS.charcoal,
-          marginLeft: scaleW(4),
-        },
+          marginLeft: scaleW(4) },
         addNewPlayerCard: {
-          marginTop: scaleW(4),
-        },
+          marginTop: scaleW(4) },
         addExplorerRow: {
           flexDirection: "row",
           alignItems: "center",
-          marginTop: scaleW(8),
-        },
+          marginTop: scaleW(8) },
         addExplorerIcon: {
           width: scaleW(40),
           height: scaleW(40),
@@ -454,38 +420,31 @@ export default function ProfileScreen() {
           backgroundColor: "rgba(255,255,255,0.25)",
           alignItems: "center",
           justifyContent: "center",
-          marginRight: scaleW(12),
-        },
+          marginRight: scaleW(12) },
         progressRow: {
           flexDirection: "row",
           justifyContent: "center",
           gap: scaleW(16),
-          paddingHorizontal: scaleW(12),
-        },
+          paddingHorizontal: scaleW(12) },
         activityCard: {
           flexDirection: "row",
           alignItems: "center",
           backgroundColor: COLORS.activityCard,
           borderRadius: scaleW(18),
           padding: scaleW(20),
-          marginBottom: scaleW(8),
-        },
+          marginBottom: scaleW(8) },
         activityCardContent: {
-          flex: 1,
-        },
+          flex: 1 },
         activityName: {
           fontSize: scaleW(18),
           fontWeight: "600",
-          color: COLORS.black,
-        },
+          color: COLORS.black },
         activityDate: {
           fontSize: scaleW(16),
           color: COLORS.charcoal,
-          marginTop: scaleW(2),
-        },
+          marginTop: scaleW(2) },
         activityArrow: {
-          marginLeft: scaleW(8),
-        },
+          marginLeft: scaleW(8) },
         parentZoneButton: {
           backgroundColor: COLORS.cream,
           borderRadius: scaleW(40),
@@ -498,34 +457,28 @@ export default function ProfileScreen() {
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.3,
           shadowRadius: 2,
-          elevation: 2,
-        },
+          elevation: 2 },
         parentZoneText: {
           fontSize: scaleW(17),
-          fontWeight: "600",
-        },
+          fontWeight: "600" },
         logOutButtonWrap: {
           marginTop: scaleW(8),
-          marginBottom: scaleW(32),
-        },
+          marginBottom: scaleW(32) },
         modalOverlay: {
           flex: 1,
           backgroundColor: "rgba(0,0,0,0.5)",
           justifyContent: "center",
-          padding: scaleW(24),
-        },
+          padding: scaleW(24) },
         modalContent: {
           backgroundColor: COLORS.white,
           borderRadius: scaleW(24),
           padding: scaleW(24),
-          maxHeight: "85%",
-        },
+          maxHeight: "85%" },
         modalTitle: {
           fontSize: scaleW(20),
           fontWeight: "700",
           color: COLORS.charcoal,
-          marginBottom: scaleW(16),
-        },
+          marginBottom: scaleW(16) },
         input: {
           height: scaleW(52),
           borderWidth: 2,
@@ -535,19 +488,16 @@ export default function ProfileScreen() {
           backgroundColor: COLORS.cream,
           fontSize: scaleW(16),
           color: COLORS.charcoal,
-          marginBottom: scaleW(16),
-        },
+          marginBottom: scaleW(16) },
         inputLabel: {
           fontSize: scaleW(15),
           fontWeight: "600",
           color: COLORS.charcoal,
-          marginBottom: scaleW(8),
-        },
+          marginBottom: scaleW(8) },
         nicknameRow: {
           flexDirection: "row",
           alignItems: "center",
-          marginBottom: scaleW(16),
-        },
+          marginBottom: scaleW(16) },
         nicknameDisplay: {
           flex: 1,
           height: scaleW(52),
@@ -556,30 +506,24 @@ export default function ProfileScreen() {
           borderRadius: scaleW(14),
           paddingHorizontal: scaleW(16),
           backgroundColor: COLORS.cream,
-          justifyContent: "center",
-        },
+          justifyContent: "center" },
         nicknameText: {
           fontSize: scaleW(16),
-          color: COLORS.charcoal,
-        },
+          color: COLORS.charcoal },
         generateBtn: {
           marginLeft: scaleW(12),
           paddingVertical: scaleW(14),
           paddingHorizontal: scaleW(16),
           backgroundColor: "#4F6F52",
-          borderRadius: scaleW(14),
-        },
+          borderRadius: scaleW(14) },
         generateBtnText: {
           fontSize: scaleW(15),
           fontWeight: "600",
-          color: COLORS.white,
-        },
+          color: COLORS.white },
         colorPickerWrap: {
-          marginBottom: scaleW(16),
-        },
+          marginBottom: scaleW(16) },
         teamsScroll: {
-          marginBottom: scaleW(20),
-        },
+          marginBottom: scaleW(20) },
         teamOption: {
           width: scaleW(80),
           height: scaleW(80),
@@ -587,81 +531,64 @@ export default function ProfileScreen() {
           borderRadius: scaleW(14),
           overflow: "hidden",
           borderWidth: 3,
-          borderColor: "transparent",
-        },
+          borderColor: "transparent" },
         teamOptionSelected: {
-          borderColor: "#4F6F52",
-        },
+          borderColor: "#4F6F52" },
         teamImage: {
           width: "100%",
-          height: "100%",
-        },
+          height: "100%" },
         teamColorDot: {
           width: "100%",
           height: "100%",
-          borderRadius: scaleW(14),
-        },
+          borderRadius: scaleW(14) },
         modalActions: {
           flexDirection: "row",
-          gap: scaleW(12),
-        },
+          gap: scaleW(12) },
         modalButton: {
           flex: 1,
           height: scaleW(52),
           borderRadius: scaleW(14),
           alignItems: "center",
-          justifyContent: "center",
-        },
+          justifyContent: "center" },
         modalButtonCancel: {
-          backgroundColor: COLORS.charcoal,
-        },
+          backgroundColor: COLORS.charcoal },
         modalButtonCancelText: {
           fontSize: scaleW(16),
           fontWeight: "600",
-          color: COLORS.white,
-        },
+          color: COLORS.white },
         modalButtonSave: {
-          backgroundColor: "#4F6F52",
-        },
+          backgroundColor: "#4F6F52" },
         modalButtonSaveText: {
           fontSize: scaleW(16),
           fontWeight: "600",
-          color: COLORS.white,
-        },
+          color: COLORS.white },
         noTeams: {
           padding: scaleW(16),
           backgroundColor: "#E8F5E9",
           borderRadius: scaleW(14),
           alignItems: "center",
-          marginBottom: scaleW(20),
-        },
+          marginBottom: scaleW(20) },
         noTeamsText: {
           fontSize: scaleW(15),
-          color: COLORS.charcoal,
-        },
+          color: COLORS.charcoal },
         modalClose: {
           marginTop: scaleW(12),
-          alignItems: "center",
-        },
+          alignItems: "center" },
         modalCloseText: {
           fontSize: scaleW(15),
           color: COLORS.charcoal,
-          fontWeight: "600",
-        },
+          fontWeight: "600" },
         inlineFormPadding: {
-          padding: scaleW(24),
-        },
+          padding: scaleW(24) },
         inlineFormLabel: {
           fontSize: scaleW(16),
           fontWeight: "600",
           color: COLORS.charcoal,
-          marginBottom: scaleW(4),
-        },
+          marginBottom: scaleW(4) },
         inlineFormHint: {
           fontSize: scaleW(12),
           color: COLORS.charcoal,
-          marginBottom: scaleW(8),
-        },
+          marginBottom: scaleW(8) },
         inlineFormInput: {
           height: scaleW(48),
           borderWidth: 2,
@@ -671,15 +598,12 @@ export default function ProfileScreen() {
           fontSize: scaleW(16),
           color: COLORS.charcoal,
           backgroundColor: COLORS.white,
-          marginBottom: scaleW(16),
-        },
+          marginBottom: scaleW(16) },
         inlineAddCard: {
           backgroundColor: COLORS.cream,
           borderRadius: scaleW(20),
           padding: scaleW(24),
-          marginTop: scaleW(8),
-        },
-      }),
+          marginTop: scaleW(8) } }),
     [scaleW],
   );
 
@@ -694,7 +618,6 @@ export default function ProfileScreen() {
       >
         {/* Your players */}
         <Animated.View
-          entering={FadeInDown.duration(500).delay(0)}
           style={styles.section}
         >
           <View style={styles.sectionHeader}>
@@ -711,8 +634,7 @@ export default function ProfileScreen() {
                   style={{
                     fontSize: scaleW(16),
                     fontWeight: "600",
-                    color: COLORS.white,
-                  }}
+                    color: COLORS.white }}
                 >
                   Done
                 </ThemedText>
@@ -724,14 +646,12 @@ export default function ProfileScreen() {
                   onPressIn={() => {
                     editScale.value = withSpring(0.96, {
                       damping: 15,
-                      stiffness: 400,
-                    });
+                      stiffness: 400 });
                   }}
                   onPressOut={() => {
                     editScale.value = withSpring(1, {
                       damping: 15,
-                      stiffness: 400,
-                    });
+                      stiffness: 400 });
                   }}
                   style={styles.editIconWrap}
                   hitSlop={12}
@@ -758,7 +678,6 @@ export default function ProfileScreen() {
             sortedProfiles.map((profile, index) => (
               <Animated.View
                 key={profile.id}
-                entering={FadeInDown.duration(400).delay(80 + index * 60)}
               >
                 <View style={styles.playerCard}>
                   <View
@@ -767,8 +686,7 @@ export default function ProfileScreen() {
                       {
                         backgroundColor:
                           profile.colour ||
-                          PLAYER_ACCENTS[index % PLAYER_ACCENTS.length],
-                      },
+                          PLAYER_ACCENTS[index % PLAYER_ACCENTS.length] },
                     ]}
                   />
                   <View style={styles.playerCardContent}>
@@ -810,8 +728,7 @@ export default function ProfileScreen() {
                           backgroundColor: isExpanded
                             ? editColor
                             : profile.colour ||
-                              PLAYER_ACCENTS[index % PLAYER_ACCENTS.length],
-                        },
+                              PLAYER_ACCENTS[index % PLAYER_ACCENTS.length] },
                       ]}
                     />
                     <View style={{ flex: 1 }}>
@@ -894,8 +811,7 @@ export default function ProfileScreen() {
                             flexDirection: "row",
                             alignItems: "center",
                             paddingVertical: scaleW(16),
-                            paddingHorizontal: scaleW(20),
-                          }}
+                            paddingHorizontal: scaleW(20) }}
                         >
                           <Pressable
                             onPress={() => handleExpandEdit(profile)}
@@ -956,8 +872,7 @@ export default function ProfileScreen() {
                   <View
                     style={{
                       justifyContent: "center",
-                      marginRight: scaleW(16),
-                    }}
+                      marginRight: scaleW(16) }}
                   >
                     <MaterialIcons
                       name="add"
@@ -1033,7 +948,6 @@ export default function ProfileScreen() {
 
         {/* Top Skills — commented out
         <Animated.View
-          entering={FadeInDown.duration(500).delay(280)}
           style={styles.section}
         >
           <View style={styles.skillsCard}>
@@ -1070,7 +984,6 @@ export default function ProfileScreen() {
 
         {/* Your badges — commented out
         <Animated.View
-          entering={FadeInDown.duration(500).delay(380)}
           style={styles.section}
         >
           <ThemedText type="heading" style={styles.sectionTitle}>Your badges</ThemedText>
@@ -1096,7 +1009,6 @@ export default function ProfileScreen() {
 
         {/* Recent activities */}
         <Animated.View
-          entering={FadeInDown.duration(500).delay(480)}
           style={styles.section}
         >
           <ThemedText type="heading" style={styles.sectionTitle}>
@@ -1145,7 +1057,6 @@ export default function ProfileScreen() {
 
         {/* Parent Zone */}
         <Animated.View
-          entering={FadeInDown.duration(500).delay(580)}
           style={parentZoneAnimatedStyle}
         >
           <Pressable
@@ -1154,14 +1065,12 @@ export default function ProfileScreen() {
             onPressIn={() => {
               parentZoneScale.value = withSpring(0.96, {
                 damping: 15,
-                stiffness: 400,
-              });
+                stiffness: 400 });
             }}
             onPressOut={() => {
               parentZoneScale.value = withSpring(1, {
                 damping: 15,
-                stiffness: 400,
-              });
+                stiffness: 400 });
             }}
           >
             <ThemedText type="heading" style={styles.parentZoneText}>
@@ -1172,7 +1081,6 @@ export default function ProfileScreen() {
 
         {/* Settings */}
         <Animated.View
-          entering={FadeInDown.duration(500).delay(620)}
           style={settingsAnimatedStyle}
         >
           <Pressable
@@ -1181,14 +1089,12 @@ export default function ProfileScreen() {
             onPressIn={() => {
               settingsScale.value = withSpring(0.96, {
                 damping: 15,
-                stiffness: 400,
-              });
+                stiffness: 400 });
             }}
             onPressOut={() => {
               settingsScale.value = withSpring(1, {
                 damping: 15,
-                stiffness: 400,
-              });
+                stiffness: 400 });
             }}
           >
             <ThemedText type="heading" style={styles.parentZoneText}>
@@ -1199,7 +1105,6 @@ export default function ProfileScreen() {
 
         {/* Log out */}
         <Animated.View
-          entering={FadeInDown.duration(500).delay(660)}
           style={[logOutAnimatedStyle, styles.logOutButtonWrap]}
         >
           <Pressable
@@ -1217,21 +1122,18 @@ export default function ProfileScreen() {
                     } catch {
                       Alert.alert("Error", "Failed to log out");
                     }
-                  },
-                },
+                  } },
               ]);
             }}
             onPressIn={() => {
               logOutScale.value = withSpring(0.96, {
                 damping: 15,
-                stiffness: 400,
-              });
+                stiffness: 400 });
             }}
             onPressOut={() => {
               logOutScale.value = withSpring(1, {
                 damping: 15,
-                stiffness: 400,
-              });
+                stiffness: 400 });
             }}
           >
             <ThemedText type="heading" style={styles.parentZoneText}>
@@ -1256,8 +1158,7 @@ export default function ProfileScreen() {
                 fontSize: scaleW(15),
                 color: COLORS.charcoal,
                 marginBottom: scaleW(24),
-                lineHeight: scaleW(22),
-              }}
+                lineHeight: scaleW(22) }}
             >
               This will permanently delete{" "}
               {profileToDelete ? profileToDelete.name : ""} and all their data:

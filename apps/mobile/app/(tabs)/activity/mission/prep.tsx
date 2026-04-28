@@ -4,16 +4,14 @@ import {
   ScrollView,
   Pressable,
   StyleSheet,
-  ActivityIndicator,
-} from "react-native";
+  ActivityIndicator } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
+  withSpring } from "react-native-reanimated";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
@@ -78,15 +76,13 @@ export default function PrepScreen() {
 
   const buttonScale = useSharedValue(1);
   const buttonStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: buttonScale.value }],
-  }));
+    transform: [{ scale: buttonScale.value }] }));
 
   const handleStart = () => {
     if (!activity?.id) return;
     router.push({
       pathname: "/(tabs)/activity/mission/steps",
-      params: { id: String(activity.id), step: "0" },
-    });
+      params: { id: String(activity.id), step: "0" } });
   };
 
   const styles = useMemo(
@@ -97,8 +93,7 @@ export default function PrepScreen() {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          padding: scaleW(24),
-        },
+          padding: scaleW(24) },
         errorText: { fontSize: scaleW(17), color: "#2F3336", textAlign: "center" },
         header: {
           backgroundColor: FOREST_DARK,
@@ -106,20 +101,17 @@ export default function PrepScreen() {
           paddingBottom: scaleW(28),
           paddingHorizontal: scaleW(24),
           borderBottomLeftRadius: scaleW(28),
-          borderBottomRightRadius: scaleW(28),
-        },
+          borderBottomRightRadius: scaleW(28) },
         headerTitle: {
           fontSize: scaleW(24),
           fontWeight: "700",
           color: "#FFF",
           textAlign: "center",
-          marginBottom: scaleW(6),
-        },
+          marginBottom: scaleW(6) },
         headerSubtext: {
           fontSize: scaleW(15),
           color: "rgba(255,255,255,0.75)",
-          textAlign: "center",
-        },
+          textAlign: "center" },
         scroll: { flex: 1, backgroundColor: LIGHT_GREEN_BG },
         scrollContent: { padding: scaleW(16), paddingBottom: scaleW(120) },
         card: {
@@ -134,11 +126,9 @@ export default function PrepScreen() {
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.08,
           shadowRadius: 8,
-          elevation: 2,
-        },
+          elevation: 2 },
         cardChecked: {
-          backgroundColor: CARD_CHECKED_BG,
-        },
+          backgroundColor: CARD_CHECKED_BG },
         checkbox: {
           width: scaleW(28),
           height: scaleW(28),
@@ -147,38 +137,32 @@ export default function PrepScreen() {
           borderColor: HUNTLY_GREEN,
           alignItems: "center",
           justifyContent: "center",
-          flexShrink: 0,
-        },
+          flexShrink: 0 },
         checkboxChecked: {
           backgroundColor: CHECK_GREEN,
-          borderColor: CHECK_GREEN,
-        },
+          borderColor: CHECK_GREEN },
         cardBody: { flex: 1 },
         cardTitle: {
           fontSize: scaleW(16),
           fontWeight: "600",
           color: "#1A2E1E",
-          marginBottom: scaleW(2),
-        },
+          marginBottom: scaleW(2) },
         cardTitleChecked: {
           color: "#4F6F52",
-          textDecorationLine: "line-through",
-        },
+          textDecorationLine: "line-through" },
         cardDesc: { fontSize: scaleW(14), color: "#5a6e5a", lineHeight: scaleW(20) },
         footerText: {
           fontSize: scaleW(14),
           color: "#5a5a5a",
           textAlign: "center",
-          marginBottom: scaleW(16),
-        },
+          marginBottom: scaleW(16) },
         startButton: {
           backgroundColor: HUNTLY_GREEN,
           borderRadius: scaleW(28),
           paddingVertical: scaleW(16),
           paddingHorizontal: scaleW(32),
           alignSelf: "stretch",
-          alignItems: "center",
-        },
+          alignItems: "center" },
         startButtonText: { fontSize: scaleW(18), fontWeight: "700", color: "#FFF" },
         footer: {
           position: "absolute",
@@ -193,9 +177,7 @@ export default function PrepScreen() {
             (isTablet ? scaleW(40) : 0),
           backgroundColor: LIGHT_GREEN_BG,
           borderTopWidth: 1,
-          borderTopColor: "rgba(79,111,82,0.1)",
-        },
-      }),
+          borderTopColor: "rgba(79,111,82,0.1)" } }),
     [scaleW, insets.bottom, onboardingActive, isTablet]
   );
 
@@ -240,7 +222,6 @@ export default function PrepScreen() {
           checklist.map((item, index) => (
             <Animated.View
               key={index}
-              entering={FadeInDown.duration(380).delay(80 + index * 60)}
             >
               <Pressable
                 onPress={() => toggleCheck(index)}

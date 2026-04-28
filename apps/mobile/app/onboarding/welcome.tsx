@@ -8,8 +8,7 @@ import Animated, {
   FadeInDown,
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
+  withTiming } from "react-native-reanimated";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useUser } from "@/contexts/UserContext";
@@ -45,23 +44,20 @@ export default function OnboardingWelcomeScreen() {
     spinY.value = 0;
     spinY.value = withTiming(360, {
       duration: 950,
-      easing: Easing.out(Easing.cubic),
-    });
+      easing: Easing.out(Easing.cubic) });
   }, [badgeReady, spinY]);
 
   const badgeAnimatedStyle = useAnimatedStyle(() => ({
     transform: [
       { perspective: 900 },
       { rotateY: `${spinY.value}deg` },
-    ],
-  }));
+    ] }));
 
   const handleSpinBadge = useCallback(() => {
     const nextFullTurn = Math.ceil(spinY.value / 360) + 1;
     spinY.value = withTiming(nextFullTurn * 360, {
       duration: 850,
-      easing: Easing.out(Easing.cubic),
-    });
+      easing: Easing.out(Easing.cubic) });
   }, [spinY]);
 
   const styles = useMemo(
@@ -73,18 +69,15 @@ export default function OnboardingWelcomeScreen() {
           justifyContent: "center",
           alignItems: "center",
           paddingHorizontal: scaleW(24),
-          gap: scaleW(24),
-        },
+          gap: scaleW(24) },
         title: {
           fontSize: scaleW(36),
           fontWeight: "700",
           color: CREAM,
-          textAlign: "center",
-        },
+          textAlign: "center" },
         badge: {
           width: scaleW(220),
-          height: scaleW(220),
-        },
+          height: scaleW(220) },
         badgeWrap: {
           width: scaleW(220),
           height: scaleW(220),
@@ -94,26 +87,21 @@ export default function OnboardingWelcomeScreen() {
           shadowOffset: { width: 0, height: scaleW(10) },
           shadowOpacity: 0.28,
           shadowRadius: scaleW(14),
-          elevation: 10,
-        },
+          elevation: 10 },
         badgePlaceholder: {
           width: scaleW(220),
-          height: scaleW(220),
-        },
+          height: scaleW(220) },
         cta: {
           minWidth: scaleW(220),
           paddingVertical: scaleW(16),
           paddingHorizontal: scaleW(28),
           borderRadius: scaleW(30),
           backgroundColor: CREAM,
-          alignItems: "center",
-        },
+          alignItems: "center" },
         ctaText: {
           fontSize: scaleW(20),
           fontWeight: "700",
-          color: BG,
-        },
-      }),
+          color: BG } }),
     [scaleW]
   );
 
@@ -134,7 +122,7 @@ export default function OnboardingWelcomeScreen() {
     <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>
       {badgeReady ? (
         <View style={styles.content}>
-          <Animated.View entering={FadeInDown.duration(600).springify().damping(16)}>
+          <Animated.View>
             <ThemedText style={styles.title}>Welcome Explorer!</ThemedText>
           </Animated.View>
           <Pressable onPress={handleSpinBadge} accessibilityRole="button" accessibilityLabel="Spin badge">

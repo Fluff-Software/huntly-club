@@ -94,13 +94,11 @@ export default function WalkMapScreen() {
           return;
         }
         const pos = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
+          accuracy: Location.Accuracy.Balanced });
         if (cancelled) return;
         setCoords({
           latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-        });
+          longitude: pos.coords.longitude });
         setStatus("ready");
       } catch (e) {
         if (cancelled) return;
@@ -130,14 +128,12 @@ export default function WalkMapScreen() {
           {
             accuracy: Location.Accuracy.Balanced,
             timeInterval: 2000,
-            distanceInterval: 3,
-          },
+            distanceInterval: 3 },
           (pos) => {
             if (cancelled) return;
             const next: LatLng = {
               latitude: pos.coords.latitude,
-              longitude: pos.coords.longitude,
-            };
+              longitude: pos.coords.longitude };
             setCoords(next);
             setTrail((prev) => {
               if (prev.length === 0) return [next];
@@ -220,29 +216,25 @@ export default function WalkMapScreen() {
           borderBottomLeftRadius: scaleW(28),
           borderBottomRightRadius: scaleW(28),
           flexDirection: "row",
-          alignItems: "center",
-        },
+          alignItems: "center" },
         backButton: {
           width: scaleW(42),
           height: scaleW(42),
           borderRadius: scaleW(21),
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: "rgba(255,255,255,0.14)",
-        },
+          backgroundColor: "rgba(255,255,255,0.14)" },
         headerTextWrap: { flex: 1, alignItems: "center" },
         headerTitle: {
           fontSize: scaleW(22),
           fontWeight: "700",
           color: "#FFF",
-          textAlign: "center",
-        },
+          textAlign: "center" },
         headerSubtext: {
           marginTop: scaleW(4),
           fontSize: scaleW(14),
           color: "rgba(255,255,255,0.75)",
-          textAlign: "center",
-        },
+          textAlign: "center" },
         headerRightSpacer: { width: scaleW(42) },
         body: { flex: 1, backgroundColor: LIGHT_GREEN_BG },
         loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center", padding: scaleW(24) },
@@ -258,8 +250,7 @@ export default function WalkMapScreen() {
           paddingHorizontal: scaleW(10),
           gap: scaleW(6),
           zIndex: 5,
-          elevation: 5,
-        },
+          elevation: 5 },
         stepsRow: { flexDirection: "row", alignItems: "center", gap: scaleW(6) },
         stepsOverlayText: { color: "#FFF", fontWeight: "800" as const, fontSize: scaleW(13) },
         statRow: { flexDirection: "row", alignItems: "center", gap: scaleW(6) },
@@ -275,8 +266,7 @@ export default function WalkMapScreen() {
           alignItems: "center",
           justifyContent: "center",
           zIndex: 6,
-          elevation: 6,
-        },
+          elevation: 6 },
         cameraButton: {
           position: "absolute" as const,
           left: scaleW(12),
@@ -288,8 +278,7 @@ export default function WalkMapScreen() {
           alignItems: "center",
           justifyContent: "center",
           zIndex: 6,
-          elevation: 6,
-        },
+          elevation: 6 },
         cameraBadge: {
           position: "absolute" as const,
           top: -scaleW(6),
@@ -304,8 +293,7 @@ export default function WalkMapScreen() {
           zIndex: 7,
           elevation: 7,
           borderWidth: 2,
-          borderColor: "rgba(255,255,255,0.9)",
-        },
+          borderColor: "rgba(255,255,255,0.9)" },
         cameraBadgeText: { color: "#FFF", fontWeight: "900" as const, fontSize: scaleW(10) },
         footer: {
           position: "absolute" as const,
@@ -319,36 +307,31 @@ export default function WalkMapScreen() {
           borderTopWidth: 1,
           borderTopColor: "rgba(79,111,82,0.1)",
           zIndex: 10,
-          elevation: 10,
-        },
+          elevation: 10 },
         footerHint: {
           fontSize: scaleW(14),
           color: "#5a5a5a",
           textAlign: "center",
-          marginBottom: scaleW(12),
-        },
+          marginBottom: scaleW(12) },
         completeButton: {
           backgroundColor: HUNTLY_GREEN,
           borderRadius: scaleW(28),
           paddingVertical: scaleW(16),
           paddingHorizontal: scaleW(32),
           alignSelf: "stretch",
-          alignItems: "center",
-        },
+          alignItems: "center" },
         completeButtonText: { fontSize: scaleW(18), fontWeight: "800", color: "#FFF" },
         retryButton: {
           marginTop: scaleW(16),
           backgroundColor: HUNTLY_GREEN,
           borderRadius: scaleW(22),
           paddingVertical: scaleW(12),
-          paddingHorizontal: scaleW(18),
-        },
+          paddingHorizontal: scaleW(18) },
         retryText: { color: "#FFF", fontWeight: "800", textAlign: "center" as const },
         modalBackdrop: {
           flex: 1,
           backgroundColor: "rgba(0,0,0,0.45)",
-          justifyContent: "flex-end",
-        },
+          justifyContent: "flex-end" },
         modalSheet: {
           backgroundColor: LIGHT_GREEN_BG,
           borderTopLeftRadius: scaleW(22),
@@ -356,36 +339,30 @@ export default function WalkMapScreen() {
           padding: scaleW(18),
           paddingBottom: insets.bottom + scaleW(16),
           borderTopWidth: 1,
-          borderTopColor: "rgba(79,111,82,0.12)",
-        },
+          borderTopColor: "rgba(79,111,82,0.12)" },
         modalTitle: {
           fontSize: scaleW(18),
           fontWeight: "900",
           color: "#1A2E1E",
-          textAlign: "center",
-        },
+          textAlign: "center" },
         modalBody: {
           marginTop: scaleW(8),
           fontSize: scaleW(14),
           color: "#3a3a3a",
-          textAlign: "center",
-        },
+          textAlign: "center" },
         modalButtons: { marginTop: scaleW(16), gap: scaleW(10) },
         modalPrimary: {
           backgroundColor: CHECK_GREEN,
           borderRadius: scaleW(28),
           paddingVertical: scaleW(14),
-          alignItems: "center",
-        },
+          alignItems: "center" },
         modalPrimaryText: { fontSize: scaleW(16), fontWeight: "900", color: "#FFF" },
         modalSecondary: {
           backgroundColor: "rgba(79,111,82,0.10)",
           borderRadius: scaleW(28),
           paddingVertical: scaleW(14),
-          alignItems: "center",
-        },
-        modalSecondaryText: { fontSize: scaleW(16), fontWeight: "900", color: HUNTLY_GREEN },
-      }),
+          alignItems: "center" },
+        modalSecondaryText: { fontSize: scaleW(16), fontWeight: "900", color: HUNTLY_GREEN } }),
     [scaleW, insets.bottom, isTablet]
   );
 
@@ -394,8 +371,7 @@ export default function WalkMapScreen() {
         latitude: coords.latitude,
         longitude: coords.longitude,
         latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      }
+        longitudeDelta: 0.01 }
     : null;
 
   const handleRecenter = () => {
@@ -407,8 +383,7 @@ export default function WalkMapScreen() {
         latitude: coords.latitude,
         longitude: coords.longitude,
         latitudeDelta: r.latitudeDelta,
-        longitudeDelta: r.longitudeDelta,
-      },
+        longitudeDelta: r.longitudeDelta },
       350
     );
   };
@@ -433,14 +408,12 @@ export default function WalkMapScreen() {
         toValue: 1,
         duration: 160,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
+        useNativeDriver: true }),
       Animated.timing(confirmSheetY, {
         toValue: 0,
         duration: 220,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
+        useNativeDriver: true }),
     ]).start();
   };
 
@@ -450,14 +423,12 @@ export default function WalkMapScreen() {
         toValue: 0,
         duration: 120,
         easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
+        useNativeDriver: true }),
       Animated.timing(confirmSheetY, {
         toValue: 32,
         duration: 160,
         easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
+        useNativeDriver: true }),
     ]).start(({ finished }) => {
       if (!finished) return;
       setConfirmVisible(false);
@@ -473,8 +444,7 @@ export default function WalkMapScreen() {
       distanceMeters,
       route: trail,
       endedAtCoords: coords,
-      photoUris: getWalkPhotoUris(),
-    });
+      photoUris: getWalkPhotoUris() });
     closeConfirm();
     router.replace("/(tabs)/activity/walk-finish");
   };
@@ -485,8 +455,7 @@ export default function WalkMapScreen() {
       if (status !== "granted") return;
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
-      });
+        quality: 0.8 });
       if (!result.canceled && result.assets[0]?.uri) {
         addWalkPhotoUri(result.assets[0]!.uri);
         setPhotoCount(getWalkPhotoUris().length);
@@ -615,15 +584,13 @@ export default function WalkMapScreen() {
                         return null;
                       }
                       return Location.getCurrentPositionAsync({
-                        accuracy: Location.Accuracy.Balanced,
-                      });
+                        accuracy: Location.Accuracy.Balanced });
                     })
                     .then((pos) => {
                       if (!pos) return;
                       setCoords({
                         latitude: pos.coords.latitude,
-                        longitude: pos.coords.longitude,
-                      });
+                        longitude: pos.coords.longitude });
                       setStatus("ready");
                     })
                     .catch((e) => {

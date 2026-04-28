@@ -17,7 +17,7 @@ const CREAM = "#F4F0EB";
 function useVerifiedAndContinue(email: string, password: string) {
   const { session } = useAuth();
   const [verificationComplete, setVerificationComplete] = useState(false);
-  const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const checkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const advance = () => {
     setVerificationComplete(true);
@@ -34,8 +34,7 @@ function useVerifiedAndContinue(email: string, password: string) {
       if (email.trim() && password) {
         const { data, error } = await supabase.auth.signInWithPassword({
           email: email.trim().toLowerCase(),
-          password,
-        });
+          password });
         if (!error && data.session?.user?.email_confirmed_at) {
           advance();
           return;
@@ -113,8 +112,7 @@ export default function VerifyEmailScreen() {
               flex: 1,
               justifyContent: "center",
               alignItems: "center",
-              paddingHorizontal: scaleW(24),
-            }}
+              paddingHorizontal: scaleW(24) }}
           >
             <ThemedText
               type="heading"
@@ -124,8 +122,7 @@ export default function VerifyEmailScreen() {
                 textAlign: "center",
                 fontWeight: "600",
                 fontSize: scaleW(24),
-                marginBottom: scaleW(12),
-              }}
+                marginBottom: scaleW(12) }}
             >
               Email Verified!
             </ThemedText>
@@ -136,8 +133,7 @@ export default function VerifyEmailScreen() {
               style={{
                 textAlign: "center",
                 fontSize: scaleW(16),
-                opacity: 0.95,
-              }}
+                opacity: 0.95 }}
             >
               Setting up your account...
             </ThemedText>
@@ -156,23 +152,8 @@ export default function VerifyEmailScreen() {
       <View style={{ flex: 1, justifyContent: "flex-start", paddingHorizontal: scaleW(24), paddingTop: scaleW(32) }}>
         <View
           style={{
-            alignItems: "center",
-          }}
+            alignItems: "center" }}
         >
-          <View
-            style={{
-              width: scaleW(150),
-              height: scaleW(150),
-              marginBottom: scaleW(24),
-            }}
-          >
-            <Image
-              source={require("@/assets/images/bear-email.png")}
-              style={{ width: "100%", height: "100%" }}
-              resizeMode="contain"
-            />
-          </View>
-
           <ThemedText
             type="heading"
             lightColor="#FFFFFF"
@@ -181,8 +162,7 @@ export default function VerifyEmailScreen() {
               textAlign: "center",
               fontWeight: "600",
               fontSize: scaleW(26),
-              marginBottom: scaleW(12),
-            }}
+              marginBottom: scaleW(12) }}
           >
             Check your email
           </ThemedText>
@@ -195,8 +175,7 @@ export default function VerifyEmailScreen() {
               fontSize: scaleW(16),
               opacity: 0.95,
               marginBottom: scaleW(8),
-              lineHeight: scaleW(24),
-            }}
+              lineHeight: scaleW(24) }}
           >
             We've sent a confirmation link to
           </ThemedText>
@@ -208,8 +187,7 @@ export default function VerifyEmailScreen() {
               fontSize: scaleW(14),
               fontWeight: "600",
               opacity: 0.9,
-              marginBottom: scaleW(20),
-            }}
+              marginBottom: scaleW(20) }}
           >
             {parentEmail}
           </ThemedText>
@@ -222,8 +200,7 @@ export default function VerifyEmailScreen() {
               borderRadius: scaleW(16),
               backgroundColor: "rgba(244, 240, 235, 0.16)",
               maxWidth: scaleW(340),
-              gap: scaleW(6),
-            }}
+              gap: scaleW(6) }}
           >
             <ThemedText
               lightColor="#FFFFFF"
@@ -231,8 +208,7 @@ export default function VerifyEmailScreen() {
               style={{
                 textAlign: "left",
                 fontSize: scaleW(14),
-                opacity: 0.95,
-              }}
+                opacity: 0.95 }}
             >
               1. Open your email app.
             </ThemedText>
@@ -242,8 +218,7 @@ export default function VerifyEmailScreen() {
               style={{
                 textAlign: "left",
                 fontSize: scaleW(14),
-                opacity: 0.95,
-              }}
+                opacity: 0.95 }}
             >
               2. Tap the &quot;Verify email&quot; link we just sent.
             </ThemedText>
@@ -253,8 +228,7 @@ export default function VerifyEmailScreen() {
               style={{
                 textAlign: "left",
                 fontSize: scaleW(14),
-                opacity: 0.95,
-              }}
+                opacity: 0.95 }}
             >
               3. Come back here and we&apos;ll move you on automatically.
             </ThemedText>
@@ -267,8 +241,7 @@ export default function VerifyEmailScreen() {
               textAlign: "center",
               fontSize: scaleW(14),
               opacity: 0.9,
-              marginTop: scaleW(16),
-            }}
+              marginTop: scaleW(16) }}
           >
             Didn't receive the email?
           </ThemedText>
@@ -285,8 +258,7 @@ export default function VerifyEmailScreen() {
               minWidth: scaleW(220),
               alignItems: "center",
               justifyContent: "center",
-              opacity: resendLoading ? 0.8 : 1,
-            }}
+              opacity: resendLoading ? 0.8 : 1 }}
           >
             {resendLoading ? (
               <ActivityIndicator size="small" color={HUNTLY_GREEN} />
@@ -296,8 +268,7 @@ export default function VerifyEmailScreen() {
                 darkColor={HUNTLY_GREEN}
                 style={{
                   fontSize: scaleW(16),
-                  fontWeight: "600",
-                }}
+                  fontWeight: "600" }}
               >
                 Resend verification email
               </ThemedText>
@@ -312,8 +283,7 @@ export default function VerifyEmailScreen() {
               fontSize: scaleW(12),
               opacity: 0.8,
               marginTop: scaleW(16),
-              fontStyle: "italic",
-            }}
+              fontStyle: "italic" }}
           >
             Check your spam folder if you don't see it
           </ThemedText>
@@ -332,16 +302,14 @@ export default function VerifyEmailScreen() {
                     } catch {
                       router.replace("/auth");
                     }
-                  },
-                },
+                  } },
               ]);
             }}
             style={{
               alignSelf: "center",
               marginTop: scaleW(20),
               paddingVertical: scaleW(10),
-              paddingHorizontal: scaleW(20),
-            }}
+              paddingHorizontal: scaleW(20) }}
           >
             <ThemedText
               lightColor="#FFFFFF"
@@ -350,8 +318,7 @@ export default function VerifyEmailScreen() {
                 fontSize: scaleW(15),
                 fontWeight: "600",
                 textDecorationLine: "underline",
-                opacity: 0.9,
-              }}
+                opacity: 0.9 }}
             >
               Log out
             </ThemedText>

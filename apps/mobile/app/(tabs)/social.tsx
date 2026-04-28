@@ -1,38 +1,29 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   View,
-  Text,
   ScrollView,
   RefreshControl,
   Image,
   StyleSheet,
-  Animated as RNAnimated,
-  ActivityIndicator,
-} from "react-native";
+  ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Animated, {
-  FadeInDown,
+import AnimatedReanimated, {
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
+  withSpring } from "react-native-reanimated";
 import { useFocusEffect } from "expo-router";
 import { BaseLayout } from "@/components/layout/BaseLayout";
+import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
-import { useTablet } from "@/hooks/useTablet";
 import {
   getTeamInfo,
   getAllTeamsWithXp,
   getTeamAchievements,
   getTeamAchievementTotals,
-  TeamInfo,
-} from "@/services/teamActivityService";
+  TeamInfo } from "@/services/teamActivityService";
 import { useUser } from "@/contexts/UserContext";
 import { getTeamCardConfig } from "@/utils/teamUtils";
 
-const BEAR_FACE_IMAGE = require("@/assets/images/bear-face.png");
-const FOX_FACE_IMAGE = require("@/assets/images/fox-face.png");
-const OTTER_FACE_IMAGE = require("@/assets/images/otter-face.png");
 const CELEBRATE_IMAGE = require("@/assets/images/celebrate.png");
 const GET_STARTED_ICON_2_IMAGE = require("@/assets/images/get-started-icon-2.png");
 
@@ -40,22 +31,10 @@ const ACHIEVEMENTS_INITIAL = 4;
 const ACHIEVEMENTS_PAGE_SIZE = 4;
 const LOAD_MORE_THRESHOLD = 40;
 
-const HEADER_PURPLE = "#C3A4FF";
-const PAGE_BG = "#F3ECFF";
-const CHART_BASELINE = "#6B4BB6";
-const BAR_WHITE = "#FFFFFF";
-const BAR_BLUE = "#D3C2FF";
-const BAR_GREEN = "#B6A0F5";
+const TEAM_ORDER = ["bears", "foxes", "otters"] as const;
 
-const ACHIEVEMENT_CARD_COLORS = [
-  "#FFF5E8",
-  "#E8F5F0",
-  "#F0E8FF",
-  "#E8F0FF",
-  "#FFF0F0",
-];
+const ACHIEVEMENT_CARD_COLORS = ["#FFF5E8", "#E8F5F0", "#F0E8FF", "#E8F0FF", "#FFF0F0"];
 const ACHIEVEMENT_ICON_BG = ["#F7A676", "#7FAF8A", "#A8D5E5", "#D4A05A", "#C97B6C"];
-const POINTS_PURPLE = "#5B3AAE";
 
 type AchievementItem = {
   id: string;
@@ -69,13 +48,11 @@ function mapAchievementsToItems(achievements: { id: number; profile_name: string
     id: `ach-${a.id}`,
     type: "activity" as const,
     title: `${a.profile_name} ${a.message}`,
-    points: a.xp,
-  }));
+    points: a.xp }));
 }
 
 export default function SocialScreen() {
-  const { scaleW, width } = useLayoutScale();
-  const { isTablet } = useTablet();
+  const { scaleW } = useLayoutScale();
   const { teamId } = useUser();
   const [teamAchievements, setTeamAchievements] = useState<Awaited<ReturnType<typeof getTeamAchievements>>>([]);
   const [teamAchievementTotals, setTeamAchievementTotals] = useState<Record<number, number>>({});
@@ -86,90 +63,37 @@ export default function SocialScreen() {
   const [allTeams, setAllTeams] = useState<TeamInfo[]>([]);
   const [visibleAchievementsCount, setVisibleAchievementsCount] = useState(ACHIEVEMENTS_INITIAL);
 
-  const bearSlideAnim = useRef(new RNAnimated.Value(400)).current;
   const chartProgress = useSharedValue(0);
   const scrollRef = useRef<ScrollView>(null);
 
-  const TEAM_ORDER = ["bears", "foxes", "otters"] as const;
-  const TEAM_FACE_BY_NAME: Record<string, typeof BEAR_FACE_IMAGE> = {
-    bears: BEAR_FACE_IMAGE,
-    foxes: FOX_FACE_IMAGE,
-    otters: OTTER_FACE_IMAGE,
-  };
-
-  /** Teams sorted by points (highest first) for the chart. */
   const sortedTeamsForChart = useMemo(() => {
-    const teamIdByName = Object.fromEntries(
-      allTeams.map((t) => [t.name.toLowerCase(), t.id])
-    );
-    const colourByName: Record<string, string> = {};
-    for (const team of allTeams) {
-      if (team.colour) colourByName[team.name.toLowerCase()] = team.colour;
-    }
-    const withTotals = TEAM_ORDER.map((name) => {
+    const teamIdByName = Object.fromEntries(allTeams.map((t) => [t.name.toLowerCase(), t.id]));
+    return TEAM_ORDER.map((name) => {
       const id = teamIdByName[name];
       const total = teamAchievementTotals[id] ?? 0;
-      const color =
-        colourByName[name] ??
-        (name === "bears" ? BAR_WHITE : name === "foxes" ? BAR_BLUE : BAR_GREEN);
-      return {
-        name,
-        total,
-        face: TEAM_FACE_BY_NAME[name],
-        color,
-      };
-    });
-    return withTotals.sort((a, b) => b.total - a.total);
+      const config = getTeamCardConfig(name);
+      return { name, total, config };
+    }).sort((a, b) => b.total - a.total);
   }, [allTeams, teamAchievementTotals]);
 
   const barHeights = useMemo(() => {
     const maxTotal = Math.max(1, ...sortedTeamsForChart.map((t) => t.total));
-    const minDesign = 60;
-    const maxDesign = 220;
     return sortedTeamsForChart.map((t) => {
-      const designHeight = minDesign + (t.total / maxTotal) * (maxDesign - minDesign);
-      return scaleW(designHeight);
+      const pct = t.total / maxTotal;
+      return scaleW(60 + pct * 160);
     });
   }, [scaleW, sortedTeamsForChart]);
 
-  const barColors = useMemo(
-    () => sortedTeamsForChart.map((t) => t.color),
-    [sortedTeamsForChart]
-  );
-
-  const bar1Style = useAnimatedStyle(() => ({
-    height: chartProgress.value * barHeights[0],
-    backgroundColor: barColors[0],
-  }));
-  const bar2Style = useAnimatedStyle(() => ({
-    height: chartProgress.value * barHeights[1],
-    backgroundColor: barColors[1],
-  }));
-  const bar3Style = useAnimatedStyle(() => ({
-    height: chartProgress.value * barHeights[2],
-    backgroundColor: barColors[2],
-  }));
-
-  useEffect(() => {
-    if (width === 0) return;
-    bearSlideAnim.setValue(-width);
-    RNAnimated.spring(bearSlideAnim, {
-      toValue: 0,
-      useNativeDriver: true,
-      tension: 45,
-      friction: 8,
-    }).start();
-  }, [width]);
+  const bar1Style = useAnimatedStyle(() => ({ height: chartProgress.value * barHeights[0] }));
+  const bar2Style = useAnimatedStyle(() => ({ height: chartProgress.value * barHeights[1] }));
+  const bar3Style = useAnimatedStyle(() => ({ height: chartProgress.value * barHeights[2] }));
 
   useEffect(() => {
     chartProgress.value = withSpring(1, { damping: 18, stiffness: 80 });
-  }, []);
+  }, [chartProgress]);
 
   const fetchTeamActivities = useCallback(async () => {
-    if (!teamId) {
-      setLoading(false);
-      return;
-    }
+    if (!teamId) { setLoading(false); return; }
     try {
       setError(null);
       const [teamData, teamsData, achievements, totals] = await Promise.all([
@@ -182,23 +106,19 @@ export default function SocialScreen() {
       setAllTeams(teamsData);
       setTeamAchievements(achievements);
       setTeamAchievementTotals(totals);
-    } catch (err) {
+    } catch {
       setError("Failed to load team activities");
     } finally {
       setLoading(false);
     }
   }, [teamId]);
 
-  useEffect(() => {
-    fetchTeamActivities();
-  }, [fetchTeamActivities]);
+  useEffect(() => { fetchTeamActivities(); }, [fetchTeamActivities]);
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchTeamActivities();
-      scrollRef.current?.scrollTo({ y: 0, animated: false });
-    }, [fetchTeamActivities])
-  );
+  useFocusEffect(useCallback(() => {
+    fetchTeamActivities();
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [fetchTeamActivities]));
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -206,14 +126,9 @@ export default function SocialScreen() {
     setRefreshing(false);
   }, [fetchTeamActivities]);
 
-  const achievements = useMemo(
-    () => mapAchievementsToItems(teamAchievements),
-    [teamAchievements]
-  );
+  const achievements = useMemo(() => mapAchievementsToItems(teamAchievements), [teamAchievements]);
 
-  useEffect(() => {
-    setVisibleAchievementsCount(ACHIEVEMENTS_INITIAL);
-  }, [teamAchievements]);
+  useEffect(() => { setVisibleAchievementsCount(ACHIEVEMENTS_INITIAL); }, [teamAchievements]);
 
   const visibleAchievements = useMemo(
     () => achievements.slice(0, visibleAchievementsCount),
@@ -225,220 +140,25 @@ export default function SocialScreen() {
   const handleScroll = useCallback(
     (event: { nativeEvent: { contentOffset: { y: number }; contentSize: { height: number }; layoutMeasurement: { height: number } } }) => {
       const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-      const scrollEnd = contentOffset.y + layoutMeasurement.height;
-      if (contentSize.height - scrollEnd < LOAD_MORE_THRESHOLD && hasMoreAchievements) {
+      if (contentSize.height - (contentOffset.y + layoutMeasurement.height) < LOAD_MORE_THRESHOLD && hasMoreAchievements) {
         setVisibleAchievementsCount((prev) => Math.min(prev + ACHIEVEMENTS_PAGE_SIZE, achievements.length));
       }
     },
     [hasMoreAchievements, achievements.length]
   );
 
-  const teamCardConfig = useMemo(
-    () => getTeamCardConfig(teamInfo?.name),
-    [teamInfo?.name]
-  );
-
-  const styles = useMemo(
-    () =>
-      StyleSheet.create({
-        page: { flex: 1, backgroundColor: PAGE_BG },
-        header: {
-          backgroundColor: HEADER_PURPLE,
-          paddingHorizontal: scaleW(24),
-          overflow: "hidden",
-        },
-        headerRow: {
-          flexDirection: "row",
-          alignItems: "flex-end",
-          paddingVertical: scaleW(isTablet ? 70 : 40),
-        },
-        headerBearWrap: {
-          bottom: scaleW(isTablet ? -27 : 0),
-          width: scaleW(140),
-          alignItems: "center",
-          justifyContent: "center",
-        },
-        headerBear: {
-          position: "absolute",
-          width: scaleW(140),
-          height: scaleW(200),
-        },
-        headerText: {
-          flex: 1,
-          marginLeft: scaleW(16),
-          paddingBottom: scaleW(8),
-        },
-        headerTitle: {
-          marginHorizontal: scaleW(12),
-          fontSize: scaleW(22),
-          fontWeight: "600",
-          color: "#000",
-          lineHeight: scaleW(26),
-        },
-        sectionTitle: {
-          fontSize: scaleW(22),
-          fontWeight: "700",
-          color: "#000",
-          textAlign: "center",
-          marginTop: scaleW(32),
-          marginBottom: scaleW(24),
-        },
-        chartRow: {
-          flexDirection: "row",
-          justifyContent: "center",
-          paddingHorizontal: scaleW(24),
-          gap: scaleW(20),
-        },
-        chartBarWrap: {
-          alignItems: "center",
-          justifyContent: "flex-end",
-          overflow: "hidden",
-        },
-        chartBar: {
-          borderTopLeftRadius: scaleW(12),
-          borderTopRightRadius: scaleW(12),
-          alignItems: "center",
-          padding: scaleW(16),
-        },
-        chartFace: {
-          width: scaleW(48),
-          height: scaleW(48),
-          borderRadius: scaleW(28),
-          backgroundColor: "#FFF",
-          overflow: "hidden",
-          padding: scaleW(6),
-          zIndex: 1,
-        },
-        chartBaseline: {
-          height: 10,
-          backgroundColor: CHART_BASELINE,
-          marginHorizontal: scaleW(40),
-          borderRadius: 10,
-        },
-        chartSubtitle: {
-          fontSize: scaleW(16),
-          color: "#000",
-          textAlign: "center",
-          marginHorizontal: scaleW(64),
-          marginTop: scaleW(32),
-          marginBottom: scaleW(8),
-          opacity: 0.85,
-        },
-        achievementsTitle: {
-          fontSize: scaleW(24),
-          fontWeight: "700",
-          color: POINTS_PURPLE,
-          marginTop: scaleW(40),
-          marginBottom: scaleW(24),
-          marginLeft: scaleW(24),
-        },
-        timeline: {
-          paddingHorizontal: scaleW(20),
-          paddingBottom: scaleW(64),
-          alignItems: "center",
-          gap: scaleW(20),
-        },
-        achievementCard: {
-          width: "100%",
-          maxWidth: scaleW(340),
-          flexDirection: "row",
-          borderRadius: scaleW(20),
-          overflow: "hidden" as const,
-          padding: scaleW(16),
-          shadowColor: "#4F6F52",
-          shadowOpacity: 0.12,
-          shadowRadius: scaleW(12),
-          shadowOffset: { width: 0, height: 4 },
-          elevation: 3,
-          borderWidth: 3,
-          borderColor: "rgba(255,255,255,0.9)",
-        },
-        achievementIcon: {
-          width: scaleW(56),
-          height: scaleW(56),
-          borderRadius: scaleW(28),
-          alignItems: "center",
-          justifyContent: "center",
-          marginRight: scaleW(16),
-        },
-        achievementIconImage: {
-          width: scaleW(32),
-          height: scaleW(32),
-        },
-        achievementText: {
-          flex: 1,
-          justifyContent: "center",
-          paddingVertical: scaleW(4),
-        },
-        achievementTitle: {
-          fontSize: scaleW(16),
-          fontWeight: "600",
-          color: "#1a1a1a",
-          marginBottom: scaleW(4),
-          lineHeight: scaleW(22),
-        },
-        achievementPoints: {
-          fontSize: scaleW(15),
-          fontWeight: "700",
-          color: POINTS_PURPLE,
-        },
-        emptyStateContainer: {
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          padding: scaleW(24),
-        },
-        emptyStateTitle: {
-          fontSize: scaleW(24),
-          fontWeight: "700",
-          color: POINTS_PURPLE,
-          textAlign: "center",
-          marginBottom: scaleW(16),
-        },
-        emptyStateBody: {
-          fontSize: scaleW(14),
-          color: "#36454F",
-          textAlign: "center",
-        },
-        loadingText: {
-          fontSize: scaleW(18),
-          fontWeight: "600",
-          color: POINTS_PURPLE,
-        },
-        errorText: {
-          fontSize: scaleW(18),
-          fontWeight: "600",
-          color: "#dc2626",
-          textAlign: "center",
-          marginBottom: scaleW(8),
-        },
-        loadingMoreWrap: {
-          paddingVertical: scaleW(24),
-          alignItems: "center",
-          justifyContent: "center",
-        },
-        noMoreAchievements: {
-          fontSize: scaleW(14),
-          color: "#000",
-          opacity: 0.6,
-          textAlign: "center",
-          marginTop: scaleW(16),
-          marginBottom: scaleW(8),
-        },
-      }),
-    [scaleW, isTablet]
-  );
+  const teamCardConfig = useMemo(() => getTeamCardConfig(teamInfo?.name), [teamInfo?.name]);
 
   if (!teamId) {
     return (
       <BaseLayout>
-        <View style={styles.emptyStateContainer}>
-          <Text style={styles.emptyStateTitle}>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: scaleW(24) }}>
+          <ThemedText type="heading" style={{ fontSize: scaleW(24), fontWeight: "700", textAlign: "center", marginBottom: scaleW(12) }}>
             Join a Team
-          </Text>
-          <Text style={styles.emptyStateBody}>
+          </ThemedText>
+          <ThemedText style={{ fontSize: scaleW(14), textAlign: "center", opacity: 0.7 }}>
             Your account needs a team to view team activities. Create an explorer in Clubhouse to get started!
-          </Text>
+          </ThemedText>
         </View>
       </BaseLayout>
     );
@@ -446,10 +166,11 @@ export default function SocialScreen() {
 
   if (loading && !refreshing) {
     return (
-      <SafeAreaView style={[styles.page, { justifyContent: "center", alignItems: "center" }]} edges={["top", "left", "right"]}>
-        <Text style={styles.loadingText}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: teamCardConfig.backgroundColor, justifyContent: "center", alignItems: "center" }} edges={["top", "left", "right"]}>
+        <ActivityIndicator size="large" color={teamCardConfig.accentColor} />
+        <ThemedText style={{ marginTop: scaleW(12), fontSize: scaleW(16), color: teamCardConfig.accentColor, fontWeight: "600" }}>
           Loading your team…
-        </Text>
+        </ThemedText>
       </SafeAreaView>
     );
   }
@@ -457,17 +178,15 @@ export default function SocialScreen() {
   if (error) {
     return (
       <BaseLayout>
-        <View style={styles.emptyStateContainer}>
-          <Text style={styles.errorText}>
-            {error}
-          </Text>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: scaleW(24) }}>
+          <ThemedText style={{ fontSize: scaleW(16), color: "#dc2626", textAlign: "center" }}>{error}</ThemedText>
         </View>
       </BaseLayout>
     );
   }
 
   return (
-    <SafeAreaView style={styles.page} edges={["top", "left", "right"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#F3F5F0" }} edges={["top", "left", "right"]}>
       <ScrollView
         ref={scrollRef}
         style={{ flex: 1 }}
@@ -476,109 +195,166 @@ export default function SocialScreen() {
         overScrollMode="never"
         onScroll={handleScroll}
         scrollEventThrottle={200}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <Animated.View
-          entering={FadeInDown.duration(600).delay(0)}
-          style={styles.header}
-        >
-          <View style={styles.headerRow}>
-            <View style={styles.headerBearWrap}>
-              <RNAnimated.View
-                style={[
-                  styles.headerBear,
-                  { transform: [{ translateX: bearSlideAnim }] },
-                ]}
-              >
-                <Image
-                  source={teamCardConfig.waveImage}
-                  style={{ width: "100%", height: "100%" }}
-                  resizeMode="contain"
-                />
-              </RNAnimated.View>
+        {/* Header card */}
+        <View style={{
+          backgroundColor: teamCardConfig.backgroundColor,
+          overflow: "hidden",
+          minHeight: scaleW(200) }}>
+          <Image
+            source={teamCardConfig.bgImage}
+            resizeMode="cover"
+            style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+          />
+          <Image
+            source={teamCardConfig.standingImage}
+            resizeMode="contain"
+            style={{ position: "absolute", bottom: 0, right: scaleW(-8), width: scaleW(180), height: scaleW(220) }}
+          />
+          <View style={{ padding: scaleW(20), paddingRight: scaleW(160), paddingTop: scaleW(28), gap: scaleW(12) }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: scaleW(10) }}>
+              <Image source={teamCardConfig.badgeImage} resizeMode="contain" style={{ width: scaleW(44), height: scaleW(44) }} />
+              <View>
+                <ThemedText type="heading" style={{ fontSize: scaleW(26), fontWeight: "800", color: teamCardConfig.accentColor, lineHeight: scaleW(30) }}>
+                  {teamCardConfig.title}
+                </ThemedText>
+                <ThemedText style={{ fontSize: scaleW(13), fontWeight: "600", color: teamCardConfig.leaderColor }}>
+                  {teamCardConfig.leaderPossessive} team
+                </ThemedText>
+              </View>
             </View>
-            <View style={styles.headerText}>
-              <Text style={styles.headerTitle}>
-                {teamCardConfig.title} are doing great this month!
-              </Text>
+            <View style={{
+              backgroundColor: "#FFFFFF",
+              borderRadius: scaleW(14),
+              padding: scaleW(12),
+              shadowColor: "#000",
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+              shadowOffset: { width: 0, height: 2 },
+              elevation: 2,
+              alignSelf: "flex-start" }}>
+              <ThemedText style={{ fontSize: scaleW(13), lineHeight: scaleW(19), color: "#333", fontStyle: "italic" }}>
+                "{teamCardConfig.title} are doing great this month!"
+              </ThemedText>
             </View>
           </View>
-        </Animated.View>
+        </View>
 
-        <Animated.View entering={FadeInDown.duration(500).delay(150)}>
-          <Text style={styles.sectionTitle}>This month</Text>
-        </Animated.View>
+        <View style={{ paddingHorizontal: scaleW(24), paddingTop: scaleW(28), paddingBottom: scaleW(40), gap: scaleW(24) }}>
 
-        <Animated.View
-          entering={FadeInDown.duration(500).delay(280)}
-          style={styles.chartRow}
-        >
-          {sortedTeamsForChart.map((bar, index) => {
-            const barStyle = index === 0 ? bar1Style : index === 1 ? bar2Style : bar3Style;
-            return (
-              <View key={bar.name} style={styles.chartBarWrap}>
-                <Animated.View style={[styles.chartBar, barStyle]}>
-                  <View style={styles.chartFace}>
-                    <Image
-                      source={bar.face}
-                      style={{ width: "100%", height: "100%" }}
-                      resizeMode="contain"
-                    />
+          {/* Leaderboard */}
+          <View style={{
+            backgroundColor: "#FFFFFF",
+            borderRadius: scaleW(20),
+            padding: scaleW(20),
+            shadowColor: "#000",
+            shadowOpacity: 0.08,
+            shadowRadius: 6,
+            shadowOffset: { width: 0, height: 2 },
+            elevation: 2 }}>
+            <ThemedText type="heading" style={{ fontSize: scaleW(18), fontWeight: "700", color: "#333", marginBottom: scaleW(20), textAlign: "center" }}>
+              This month
+            </ThemedText>
+            <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "center", gap: scaleW(16) }}>
+              {sortedTeamsForChart.map((bar, index) => {
+                const barStyle = index === 0 ? bar1Style : index === 1 ? bar2Style : bar3Style;
+                const isUserTeam = bar.name === teamInfo?.name?.toLowerCase();
+                return (
+                  <View key={bar.name} style={{ alignItems: "center", gap: scaleW(6) }}>
+                    <AnimatedReanimated.View style={[{
+                      width: scaleW(72),
+                      backgroundColor: bar.config.backgroundColor,
+                      borderRadius: scaleW(12),
+                      alignItems: "center",
+                      justifyContent: "flex-start",
+                      paddingTop: scaleW(10),
+                      borderWidth: isUserTeam ? 3 : 1,
+                      borderColor: isUserTeam ? bar.config.accentColor : "rgba(0,0,0,0.06)" },
+                    barStyle]}>
+                      <Image
+                        source={bar.config.badgeImage}
+                        resizeMode="contain"
+                        style={{ width: scaleW(40), height: scaleW(40) }}
+                      />
+                    </AnimatedReanimated.View>
+                    <ThemedText style={{ fontSize: scaleW(12), fontWeight: "600", color: "#555" }}>
+                      {bar.name.charAt(0).toUpperCase() + bar.name.slice(1)}
+                    </ThemedText>
                   </View>
-                </Animated.View>
-              </View>
-            );
-          })}
-        </Animated.View>
-        <View style={styles.chartBaseline} />
+                );
+              })}
+            </View>
+          </View>
 
-        <Animated.View entering={FadeInDown.duration(500).delay(380)}>
-          <Text style={styles.achievementsTitle}>Recent achievements</Text>
-        </Animated.View>
-        <View style={[styles.timeline, { position: "relative" }]}>
-          {visibleAchievements.map((item, index) => {
-            const cardBg = ACHIEVEMENT_CARD_COLORS[index % ACHIEVEMENT_CARD_COLORS.length];
-            const iconBg = ACHIEVEMENT_ICON_BG[index % ACHIEVEMENT_ICON_BG.length];
-            return (
-              <Animated.View
-                key={item.id}
-                entering={FadeInDown.duration(400).delay(450 + index * 60)}
-                style={{ zIndex: 1, width: "100%", alignItems: "center" }}
-              >
+          {/* Recent achievements */}
+          <View style={{ gap: scaleW(4) }}>
+            <ThemedText type="heading" style={{ fontSize: scaleW(20), fontWeight: "700", color: "#333" }}>
+              Recent achievements
+            </ThemedText>
+            <ThemedText style={{ fontSize: scaleW(13), color: "#888", marginBottom: scaleW(8) }}>
+              What your team has been up to
+            </ThemedText>
+          </View>
+
+          <View style={{ gap: scaleW(12) }}>
+            {visibleAchievements.map((item, index) => {
+              const cardBg = ACHIEVEMENT_CARD_COLORS[index % ACHIEVEMENT_CARD_COLORS.length];
+              const iconBg = ACHIEVEMENT_ICON_BG[index % ACHIEVEMENT_ICON_BG.length];
+              return (
                 <View
-                  style={[
-                    styles.achievementCard,
-                    {
-                      backgroundColor: cardBg,
-                      transform: [{ rotate: index % 2 === 0 ? "-1.5deg" : "1.5deg" }],
-                    },
-                  ]}
-                >
-                  <View style={[styles.achievementIcon, { backgroundColor: iconBg }]}>
+                  key={item.id}
+                  style={{
+                    backgroundColor: cardBg,
+                    borderRadius: scaleW(16),
+                    padding: scaleW(14),
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: scaleW(12),
+                    transform: [{ rotate: index % 2 === 0 ? "-0.8deg" : "0.8deg" }],
+                    shadowColor: "#000",
+                    shadowOpacity: 0.08,
+                    shadowRadius: 4,
+                    shadowOffset: { width: 0, height: 2 },
+                    elevation: 2,
+                    borderWidth: 2,
+                    borderColor: "rgba(255,255,255,0.8)" }}>
+                  <View style={{
+                    width: scaleW(48),
+                    height: scaleW(48),
+                    borderRadius: scaleW(24),
+                    backgroundColor: iconBg,
+                    alignItems: "center",
+                    justifyContent: "center" }}>
                     <Image
                       source={item.type === "badge" ? GET_STARTED_ICON_2_IMAGE : CELEBRATE_IMAGE}
-                      style={styles.achievementIconImage}
+                      style={{ width: scaleW(28), height: scaleW(28) }}
                       resizeMode="contain"
                     />
                   </View>
-                  <View style={styles.achievementText}>
-                    <Text style={styles.achievementTitle}>{item.title}</Text>
-                    <Text style={styles.achievementPoints}>+ {item.points} points</Text>
+                  <View style={{ flex: 1 }}>
+                    <ThemedText style={{ fontSize: scaleW(14), fontWeight: "600", color: "#1a1a1a", lineHeight: scaleW(20) }}>
+                      {item.title}
+                    </ThemedText>
+                    <ThemedText style={{ fontSize: scaleW(13), fontWeight: "700", color: teamCardConfig.accentColor, marginTop: scaleW(2) }}>
+                      + {item.points} points
+                    </ThemedText>
                   </View>
                 </View>
-              </Animated.View>
-            );
-          })}
-          {hasMoreAchievements && (
-            <View style={styles.loadingMoreWrap}>
-              <ActivityIndicator size="small" color={CHART_BASELINE} />
-            </View>
-          )}
-          {showNoMoreMessage && (
-            <Text style={styles.noMoreAchievements}>You're all caught up! More achievements will appear as your team explores.</Text>
-          )}
+              );
+            })}
+
+            {hasMoreAchievements && (
+              <View style={{ paddingVertical: scaleW(16), alignItems: "center" }}>
+                <ActivityIndicator size="small" color={teamCardConfig.accentColor} />
+              </View>
+            )}
+            {showNoMoreMessage && (
+              <ThemedText style={{ fontSize: scaleW(13), color: "#888", textAlign: "center", marginTop: scaleW(8) }}>
+                You're all caught up! More achievements will appear as your team explores.
+              </ThemedText>
+            )}
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>

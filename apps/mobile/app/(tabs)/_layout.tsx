@@ -7,8 +7,7 @@ import Animated, {
   useSharedValue,
   withRepeat,
   withSequence,
-  withTiming,
-} from "react-native-reanimated";
+  withTiming } from "react-native-reanimated";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,14 +22,12 @@ import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/ui/Button";
 import {
   getHasCompletedTutorial,
-  recordTutorialAchievement,
-} from "@/services/activityProgressService";
+  recordTutorialAchievement } from "@/services/activityProgressService";
 import {
   hasAskedPushOptIn,
   registerForPushNotificationsAsync,
   setPushEnabled,
-  setPushOptInAsked,
-} from "@/services/pushNotificationService";
+  setPushOptInAsked } from "@/services/pushNotificationService";
 import { isStartMissionOnboardingActive } from "@/constants/startMissionOnboarding";
 
 const HOME_CLUBHOUSE = require("@/assets/images/home-clubhouse.png");
@@ -44,8 +41,7 @@ const TAB_BAR_COLORS: Record<string, string> = {
   missions: "#D2684B",
   social: "#C3A4FF",
   journal: "#B07D3E",
-  testing: "#5B8A9E",
-};
+  testing: "#5B8A9E" };
 
 const CREAM = "#F4F0EB";
 const HUNTLY_GREEN = "#4F6F52";
@@ -54,8 +50,7 @@ const HUNTLY_CHARCOAL = "#3D3D3D";
 function TabIcon({
   source,
   color,
-  size = 24,
-}: {
+  size = 24 }: {
   source: number;
   color: string;
   size?: number;
@@ -86,8 +81,7 @@ function StoryTabPulse({ size }: { size: number }) {
   }, []);
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
-    opacity: opacity.value,
-  }));
+    opacity: opacity.value }));
   return (
     <Animated.View
       pointerEvents="none"
@@ -97,8 +91,7 @@ function StoryTabPulse({ size }: { size: number }) {
           width: size,
           height: size,
           borderRadius: size / 2,
-          borderWidth: 3,
-        },
+          borderWidth: 3 },
         animatedStyle,
       ]}
     />
@@ -112,8 +105,7 @@ export default function TabLayout() {
   const {
     firstSeason,
     heroImageSource,
-    loading: seasonLoading,
-  } = useFirstSeason();
+    loading: seasonLoading } = useFirstSeason();
   const { scaleW, isTablet } = useLayoutScale();
   const insets = useSafeAreaInsets();
   const signUpContext = useSignUpOptional();
@@ -378,25 +370,20 @@ export default function TabLayout() {
                 shadowOffset: { width: 0, height: scaleW(-2) },
                 shadowOpacity: 0.12,
                 shadowRadius: scaleW(4),
-                backgroundColor: TAB_BAR_COLORS[route.name] ?? TAB_BAR_COLORS.index,
-              }),
-        },
+                backgroundColor: TAB_BAR_COLORS[route.name] ?? TAB_BAR_COLORS.index }) },
         tabBarLabelStyle: {
           fontSize: scaleW(12),
           fontWeight: "600",
-          marginTop: scaleW(8),
-        },
+          marginTop: scaleW(8) },
         tabBarIconStyle: {
-          marginTop: 0,
-        },
+          marginTop: 0 },
         headerShown: false,
         tabBarButton: (props) => {
           const { ref: _ref, ...rest } = props;
           return (
             <Pressable {...rest} disabled={isTabDisabled(route.name)} />
           );
-        },
-      })}
+        } })}
     >
       <Tabs.Screen
         name="index"
@@ -405,8 +392,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <TabIcon source={HOME_CLUBHOUSE} color={color} size={scaleW(24)} />
           ),
-          href: profiles.length > 0 ? undefined : null,
-        }}
+          href: profiles.length > 0 ? undefined : null }}
       />
       <Tabs.Screen
         name="story"
@@ -423,8 +409,7 @@ export default function TabLayout() {
             </View>
           ),
           href: profiles.length > 0 ? undefined : null,
-          popToTopOnBlur: true,
-        }}
+          popToTopOnBlur: true }}
       />
       <Tabs.Screen
         name="missions"
@@ -440,8 +425,7 @@ export default function TabLayout() {
               <TabIcon source={HOME_MISSIONS} color={color} size={scaleW(24)} />
             </View>
           ),
-          href: profiles.length > 0 ? undefined : null,
-        }}
+          href: profiles.length > 0 ? undefined : null }}
       />
       <Tabs.Screen
         name="social"
@@ -459,8 +443,7 @@ export default function TabLayout() {
           ),
           // Always show the Team tab; the screen itself already handles
           // the “no team yet” state.
-          href: undefined,
-        }}
+          href: undefined }}
       />
       <Tabs.Screen
         name="journal"
@@ -476,38 +459,32 @@ export default function TabLayout() {
               <MaterialIcons name="auto-stories" size={scaleW(24)} color={color} />
             </View>
           ),
-          href: profiles.length > 0 ? undefined : null,
-        }}
+          href: profiles.length > 0 ? undefined : null }}
       />
       <Tabs.Screen
         name="testing"
         options={{
-          href: null,
-        }}
+          href: null }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          href: null,
-        }}
+          href: null }}
       />
       <Tabs.Screen
         name="parents"
         options={{
-          href: null,
-        }}
+          href: null }}
       />
       <Tabs.Screen
         name="activity"
         options={{
-          href: null,
-        }}
+          href: null }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          href: null,
-        }}
+          href: null }}
       />
       </Tabs>
       <NewPlayerTutorial
@@ -537,8 +514,7 @@ export default function TabLayout() {
                     width: "100%",
                     height: scaleW(160),
                     borderRadius: scaleW(12),
-                    marginBottom: scaleW(16),
-                  }}
+                    marginBottom: scaleW(16) }}
                 />
               ) : null}
               <ThemedText
@@ -546,8 +522,7 @@ export default function TabLayout() {
                 style={{
                   marginBottom: scaleW(8),
                   textAlign: "center",
-                  ...(seasonTitleFontSize != null ? { fontSize: seasonTitleFontSize } : {}),
-                }}
+                  ...(seasonTitleFontSize != null ? { fontSize: seasonTitleFontSize } : {}) }}
                 lightColor={HUNTLY_GREEN}
                 darkColor={CREAM}
               >
@@ -559,8 +534,7 @@ export default function TabLayout() {
                     marginBottom: scaleW(8),
                     textAlign: "center",
                     fontWeight: "600",
-                    ...(seasonNameFontSize != null ? { fontSize: seasonNameFontSize } : {}),
-                  }}
+                    ...(seasonNameFontSize != null ? { fontSize: seasonNameFontSize } : {}) }}
                   lightColor={HUNTLY_CHARCOAL}
                   darkColor={CREAM}
                 >
@@ -572,8 +546,7 @@ export default function TabLayout() {
                   marginBottom: scaleW(16),
                   textAlign: "center",
                   ...(seasonBodyFontSize != null ? { fontSize: seasonBodyFontSize } : {}),
-                  ...(seasonBodyLineHeight != null ? { lineHeight: seasonBodyLineHeight } : {}),
-                }}
+                  ...(seasonBodyLineHeight != null ? { lineHeight: seasonBodyLineHeight } : {}) }}
                 lightColor={HUNTLY_CHARCOAL}
                 darkColor={CREAM}
               >
@@ -605,33 +578,47 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   layoutWrapper: {
-    flex: 1,
-  },
+    flex: 1 },
   tabIcon: {},
   storyIconWrapper: {
     position: "relative",
     alignItems: "center",
-    justifyContent: "center",
-  },
+    justifyContent: "center" },
   tutorialPulseContainer: {
     position: "absolute",
     alignItems: "center",
-    justifyContent: "center",
-  },
+    justifyContent: "center" },
   tutorialPulseRing: {
     position: "absolute",
-    borderColor: "rgba(255,255,255,0.9)",
-  },
+    borderColor: "rgba(255,255,255,0.9)" },
   notificationPromptOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",
     justifyContent: "center",
     alignItems: "center",
-    padding: 24,
-  },
+    padding: 24 },
   notificationPromptCard: {
     backgroundColor: CREAM,
     maxWidth: 360,
     width: "100%",
+  },
+  notificationOptionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  notificationCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: HUNTLY_GREEN,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
   },
 });

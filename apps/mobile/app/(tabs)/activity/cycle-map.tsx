@@ -153,24 +153,21 @@ export default function CycleMapScreen() {
           borderBottomLeftRadius: scaleW(28),
           borderBottomRightRadius: scaleW(28),
           flexDirection: "row",
-          alignItems: "center",
-        },
+          alignItems: "center" },
         backButton: {
           width: scaleW(42),
           height: scaleW(42),
           borderRadius: scaleW(21),
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: "rgba(255,255,255,0.14)",
-        },
+          backgroundColor: "rgba(255,255,255,0.14)" },
         headerTextWrap: { flex: 1, alignItems: "center" },
         headerTitle: { fontSize: scaleW(22), fontWeight: "700", color: "#FFF", textAlign: "center" },
         headerSubtext: {
           marginTop: scaleW(4),
           fontSize: scaleW(14),
           color: "rgba(255,255,255,0.75)",
-          textAlign: "center",
-        },
+          textAlign: "center" },
         headerRightSpacer: { width: scaleW(42) },
         body: { flex: 1, backgroundColor: LIGHT_GREEN_BG },
         loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center", padding: scaleW(24) },
@@ -186,8 +183,7 @@ export default function CycleMapScreen() {
           paddingHorizontal: scaleW(10),
           gap: scaleW(6),
           zIndex: 5,
-          elevation: 5,
-        },
+          elevation: 5 },
         statRow: { flexDirection: "row", alignItems: "center", gap: scaleW(6) },
         statsText: { color: "rgba(255,255,255,0.9)", fontWeight: "900" as const, fontSize: scaleW(12) },
         recenterButton: {
@@ -201,8 +197,7 @@ export default function CycleMapScreen() {
           alignItems: "center",
           justifyContent: "center",
           zIndex: 6,
-          elevation: 6,
-        },
+          elevation: 6 },
         cameraButton: {
           position: "absolute" as const,
           left: scaleW(12),
@@ -214,8 +209,7 @@ export default function CycleMapScreen() {
           alignItems: "center",
           justifyContent: "center",
           zIndex: 6,
-          elevation: 6,
-        },
+          elevation: 6 },
         cameraBadge: {
           position: "absolute" as const,
           top: -scaleW(6),
@@ -230,8 +224,7 @@ export default function CycleMapScreen() {
           zIndex: 7,
           elevation: 7,
           borderWidth: 2,
-          borderColor: "rgba(255,255,255,0.9)",
-        },
+          borderColor: "rgba(255,255,255,0.9)" },
         cameraBadgeText: { color: "#FFF", fontWeight: "900" as const, fontSize: scaleW(10) },
         footer: {
           position: "absolute" as const,
@@ -245,30 +238,26 @@ export default function CycleMapScreen() {
           borderTopWidth: 1,
           borderTopColor: "rgba(79,111,82,0.1)",
           zIndex: 10,
-          elevation: 10,
-        },
+          elevation: 10 },
         footerHint: {
           fontSize: scaleW(14),
           color: "#5a5a5a",
           textAlign: "center",
-          marginBottom: scaleW(12),
-        },
+          marginBottom: scaleW(12) },
         completeButton: {
           backgroundColor: HUNTLY_GREEN,
           borderRadius: scaleW(28),
           paddingVertical: scaleW(16),
           paddingHorizontal: scaleW(32),
           alignSelf: "stretch",
-          alignItems: "center",
-        },
+          alignItems: "center" },
         completeButtonText: { fontSize: scaleW(18), fontWeight: "800", color: "#FFF" },
         retryButton: {
           marginTop: scaleW(16),
           backgroundColor: HUNTLY_GREEN,
           borderRadius: scaleW(22),
           paddingVertical: scaleW(12),
-          paddingHorizontal: scaleW(18),
-        },
+          paddingHorizontal: scaleW(18) },
         retryText: { color: "#FFF", fontWeight: "800", textAlign: "center" as const },
         modalBackdrop: { flex: 1, justifyContent: "flex-end" },
         modalSheet: {
@@ -278,16 +267,14 @@ export default function CycleMapScreen() {
           padding: scaleW(18),
           paddingBottom: insets.bottom + scaleW(16),
           borderTopWidth: 1,
-          borderTopColor: "rgba(79,111,82,0.12)",
-        },
+          borderTopColor: "rgba(79,111,82,0.12)" },
         modalTitle: { fontSize: scaleW(18), fontWeight: "900", color: "#1A2E1E", textAlign: "center" },
         modalBody: { marginTop: scaleW(8), fontSize: scaleW(14), color: "#3a3a3a", textAlign: "center" },
         modalButtons: { marginTop: scaleW(16), gap: scaleW(10) },
         modalPrimary: { backgroundColor: CHECK_GREEN, borderRadius: scaleW(28), paddingVertical: scaleW(14), alignItems: "center" },
         modalPrimaryText: { fontSize: scaleW(16), fontWeight: "900", color: "#FFF" },
         modalSecondary: { backgroundColor: "rgba(79,111,82,0.10)", borderRadius: scaleW(28), paddingVertical: scaleW(14), alignItems: "center" },
-        modalSecondaryText: { fontSize: scaleW(16), fontWeight: "900", color: HUNTLY_GREEN },
-      }),
+        modalSecondaryText: { fontSize: scaleW(16), fontWeight: "900", color: HUNTLY_GREEN } }),
     [scaleW, insets.bottom, isTablet]
   );
 
@@ -339,8 +326,7 @@ export default function CycleMapScreen() {
       distanceMeters,
       route: trail,
       endedAtCoords: coords,
-      photoUris: getCyclePhotoUris(),
-    });
+      photoUris: getCyclePhotoUris() });
     closeConfirm();
     router.replace("/(tabs)/activity/cycle-finish");
   };

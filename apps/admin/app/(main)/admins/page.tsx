@@ -51,44 +51,73 @@ export default async function AdminsPage() {
           No admins yet. Add one above or via SQL (see migration comment).
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white shadow-sm">
-          <table className="min-w-full divide-y divide-stone-200">
-            <thead>
-              <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500"
-                >
-                  Email
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500"
-                >
-                  Added
-                </th>
-                <th scope="col" className="relative px-6 py-3">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-200">
-              {admins.map((a) => (
-                <tr key={a.user_id}>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-stone-900">
-                    {a.email ?? a.user_id}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-stone-500">
-                    {new Date(a.created_at).toLocaleDateString("en-GB")}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-right">
+        <>
+          {/* Mobile: card list */}
+          <div className="space-y-3 sm:hidden">
+            {admins.map((a) => (
+              <article
+                key={a.user_id}
+                className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-stone-500">Email</p>
+                    <p className="mt-0.5 break-all text-sm font-medium text-stone-900">
+                      {a.email ?? a.user_id}
+                    </p>
+                    <p className="mt-1 text-xs text-stone-500">
+                      Added {new Date(a.created_at).toLocaleDateString("en-GB")}
+                    </p>
+                  </div>
+
+                  <div className="shrink-0">
                     <RemoveAdminButton userId={a.user_id} />
-                  </td>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          {/* Desktop: table */}
+          <div className="hidden overflow-x-auto rounded-xl border border-stone-200 bg-white shadow-sm sm:block">
+            <table className="min-w-full divide-y divide-stone-200">
+              <thead>
+                <tr>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500"
+                  >
+                    Email
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500"
+                  >
+                    Added
+                  </th>
+                  <th scope="col" className="relative px-6 py-3">
+                    <span className="sr-only">Actions</span>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-stone-200">
+                {admins.map((a) => (
+                  <tr key={a.user_id}>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-stone-900">
+                      {a.email ?? a.user_id}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-stone-500">
+                      {new Date(a.created_at).toLocaleDateString("en-GB")}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-right">
+                      <RemoveAdminButton userId={a.user_id} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );

@@ -60,6 +60,8 @@ function transformActivity(activityData: any): Activity {
     intro_dialogue: activityData.intro_dialogue ?? null,
     estimated_duration: activityData.estimated_duration ?? null,
     optional_items: activityData.optional_items ?? null,
+    preparation_message: activityData.preparation_message ?? null,
+    reminder_message: activityData.reminder_message ?? null,
     prep_checklist: parsePrepChecklist(activityData.prep_checklist),
     steps: parseSteps(activityData.steps),
     debrief_heading: activityData.debrief_heading ?? null,

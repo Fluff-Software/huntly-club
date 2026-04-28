@@ -17,6 +17,8 @@ export type Activity = Tables<"activities"> & {
   intro_dialogue: string | null;
   estimated_duration: string | null;
   optional_items: string[] | null;
+  preparation_message: string | null;
+  reminder_message: string | null;
   debrief_heading: string | null;
   debrief_photo_label: string | null;
   debrief_question_1: string | null;

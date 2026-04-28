@@ -39,6 +39,8 @@ type ActivityFormProps = {
     intro_dialogue?: string | null;
     estimated_duration?: string | null;
     optional_items?: string | null;
+    preparation_message?: string | null;
+    reminder_message?: string | null;
     prep_checklist?: PrepItem[] | null;
     steps?: StepItem[] | null;
     debrief_heading?: string | null;
@@ -296,6 +298,49 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
               type="text"
               defaultValue={initial?.optional_items ?? ""}
               placeholder="e.g. String & stickers optional"
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-4 rounded-lg border border-stone-200 bg-stone-50/50 p-4">
+        <h3 className="text-sm font-semibold text-stone-800">Notifications (content only)</h3>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <h4 className="text-xs font-semibold text-stone-700">Preparation notification</h4>
+            <p className="mt-1 text-xs text-stone-500">
+              This notification will be sent to users on Fridays
+            </p>
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="preparation_message" className="mb-1 block text-xs font-medium text-stone-600">
+              Message
+            </label>
+            <textarea
+              id="preparation_message"
+              name="preparation_message"
+              rows={3}
+              defaultValue={initial?.preparation_message ?? ""}
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+            />
+          </div>
+
+          <div className="sm:col-span-2">
+            <h4 className="text-xs font-semibold text-stone-700">Reminder notification</h4>
+            <p className="mt-1 text-xs text-stone-500">
+              This notification will be sent to users on Saturdays
+            </p>
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="reminder_message" className="mb-1 block text-xs font-medium text-stone-600">
+              Message
+            </label>
+            <textarea
+              id="reminder_message"
+              name="reminder_message"
+              rows={3}
+              defaultValue={initial?.reminder_message ?? ""}
               className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
             />
           </div>

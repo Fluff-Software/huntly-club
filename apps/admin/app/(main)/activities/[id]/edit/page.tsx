@@ -70,6 +70,8 @@ export default async function EditActivityPage({
           intro_dialogue: activity.intro_dialogue ?? null,
           estimated_duration: activity.estimated_duration ?? null,
           optional_items: activity.optional_items ?? null,
+          preparation_message: activity.preparation_message ?? null,
+          reminder_message: activity.reminder_message ?? null,
           prep_checklist: Array.isArray(activity.prep_checklist) ? activity.prep_checklist : null,
           steps: Array.isArray(activity.steps) ? activity.steps : null,
           debrief_heading: activity.debrief_heading ?? null,

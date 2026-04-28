@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import type { ImageSourcePropType } from "react-native";
 import { supabase } from "@/services/supabase";
 import type { MissionCardData } from "@/constants/missionCards";
+import { ukTodayForChapterUnlockGate } from "@/utils/ukChapterTime";
 
 const DEFAULT_MISSION_IMAGE = require("@/assets/images/laser-fortress.jpg");
 
@@ -59,7 +60,7 @@ export function useAllChaptersActivities(): {
     setError(null);
     setLoading(true);
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = ukTodayForChapterUnlockGate();
 
     const { data: chapters, error: chaptersError } = await supabase
       .from("chapters")
@@ -152,7 +153,7 @@ export function useChaptersWithActivities(profileId: number | null = null): {
   const fetchData = useCallback(async () => {
     setError(null);
     setLoading(true);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = ukTodayForChapterUnlockGate();
 
     const { data: latestSeason, error: seasonError } = await supabase
       .from("seasons")

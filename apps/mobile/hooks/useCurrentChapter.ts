@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/services/supabase";
+import { ukTodayForChapterUnlockGate } from "@/utils/ukChapterTime";
 
 export type CurrentChapter = {
   id: number;
@@ -25,7 +26,7 @@ export function useCurrentChapter(): {
     setError(null);
     setLoading(true);
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = ukTodayForChapterUnlockGate();
 
     // Latest season (highest id)
     const { data: latestSeason, error: seasonError } = await supabase

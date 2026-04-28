@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFocusEffect } from "expo-router";
+import { ukUnlockDateToUtcMs } from "@/utils/ukChapterTime";
 
 type UseCountdownToUtcDateOptions = {
   onComplete?: () => void | Promise<void>;
 };
 
-function parseUtcMidnightMs(targetDate: string): number | null {
+function parseUkUnlockMs(targetDate: string): number | null {
   // `chapters.unlock_date` is stored as a `date` (YYYY-MM-DD).
-  // Your app’s unlock comparisons are UTC-date based, so align countdown to UTC midnight.
-  const ms = Date.parse(`${targetDate}T00:00:00.000Z`);
-  return Number.isNaN(ms) ? null : ms;
+  // Chapters unlock at 6:00am UK time, so countdown must target that exact moment.
+  return ukUnlockDateToUtcMs(targetDate);
 }
 
 function formatRemainingShort(remainingMs: number): string {
@@ -37,7 +37,7 @@ export function useCountdownToUtcDate(targetDate: string | null, options?: UseCo
 
   const targetMs = useMemo(() => {
     if (!targetDate) return null;
-    return parseUtcMidnightMs(targetDate);
+    return parseUkUnlockMs(targetDate);
   }, [targetDate]);
 
   const [remainingMs, setRemainingMs] = useState<number | null>(() => {

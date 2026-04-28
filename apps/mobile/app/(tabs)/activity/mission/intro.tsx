@@ -4,27 +4,51 @@ import {
   ScrollView,
   Image,
   Pressable,
-  StyleSheet,
   ActivityIndicator } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
-  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
   withSpring } from "react-native-reanimated";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
-import { getActivityById, getActivityImageSource } from "@/services/packService";
+import { getActivityById } from "@/services/packService";
 import { useUser } from "@/contexts/UserContext";
 import { isStartMissionOnboardingActive } from "@/constants/startMissionOnboarding";
 import type { Activity } from "@/types/activity";
 
+// Legacy animal fallbacks (for missions that pre-date captain system)
 const BEAR_FACE = require("@/assets/images/bear-face.png");
 const FOX_FACE = require("@/assets/images/fox-face.png");
 const OTTER_FACE = require("@/assets/images/otter-face.png");
 
-function getFaceImage(name: string) {
+const CAPTAIN_ASSETS = {
+  bella: {
+    avatar:          require("@/assets/images/bella-close-smiling.png"),
+    standing:        require("@/assets/images/bella-standing.png"),
+    "crossed-arms":  require("@/assets/images/bella-crossed-arms.png"),
+    waving:          require("@/assets/images/bella-waving.png"),
+  },
+  felix: {
+    avatar:          require("@/assets/images/felix-close-smiling.png"),
+    standing:        require("@/assets/images/felix-standing.png"),
+    "crossed-arms":  require("@/assets/images/felix-crossed-arms.png"),
+    waving:          require("@/assets/images/felix-waving.png"),
+  },
+  oli: {
+    avatar:          require("@/assets/images/oli-close-smiling.png"),
+    standing:        require("@/assets/images/oli-standing.png"),
+    "crossed-arms":  require("@/assets/images/oli-crossed-arms.png"),
+    waving:          require("@/assets/images/oli-waving.png"),
+  },
+} as const;
+
+type CaptainKey = keyof typeof CAPTAIN_ASSETS;
+type PoseKey = "standing" | "crossed-arms" | "waving";
+
+function getLegacyFace(name: string) {
   const lower = name.toLowerCase();
   if (lower.includes("fox")) return FOX_FACE;
   if (lower.includes("otter")) return OTTER_FACE;
@@ -32,14 +56,14 @@ function getFaceImage(name: string) {
 }
 
 const FOREST_DARK = "#2D4A35";
-const HUNTLY_GREEN = "#4F6F52";
-const URGENT_RED = "#E04434";
-const CREAM = "#F6F5F1";
+const FOREST_MID = "#3D5F45";
+const URGENT_RED = "#C0392B";
+const CREAM = "#F0E8C8";
 
 export default function IntroScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const { scaleW, isTablet } = useLayoutScale();
+  const { scaleW, width } = useLayoutScale();
   const insets = useSafeAreaInsets();
   const { userData } = useUser();
   const onboardingActive = isStartMissionOnboardingActive(userData?.start_mission_step);
@@ -48,11 +72,7 @@ export default function IntroScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const loadActivity = useCallback(async () => {
-    if (!id) {
-      setError("No activity selected");
-      setLoading(false);
-      return;
-    }
+    if (!id) { setError("No activity selected"); setLoading(false); return; }
     setError(null);
     setLoading(true);
     try {
@@ -61,124 +81,49 @@ export default function IntroScreen() {
       if (!data) setError("Activity not found");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load activity");
-      setActivity(null);
     } finally {
       setLoading(false);
     }
   }, [id]);
 
-  useEffect(() => {
-    loadActivity();
-  }, [loadActivity]);
+  useEffect(() => { loadActivity(); }, [loadActivity]);
 
   const buttonScale = useSharedValue(1);
-  const buttonStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: buttonScale.value }] }));
+  const buttonStyle = useAnimatedStyle(() => ({ transform: [{ scale: buttonScale.value }] }));
 
   const handleAccept = () => {
     if (!activity?.id) return;
-    router.push({
-      pathname: "/(tabs)/activity/mission/prep",
-      params: { id: String(activity.id) } });
+    router.push({ pathname: "/(tabs)/activity/mission/prep", params: { id: String(activity.id) } });
   };
 
-  const styles = useMemo(
-    () =>
-      StyleSheet.create({
-        container: { flex: 1, backgroundColor: FOREST_DARK },
-        loadingContainer: {
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          padding: scaleW(24) },
-        errorText: { fontSize: scaleW(17), color: "#FFF", textAlign: "center" },
-        scroll: { flex: 1 },
-        scrollContent: { paddingHorizontal: scaleW(20), paddingBottom: scaleW(120) },
-        urgentBannerWrap: {
-          marginHorizontal: -scaleW(28),
-          marginTop: scaleW(8),
-          marginBottom: scaleW(28) },
-        urgentBanner: {
-          backgroundColor: URGENT_RED,
-          paddingVertical: scaleW(16),
-          transform: [{ rotate: "-1deg" }] },
-        urgentText: {
-          fontSize: scaleW(17),
-          fontWeight: "800",
-          color: "#FFF",
-          textAlign: "center",
-          letterSpacing: 0.5 },
-        characterRow: {
-          flexDirection: "row",
-          alignItems: "center",
-          gap: scaleW(12),
-          marginBottom: scaleW(16) },
-        avatar: {
-          width: scaleW(48),
-          height: scaleW(48),
-          borderRadius: scaleW(24),
-          backgroundColor: "#FFF",
-          overflow: "hidden",
-          padding: scaleW(6),
-          alignItems: "center",
-          justifyContent: "center" },
-        avatarImage: {
-          width: scaleW(48),
-          height: scaleW(48),
-          borderRadius: scaleW(24),
-          overflow: "hidden" },
-        characterName: { fontSize: scaleW(18), fontWeight: "600", color: "#FFF" },
-        speechBubble: {
-          backgroundColor: HUNTLY_GREEN,
-          borderRadius: scaleW(20),
-          padding: scaleW(20),
-          marginBottom: scaleW(20) },
-        dialogueText: {
-          fontSize: scaleW(16),
-          color: "#FFF",
-          lineHeight: scaleW(24) },
-        missionCard: {
-          backgroundColor: HUNTLY_GREEN,
-          borderRadius: scaleW(20),
-          padding: scaleW(24),
-          marginBottom: scaleW(24) },
-        missionLabel: {
-          fontSize: scaleW(12),
-          fontWeight: "600",
-          color: "rgba(255,255,255,0.8)",
-          letterSpacing: 1,
-          marginBottom: scaleW(8) },
-        missionTitle: { fontSize: scaleW(22), fontWeight: "700", color: "#FFF", marginBottom: scaleW(4) },
-        missionDesc: { fontSize: scaleW(15), color: "rgba(255,255,255,0.9)", marginBottom: scaleW(8) },
-        metaRow: { fontSize: scaleW(13), color: "rgba(255,255,255,0.75)" },
-        acceptButton: {
-          backgroundColor: HUNTLY_GREEN,
-          borderRadius: scaleW(28),
-          borderWidth: scaleW(2),
-          borderColor: "rgba(255,255,255,0.45)",
-          paddingVertical: scaleW(16),
-          paddingHorizontal: scaleW(32),
-          alignSelf: "center",
-          marginTop: scaleW(8) },
-        acceptButtonText: { fontSize: scaleW(18), fontWeight: "700", color: "#FFF" },
-        footer: {
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          paddingHorizontal: scaleW(20),
-          paddingBottom:
-            insets.bottom +
-            (onboardingActive ? scaleW(28) : scaleW(24)) +
-            (isTablet ? scaleW(40) : 0) } }),
-    [scaleW, insets.bottom, onboardingActive, isTablet]
-  );
+  const captainKey = (activity?.intro_captain ?? null) as CaptainKey | null;
+  const validCaptain = captainKey != null && captainKey in CAPTAIN_ASSETS ? captainKey : null;
+  const poseKey: PoseKey = (activity?.intro_captain_pose as PoseKey | null | undefined) ?? "standing";
+  const validPose: PoseKey = poseKey in (CAPTAIN_ASSETS[validCaptain ?? "bella"] ?? {}) ? poseKey : "standing";
+
+  const captainAssets = validCaptain ? CAPTAIN_ASSETS[validCaptain] : null;
+  const avatarSource = captainAssets
+    ? captainAssets.avatar
+    : activity?.intro_character_avatar_url
+      ? { uri: activity.intro_character_avatar_url }
+      : activity?.intro_character_name
+        ? getLegacyFace(activity.intro_character_name)
+        : null;
+  const bodySource = captainAssets ? captainAssets[validPose] : null;
+
+  const characterName = useMemo(() => {
+    if (activity?.intro_character_name?.trim()) return activity.intro_character_name.trim();
+    if (validCaptain) return validCaptain.charAt(0).toUpperCase() + validCaptain.slice(1);
+    return null;
+  }, [activity?.intro_character_name, validCaptain]);
+
+  const footerPaddingBottom = insets.bottom + (onboardingActive ? scaleW(28) : scaleW(24));
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, styles.loadingContainer]} edges={["top", "left", "right"]}>
-        <ActivityIndicator size="large" color={HUNTLY_GREEN} />
-        <ThemedText style={[styles.errorText, { marginTop: scaleW(16) }]}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: FOREST_DARK, justifyContent: "center", alignItems: "center" }} edges={["top", "left", "right"]}>
+        <ActivityIndicator size="large" color={CREAM} />
+        <ThemedText lightColor={CREAM} darkColor={CREAM} style={{ marginTop: scaleW(16), fontSize: scaleW(16) }}>
           Loading your mission…
         </ThemedText>
       </SafeAreaView>
@@ -187,84 +132,255 @@ export default function IntroScreen() {
 
   if (error || !activity) {
     return (
-      <SafeAreaView style={[styles.container, styles.loadingContainer]} edges={["top", "left", "right"]}>
-        <ThemedText style={styles.errorText}>{error ?? "Activity not found"}</ThemedText>
+      <SafeAreaView style={{ flex: 1, backgroundColor: FOREST_DARK, justifyContent: "center", alignItems: "center", padding: scaleW(24) }} edges={["top", "left", "right"]}>
+        <ThemedText lightColor="#FFF" darkColor="#FFF" style={{ fontSize: scaleW(17), textAlign: "center" }}>
+          {error ?? "Activity not found"}
+        </ThemedText>
       </SafeAreaView>
     );
   }
 
-  const hasUrgent = activity.intro_urgent_message != null && activity.intro_urgent_message.trim() !== "";
-  const characterName = activity.intro_character_name?.trim() || "Mission";
-  const avatarUrl = activity.intro_character_avatar_url?.trim();
+  const hasUrgent = !!activity.intro_urgent_message?.trim();
+  const hasDialogue = !!activity.intro_dialogue?.trim();
+  const items: string[] = Array.isArray(activity.optional_items) ? activity.optional_items : [];
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: FOREST_DARK }} edges={["top", "left", "right"]}>
+
+      {/* Urgent banner */}
+      {hasUrgent && (
+        <View style={{
+          backgroundColor: URGENT_RED,
+          paddingVertical: scaleW(14),
+          transform: [{ rotate: "-1deg" }],
+          marginHorizontal: -scaleW(4),
+          marginBottom: scaleW(4) }}>
+          <ThemedText
+            lightColor="#FFF"
+            darkColor="#FFF"
+            style={{ fontSize: scaleW(16), fontWeight: "800", textAlign: "center", letterSpacing: 0.5 }}>
+            ⚡ {activity.intro_urgent_message}
+          </ThemedText>
+        </View>
+      )}
+
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: scaleW(20), paddingBottom: scaleW(120), paddingTop: scaleW(8) }}
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        {hasUrgent && (
-          <Animated.View style={styles.urgentBannerWrap}>
-            <View style={styles.urgentBanner}>
-              <ThemedText style={styles.urgentText}>{activity.intro_urgent_message}</ThemedText>
-            </View>
-          </Animated.View>
-        )}
-        <Animated.View style={styles.characterRow}>
-          {avatarUrl ? (
+        {/* Character section */}
+        <View style={{ minHeight: scaleW(260), marginBottom: scaleW(20) }}>
+          {/* Full-body captain image — absolute right */}
+          {bodySource && (
             <Image
-              source={{ uri: avatarUrl }}
-              style={styles.avatarImage}
-              resizeMode="cover"
+              source={bodySource}
+              resizeMode="contain"
+              style={{
+                position: "absolute",
+                right: -scaleW(16),
+                bottom: 0,
+                width: width * 0.52,
+                height: scaleW(270) }}
             />
-          ) : (
-            <View style={styles.avatar}>
-              <Image
-                source={getFaceImage(characterName)}
-                style={{ width: "100%", height: "100%" }}
-                resizeMode="contain"
-              />
+          )}
+
+          {/* Avatar + name */}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: scaleW(12), marginBottom: scaleW(16) }}>
+            {avatarSource && (
+              <View style={{
+                width: scaleW(64),
+                height: scaleW(64),
+                borderRadius: scaleW(32),
+                overflow: "hidden",
+                borderWidth: 3,
+                borderColor: "#FFF" }}>
+                <Image
+                  source={avatarSource}
+                  style={{ width: "100%", height: "100%" }}
+                  resizeMode="cover"
+                />
+              </View>
+            )}
+            {characterName && (
+              <View>
+                <ThemedText
+                  type="heading"
+                  lightColor="#FFF"
+                  darkColor="#FFF"
+                  style={{ fontSize: scaleW(22), fontWeight: "800" }}>
+                  {characterName}
+                </ThemedText>
+              </View>
+            )}
+          </View>
+
+          {/* Speech bubble */}
+          {hasDialogue && (
+            <View style={{ marginRight: bodySource ? width * 0.44 : 0 }}>
+              <View style={{
+                backgroundColor: "#FFF",
+                borderRadius: scaleW(16),
+                padding: scaleW(16),
+                shadowColor: "#000",
+                shadowOpacity: 0.15,
+                shadowRadius: 8,
+                shadowOffset: { width: 0, height: 3 },
+                elevation: 4 }}>
+                <ThemedText style={{
+                  fontSize: scaleW(15),
+                  color: "#1a1a1a",
+                  lineHeight: scaleW(22),
+                  fontStyle: "italic" }}>
+                  "{activity.intro_dialogue}"
+                </ThemedText>
+              </View>
+              {/* Right-pointing tail */}
+              {bodySource && (
+                <View style={{
+                  position: "absolute",
+                  right: -scaleW(10),
+                  top: scaleW(20),
+                  width: 0,
+                  height: 0,
+                  borderTopWidth: scaleW(8),
+                  borderBottomWidth: scaleW(8),
+                  borderLeftWidth: scaleW(10),
+                  borderTopColor: "transparent",
+                  borderBottomColor: "transparent",
+                  borderLeftColor: "#FFF" }}
+                />
+              )}
             </View>
           )}
-          <ThemedText style={styles.characterName}>{characterName}</ThemedText>
-        </Animated.View>
-        {activity.intro_dialogue != null && activity.intro_dialogue.trim() !== "" && (
-          <Animated.View style={styles.speechBubble}>
-            <ThemedText style={styles.dialogueText}>{activity.intro_dialogue}</ThemedText>
-          </Animated.View>
-        )}
-        <Animated.View style={styles.missionCard}>
-          <ThemedText style={styles.missionLabel}>YOUR MISSION</ThemedText>
-          <ThemedText type="heading" style={styles.missionTitle}>
-            {activity.title}
-          </ThemedText>
-          {activity.description != null && activity.description.trim() !== "" && (
-            <ThemedText style={styles.missionDesc}>{activity.description}</ThemedText>
-          )}
-          <ThemedText style={styles.metaRow}>
-            {[activity.optional_items, activity.estimated_duration]
-              .filter(Boolean)
-              .join(" · ")}
-          </ThemedText>
-        </Animated.View>
+        </View>
+
+        {/* Mission card */}
+        <View style={{
+          backgroundColor: FOREST_MID,
+          borderRadius: scaleW(20),
+          padding: scaleW(20),
+          marginBottom: scaleW(24),
+          shadowColor: "#000",
+          shadowOpacity: 0.2,
+          shadowRadius: 6,
+          shadowOffset: { width: 0, height: 3 },
+          elevation: 4 }}>
+
+          {/* Header row */}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: scaleW(8), marginBottom: scaleW(12) }}>
+            <MaterialIcons name="flag" size={scaleW(16)} color="rgba(255,255,255,0.7)" />
+            <ThemedText
+              lightColor="rgba(255,255,255,0.7)"
+              darkColor="rgba(255,255,255,0.7)"
+              style={{ fontSize: scaleW(11), fontWeight: "700", letterSpacing: 1.5, textTransform: "uppercase" }}>
+              Your Mission
+            </ThemedText>
+          </View>
+
+          <View style={{ borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.15)", paddingTop: scaleW(12) }}>
+            <ThemedText
+              type="heading"
+              lightColor="#FFF"
+              darkColor="#FFF"
+              style={{ fontSize: scaleW(24), fontWeight: "800", marginBottom: scaleW(8) }}>
+              {activity.title}
+            </ThemedText>
+            {!!activity.description?.trim() && (
+              <ThemedText
+                lightColor="rgba(255,255,255,0.88)"
+                darkColor="rgba(255,255,255,0.88)"
+                style={{ fontSize: scaleW(15), lineHeight: scaleW(22), marginBottom: scaleW(16) }}>
+                {activity.description}
+              </ThemedText>
+            )}
+
+            {/* Items + duration chips */}
+            {(items.length > 0 || !!activity.estimated_duration?.trim()) && (
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: scaleW(8) }}>
+                {items.map((item, i) => (
+                  <View
+                    key={i}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: scaleW(5),
+                      backgroundColor: "rgba(255,255,255,0.15)",
+                      borderRadius: scaleW(20),
+                      paddingVertical: scaleW(5),
+                      paddingHorizontal: scaleW(10) }}>
+                    <MaterialIcons name="local-offer" size={scaleW(12)} color="rgba(255,255,255,0.8)" />
+                    <ThemedText
+                      lightColor="#FFF"
+                      darkColor="#FFF"
+                      style={{ fontSize: scaleW(12), fontWeight: "600" }}>
+                      {item}
+                    </ThemedText>
+                  </View>
+                ))}
+                {!!activity.estimated_duration?.trim() && (
+                  <View style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: scaleW(5),
+                    backgroundColor: "rgba(255,255,255,0.15)",
+                    borderRadius: scaleW(20),
+                    paddingVertical: scaleW(5),
+                    paddingHorizontal: scaleW(10) }}>
+                    <MaterialIcons name="timer" size={scaleW(12)} color="rgba(255,255,255,0.8)" />
+                    <ThemedText
+                      lightColor="#FFF"
+                      darkColor="#FFF"
+                      style={{ fontSize: scaleW(12), fontWeight: "600" }}>
+                      {activity.estimated_duration}
+                    </ThemedText>
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
+        </View>
       </ScrollView>
-      <View style={styles.footer} pointerEvents="box-none">
+
+      {/* Accept button — fixed footer */}
+      <View style={{
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        paddingHorizontal: scaleW(20),
+        paddingBottom: footerPaddingBottom }}
+        pointerEvents="box-none"
+      >
         <Animated.View style={buttonStyle}>
           <Pressable
             onPress={handleAccept}
-            onPressIn={() => {
-              buttonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-            }}
-            onPressOut={() => {
-              buttonScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-            }}
-            style={styles.acceptButton}
+            onPressIn={() => { buttonScale.value = withSpring(0.97, { damping: 15, stiffness: 400 }); }}
+            onPressOut={() => { buttonScale.value = withSpring(1, { damping: 15, stiffness: 400 }); }}
+            style={{
+              backgroundColor: CREAM,
+              borderRadius: scaleW(32),
+              paddingVertical: scaleW(18),
+              paddingHorizontal: scaleW(32),
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "row",
+              gap: scaleW(8),
+              shadowColor: "#000",
+              shadowOpacity: 0.2,
+              shadowRadius: 6,
+              shadowOffset: { width: 0, height: 3 },
+              elevation: 4 }}
           >
-            <ThemedText type="heading" style={styles.acceptButtonText}>
+            <ThemedText
+              type="heading"
+              lightColor={FOREST_DARK}
+              darkColor={FOREST_DARK}
+              style={{ fontSize: scaleW(18), fontWeight: "800" }}>
               Accept the mission
             </ThemedText>
+            <MaterialIcons name="arrow-forward" size={scaleW(20)} color={FOREST_DARK} />
           </Pressable>
         </Animated.View>
       </View>

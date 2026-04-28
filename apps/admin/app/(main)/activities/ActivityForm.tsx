@@ -35,8 +35,9 @@ type ActivityFormProps = {
     categories: number[] | null;
     intro_urgent_message?: string | null;
     intro_character_name?: string | null;
-    intro_character_avatar_url?: string | null;
     intro_dialogue?: string | null;
+    intro_captain?: string | null;
+    intro_captain_pose?: string | null;
     estimated_duration?: string | null;
     optional_items?: string | null;
     prep_checklist?: PrepItem[] | null;
@@ -235,28 +236,46 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
             />
           </div>
           <div>
+            <label htmlFor="intro_captain" className="mb-1 block text-xs font-medium text-stone-600">
+              Captain
+            </label>
+            <select
+              id="intro_captain"
+              name="intro_captain"
+              defaultValue={initial?.intro_captain ?? ""}
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+            >
+              <option value="">None</option>
+              <option value="bella">Bella (Bears)</option>
+              <option value="felix">Felix (Foxes)</option>
+              <option value="oli">Oli (Otters)</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="intro_captain_pose" className="mb-1 block text-xs font-medium text-stone-600">
+              Captain pose
+            </label>
+            <select
+              id="intro_captain_pose"
+              name="intro_captain_pose"
+              defaultValue={initial?.intro_captain_pose ?? "standing"}
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+            >
+              <option value="standing">Standing</option>
+              <option value="crossed-arms">Crossed arms</option>
+              <option value="waving">Waving</option>
+            </select>
+          </div>
+          <div>
             <label htmlFor="intro_character_name" className="mb-1 block text-xs font-medium text-stone-600">
-              Character name
+              Name override <span className="font-normal text-stone-400">(leave blank to use captain&apos;s name)</span>
             </label>
             <input
               id="intro_character_name"
               name="intro_character_name"
               type="text"
               defaultValue={initial?.intro_character_name ?? ""}
-              placeholder="e.g. Bella Bear"
-              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-            />
-          </div>
-          <div>
-            <label htmlFor="intro_character_avatar_url" className="mb-1 block text-xs font-medium text-stone-600">
-              Character avatar URL
-            </label>
-            <input
-              id="intro_character_avatar_url"
-              name="intro_character_avatar_url"
-              type="text"
-              defaultValue={initial?.intro_character_avatar_url ?? ""}
-              placeholder="URL or leave blank"
+              placeholder="e.g. Bella"
               className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
             />
           </div>

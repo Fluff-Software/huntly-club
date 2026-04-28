@@ -587,7 +587,7 @@ export default function HomeScreen() {
           <ThemedText
             lightColor="rgba(255,255,255,0.85)"
             darkColor="rgba(255,255,255,0.85)"
-            style={{ fontSize: scaleW(14), fontWeight: "500" }}
+            style={{ fontSize: scaleW(16), fontWeight: "500" }}
           >
             Here's what's happening
           </ThemedText>
@@ -697,7 +697,7 @@ export default function HomeScreen() {
                 overflow: Platform.OS === "android" ? "visible" : undefined }}
               collapsable={Platform.OS !== "android"}
             >
-              <ThemedText type="heading" style={{ color: "#1A5C6B", fontSize: scaleW(16), fontWeight: "700", marginBottom: scaleW(14), textAlign: "center" }}>
+              <ThemedText type="heading" style={{ color: "#1A5C6B", fontSize: scaleW(18), fontWeight: "700", marginBottom: scaleW(14), textAlign: "center" }}>
                 From around the club
               </ThemedText>
               <Animated.ScrollView
@@ -843,7 +843,7 @@ export default function HomeScreen() {
           <ThemedText
             lightColor="rgba(255,255,255,0.85)"
             darkColor="rgba(255,255,255,0.85)"
-            style={{ fontSize: scaleW(14), fontWeight: "500" }}
+            style={{ fontSize: scaleW(16), fontWeight: "500" }}
           >
             Choose a mission or adventure
           </ThemedText>

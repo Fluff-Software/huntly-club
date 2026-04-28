@@ -23,7 +23,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
-import { MissionCard } from "@/components/MissionCard";
 import { AdventureTile } from "@/components/AdventureTile";
 import { PastAdventuresTile } from "@/components/PastAdventuresTile";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
@@ -891,16 +890,62 @@ export default function HomeScreen() {
           </Pressable>
         </View> */}
 
-        {/* Mission card */}
-        <View collapsable={Platform.OS !== "android"} style={{ alignItems: "center" }}>
-          {missionLoading ? (
-            <View style={{ paddingVertical: scaleW(32), alignItems: "center" }}>
-              <ActivityIndicator size="large" color="#FFF" />
+        {/* Mission card — horizontal layout */}
+        {missionLoading ? (
+          <View style={{ paddingVertical: scaleW(32), alignItems: "center" }}>
+            <ActivityIndicator size="large" color="#FFF" />
+          </View>
+        ) : latestMission ? (
+          <Pressable
+            onPress={() => router.push({ pathname: "/(tabs)/activity/mission", params: { id: latestMission.id } } as Parameters<typeof router.push>[0])}
+            style={({ pressed }) => [{ borderRadius: scaleW(20), overflow: "hidden" }, pressed && { opacity: 0.88 }]}
+          >
+            <View style={{
+              backgroundColor: "#FFF",
+              borderRadius: scaleW(20),
+              borderWidth: 3,
+              borderColor: "#7FAF8A",
+              overflow: "hidden",
+              flexDirection: "row",
+              minHeight: scaleW(130),
+              shadowColor: "#000",
+              shadowOpacity: 0.18,
+              shadowRadius: 4,
+              shadowOffset: { width: 0, height: 2 },
+              elevation: 3 }}>
+              <Image
+                source={latestMission.image}
+                resizeMode="cover"
+                style={{ width: scaleW(110), alignSelf: "stretch" }}
+              />
+              <View style={{ flex: 1, padding: scaleW(14), justifyContent: "space-between" }}>
+                <View style={{ gap: scaleW(4) }}>
+                  <ThemedText type="heading" style={{ fontSize: scaleW(18), fontWeight: "700", color: "#1a1a1a" }} numberOfLines={2}>
+                    {latestMission.title}
+                  </ThemedText>
+                  <ThemedText style={{ fontSize: scaleW(16), color: "#555", lineHeight: scaleW(17) }} numberOfLines={3}>
+                    {latestMission.description}
+                  </ThemedText>
+                </View>
+                <View style={{
+                  alignSelf: "flex-start",
+                  backgroundColor: "#7FAF8A",
+                  borderRadius: scaleW(20),
+                  paddingVertical: scaleW(6),
+                  paddingHorizontal: scaleW(14),
+                  marginTop: scaleW(8),
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: scaleW(4) }}>
+                  <ThemedText lightColor="#FFF" darkColor="#FFF" style={{ fontSize: scaleW(16), fontWeight: "700" }}>
+                    Start mission
+                  </ThemedText>
+                  <MaterialIcons name="chevron-right" size={scaleW(14)} color="#FFF" />
+                </View>
+              </View>
             </View>
-          ) : latestMission ? (
-            <MissionCard card={latestMission} tiltDeg={0} />
-          ) : null}
-        </View>
+          </Pressable>
+        ) : null}
 
         {/* OR divider */}
         <View style={{ alignItems: "center" }}>

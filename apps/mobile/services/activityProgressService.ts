@@ -526,6 +526,34 @@ export interface ClubPhotoCardItem {
   team_name?: string;
 }
 
+/**
+ * Returns a weighted random ordering where higher recency scores are favored,
+ * but lower scores still have a non-zero chance to appear.
+ */
+function weightedRecencyShuffleByScore<T>(
+  rows: T[],
+  getRecencyScore: (row: T) => number
+): T[] {
+  const MIN_WEIGHT = 0.1; // keep older content occasionally visible
+
+  const scored = rows.map((row) => ({
+    row,
+    score: Number.isFinite(getRecencyScore(row)) ? getRecencyScore(row) : 0,
+  }));
+  const maxScore = scored.reduce((max, item) => Math.max(max, item.score), 0);
+
+  return scored
+    .map((item) => {
+      const normalized = maxScore > 0 ? item.score / maxScore : 0;
+      const recencyWeight = MIN_WEIGHT + normalized;
+      // Efraimidis-Spirakis weighted random key for sampling without replacement.
+      const key = Math.pow(Math.random(), 1 / recencyWeight);
+      return { row: item.row, key };
+    })
+    .sort((a, b) => b.key - a.key)
+    .map((item) => item.row);
+}
+
 function buildThumbnailUrl(originalUrl: string): string {
   if (!originalUrl) return originalUrl;
   // Append basic resize/quality params; for Supabase Storage this will
@@ -575,7 +603,10 @@ export const getRandomClubPhotos = async (
     }
   }
 
-  const shuffled = [...list].sort(() => Math.random() - 0.5);
+  const shuffled = weightedRecencyShuffleByScore(
+    list,
+    (row) => Number((row as { photo_id?: number | string }).photo_id ?? 0)
+  );
   const filtered = excludeSet.size > 0
     ? shuffled.filter((row: Record<string, unknown>) => !excludeSet.has(String(row.photo_id ?? "")))
     : shuffled;

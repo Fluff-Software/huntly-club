@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 
 type Props = {
   open: boolean;
@@ -21,6 +22,8 @@ export function DenyReasonModal({
   confirmLabel = "Deny",
   pending = false,
 }: Props) {
+  useBodyScrollLock(open);
+
   const [reason, setReason] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 

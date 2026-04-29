@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import {
   getPhotoDetails,
   denyPhoto,
@@ -36,6 +37,8 @@ export function PhotoDetailsModal({
   open,
   onClose,
 }: Props) {
+  useBodyScrollLock(open);
+
   const router = useRouter();
   const [data, setData] = useState<PhotoDetailsResult | null>(null);
   const [loading, setLoading] = useState(false);

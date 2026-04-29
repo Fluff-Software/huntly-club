@@ -14,6 +14,7 @@ import {
   type ProfileWithTeam,
   type UserImageRow,
 } from "./actions";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 
 const MODAL_TABS = [
   { value: "details", label: "Details" },
@@ -29,6 +30,8 @@ type Props = {
 };
 
 export function UserDetailModal({ userId, open, onClose, onDeleted }: Props) {
+  useBodyScrollLock(open);
+
   const [activeTab, setActiveTab] = useState<(typeof MODAL_TABS)[number]["value"]>("details");
   const [details, setDetails] = useState<UserDetailsResult | null>(null);
   const [profiles, setProfiles] = useState<UserProfilesResult | null>(null);

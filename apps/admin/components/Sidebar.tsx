@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 
 const nav = [
   { href: "/dashboard", label: "Dashboard" },
@@ -58,6 +59,8 @@ export function Sidebar({ open = false, onClose, onNavigate }: SidebarProps) {
     mq.addEventListener("change", fn);
     return () => mq.removeEventListener("change", fn);
   }, []);
+
+  useBodyScrollLock(isMobile && open);
 
   async function handleSignOut() {
     const supabase = createClient();

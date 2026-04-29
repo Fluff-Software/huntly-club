@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/Button";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 
 type Mode = "push" | "email";
 
@@ -45,6 +46,8 @@ export function NotifyConfirmModal({
   onClose: () => void;
   onConfirm: () => void;
 }) {
+  useBodyScrollLock(open);
+
   if (!open) return null;
   const preview = getPreview(mode, message, emailSubject);
 

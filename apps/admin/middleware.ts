@@ -28,11 +28,48 @@ export async function middleware(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const pathname = request.nextUrl.pathname;
+  const isLoginRoute = pathname.startsWith("/login");
+  const isMfaRoute = pathname === "/login/mfa";
+  const isAccountRoute = pathname === "/account";
+  const isProtectedRoute = !isLoginRoute;
 
-  if (!user && !request.nextUrl.pathname.startsWith("/login")) {
+  if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
+  }
+
+  if (user && isProtectedRoute) {
+    const { data: factorsData, error: factorsError } =
+      await supabase.auth.mfa.listFactors();
+
+    // If MFA state cannot be resolved, keep current behavior to avoid lockouts.
+    if (!factorsError) {
+      const allFactors = factorsData?.all ?? [];
+      const hasVerifiedTotp = allFactors.some(
+        (factor) => factor.factor_type === "totp" && factor.status === "verified",
+      );
+
+      if (!hasVerifiedTotp && !isAccountRoute) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/account";
+        url.searchParams.set("requireMfa", "1");
+        return NextResponse.redirect(url);
+      }
+
+      if (hasVerifiedTotp && !isMfaRoute) {
+        const { data: aalData, error: aalError } =
+          await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+
+        const currentLevel = !aalError ? aalData?.currentLevel : null;
+        if (currentLevel !== "aal2") {
+          const url = request.nextUrl.clone();
+          url.pathname = "/login/mfa";
+          return NextResponse.redirect(url);
+        }
+      }
+    }
   }
 
   return supabaseResponse;

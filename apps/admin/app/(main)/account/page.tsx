@@ -7,7 +7,8 @@ import { Button } from "@/components/Button";
 
 type MfaFactor = {
   id: string;
-  factorType: "totp" | "phone";
+  factorType?: "totp" | "phone" | "webauthn";
+  factor_type?: "totp" | "phone" | "webauthn";
   status: "unverified" | "verified";
 };
 
@@ -63,10 +64,11 @@ export default function AccountPage() {
 
       const factors =
         (data?.all as unknown as MfaFactor[] | undefined) ?? [];
-      const totpFactor =
-        factors.find(
-          (f) => f.factorType === "totp" && f.status === "verified",
-        ) ?? factors.find((f) => f.factorType === "totp");
+      const totpFactor = factors.find(
+        (f) =>
+          (f.factorType === "totp" || f.factor_type === "totp") &&
+          f.status === "verified",
+      );
 
       setFactor(totpFactor ?? null);
       setLoading(false);
@@ -89,11 +91,15 @@ export default function AccountPage() {
         error: enrolError,
       } = await supabase.auth.mfa.enroll({
         factorType: "totp",
+        friendlyName: "Admin authenticator",
       });
 
       if (enrolError || !data) {
         console.error("Failed to start MFA enrolment", enrolError);
-        setError("Could not start two-factor enrolment. Please try again.");
+        setError(
+          enrolError?.message ||
+            "Could not start two-factor enrolment. Please try again.",
+        );
         return;
       }
 
@@ -165,10 +171,11 @@ export default function AccountPage() {
 
       const factors =
         (data?.all as unknown as MfaFactor[] | undefined) ?? [];
-      const totpFactor =
-        factors.find(
-          (f) => f.factorType === "totp" && f.status === "verified",
-        ) ?? factors.find((f) => f.factorType === "totp");
+      const totpFactor = factors.find(
+        (f) =>
+          (f.factorType === "totp" || f.factor_type === "totp") &&
+          f.status === "verified",
+      );
 
       setFactor(totpFactor ?? null);
     } finally {
@@ -213,7 +220,7 @@ export default function AccountPage() {
             </div>
             <div className="mt-3 flex items-center sm:mt-0">
               <span
-                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${
                   hasTotp
                     ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200"
                     : "bg-stone-50 text-stone-700 ring-1 ring-stone-200"

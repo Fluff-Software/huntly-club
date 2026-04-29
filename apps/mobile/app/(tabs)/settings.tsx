@@ -20,7 +20,7 @@ import * as Device from "expo-device";
 import { ThemedText } from "@/components/ThemedText";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUser } from "@/contexts/UserContext";
-import { useSignUpOptional } from "@/contexts/SignUpContext";
+// import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { useRouter } from "expo-router";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -43,13 +43,14 @@ const COLORS = {
 
 export default function SettingsScreen() {
   const { user, signOut } = useAuth();
-  const { userData, updateWeeklyEmail, updateStartMissionStep } = useUser();
+  // const { userData, updateWeeklyEmail, updateStartMissionStep } = useUser();
+  const { userData, updateWeeklyEmail } = useUser();
   const router = useRouter();
   const { scaleW } = useLayoutScale();
-  const signUpContext = useSignUpOptional();
-  const setShowPostSignUpWelcome = signUpContext?.setShowPostSignUpWelcome;
-  const setTutorialStep = signUpContext?.setTutorialStep;
-  const setReplayTutorialRequested = signUpContext?.setReplayTutorialRequested;
+  // const signUpContext = useSignUpOptional();
+  // const setShowPostSignUpWelcome = signUpContext?.setShowPostSignUpWelcome;
+  // const setTutorialStep = signUpContext?.setTutorialStep;
+  // const setReplayTutorialRequested = signUpContext?.setReplayTutorialRequested;
   const weeklyEmail = userData?.weekly_email ?? true;
   const [weeklyEmailToggling, setWeeklyEmailToggling] = useState(false);
   const [pushNotifications, setPushNotifications] = useState(false);
@@ -65,7 +66,7 @@ export default function SettingsScreen() {
   const weeklyEmailScale = useSharedValue(1);
   const pushScale = useSharedValue(1);
   const privacyScale = useSharedValue(1);
-  const tutorialScale = useSharedValue(1);
+  // const tutorialScale = useSharedValue(1);
   const signOutAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: signOutScale.value }] }));
   const weeklyEmailAnimatedStyle = useAnimatedStyle(() => ({
@@ -74,8 +75,8 @@ export default function SettingsScreen() {
     transform: [{ scale: pushScale.value }] }));
   const privacyAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: privacyScale.value }] }));
-  const tutorialAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: tutorialScale.value }] }));
+  // const tutorialAnimatedStyle = useAnimatedStyle(() => ({
+  //   transform: [{ scale: tutorialScale.value }] }));
 
   const handleSignOut = () => {
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [
@@ -169,13 +170,13 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleShowTutorialAgain = async () => {
-    setReplayTutorialRequested?.(true);
-    setTutorialStep?.("intro");
-    setShowPostSignUpWelcome?.(true);
-    await updateStartMissionStep(0);
-    router.replace("/onboarding/welcome");
-  };
+  // const handleShowTutorialAgain = async () => {
+  //   setReplayTutorialRequested?.(true);
+  //   setTutorialStep?.("intro");
+  //   setShowPostSignUpWelcome?.(true);
+  //   await updateStartMissionStep(0);
+  //   router.replace("/onboarding/welcome");
+  // };
 
   const handleCancelRemovalRequest = () => {
     Alert.alert(
@@ -478,23 +479,24 @@ export default function SettingsScreen() {
           </Animated.View>
         </Animated.View>
 
-        {/* No entering animation here so the button is always visible in production (Reanimated entering can be unreliable in release builds) */}
-        <Animated.View style={tutorialAnimatedStyle}>
-          <Pressable
-            style={styles.privacyButton}
-            onPress={handleShowTutorialAgain}
-            onPressIn={() => {
-              tutorialScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-            }}
-            onPressOut={() => {
-              tutorialScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-            }}
-          >
-            <ThemedText type="heading" style={styles.privacyButtonText}>
-              Show tutorial again
-            </ThemedText>
-          </Pressable>
-        </Animated.View>
+        {/*
+          <Animated.View style={tutorialAnimatedStyle}>
+            <Pressable
+              style={styles.privacyButton}
+              onPress={handleShowTutorialAgain}
+              onPressIn={() => {
+                tutorialScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+              }}
+              onPressOut={() => {
+                tutorialScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+              }}
+            >
+              <ThemedText type="heading" style={styles.privacyButtonText}>
+                Show tutorial again
+              </ThemedText>
+            </Pressable>
+          </Animated.View>
+        */}
 
         <Animated.View>
           <ThemedText type="heading" style={styles.prefsTitle}>Legal</ThemedText>

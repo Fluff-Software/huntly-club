@@ -9,6 +9,8 @@ type MfaFactor = {
   id: string;
   factorType?: "totp" | "phone" | "webauthn";
   factor_type?: "totp" | "phone" | "webauthn";
+  friendlyName?: string;
+  friendly_name?: string;
   status: "unverified" | "verified";
 };
 
@@ -20,6 +22,10 @@ type TotpEnrollment = {
     secret?: string;
   };
 };
+
+function isTotpFactor(factor: MfaFactor) {
+  return factor.factorType === "totp" || factor.factor_type === "totp";
+}
 
 export default function AccountPage() {
   const router = useRouter();
@@ -65,9 +71,7 @@ export default function AccountPage() {
       const factors =
         (data?.all as unknown as MfaFactor[] | undefined) ?? [];
       const totpFactor = factors.find(
-        (f) =>
-          (f.factorType === "totp" || f.factor_type === "totp") &&
-          f.status === "verified",
+        (f) => isTotpFactor(f) && f.status === "verified",
       );
 
       setFactor(totpFactor ?? null);
@@ -85,14 +89,51 @@ export default function AccountPage() {
 
     try {
       const supabase = createClient();
+      const friendlyName = "Admin authenticator";
 
-      const {
-        data,
-        error: enrolError,
-      } = await supabase.auth.mfa.enroll({
-        factorType: "totp",
-        friendlyName: "Admin authenticator",
-      });
+      async function enrollTotp() {
+        return supabase.auth.mfa.enroll({
+          factorType: "totp",
+          friendlyName,
+          issuer: "Huntly World Admin",
+        });
+      }
+
+      let { data, error: enrolError } = await enrollTotp();
+
+      // Recover from stale unverified factors created by aborted setup attempts.
+      if (
+        enrolError?.message?.includes("friendly name") &&
+        enrolError?.message?.includes("already exists")
+      ) {
+        const { data: listedFactors, error: listError } =
+          await supabase.auth.mfa.listFactors();
+
+        if (!listError) {
+          const candidates =
+            (listedFactors?.all as unknown as MfaFactor[] | undefined) ?? [];
+          const staleFactors = candidates.filter(
+            (f) =>
+              isTotpFactor(f) &&
+              f.status === "unverified" &&
+              (f.friendlyName === friendlyName ||
+                f.friendly_name === friendlyName),
+          );
+
+          for (const staleFactor of staleFactors) {
+            const { error: unenrollError } = await supabase.auth.mfa.unenroll({
+              factorId: staleFactor.id,
+            });
+            if (unenrollError) {
+              console.error("Failed to remove stale MFA factor", unenrollError);
+            }
+          }
+
+          const retry = await enrollTotp();
+          data = retry.data;
+          enrolError = retry.error;
+        }
+      }
 
       if (enrolError || !data) {
         console.error("Failed to start MFA enrolment", enrolError);
@@ -172,9 +213,7 @@ export default function AccountPage() {
       const factors =
         (data?.all as unknown as MfaFactor[] | undefined) ?? [];
       const totpFactor = factors.find(
-        (f) =>
-          (f.factorType === "totp" || f.factor_type === "totp") &&
-          f.status === "verified",
+        (f) => isTotpFactor(f) && f.status === "verified",
       );
 
       setFactor(totpFactor ?? null);

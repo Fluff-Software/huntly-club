@@ -27,7 +27,10 @@ export function DenyReasonModal({
   useEffect(() => {
     if (open) {
       setReason("");
-      textareaRef.current?.focus();
+      // On touch devices (phones), immediately focusing inputs/textarea can trigger
+      // iOS Safari "auto-zoom" + on-screen keyboard. Let the user tap the field.
+      const shouldAutofocus = window.matchMedia?.("(pointer: fine)").matches ?? true;
+      if (shouldAutofocus) textareaRef.current?.focus();
     }
   }, [open]);
 
@@ -77,7 +80,7 @@ export function DenyReasonModal({
           placeholder="Reason for denial"
           rows={3}
           required
-          className="mt-3 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-800 placeholder:text-stone-400 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+          className="mt-3 w-full rounded-lg border border-stone-300 px-3 py-2 text-base text-stone-800 placeholder:text-stone-400 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
           aria-label="Reason for denial (required)"
         />
         <div className="mt-6 flex justify-end gap-2">

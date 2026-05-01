@@ -51,7 +51,7 @@ const adaptiveIcon: Record<AppVariant, string> = {
 export default ({ config }: ConfigContext): ExpoConfig => ({
   name: appName[variant],
   slug: "huntly-club",
-  version: "1.0.1",
+  version: "1.0.2",
   orientation: "portrait",
   icon: icon[variant],
   scheme: "huntlyclub",

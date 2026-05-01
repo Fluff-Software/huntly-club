@@ -323,7 +323,9 @@ export function ExistingBadgeEditorCard({
             <SaveBadgeSubmitButton />
             <button
               type="submit"
-              formAction={deleteAction}
+              formAction={async (formData) => {
+                await deleteAction(formData);
+              }}
               onClick={(e) => {
                 const ok = window.confirm(
                   "Delete this badge? This will also remove awarded records tied to it."

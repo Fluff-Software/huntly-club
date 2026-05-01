@@ -76,7 +76,12 @@ export default async function BadgesAdminPage() {
                 <span className="text-xs text-stone-500">
                   {groupBadges.length} badge{groupBadges.length === 1 ? "" : "s"}
                 </span>
-                <form action={renameBadgeGroup} className="flex items-center gap-2">
+                <form
+                  action={async (formData) => {
+                    await renameBadgeGroup(formData);
+                  }}
+                  className="flex items-center gap-2"
+                >
                   <input type="hidden" name="old_group" value={groupName} />
                   <input
                     type="text"
@@ -131,20 +136,34 @@ export default async function BadgesAdminPage() {
               </tr>
             </thead>
             <tbody>
-              {awards.map((award, idx) => (
-                <tr key={`${award.badge_id}-${award.profile_id}-${idx}`} className="border-b border-stone-100">
-                  <td className="px-2 py-2">#{award.badge_id}</td>
-                  <td className="px-2 py-2">{award.badges?.name ?? "-"}</td>
-                  <td className="px-2 py-2">
-                    {award.profiles?.nickname || award.profiles?.name || `Profile ${award.profile_id}`}
-                  </td>
-                  <td className="px-2 py-2">
-                    {award.earned_at
-                      ? new Date(award.earned_at).toLocaleString("en-GB")
-                      : "-"}
-                  </td>
-                </tr>
-              ))}
+              {awards.map((award, idx) => {
+                const badgesRelation = award.badges as { name?: string } | Array<{ name?: string }> | null;
+                const badgeName = Array.isArray(badgesRelation)
+                  ? badgesRelation[0]?.name
+                  : badgesRelation?.name;
+                const profilesRelation = award.profiles as
+                  | { name?: string; nickname?: string }
+                  | Array<{ name?: string; nickname?: string }>
+                  | null;
+                const profile = Array.isArray(profilesRelation)
+                  ? profilesRelation[0]
+                  : profilesRelation;
+
+                return (
+                  <tr key={`${award.badge_id}-${award.profile_id}-${idx}`} className="border-b border-stone-100">
+                    <td className="px-2 py-2">#{award.badge_id}</td>
+                    <td className="px-2 py-2">{badgeName ?? "-"}</td>
+                    <td className="px-2 py-2">
+                      {profile?.nickname || profile?.name || `Profile ${award.profile_id}`}
+                    </td>
+                    <td className="px-2 py-2">
+                      {award.earned_at
+                        ? new Date(award.earned_at).toLocaleString("en-GB")
+                        : "-"}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

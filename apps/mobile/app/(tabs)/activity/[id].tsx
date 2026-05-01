@@ -14,8 +14,7 @@ import {
   getActivityProgress,
   startActivity,
   completeActivity as completeActivityProgress,
-  ActivityProgress,
-} from "@/services/activityProgressService";
+  ActivityProgress } from "@/services/activityProgressService";
 import { usePlayer } from "@/contexts/PlayerContext";
 import type { Profile } from "@/services/profileService";
 import { BadgePopupModal } from "@/components/BadgePopupModal";
@@ -277,7 +276,7 @@ export default function ActivityDetailScreen() {
         onViewAllBadges={() => {
           setShowBadgePopup(false);
           setEarnedBadge(null);
-          router.push("/");
+          router.push("/(tabs)/badges");
         }}
       />
     </BaseLayout>

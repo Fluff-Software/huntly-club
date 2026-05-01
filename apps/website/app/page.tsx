@@ -4,7 +4,7 @@ import Link from "next/link";
 const characters = [
   {
     name: "Bears",
-    mascot: "Bella",
+    captain: "Bella",
     tagline: "Brave and curious",
     image: "/characters/bear-wave.png",
     colour: "bg-huntly-clay/20",
@@ -12,7 +12,7 @@ const characters = [
   },
   {
     name: "Foxes",
-    mascot: "Felix",
+    captain: "Felix",
     tagline: "Quick and creative",
     image: "/characters/fox-wave.png",
     colour: "bg-huntly-sky/25",
@@ -20,7 +20,7 @@ const characters = [
   },
   {
     name: "Otters",
-    mascot: "Oli",
+    captain: "Oli",
     tagline: "Clever and playful",
     image: "/characters/otter-wave.png",
     colour: "bg-huntly-leaf/25",
@@ -87,7 +87,7 @@ export default function HomePage() {
               <div className="relative h-32 w-28">
                 <Image
                   src={c.image}
-                  alt={`${c.mascot} from ${c.name}, Huntly World`}
+                  alt={`${c.captain} from ${c.name}, Huntly World`}
                   fill
                   sizes="112px"
                   className="object-contain"
@@ -97,7 +97,7 @@ export default function HomePage() {
                 {c.name}
               </p>
               <p className="mt-0.5 text-sm font-medium text-huntly-moss">
-                Meet {c.mascot}
+                Team Captain: {c.captain}
               </p>
               <p className="mt-1 text-center text-xs text-huntly-slate">
                 {c.tagline}

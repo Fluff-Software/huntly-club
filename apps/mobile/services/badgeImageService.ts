@@ -83,22 +83,3 @@ export const getBadgeImageUrl = (badge: Badge): string | null => {
   }
   return null;
 };
-
-export const getBadgeDisplay = (
-  badge: Badge
-): {
-  type: "emoji" | "image";
-  content: string;
-} => {
-  if (badge.uses_custom_image && badge.image_url) {
-    return {
-      type: "image",
-      content: badge.image_url,
-    };
-  } else {
-    return {
-      type: "emoji",
-      content: badge.image_url || "🏆",
-    };
-  }
-};

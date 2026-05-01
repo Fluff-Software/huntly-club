@@ -66,10 +66,15 @@ export default async function EditActivityPage({
           categories: toCategoryIds(activity.categories),
           intro_urgent_message: activity.intro_urgent_message ?? null,
           intro_character_name: activity.intro_character_name ?? null,
-          intro_character_avatar_url: activity.intro_character_avatar_url ?? null,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          intro_captain: (activity as any).intro_captain ?? null,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          intro_captain_pose: (activity as any).intro_captain_pose ?? null,
           intro_dialogue: activity.intro_dialogue ?? null,
           estimated_duration: activity.estimated_duration ?? null,
           optional_items: activity.optional_items ?? null,
+          preparation_message: activity.preparation_message ?? null,
+          reminder_message: activity.reminder_message ?? null,
           prep_checklist: Array.isArray(activity.prep_checklist) ? activity.prep_checklist : null,
           steps: Array.isArray(activity.steps) ? activity.steps : null,
           debrief_heading: activity.debrief_heading ?? null,

@@ -4,8 +4,7 @@ import {
   ScrollView,
   StyleSheet,
   ActivityIndicator,
-  Pressable,
-} from "react-native";
+  Pressable } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
@@ -56,8 +55,7 @@ export default function MissionsScreen() {
   }, [refetch, refetchCurrentChapter]);
 
   const { label: countdownLabel } = useCountdownToUtcDate(nextChapterDate, {
-    onComplete: handleCountdownComplete,
-  });
+    onComplete: handleCountdownComplete });
 
   const scrollRef = useRef<ScrollView>(null);
   const [completionCountByActivityId, setCompletionCountByActivityId] = React.useState<Record<string, number>>({});
@@ -111,16 +109,14 @@ export default function MissionsScreen() {
           flexGrow: 1,
           backgroundColor: MISSIONS_ORANGE,
           paddingTop: scaleW(12),
-          paddingBottom: scaleW(32),
-        },
+          paddingBottom: scaleW(32) },
         title: {
           fontSize: scaleW(24),
           lineHeight: scaleW(32),
           fontWeight: "600",
           color: "#FFF",
           textAlign: "center" as const,
-          marginBottom: scaleW(12),
-        },
+          marginBottom: scaleW(12) },
         countdownContainer: {
           alignItems: "center" as const,
           marginBottom: scaleW(10),
@@ -128,63 +124,52 @@ export default function MissionsScreen() {
           paddingHorizontal: scaleW(20),
           paddingVertical: scaleW(8),
           backgroundColor: "rgba(244, 240, 235, 0.18)",
-          borderRadius: 0,
-        },
+          borderRadius: 0 },
         countdownTitle: {
           fontSize: scaleW(16),
           fontWeight: "600",
           color: "#FFF",
           opacity: 0.95,
           textAlign: "center" as const,
-          marginBottom: scaleW(4),
-        },
+          marginBottom: scaleW(4) },
         countdownValue: {
           fontSize: scaleW(18),
           fontWeight: "700",
           color: "#FFF",
           textAlign: "center" as const,
-          marginBottom: 0,
-        },
+          marginBottom: 0 },
         countdownDate: {
           fontSize: scaleW(13),
           color: "rgba(255,255,255,0.75)",
-          textAlign: "center" as const,
-        },
+          textAlign: "center" as const },
         sectionTitle: {
           fontSize: scaleW(18),
           fontWeight: "600",
           color: "#FFF",
           marginBottom: scaleW(12),
           marginHorizontal: scaleW(20),
-          opacity: 0.95,
-        },
+          opacity: 0.95 },
         sectionBlock: {
-          marginBottom: scaleW(28),
-        },
+          marginBottom: scaleW(28) },
         cardRow: {
           flexDirection: "row",
           paddingHorizontal: scaleW(20),
-          paddingRight: scaleW(32),
-        },
+          paddingRight: scaleW(32) },
         cardWrap: {},
         loadingContainer: {
           paddingVertical: scaleW(48),
-          alignItems: "center" as const,
-        },
+          alignItems: "center" as const },
         errorContainer: {
           paddingVertical: scaleW(24),
           paddingHorizontal: scaleW(24),
-          alignItems: "center" as const,
-        },
+          alignItems: "center" as const },
         errorText: { fontSize: scaleW(16), color: "#FFF", textAlign: "center" as const, marginBottom: scaleW(16) },
         retryButton: {
           backgroundColor: "#F4F0EB",
           borderRadius: scaleW(28),
           paddingVertical: scaleW(14),
-          paddingHorizontal: scaleW(32),
-        },
-        emptyText: { fontSize: scaleW(16), color: "#FFF", textAlign: "center" as const, opacity: 0.9 },
-      }),
+          paddingHorizontal: scaleW(32) },
+        emptyText: { fontSize: scaleW(16), color: "#FFF", textAlign: "center" as const, opacity: 0.9 } }),
     [scaleW]
   );
 
@@ -236,7 +221,6 @@ export default function MissionsScreen() {
                 {/* Current missions (latest chapter) */}
                 <Animated.View
                   key={chapters[0].id}
-                  entering={FadeInDown.duration(400).delay(80)}
                   style={styles.sectionBlock}
                 >
                   <ThemedText type="heading" style={styles.sectionTitle}>
@@ -277,7 +261,6 @@ export default function MissionsScreen() {
                     {chapters.slice(1).map((chapter, index) => (
                       <Animated.View
                         key={chapter.id}
-                        entering={FadeInDown.duration(400).delay(140 + index * 60)}
                         style={styles.sectionBlock}
                       >
                         <ThemedText type="heading" style={styles.sectionTitle}>

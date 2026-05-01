@@ -7,8 +7,8 @@ import Animated, {
   useSharedValue,
   withRepeat,
   withSequence,
-  withTiming,
-} from "react-native-reanimated";
+  withTiming } from "react-native-reanimated";
+import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
@@ -17,18 +17,17 @@ import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useFirstSeason } from "@/hooks/useFirstSeason";
 import { NewPlayerTutorial } from "@/components/NewPlayerTutorial";
+import { SlideUpTabBar } from "@/components/SlideUpTabBar";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/ui/Button";
 import {
   getHasCompletedTutorial,
-  recordTutorialAchievement,
-} from "@/services/activityProgressService";
+  recordTutorialAchievement } from "@/services/activityProgressService";
 import {
   hasAskedPushOptIn,
   registerForPushNotificationsAsync,
   setPushEnabled,
-  setPushOptInAsked,
-} from "@/services/pushNotificationService";
+  setPushOptInAsked } from "@/services/pushNotificationService";
 import { isStartMissionOnboardingActive } from "@/constants/startMissionOnboarding";
 
 const HOME_CLUBHOUSE = require("@/assets/images/home-clubhouse.png");
@@ -42,8 +41,7 @@ const TAB_BAR_COLORS: Record<string, string> = {
   missions: "#D2684B",
   social: "#C3A4FF",
   journal: "#B07D3E",
-  testing: "#5B8A9E",
-};
+  testing: "#5B8A9E" };
 
 const CREAM = "#F4F0EB";
 const HUNTLY_GREEN = "#4F6F52";
@@ -53,15 +51,16 @@ function TabIcon({
   source,
   color,
   size = 24,
-}: {
+  useTint = true }: {
   source: number;
   color: string;
   size?: number;
+  useTint?: boolean;
 }) {
   return (
     <Image
       source={source}
-      style={[styles.tabIcon, { width: size, height: size, tintColor: color }]}
+      style={[styles.tabIcon, { width: size, height: size }, useTint ? { tintColor: color } : null]}
       resizeMode="contain"
     />
   );
@@ -84,8 +83,7 @@ function StoryTabPulse({ size }: { size: number }) {
   }, []);
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
-    opacity: opacity.value,
-  }));
+    opacity: opacity.value }));
   return (
     <Animated.View
       pointerEvents="none"
@@ -95,8 +93,7 @@ function StoryTabPulse({ size }: { size: number }) {
           width: size,
           height: size,
           borderRadius: size / 2,
-          borderWidth: 3,
-        },
+          borderWidth: 3 },
         animatedStyle,
       ]}
     />
@@ -106,13 +103,11 @@ function StoryTabPulse({ size }: { size: number }) {
 export default function TabLayout() {
   const { user } = useAuth();
   const { profiles, loading: profilesLoading } = usePlayer();
-  const { userData, loading: userLoading, updateWeeklyEmail, updateLastSeenSeasonId } =
-    useUser();
+  const { userData, loading: userLoading, updateLastSeenSeasonId } = useUser();
   const {
     firstSeason,
     heroImageSource,
-    loading: seasonLoading,
-  } = useFirstSeason();
+    loading: seasonLoading } = useFirstSeason();
   const { scaleW, isTablet } = useLayoutScale();
   const insets = useSafeAreaInsets();
   const signUpContext = useSignUpOptional();
@@ -122,11 +117,6 @@ export default function TabLayout() {
   const setTutorialStep = signUpContext?.setTutorialStep;
   const replayTutorialRequested = signUpContext?.replayTutorialRequested ?? false;
   const setReplayTutorialRequested = signUpContext?.setReplayTutorialRequested;
-  const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
-  const [notificationPromptChecking, setNotificationPromptChecking] = useState(true);
-  const [notificationSaving, setNotificationSaving] = useState(false);
-  const [emailOptIn, setEmailOptIn] = useState(false);
-  const [pushOptIn, setPushOptIn] = useState(false);
   const [showSeasonAnnouncementModal, setShowSeasonAnnouncementModal] =
     useState(false);
   const [seasonAnnouncementSaving, setSeasonAnnouncementSaving] = useState(false);
@@ -135,7 +125,6 @@ export default function TabLayout() {
   const [hasCompletedTutorial, setHasCompletedTutorial] = useState<boolean | null>(null);
   const onboardingActive = isStartMissionOnboardingActive(userData?.start_mission_step);
 
-  const hasCheckedNotificationPromptRef = useRef(false);
   const hasCheckedSeasonAnnouncementRef = useRef(false);
 
   // If user has no team set, send them to add explorers first, then team selection (matches AuthGuard)
@@ -192,41 +181,42 @@ export default function TabLayout() {
     };
   }, [showPostSignUpWelcome, firstProfileId, replayTutorialRequested, onboardingActive, setShowPostSignUpWelcome]);
 
-  // Only consider showing the notification prompt when the tutorial is not visible.
-  // After the tutorial is dismissed we wait a short moment so the user lands on the clubhouse first, then show the prompt.
-  const NOTIFICATION_PROMPT_DELAY_MS = 600;
+  // After a modal/tour is dismissed we wait a short moment so the user lands on the clubhouse first.
+  const POST_MODAL_DELAY_MS = 600;
 
-  const maybeShowNotificationPrompt = useCallback(() => {
-    if (!user?.id) {
-      setNotificationPromptChecking(false);
-      return;
-    }
+  // One-time automatic push permission request after sign-in.
+  // We avoid prompting while onboarding/tutorial/season modals are visible.
+  const hasRequestedPushPermissionRef = useRef(false);
+  const maybeRequestPushPermission = useCallback(async () => {
+    if (!user?.id) return;
     if (showSeasonAnnouncementModal || seasonAnnouncementChecking) return;
-    if (hasCheckedNotificationPromptRef.current) return;
-    hasCheckedNotificationPromptRef.current = true;
-    setNotificationPromptChecking(false);
-    hasAskedPushOptIn(user.id)
-      .then((asked) => {
-        if (!asked) {
-          // First-run prompt should start fully opt-out.
-          setEmailOptIn(false);
-          setPushOptIn(false);
-          // Safety: if backend/user_data came through as true for any reason, normalize it.
-          if (userData?.weekly_email === true) {
-            void updateWeeklyEmail(false);
-          }
-          setShowNotificationPrompt(true);
-        }
-      })
-      .catch(() => {
-        // Don't block the UI if the check fails; user can still be prompted from settings
-      });
+    if (showPostSignUpWelcome) return;
+    if (onboardingActive) return;
+    if (hasRequestedPushPermissionRef.current) return;
+    hasRequestedPushPermissionRef.current = true;
+
+    try {
+      const asked = await hasAskedPushOptIn(user.id);
+      if (asked) return;
+
+      const token = await registerForPushNotificationsAsync();
+      if (token) {
+        await setPushEnabled(true, token);
+      } else {
+        // User denied permission (or push not available) — ensure backend is disabled.
+        await setPushEnabled(false);
+      }
+
+      await setPushOptInAsked(user.id);
+    } catch {
+      // If anything fails, don't block the UI and don't loop prompts this session.
+    }
   }, [
     user?.id,
-    userData?.weekly_email,
-    updateWeeklyEmail,
     showSeasonAnnouncementModal,
     seasonAnnouncementChecking,
+    showPostSignUpWelcome,
+    onboardingActive,
   ]);
 
   const maybeShowSeasonAnnouncement = useCallback(async () => {
@@ -270,6 +260,7 @@ export default function TabLayout() {
     hasCheckedSeasonAnnouncementRef.current = false;
     setSeasonAnnouncementChecking(true);
     setShowSeasonAnnouncementModal(false);
+    hasRequestedPushPermissionRef.current = false;
   }, [user?.id]);
 
   useEffect(() => {
@@ -277,68 +268,8 @@ export default function TabLayout() {
   }, [maybeShowSeasonAnnouncement]);
 
   useEffect(() => {
-    if (!user?.id) {
-      setNotificationPromptChecking(false);
-      return;
-    }
-    if (showPostSignUpWelcome) {
-      return;
-    }
-    if (onboardingActive) {
-      return;
-    }
-    if (showSeasonAnnouncementModal || seasonAnnouncementChecking) {
-      return;
-    }
-    const timer = setTimeout(() => {
-      maybeShowNotificationPrompt();
-    }, NOTIFICATION_PROMPT_DELAY_MS);
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [
-    user?.id,
-    showPostSignUpWelcome,
-    maybeShowNotificationPrompt,
-    showSeasonAnnouncementModal,
-    seasonAnnouncementChecking,
-    onboardingActive,
-  ]);
-
-  const handleNotificationPromptSave = async () => {
-    if (!user?.id) return;
-    if (notificationSaving) return;
-    setNotificationSaving(true);
-    try {
-      await updateWeeklyEmail(emailOptIn);
-      if (pushOptIn) {
-        const token = await registerForPushNotificationsAsync();
-        if (token) {
-          await setPushEnabled(true, token);
-        }
-      } else {
-        await setPushEnabled(false);
-      }
-      await setPushOptInAsked(user.id);
-      setShowNotificationPrompt(false);
-    } finally {
-      setNotificationSaving(false);
-    }
-  };
-
-  const handleNotificationPromptNotNow = async () => {
-    if (!user?.id) return;
-    if (notificationSaving) return;
-    setNotificationSaving(true);
-    try {
-      await updateWeeklyEmail(false);
-      await setPushEnabled(false);
-      await setPushOptInAsked(user.id);
-      setShowNotificationPrompt(false);
-    } finally {
-      setNotificationSaving(false);
-    }
-  };
+    void maybeRequestPushPermission();
+  }, [maybeRequestPushPermission]);
 
   const activeColor = "#FFFFFF";
   const inactiveColor = "rgba(255,255,255,0.6)";
@@ -387,8 +318,8 @@ export default function TabLayout() {
     router.replace("/(tabs)");
     setTimeout(() => {
       void maybeShowSeasonAnnouncement();
-      maybeShowNotificationPrompt();
-    }, NOTIFICATION_PROMPT_DELAY_MS);
+      void maybeRequestPushPermission();
+    }, POST_MODAL_DELAY_MS);
   };
 
   const handleSeasonAnnouncementDismiss = async () => {
@@ -404,16 +335,25 @@ export default function TabLayout() {
     }
     setSeasonAnnouncementSaving(false);
     setTimeout(() => {
-      maybeShowNotificationPrompt();
-    }, NOTIFICATION_PROMPT_DELAY_MS);
+      void maybeRequestPushPermission();
+    }, POST_MODAL_DELAY_MS);
   };
 
-  const showNotificationUI =
-    showNotificationPrompt && !notificationPromptChecking;
+  const renderTabBar = useCallback(
+    (props: BottomTabBarProps) => (
+      <SlideUpTabBar
+        {...props}
+        onboardingActive={onboardingActive}
+        tabBarSlideDistance={tabBarHeight}
+      />
+    ),
+    [onboardingActive, tabBarHeight]
+  );
 
   return (
     <View style={styles.layoutWrapper}>
       <Tabs
+      tabBar={renderTabBar}
       screenOptions={({ route }) => ({
         tabBarActiveTintColor: activeColor,
         tabBarInactiveTintColor: inactiveColor,
@@ -432,25 +372,20 @@ export default function TabLayout() {
                 shadowOffset: { width: 0, height: scaleW(-2) },
                 shadowOpacity: 0.12,
                 shadowRadius: scaleW(4),
-                backgroundColor: TAB_BAR_COLORS[route.name] ?? TAB_BAR_COLORS.index,
-              }),
-        },
+                backgroundColor: TAB_BAR_COLORS[route.name] ?? TAB_BAR_COLORS.index }) },
         tabBarLabelStyle: {
           fontSize: scaleW(12),
           fontWeight: "600",
-          marginTop: scaleW(8),
-        },
+          marginTop: scaleW(8) },
         tabBarIconStyle: {
-          marginTop: 0,
-        },
+          marginTop: 0 },
         headerShown: false,
         tabBarButton: (props) => {
           const { ref: _ref, ...rest } = props;
           return (
             <Pressable {...rest} disabled={isTabDisabled(route.name)} />
           );
-        },
-      })}
+        } })}
     >
       <Tabs.Screen
         name="index"
@@ -459,8 +394,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <TabIcon source={HOME_CLUBHOUSE} color={color} size={scaleW(24)} />
           ),
-          href: profiles.length > 0 ? undefined : null,
-        }}
+          href: profiles.length > 0 ? undefined : null }}
       />
       <Tabs.Screen
         name="story"
@@ -477,8 +411,7 @@ export default function TabLayout() {
             </View>
           ),
           href: profiles.length > 0 ? undefined : null,
-          popToTopOnBlur: true,
-        }}
+          popToTopOnBlur: true }}
       />
       <Tabs.Screen
         name="missions"
@@ -494,8 +427,7 @@ export default function TabLayout() {
               <TabIcon source={HOME_MISSIONS} color={color} size={scaleW(24)} />
             </View>
           ),
-          href: profiles.length > 0 ? undefined : null,
-        }}
+          href: profiles.length > 0 ? undefined : null }}
       />
       <Tabs.Screen
         name="social"
@@ -513,13 +445,12 @@ export default function TabLayout() {
           ),
           // Always show the Team tab; the screen itself already handles
           // the “no team yet” state.
-          href: undefined,
-        }}
+          href: undefined }}
       />
       <Tabs.Screen
         name="journal"
         options={{
-          title: "Journal",
+          title: "Backpack",
           tabBarIcon: ({ color }) => (
             <View style={[styles.storyIconWrapper, { width: scaleW(44), height: scaleW(44) }]}>
               {tutorialStep === "click_journal" && (
@@ -527,41 +458,45 @@ export default function TabLayout() {
                   <StoryTabPulse size={scaleW(44)} />
                 </View>
               )}
-              <MaterialIcons name="auto-stories" size={scaleW(24)} color={color} />
+              <MaterialIcons name="workspace-premium" size={scaleW(24)} color={color} />
             </View>
           ),
-          href: profiles.length > 0 ? undefined : null,
-        }}
+          href: profiles.length > 0 ? undefined : null }}
+      />
+      <Tabs.Screen
+        name="journal-book"
+        options={{
+          href: null }}
+      />
+      <Tabs.Screen
+        name="badges"
+        options={{
+          href: null }}
       />
       <Tabs.Screen
         name="testing"
         options={{
-          href: null,
-        }}
+          href: null }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          href: null,
-        }}
+          href: null }}
       />
       <Tabs.Screen
         name="parents"
         options={{
-          href: null,
-        }}
+          href: null }}
       />
       <Tabs.Screen
         name="activity"
         options={{
-          href: null,
-        }}
+          href: null }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          href: null,
-        }}
+          href: null }}
       />
       </Tabs>
       <NewPlayerTutorial
@@ -591,8 +526,7 @@ export default function TabLayout() {
                     width: "100%",
                     height: scaleW(160),
                     borderRadius: scaleW(12),
-                    marginBottom: scaleW(16),
-                  }}
+                    marginBottom: scaleW(16) }}
                 />
               ) : null}
               <ThemedText
@@ -600,8 +534,7 @@ export default function TabLayout() {
                 style={{
                   marginBottom: scaleW(8),
                   textAlign: "center",
-                  ...(seasonTitleFontSize != null ? { fontSize: seasonTitleFontSize } : {}),
-                }}
+                  ...(seasonTitleFontSize != null ? { fontSize: seasonTitleFontSize } : {}) }}
                 lightColor={HUNTLY_GREEN}
                 darkColor={CREAM}
               >
@@ -613,8 +546,7 @@ export default function TabLayout() {
                     marginBottom: scaleW(8),
                     textAlign: "center",
                     fontWeight: "600",
-                    ...(seasonNameFontSize != null ? { fontSize: seasonNameFontSize } : {}),
-                  }}
+                    ...(seasonNameFontSize != null ? { fontSize: seasonNameFontSize } : {}) }}
                   lightColor={HUNTLY_CHARCOAL}
                   darkColor={CREAM}
                 >
@@ -626,8 +558,7 @@ export default function TabLayout() {
                   marginBottom: scaleW(16),
                   textAlign: "center",
                   ...(seasonBodyFontSize != null ? { fontSize: seasonBodyFontSize } : {}),
-                  ...(seasonBodyLineHeight != null ? { lineHeight: seasonBodyLineHeight } : {}),
-                }}
+                  ...(seasonBodyLineHeight != null ? { lineHeight: seasonBodyLineHeight } : {}) }}
                 lightColor={HUNTLY_CHARCOAL}
                 darkColor={CREAM}
               >
@@ -653,172 +584,31 @@ export default function TabLayout() {
           </View>
         </Modal>
       ) : null}
-      {Platform.OS === "ios" ? (
-        <Modal
-          visible={showNotificationUI}
-          transparent
-          animationType="fade"
-          onRequestClose={handleNotificationPromptNotNow}
-        >
-          <View style={styles.notificationPromptOverlay}>
-            <View
-              style={[
-                styles.notificationPromptCard,
-                { padding: scaleW(24), borderRadius: scaleW(16) },
-              ]}
-            >
-              <ThemedText
-                type="subtitle"
-                style={{ marginBottom: scaleW(16), textAlign: "center" }}
-                lightColor={HUNTLY_GREEN}
-                darkColor={CREAM}
-              >
-                Would you like to be notified when new chapters are available?
-              </ThemedText>
-              <View style={{ gap: scaleW(12) }}>
-                <Pressable
-                  style={styles.notificationOptionRow}
-                  onPress={() => setEmailOptIn((current) => !current)}
-                  disabled={notificationSaving}
-                >
-                  <ThemedText lightColor={HUNTLY_CHARCOAL} darkColor={CREAM}>
-                    Email updates
-                  </ThemedText>
-                  <View style={styles.notificationCheckbox}>
-                    {emailOptIn ? (
-                      <MaterialIcons name="check" size={scaleW(18)} color={HUNTLY_GREEN} />
-                    ) : null}
-                  </View>
-                </Pressable>
-                <Pressable
-                  style={styles.notificationOptionRow}
-                  onPress={() => setPushOptIn((current) => !current)}
-                  disabled={notificationSaving}
-                >
-                  <ThemedText lightColor={HUNTLY_CHARCOAL} darkColor={CREAM}>
-                    Push notifications
-                  </ThemedText>
-                  <View style={styles.notificationCheckbox}>
-                    {pushOptIn ? (
-                      <MaterialIcons name="check" size={scaleW(18)} color={HUNTLY_GREEN} />
-                    ) : null}
-                  </View>
-                </Pressable>
-                <Button
-                  variant="secondary"
-                  onPress={handleNotificationPromptSave}
-                >
-                  Save preferences
-                </Button>
-                <Button
-                  variant="white"
-                  onPress={handleNotificationPromptNotNow}
-                >
-                  Not now
-                </Button>
-              </View>
-            </View>
-          </View>
-        </Modal>
-      ) : (
-        showNotificationUI && (
-          <View
-            style={[
-              StyleSheet.absoluteFill,
-              styles.notificationPromptOverlay,
-              { zIndex: 9999, elevation: 9999 },
-            ]}
-          >
-            <View
-              style={[
-                styles.notificationPromptCard,
-                { padding: scaleW(24), borderRadius: scaleW(16) },
-              ]}
-            >
-              <ThemedText
-                type="subtitle"
-                style={{ marginBottom: scaleW(16), textAlign: "center" }}
-                lightColor={HUNTLY_GREEN}
-                darkColor={CREAM}
-              >
-                Would you like to be notified when new chapters are available?
-              </ThemedText>
-              <View style={{ gap: scaleW(12) }}>
-                <Pressable
-                  style={styles.notificationOptionRow}
-                  onPress={() => setEmailOptIn((current) => !current)}
-                  disabled={notificationSaving}
-                >
-                  <ThemedText lightColor={HUNTLY_CHARCOAL} darkColor={CREAM}>
-                    Email updates
-                  </ThemedText>
-                  <View style={styles.notificationCheckbox}>
-                    {emailOptIn ? (
-                      <MaterialIcons name="check" size={scaleW(18)} color={HUNTLY_GREEN} />
-                    ) : null}
-                  </View>
-                </Pressable>
-                <Pressable
-                  style={styles.notificationOptionRow}
-                  onPress={() => setPushOptIn((current) => !current)}
-                  disabled={notificationSaving}
-                >
-                  <ThemedText lightColor={HUNTLY_CHARCOAL} darkColor={CREAM}>
-                    Push notifications
-                  </ThemedText>
-                  <View style={styles.notificationCheckbox}>
-                    {pushOptIn ? (
-                      <MaterialIcons name="check" size={scaleW(18)} color={HUNTLY_GREEN} />
-                    ) : null}
-                  </View>
-                </Pressable>
-                <Button
-                  variant="secondary"
-                  onPress={handleNotificationPromptSave}
-                >
-                  Save preferences
-                </Button>
-                <Button
-                  variant="white"
-                  onPress={handleNotificationPromptNotNow}
-                >
-                  Not now
-                </Button>
-              </View>
-            </View>
-          </View>
-        )
-      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   layoutWrapper: {
-    flex: 1,
-  },
+    flex: 1 },
   tabIcon: {},
   storyIconWrapper: {
     position: "relative",
     alignItems: "center",
-    justifyContent: "center",
-  },
+    justifyContent: "center" },
   tutorialPulseContainer: {
     position: "absolute",
     alignItems: "center",
-    justifyContent: "center",
-  },
+    justifyContent: "center" },
   tutorialPulseRing: {
     position: "absolute",
-    borderColor: "rgba(255,255,255,0.9)",
-  },
+    borderColor: "rgba(255,255,255,0.9)" },
   notificationPromptOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",
     justifyContent: "center",
     alignItems: "center",
-    padding: 24,
-  },
+    padding: 24 },
   notificationPromptCard: {
     backgroundColor: CREAM,
     maxWidth: 360,

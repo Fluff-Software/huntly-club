@@ -86,6 +86,11 @@ export async function approveRemovalRequest(requestId: number): Promise<{ error?
         .from("user_achievements")
         .delete()
         .in("profile_id", profileIds);
+      // Badge cleanup by profile for extra safety in case of legacy/misaligned rows.
+      await supabase
+        .from("user_badges")
+        .delete()
+        .in("profile_id", profileIds);
     }
 
     await supabase.from("user_badges").delete().eq("user_id", userId);

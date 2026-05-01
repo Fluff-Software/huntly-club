@@ -5,17 +5,20 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 
 const nav = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/seasons", label: "Seasons" },
   { href: "/activities", label: "Missions" },
+  { href: "/badges", label: "Badges" },
   { href: "/mission-completions", label: "Mission Completions" },
   { href: "/categories", label: "Categories" },
   { href: "/resources", label: "Resources" },
   { href: "/photos", label: "Photos" },
   { href: "/waitlist", label: "Waitlist" },
   { href: "/feedback", label: "Feedback" },
+  { href: "/notify", label: "Notify" },
   { href: "/users", label: "Users" },
   { href: "/account-removal", label: "Account Removal" },
   { href: "/admins", label: "Admins" },
@@ -57,6 +60,8 @@ export function Sidebar({ open = false, onClose, onNavigate }: SidebarProps) {
     mq.addEventListener("change", fn);
     return () => mq.removeEventListener("change", fn);
   }, []);
+
+  useBodyScrollLock(isMobile && open);
 
   async function handleSignOut() {
     const supabase = createClient();

@@ -1,8 +1,9 @@
-import React, { useMemo } from "react";
-import { View, Image, ScrollView, StyleSheet, Pressable } from "react-native";
+import React, { useMemo, useState } from "react";
+import { View, Image, Modal, ScrollView, StyleSheet, Pressable } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { MaterialIcons } from "@expo/vector-icons";
 import type { CompletedMissionEntry } from "@/services/journalService";
 
 const PARCHMENT = "#FFFDF7";
@@ -32,6 +33,7 @@ export function JournalMissionCard({
   animationDelay = 0,
 }: JournalMissionCardProps) {
   const { scaleW } = useLayoutScale();
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
 
   const styles = useMemo(
     () =>
@@ -133,6 +135,37 @@ export function JournalMissionCard({
           fontSize: scaleW(12),
           color: MUTED,
         },
+        previewBackdrop: {
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.92)",
+          justifyContent: "center",
+          alignItems: "center",
+          padding: scaleW(16),
+        },
+        previewImage: {
+          width: "100%",
+          height: "100%",
+          borderRadius: scaleW(16),
+        },
+        previewClose: {
+          width: scaleW(56),
+          height: scaleW(56),
+          borderRadius: scaleW(28),
+          backgroundColor: "rgba(255,255,255,0.16)",
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        previewCloseWrap: {
+          position: "absolute" as const,
+          left: 0,
+          right: 0,
+          bottom: scaleW(28),
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 2,
+          elevation: 2,
+          pointerEvents: "box-none" as const,
+        },
       }),
     [scaleW]
   );
@@ -192,13 +225,15 @@ export function JournalMissionCard({
               contentContainerStyle={styles.photoStripContent}
             >
               {displayPhotos.map((photoUrl, idx) => (
-                <View key={idx} style={styles.polaroid}>
-                  <Image
-                    source={{ uri: photoUrl }}
-                    style={styles.polaroidImage}
-                    resizeMode="cover"
-                  />
-                </View>
+                <Pressable
+                  key={`${photoUrl}-${idx}`}
+                  style={styles.polaroid}
+                  onPress={() => setPreviewUri(photoUrl)}
+                  accessibilityRole="button"
+                  accessibilityLabel="View photo"
+                >
+                  <Image source={{ uri: photoUrl }} style={styles.polaroidImage} resizeMode="cover" />
+                </Pressable>
               ))}
             </ScrollView>
           )}
@@ -210,6 +245,29 @@ export function JournalMissionCard({
           </View>
         </View>
       </Pressable>
+
+      <Modal
+        visible={previewUri != null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPreviewUri(null)}
+      >
+        <Pressable style={styles.previewBackdrop} onPress={() => setPreviewUri(null)}>
+          {previewUri != null && (
+            <Image source={{ uri: previewUri }} style={styles.previewImage} resizeMode="contain" />
+          )}
+          <View style={styles.previewCloseWrap}>
+            <Pressable
+              style={styles.previewClose}
+              onPress={() => setPreviewUri(null)}
+              accessibilityRole="button"
+              accessibilityLabel="Close photo preview"
+            >
+              <MaterialIcons name="close" size={scaleW(26)} color="#FFF" />
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
     </Animated.View>
   );
 }

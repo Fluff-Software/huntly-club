@@ -9,13 +9,11 @@ import { LayoutAnimationConfig } from "react-native-reanimated";
 import * as Linking from "expo-linking";
 import {
   useFonts as useJuaFonts,
-  Jua_400Regular,
-} from "@expo-google-fonts/jua";
+  Jua_400Regular } from "@expo-google-fonts/jua";
 import {
   useFonts as useComicNeueFonts,
   ComicNeue_400Regular,
-  ComicNeue_700Bold,
-} from "@expo-google-fonts/comic-neue";
+  ComicNeue_700Bold } from "@expo-google-fonts/comic-neue";
 
 import { useAppUpdate } from "@/hooks/useAppUpdate";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -55,23 +53,18 @@ Notifications.setNotificationHandler({
     shouldSetBadge: true,
     shouldShowAlert: true,
     shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+    shouldShowList: true }) });
 
 export default function RootLayout() {
   useAppUpdate();
 
   const [juaLoaded, juaError] = useJuaFonts({
-    Jua_400Regular,
-  });
+    Jua_400Regular });
   const [comicNeueLoaded, comicNeueError] = useComicNeueFonts({
     ComicNeue_400Regular,
-    ComicNeue_700Bold,
-  });
+    ComicNeue_700Bold });
   const [spaceMonoLoaded] = useFonts({
-    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
-  });
+    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf") });
   const [fontTimeoutElapsed, setFontTimeoutElapsed] = useState(false);
 
   const fontsLoaded = juaLoaded && comicNeueLoaded && spaceMonoLoaded;

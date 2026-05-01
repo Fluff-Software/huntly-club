@@ -17,6 +17,7 @@ export type ReviewPhoto = {
   profile_id: number;
   activities: { title: string | null } | null;
   profiles: { nickname: string | null } | null;
+  uploader_email?: string | null;
 };
 
 type Props = {
@@ -206,7 +207,17 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
           </div>
         </div>
 
-        <div className="mt-8 flex items-center justify-center gap-6">
+        <p className="mt-8 text-center text-xs font-medium text-stone-600">
+          {current.uploader_email ? (
+            <>
+              Uploaded by <span className="font-semibold">{current.uploader_email}</span>
+            </>
+          ) : (
+            "Uploaded by —"
+          )}
+        </p>
+
+        <div className="mt-3 flex items-center justify-center gap-6">
           <button
             type="button"
             onClick={handleDeny}

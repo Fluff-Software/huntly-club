@@ -11,8 +11,7 @@ export default function MissionLayout() {
       screenOptions={{
         headerShown: false,
         animation: "slide_from_right",
-        gestureEnabled: !onboardingActive,
-      }}
+        gestureEnabled: !onboardingActive }}
     >
       <Stack.Screen name="index" />
       <Stack.Screen name="intro" />
@@ -22,8 +21,7 @@ export default function MissionLayout() {
       <Stack.Screen
         name="reward"
         options={{
-          gestureEnabled: false,
-        }}
+          gestureEnabled: false }}
       />
     </Stack>
   );

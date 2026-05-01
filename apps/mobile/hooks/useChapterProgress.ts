@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/services/supabase";
+import { ukTodayForChapterUnlockGate } from "@/utils/ukChapterTime";
 
 export type ChapterProgress = { total: number; completed: number };
 
@@ -17,7 +18,7 @@ export function useChapterProgress(profileId: number | null): {
     setError(null);
     setLoading(true);
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = ukTodayForChapterUnlockGate();
 
     const { data: chapterList, error: chaptersError } = await supabase
       .from("chapters")

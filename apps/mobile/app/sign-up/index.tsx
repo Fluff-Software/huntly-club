@@ -8,16 +8,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Alert,
-} from "react-native";
+  Alert } from "react-native";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
-import { router } from "expo-router";
-import { Stack } from "expo-router";
+  withSpring } from "react-native-reanimated";
+import { router, Stack } from "expo-router";
+import { MaterialIcons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -136,13 +134,22 @@ export default function SignUpParentEmailScreen() {
             flexGrow: 1,
             justifyContent: "center",
             paddingHorizontal: scaleW(24),
-            paddingVertical: scaleW(24),
-          }}
+            paddingVertical: scaleW(24) }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
         >
-          <Animated.View entering={FadeInDown.duration(500).delay(0)}>
+          <Pressable
+            onPress={() => router.replace("/auth")}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Back to intro"
+            style={{ alignSelf: "flex-start", paddingVertical: 4, marginBottom: scaleW(16) }}
+          >
+            <MaterialIcons name="arrow-back" size={scaleW(28)} color="#FFFFFF" />
+          </Pressable>
+
+          <Animated.View>
             <ThemedText
               type="heading"
               lightColor="#FFFFFF"
@@ -150,8 +157,7 @@ export default function SignUpParentEmailScreen() {
               style={{
                 textAlign: "center",
                 fontWeight: "600",
-                fontSize: scaleW(20),
-              }}
+                fontSize: scaleW(20) }}
             >
               Let's save your adventures
             </ThemedText>
@@ -163,14 +169,13 @@ export default function SignUpParentEmailScreen() {
                 fontSize: scaleW(18),
                 opacity: 0.95,
                 marginHorizontal: scaleW(20),
-                marginTop: scaleW(20),
-              }}
+                marginTop: scaleW(20) }}
             >
               Add a parent email so progress isn't lost.
             </ThemedText>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.duration(500).delay(150)}>
+          <Animated.View>
           <ThemedText
             type="subtitle"
             lightColor="#FFFFFF"
@@ -179,8 +184,7 @@ export default function SignUpParentEmailScreen() {
               fontWeight: "600",
               fontSize: scaleW(16),
               marginTop: scaleW(32),
-              textAlign: "center",
-            }}
+              textAlign: "center" }}
           >
             Parent email address
           </ThemedText>
@@ -203,8 +207,7 @@ export default function SignUpParentEmailScreen() {
               paddingHorizontal: scaleW(20),
               fontSize: scaleW(16),
               color: "#36454F",
-              marginTop: scaleW(12),
-            }}
+              marginTop: scaleW(12) }}
           />
           {emailError !== null && (
             <ThemedText
@@ -214,8 +217,7 @@ export default function SignUpParentEmailScreen() {
                 fontSize: scaleW(14),
                 fontWeight: "600",
                 marginTop: scaleW(8),
-                textAlign: "center",
-              }}
+                textAlign: "center" }}
             >
               {emailError}
             </ThemedText>
@@ -229,8 +231,7 @@ export default function SignUpParentEmailScreen() {
               fontWeight: "600",
               fontSize: scaleW(16),
               marginTop: scaleW(24),
-              textAlign: "center",
-            }}
+              textAlign: "center" }}
           >
             Password
           </ThemedText>
@@ -250,8 +251,7 @@ export default function SignUpParentEmailScreen() {
               paddingHorizontal: scaleW(20),
               fontSize: scaleW(16),
               color: "#36454F",
-              marginTop: scaleW(12),
-            }}
+              marginTop: scaleW(12) }}
           />
 
           <ThemedText
@@ -262,8 +262,7 @@ export default function SignUpParentEmailScreen() {
               fontWeight: "600",
               fontSize: scaleW(16),
               marginTop: scaleW(24),
-              textAlign: "center",
-            }}
+              textAlign: "center" }}
           >
             Confirm password
           </ThemedText>
@@ -283,12 +282,11 @@ export default function SignUpParentEmailScreen() {
               paddingHorizontal: scaleW(20),
               fontSize: scaleW(16),
               color: "#36454F",
-              marginTop: scaleW(12),
-            }}
+              marginTop: scaleW(12) }}
           />
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.duration(500).delay(280)}>
+          <Animated.View>
             <Animated.View style={privacyAnimatedStyle}>
               <Pressable
                 onPress={openPrivacyPolicy}
@@ -307,8 +305,7 @@ export default function SignUpParentEmailScreen() {
                     fontSize: scaleW(14),
                     textAlign: "center",
                     opacity: 0.95,
-                    marginHorizontal: scaleW(40),
-                  }}
+                    marginHorizontal: scaleW(40) }}
                 >
                   By continuing, you agree to our{" "}
                   <Text style={{ color: "#FFFFFF", textDecorationLine: "underline", fontWeight: "600" }}>
@@ -326,8 +323,7 @@ export default function SignUpParentEmailScreen() {
                   textAlign: "center",
                   fontSize: scaleW(14),
                   opacity: 0.9,
-                  marginTop: scaleW(12),
-                }}
+                  marginTop: scaleW(12) }}
               >
                 {disabledReason}
               </ThemedText>
@@ -357,8 +353,7 @@ export default function SignUpParentEmailScreen() {
                   shadowOpacity: isDisabled ? 0.1 : 0.3,
                   shadowRadius: 4,
                   elevation: 2,
-                  opacity: isDisabled ? 0.8 : 1,
-                }}
+                  opacity: isDisabled ? 0.8 : 1 }}
               >
                 {checkingEmail || creatingAccount ? (
                   <ActivityIndicator size="small" color={HUNTLY_GREEN} />
@@ -393,8 +388,7 @@ export default function SignUpParentEmailScreen() {
                     fontSize: scaleW(14),
                     textAlign: "center",
                     opacity: 0.95,
-                    marginHorizontal: scaleW(40),
-                  }}
+                    marginHorizontal: scaleW(40) }}
                 >
                   Already have an account?{" "}
                   <Text style={{ color: "#FFFFFF", textDecorationLine: "underline", fontWeight: "600" }}>

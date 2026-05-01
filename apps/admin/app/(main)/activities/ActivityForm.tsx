@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useActionState, useState, useRef, useEffect } from "react";
+import { useFormStatus } from "react-dom";
 import { Button } from "@/components/Button";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { uploadActivityImage } from "@/lib/upload-actions";
@@ -34,10 +35,13 @@ type ActivityFormProps = {
     categories: number[] | null;
     intro_urgent_message?: string | null;
     intro_character_name?: string | null;
-    intro_character_avatar_url?: string | null;
     intro_dialogue?: string | null;
+    intro_captain?: string | null;
+    intro_captain_pose?: string | null;
     estimated_duration?: string | null;
     optional_items?: string | null;
+    preparation_message?: string | null;
+    reminder_message?: string | null;
     prep_checklist?: PrepItem[] | null;
     steps?: StepItem[] | null;
     debrief_heading?: string | null;
@@ -76,11 +80,22 @@ const ChevronIcon = ({ open, className = "" }: { open: boolean; className?: stri
   </svg>
 );
 
+function SaveMissionButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <Button type="submit" size="lg" disabled={pending}>
+      {pending ? "Saving mission..." : "Save mission"}
+    </Button>
+  );
+}
+
 export function ActivityForm({ action, categoriesList, initial }: ActivityFormProps) {
   const [state, formAction] = useActionState(
     async (_: { error?: string }, formData: FormData) => action(formData),
     { error: undefined }
   );
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const [prepChecklistList, setPrepChecklistList] = useState<PrepItem[]>(() =>
     Array.isArray(initial?.prep_checklist) && initial.prep_checklist.length > 0
       ? initial.prep_checklist.map((p) => ({ title: p.title, description: p.description }))
@@ -158,16 +173,11 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
   }
 
   return (
-    <form action={formAction} className="max-w-2xl space-y-6">
-      {state?.error && (
-        <div
-          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-          role="alert"
-        >
-          {state.error}
-        </div>
-      )}
-
+    <form
+      action={formAction}
+      className="max-w-2xl space-y-6"
+      onSubmit={() => setHasAttemptedSubmit(true)}
+    >
       <div className="grid gap-6 sm:grid-cols-2">
         <div>
           <label htmlFor="name" className="mb-1 block text-sm font-medium text-stone-700">
@@ -228,28 +238,46 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
             />
           </div>
           <div>
+            <label htmlFor="intro_captain" className="mb-1 block text-xs font-medium text-stone-600">
+              Captain
+            </label>
+            <select
+              id="intro_captain"
+              name="intro_captain"
+              defaultValue={initial?.intro_captain ?? ""}
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+            >
+              <option value="">None</option>
+              <option value="bella">Bella (Bears)</option>
+              <option value="felix">Felix (Foxes)</option>
+              <option value="oli">Oli (Otters)</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="intro_captain_pose" className="mb-1 block text-xs font-medium text-stone-600">
+              Captain pose
+            </label>
+            <select
+              id="intro_captain_pose"
+              name="intro_captain_pose"
+              defaultValue={initial?.intro_captain_pose ?? "standing"}
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+            >
+              <option value="standing">Standing</option>
+              <option value="crossed-arms">Crossed arms</option>
+              <option value="waving">Waving</option>
+            </select>
+          </div>
+          <div>
             <label htmlFor="intro_character_name" className="mb-1 block text-xs font-medium text-stone-600">
-              Character name
+              Name override <span className="font-normal text-stone-400">(leave blank to use captain&apos;s name)</span>
             </label>
             <input
               id="intro_character_name"
               name="intro_character_name"
               type="text"
               defaultValue={initial?.intro_character_name ?? ""}
-              placeholder="e.g. Bella Bear"
-              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
-            />
-          </div>
-          <div>
-            <label htmlFor="intro_character_avatar_url" className="mb-1 block text-xs font-medium text-stone-600">
-              Character avatar URL
-            </label>
-            <input
-              id="intro_character_avatar_url"
-              name="intro_character_avatar_url"
-              type="text"
-              defaultValue={initial?.intro_character_avatar_url ?? ""}
-              placeholder="URL or leave blank"
+              placeholder="e.g. Bella"
               className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
             />
           </div>
@@ -289,6 +317,49 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
               type="text"
               defaultValue={initial?.optional_items ?? ""}
               placeholder="e.g. String & stickers optional"
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-4 rounded-lg border border-stone-200 bg-stone-50/50 p-4">
+        <h3 className="text-sm font-semibold text-stone-800">Notifications (content only)</h3>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <h4 className="text-xs font-semibold text-stone-700">Preparation notification</h4>
+            <p className="mt-1 text-xs text-stone-500">
+              This notification will be sent to users on Fridays
+            </p>
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="preparation_message" className="mb-1 block text-xs font-medium text-stone-600">
+              Message
+            </label>
+            <textarea
+              id="preparation_message"
+              name="preparation_message"
+              rows={3}
+              defaultValue={initial?.preparation_message ?? ""}
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+            />
+          </div>
+
+          <div className="sm:col-span-2">
+            <h4 className="text-xs font-semibold text-stone-700">Reminder notification</h4>
+            <p className="mt-1 text-xs text-stone-500">
+              This notification will be sent to users on Saturdays
+            </p>
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="reminder_message" className="mb-1 block text-xs font-medium text-stone-600">
+              Message
+            </label>
+            <textarea
+              id="reminder_message"
+              name="reminder_message"
+              rows={3}
+              defaultValue={initial?.reminder_message ?? ""}
               className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
             />
           </div>
@@ -649,9 +720,22 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
         ))}
       </div>
 
-      <Button type="submit" size="lg">
-        Save mission
-      </Button>
+      <div className="space-y-3">
+        <SaveMissionButton />
+        {state?.error && (
+          <div
+            className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+            role="alert"
+          >
+            {state.error}
+          </div>
+        )}
+        {hasAttemptedSubmit && !state?.error && (
+          <div className="text-sm text-green-700" role="status">
+            Mission saved successfully.
+          </div>
+        )}
+      </div>
     </form>
   );
 }

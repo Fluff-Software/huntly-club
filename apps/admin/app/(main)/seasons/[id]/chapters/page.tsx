@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { Button } from "@/components/Button";
-import { NotifyChapterButton } from "./NotifyChapterButton";
 
 async function getSeasonWithChapters(seasonId: number) {
   const supabase = createServerSupabaseClient();
@@ -89,7 +88,6 @@ export default async function ChaptersListPage({
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <NotifyChapterButton chapterId={ch.id} chapterTitle={ch.title} />
                 <Button
                   href={`/seasons/${seasonId}/chapters/${ch.id}/edit`}
                   variant="secondary"

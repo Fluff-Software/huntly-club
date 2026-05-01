@@ -40,10 +40,13 @@ export async function createActivity(
 
   const introUrgentMessage = (formData.get("intro_urgent_message") as string)?.trim() || null;
   const introCharacterName = (formData.get("intro_character_name") as string)?.trim() || null;
-  const introCharacterAvatarUrl = (formData.get("intro_character_avatar_url") as string)?.trim() || null;
+  const introCaptain = (formData.get("intro_captain") as string)?.trim() || null;
+  const introCaptainPose = (formData.get("intro_captain_pose") as string)?.trim() || null;
   const introDialogue = (formData.get("intro_dialogue") as string)?.trim() || null;
   const estimatedDuration = (formData.get("estimated_duration") as string)?.trim() || null;
   const optionalItems = (formData.get("optional_items") as string)?.trim() || null;
+  const preparationMessage = (formData.get("preparation_message") as string)?.trim() || null;
+  const reminderMessage = (formData.get("reminder_message") as string)?.trim() || null;
   const debriefHeading = (formData.get("debrief_heading") as string)?.trim() || null;
   const debriefPhotoLabel = (formData.get("debrief_photo_label") as string)?.trim() || null;
   const debriefQuestion1 = (formData.get("debrief_question_1") as string)?.trim() || null;
@@ -81,10 +84,13 @@ export async function createActivity(
       categories: categoryIds.length ? categoryIds : [],
       intro_urgent_message: introUrgentMessage,
       intro_character_name: introCharacterName,
-      intro_character_avatar_url: introCharacterAvatarUrl,
+      intro_captain: introCaptain,
+      intro_captain_pose: introCaptainPose,
       intro_dialogue: introDialogue,
       estimated_duration: estimatedDuration,
       optional_items: optionalItems,
+      preparation_message: preparationMessage,
+      reminder_message: reminderMessage,
       prep_checklist: prepChecklist,
       steps,
       debrief_heading: debriefHeading,
@@ -120,10 +126,13 @@ export async function updateActivity(
 
   const introUrgentMessage = (formData.get("intro_urgent_message") as string)?.trim() || null;
   const introCharacterName = (formData.get("intro_character_name") as string)?.trim() || null;
-  const introCharacterAvatarUrl = (formData.get("intro_character_avatar_url") as string)?.trim() || null;
+  const introCaptain = (formData.get("intro_captain") as string)?.trim() || null;
+  const introCaptainPose = (formData.get("intro_captain_pose") as string)?.trim() || null;
   const introDialogue = (formData.get("intro_dialogue") as string)?.trim() || null;
   const estimatedDuration = (formData.get("estimated_duration") as string)?.trim() || null;
   const optionalItems = (formData.get("optional_items") as string)?.trim() || null;
+  const preparationMessage = (formData.get("preparation_message") as string)?.trim() || null;
+  const reminderMessage = (formData.get("reminder_message") as string)?.trim() || null;
   const debriefHeading = (formData.get("debrief_heading") as string)?.trim() || null;
   const debriefPhotoLabel = (formData.get("debrief_photo_label") as string)?.trim() || null;
   const debriefQuestion1 = (formData.get("debrief_question_1") as string)?.trim() || null;
@@ -163,10 +172,13 @@ export async function updateActivity(
         categories: categoryIds.length ? categoryIds : [],
         intro_urgent_message: introUrgentMessage,
         intro_character_name: introCharacterName,
-        intro_character_avatar_url: introCharacterAvatarUrl,
+        intro_captain: introCaptain,
+        intro_captain_pose: introCaptainPose,
         intro_dialogue: introDialogue,
         estimated_duration: estimatedDuration,
         optional_items: optionalItems,
+        preparation_message: preparationMessage,
+        reminder_message: reminderMessage,
         prep_checklist: prepChecklist,
         steps,
         debrief_heading: debriefHeading,

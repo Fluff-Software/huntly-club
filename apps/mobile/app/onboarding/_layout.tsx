@@ -6,8 +6,7 @@ export default function OnboardingLayout() {
       screenOptions={{
         headerShown: false,
         gestureEnabled: false,
-        animation: "none",
-      }}
+        animation: "none" }}
     >
       <Stack.Screen name="welcome" />
       <Stack.Screen name="teaser" />

@@ -469,6 +469,18 @@ export const insertUserActivityPhotos = async (
     console.error("Error inserting activity photos:", error);
     throw new Error(`Failed to insert activity photos: ${error.message}`);
   }
+
+  // Best-effort: notify admins that new photos are waiting for review.
+  try {
+    await supabase.functions.invoke("photo-review-admin-email", {
+      body: {
+        photoCount: rows.length,
+        activityId: rows[0]?.activity_id ?? null,
+      },
+    });
+  } catch (notifyError) {
+    console.error("Error notifying admins about review photos:", notifyError);
+  }
 };
 
 export interface ActivityPhotoItem {
@@ -510,6 +522,36 @@ export interface ClubPhotoCardItem {
   photo_url: string;
   title: string;
   author: string;
+  /** Lowercase team name for badge display ("bears", "foxes", "otters"). */
+  team_name?: string;
+}
+
+/**
+ * Returns a weighted random ordering where higher recency scores are favored,
+ * but lower scores still have a non-zero chance to appear.
+ */
+function weightedRecencyShuffleByScore<T>(
+  rows: T[],
+  getRecencyScore: (row: T) => number
+): T[] {
+  const MIN_WEIGHT = 0.1; // keep older content occasionally visible
+
+  const scored = rows.map((row) => ({
+    row,
+    score: Number.isFinite(getRecencyScore(row)) ? getRecencyScore(row) : 0,
+  }));
+  const maxScore = scored.reduce((max, item) => Math.max(max, item.score), 0);
+
+  return scored
+    .map((item) => {
+      const normalized = maxScore > 0 ? item.score / maxScore : 0;
+      const recencyWeight = MIN_WEIGHT + normalized;
+      // Efraimidis-Spirakis weighted random key for sampling without replacement.
+      const key = Math.pow(Math.random(), 1 / recencyWeight);
+      return { row: item.row, key };
+    })
+    .sort((a, b) => b.key - a.key)
+    .map((item) => item.row);
 }
 
 function buildThumbnailUrl(originalUrl: string): string {
@@ -549,17 +591,22 @@ export const getRandomClubPhotos = async (
   const excludeSet = new Set(excludeIds);
   const profileIds = [...new Set((list as { profile_id?: number }[]).map((r) => r.profile_id).filter((id): id is number => id != null))];
   const nicknamesByProfileId: Record<number, string> = {};
+  const teamNameByProfileId: Record<number, string> = {};
   if (profileIds.length > 0) {
     const { data: profilesData } = await supabase
       .from("profile_public")
-      .select("id, nickname")
+      .select("id, nickname, team_name")
       .in("id", profileIds);
     for (const p of profilesData ?? []) {
       nicknamesByProfileId[p.id] = p.nickname ?? "";
+      teamNameByProfileId[p.id] = (p.team_name as string | null)?.toLowerCase() ?? "";
     }
   }
 
-  const shuffled = [...list].sort(() => Math.random() - 0.5);
+  const shuffled = weightedRecencyShuffleByScore(
+    list,
+    (row) => Number((row as { photo_id?: number | string }).photo_id ?? 0)
+  );
   const filtered = excludeSet.size > 0
     ? shuffled.filter((row: Record<string, unknown>) => !excludeSet.has(String(row.photo_id ?? "")))
     : shuffled;
@@ -570,6 +617,7 @@ export const getRandomClubPhotos = async (
     const title = Array.isArray(activity) ? activity[0]?.title : (activity as { title?: string } | null)?.title;
     const profileId = row.profile_id as number | undefined;
     const nickname = profileId != null ? nicknamesByProfileId[profileId] ?? "" : "";
+    const teamName = profileId != null ? teamNameByProfileId[profileId] ?? "" : "";
     const photoUrl = String(row.photo_url ?? "");
     return {
       id: String(row.photo_id ?? Math.random()),
@@ -577,6 +625,7 @@ export const getRandomClubPhotos = async (
       photo_url: photoUrl,
       title: typeof title === "string" ? title : "",
       author: typeof nickname === "string" ? nickname : "",
+      team_name: teamName || undefined,
     };
   });
 };

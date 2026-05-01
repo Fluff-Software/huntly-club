@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useRef, useState, useEffect } from "react";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_SIZE = 5 * 1024 * 1024;
@@ -22,6 +23,8 @@ export function CategoryIconModal({
   initialPendingFile,
   onSelect,
 }: CategoryIconModalProps) {
+  useBodyScrollLock(isOpen);
+
   const [url, setUrl] = useState(currentIcon ?? "");
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);

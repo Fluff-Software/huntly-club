@@ -6,11 +6,9 @@ import {
   Pressable,
   ActivityIndicator,
   Linking,
-  Image,
-} from "react-native";
+  Image } from "react-native";
 import Animated, {
-  FadeInDown,
-} from "react-native-reanimated";
+  FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
 import { StatCard } from "@/components/StatCard";
@@ -30,8 +28,7 @@ const COLORS = {
   white: "#FFFFFF",
   black: "#000000",
   charcoal: "#333333",
-  cardGray: "#E8E8E8",
-};
+  cardGray: "#E8E8E8" };
 
 interface CategoryAnalytics {
   categoryId: number;
@@ -152,8 +149,7 @@ export default function ParentsScreen() {
           icon: cat.icon,
           totalActivities: categoryStatsMap[cat.id]?.count || 0,
           totalXp: categoryStatsMap[cat.id]?.xp || 0,
-          explorerCount: categoryStatsMap[cat.id]?.explorers.size || 0,
-        }))
+          explorerCount: categoryStatsMap[cat.id]?.explorers.size || 0 }))
         .filter((a) => a.totalActivities > 0)
         .sort((a, b) => b.totalActivities - a.totalActivities);
 
@@ -189,35 +185,29 @@ export default function ParentsScreen() {
       StyleSheet.create({
         safeArea: {
           flex: 1,
-          backgroundColor: COLORS.darkGreen,
-        },
+          backgroundColor: COLORS.darkGreen },
         headerBar: {
-          backgroundColor: COLORS.darkGreen,
-        },
+          backgroundColor: COLORS.darkGreen },
         scrollView: { flex: 1 },
         scrollContent: {
           paddingHorizontal: scaleW(30),
           paddingTop: scaleW(8),
-          paddingBottom: scaleW(32),
-        },
+          paddingBottom: scaleW(32) },
         sectionTitle: {
           fontSize: scaleW(18),
           fontWeight: "600",
           color: COLORS.white,
-          marginBottom: scaleW(12),
-        },
+          marginBottom: scaleW(12) },
         sectionDesc: {
           fontSize: scaleW(14),
           color: COLORS.white,
-          marginBottom: scaleW(16),
-        },
+          marginBottom: scaleW(16) },
         progressGrid: {
           flexDirection: "row",
           flexWrap: "wrap",
           justifyContent: "center",
           gap: scaleW(24),
-          marginBottom: scaleW(24),
-        },
+          marginBottom: scaleW(24) },
         activityCard: {
           flexDirection: "row",
           alignItems: "center",
@@ -225,13 +215,11 @@ export default function ParentsScreen() {
           backgroundColor: COLORS.cardGray,
           paddingVertical: scaleW(14),
           paddingHorizontal: scaleW(16),
-          marginBottom: scaleW(10),
-        },
+          marginBottom: scaleW(10) },
         activityCardLeft: {
           flexDirection: "row",
           alignItems: "center",
-          flex: 1,
-        },
+          flex: 1 },
         activityIconWrap: {
           width: scaleW(40),
           height: scaleW(40),
@@ -239,54 +227,43 @@ export default function ParentsScreen() {
           backgroundColor: "rgba(0,0,0,0.06)",
           alignItems: "center",
           justifyContent: "center",
-          marginRight: scaleW(12),
-        },
+          marginRight: scaleW(12) },
         activityIconText: {
-          fontSize: scaleW(20),
-        },
+          fontSize: scaleW(20) },
         activityCategoryName: {
           fontSize: scaleW(15),
-          color: COLORS.charcoal,
-        },
+          color: COLORS.charcoal },
         activityCountWrap: {
-          alignItems: "flex-end",
-        },
+          alignItems: "flex-end" },
         activityCountNum: {
           fontSize: scaleW(15),
           fontWeight: "700",
-          color: COLORS.charcoal,
-        },
+          color: COLORS.charcoal },
         activityCountLabel: {
           fontSize: scaleW(13),
-          color: COLORS.charcoal,
-        },
+          color: COLORS.charcoal },
         showAllProgressButton: {
           alignSelf: "center",
           paddingVertical: scaleW(12),
           paddingHorizontal: scaleW(20),
-          marginTop: scaleW(8),
-        },
+          marginTop: scaleW(8) },
         showAllProgressText: {
           fontSize: scaleW(15),
           fontWeight: "600",
-          color: COLORS.white,
-        },
+          color: COLORS.white },
         resourceCard: {
           backgroundColor: COLORS.cardGray,
           padding: scaleW(16),
-          marginBottom: scaleW(12),
-        },
+          marginBottom: scaleW(12) },
         resourceTitle: {
           fontSize: scaleW(16),
           fontWeight: "600",
           color: COLORS.charcoal,
-          marginBottom: scaleW(6),
-        },
+          marginBottom: scaleW(6) },
         resourceDesc: {
           fontSize: scaleW(14),
           color: COLORS.charcoal,
-          marginBottom: scaleW(12),
-        },
+          marginBottom: scaleW(12) },
         resourceButton: {
           flexDirection: "row",
           alignSelf: "flex-end",
@@ -295,34 +272,28 @@ export default function ParentsScreen() {
           paddingVertical: scaleW(10),
           paddingHorizontal: scaleW(16),
           borderRadius: scaleW(24),
-          gap: scaleW(6),
-        },
+          gap: scaleW(6) },
         resourceButtonText: {
           fontSize: scaleW(14),
           fontWeight: "600",
-          color: COLORS.charcoal,
-        },
+          color: COLORS.charcoal },
         loadingWrap: {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          padding: scaleW(24),
-        },
+          padding: scaleW(24) },
         loadingSpinner: {
           width: scaleW(48),
           height: scaleW(48),
-          marginBottom: scaleW(16),
-        },
+          marginBottom: scaleW(16) },
         loadingText: {
           fontSize: scaleW(16),
-          color: COLORS.white,
-        },
+          color: COLORS.white },
         emptyWrap: {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          padding: scaleW(24),
-        },
+          padding: scaleW(24) },
         emptyIcon: {
           width: scaleW(64),
           height: scaleW(64),
@@ -330,22 +301,18 @@ export default function ParentsScreen() {
           backgroundColor: "rgba(255,255,255,0.2)",
           alignItems: "center",
           justifyContent: "center",
-          marginBottom: scaleW(16),
-        },
+          marginBottom: scaleW(16) },
         emptyTitle: {
           fontSize: scaleW(18),
           fontWeight: "700",
           color: COLORS.white,
           marginBottom: scaleW(8),
-          textAlign: "center",
-        },
+          textAlign: "center" },
         emptyDesc: {
           fontSize: scaleW(14),
           color: COLORS.white,
           opacity: 0.9,
-          textAlign: "center",
-        },
-      }),
+          textAlign: "center" } }),
     [scaleW]
   );
 
@@ -469,7 +436,6 @@ export default function ParentsScreen() {
               {(showAllProgress ? categoryAnalytics : categoryAnalytics.slice(0, 4)).map((cat, i) => (
                 <Animated.View
                   key={cat.categoryId}
-                  entering={FadeInDown.duration(400).delay(200 + i * 50)}
                 >
                   <View style={styles.activityCard}>
                     <View style={styles.activityCardLeft}>

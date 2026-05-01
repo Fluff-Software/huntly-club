@@ -5,15 +5,13 @@ import {
   Image,
   Pressable,
   StyleSheet,
-  ActivityIndicator,
-} from "react-native";
+  ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
+  withSpring } from "react-native-reanimated";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useFirstSeason } from "@/hooks/useFirstSeason";
@@ -68,8 +66,7 @@ export default function StoryScreen() {
   }, [refetchSeason, refetchChapter, refetchChapters]);
 
   const completeButtonAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: completeButtonScale.value }],
-  }));
+    transform: [{ scale: completeButtonScale.value }] }));
 
   const styles = useMemo(
     () =>
@@ -77,12 +74,10 @@ export default function StoryScreen() {
         container: { flex: 1, backgroundColor: STORY_BLUE },
         scrollContent: {
           flexGrow: 1,
-          paddingTop: scaleW(24),
-        },
+          paddingTop: scaleW(24) },
         seasonContainer: {
           backgroundColor: STORY_BLUE,
-          zIndex: 1,
-        },
+          zIndex: 1 },
         imageCircleWrap: {
           width: width * 2.5,
           height: width * 2.5,
@@ -90,30 +85,26 @@ export default function StoryScreen() {
           overflow: "hidden",
           marginBottom: scaleW(20),
           alignSelf: "center",
-          marginTop: -width * 2.1,
-        },
+          marginTop: -width * 2.1 },
         imageCircleImage: {
           width: "50%",
           height: "50%",
           marginTop: width * 1.6,
-          alignSelf: "center",
-        },
+          alignSelf: "center" },
         seasonLabel: {
           fontSize: scaleW(18),
           fontWeight: "600",
           color: "#FFF",
           textAlign: "center",
           marginBottom: scaleW(16),
-          opacity: 0.95,
-        },
+          opacity: 0.95 },
         seasonTitle: {
           fontSize: scaleW(32),
           lineHeight: scaleW(40),
           fontWeight: "600",
           color: "#FFF",
           textAlign: "center",
-          marginBottom: scaleW(16),
-        },
+          marginBottom: scaleW(16) },
         chapterContainer: {
           backgroundColor: "rgba(255,255,255,0.28)",
           marginHorizontal: scaleW(20),
@@ -124,40 +115,34 @@ export default function StoryScreen() {
           borderRadius: scaleW(16),
           borderWidth: 1,
           borderColor: "rgba(255,255,255,0.65)",
-          overflow: "hidden",
-        },
+          overflow: "hidden" },
         chapterTitle: {
           fontSize: scaleW(20),
           fontWeight: "600",
           color: "#FFF",
-          marginBottom: scaleW(4),
-        },
+          marginBottom: scaleW(4) },
         releaseDate: {
           fontSize: scaleW(13),
           color: "rgba(255,255,255,0.7)",
-          marginBottom: scaleW(16),
-        },
+          marginBottom: scaleW(16) },
         bodyText: {
           fontSize: scaleW(16),
           color: "#FFF",
           lineHeight: scaleW(24),
-          marginBottom: scaleW(12),
-        },
+          marginBottom: scaleW(12) },
         buttonsRow: {
           flexDirection: "row",
           flexWrap: "wrap",
           gap: scaleW(12),
           marginTop: scaleW(16),
-          alignItems: "center",
-        },
+          alignItems: "center" },
         readChapterButton: {
           backgroundColor: "rgba(255,255,255,0.9)",
           borderRadius: scaleW(28),
           paddingVertical: scaleW(12),
           paddingHorizontal: scaleW(24),
           alignItems: "center",
-          justifyContent: "center",
-        },
+          justifyContent: "center" },
         completeButton: {
           backgroundColor: "#7FAF8A",
           borderRadius: scaleW(28),
@@ -169,59 +154,49 @@ export default function StoryScreen() {
           shadowOpacity: 0.3,
           shadowRadius: 2,
           shadowOffset: { width: 0, height: 2 },
-          elevation: 2,
-        },
+          elevation: 2 },
         nextLabel: {
           fontSize: scaleW(22),
           fontWeight: "600",
           color: "#FFF",
           textAlign: "center",
           opacity: 0.95,
-          marginBottom: scaleW(4),
-        },
+          marginBottom: scaleW(4) },
         nextDate: {
           fontSize: scaleW(22),
           fontWeight: "600",
           color: "#FFF",
-          textAlign: "center",
-        },
+          textAlign: "center" },
         loadingContainer: {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          padding: scaleW(24),
-        },
+          padding: scaleW(24) },
         loadingText: {
           fontSize: scaleW(16),
           color: "#FFF",
           marginTop: scaleW(16),
-          opacity: 0.9,
-        },
+          opacity: 0.9 },
         errorContainer: {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          padding: scaleW(24),
-        },
+          padding: scaleW(24) },
         errorText: {
           fontSize: scaleW(16),
           color: "#FFF",
           textAlign: "center",
           marginBottom: scaleW(24),
-          opacity: 0.95,
-        },
+          opacity: 0.95 },
         retryButton: {
           backgroundColor: CREAM,
           borderRadius: scaleW(28),
           paddingVertical: scaleW(14),
-          paddingHorizontal: scaleW(32),
-        },
+          paddingHorizontal: scaleW(32) },
         retryButtonText: {
           fontSize: scaleW(16),
           fontWeight: "600",
-          color: DARK_GREEN,
-        },
-      }),
+          color: DARK_GREEN } }),
     [scaleW, width]
   );
 
@@ -271,7 +246,6 @@ export default function StoryScreen() {
         {firstSeason && (
           <View style={styles.seasonContainer}>
             <Animated.View
-              entering={FadeInDown.duration(600).delay(0)}
               style={styles.imageCircleWrap}
             >
               <Image
@@ -302,15 +276,13 @@ export default function StoryScreen() {
               </ThemedText>
             </Animated.View>
             <Animated.View
-              entering={FadeInDown.duration(500).delay(100 + index * 50)}
               style={styles.buttonsRow}
             >
               <Pressable
                 onPress={() =>
                   router.push({
                     pathname: "/(tabs)/story/slides",
-                    params: { source: "chapter", chapterId: String(chapter.id) },
-                  })
+                    params: { source: "chapter", chapterId: String(chapter.id) } })
                 }
                 style={styles.readChapterButton}
               >
@@ -334,8 +306,7 @@ export default function StoryScreen() {
                     style={{
                       fontSize: scaleW(15),
                       fontWeight: "600",
-                      color: "#FFF",
-                    }}
+                      color: "#FFF" }}
                   >
                     View missions →
                   </ThemedText>

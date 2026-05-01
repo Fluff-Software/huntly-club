@@ -8,6 +8,7 @@ import ReactCrop, {
   convertToPixelCrop,
 } from "react-image-crop";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 
 type Props = {
   open: boolean;
@@ -119,6 +120,8 @@ export function ImageCropModal({
   onCancel,
   onConfirm,
 }: Props) {
+  useBodyScrollLock(open);
+
   const imgRef = useRef<HTMLImageElement | null>(null);
   const [crop, setCrop] = useState<Crop>();
   const [lockAspect, setLockAspect] = useState(true);

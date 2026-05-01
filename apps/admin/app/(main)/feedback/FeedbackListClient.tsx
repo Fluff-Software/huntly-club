@@ -26,7 +26,8 @@ export function FeedbackListClient({
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [updatingId, setUpdatingId] = useState<number | null>(null);
-  const sentinelRef = useRef<HTMLTableRowElement | null>(null);
+  const tableSentinelRef = useRef<HTMLTableRowElement | null>(null);
+  const cardSentinelRef = useRef<HTMLDivElement | null>(null);
   const initialLoadDone = useRef(false);
 
   useEffect(() => {
@@ -76,15 +77,17 @@ export function FeedbackListClient({
 
   useEffect(() => {
     if (!sentinelVisible) return;
-    const el = sentinelRef.current;
-    if (!el) return;
+    const elements = [tableSentinelRef.current, cardSentinelRef.current].filter(
+      (el): el is HTMLTableRowElement | HTMLDivElement => el !== null
+    );
+    if (elements.length === 0) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting) loadMore();
+        if (entries.some((e) => e.isIntersecting)) loadMore();
       },
       { rootMargin: "200px", threshold: 0 }
     );
-    observer.observe(el);
+    for (const el of elements) observer.observe(el);
     return () => observer.disconnect();
   }, [loadMore, sentinelVisible]);
 
@@ -129,7 +132,109 @@ export function FeedbackListClient({
         />
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white shadow-sm">
+      {/* Mobile: card list */}
+      <div className="space-y-3 sm:hidden">
+        {searchLoading ? (
+          <div className="rounded-xl border border-stone-200 bg-white px-4 py-6 text-center text-sm text-stone-500 shadow-sm">
+            Searching…
+          </div>
+        ) : items.length === 0 ? (
+          <div className="rounded-xl border border-stone-200 bg-white px-4 py-6 text-center text-sm text-stone-500 shadow-sm">
+            {searchQuery.trim()
+              ? "No feedback matches your search."
+              : "No feedback has been submitted yet."}
+          </div>
+        ) : (
+          <>
+            {items.map((row) => (
+              <article
+                key={row.id}
+                className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-stone-500">When</p>
+                    <p className="mt-0.5 text-sm font-medium text-stone-900">
+                      {new Date(row.created_at).toLocaleString("en-GB")}
+                    </p>
+                    {row.screen && (
+                      <p className="mt-0.5 truncate text-xs text-stone-500">
+                        {row.screen}
+                      </p>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => toggleHandled(row)}
+                    disabled={updatingId === row.id}
+                    className={`shrink-0 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                      row.handled
+                        ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                        : "bg-amber-100 text-amber-700 hover:bg-amber-200"
+                    } disabled:cursor-not-allowed disabled:opacity-60`}
+                  >
+                    {updatingId === row.id ? "Saving…" : row.handled ? "Handled" : "New"}
+                  </button>
+                </div>
+
+                <div className="mt-3 grid gap-3">
+                  <div>
+                    <p className="text-xs font-medium text-stone-500">From</p>
+                    <p className="mt-0.5 truncate text-sm text-stone-800">
+                      {row.user_email ?? row.user_id ?? "–"}
+                    </p>
+                    <p className="mt-0.5 text-xs text-stone-500">
+                      {row.profile_id != null ? `Profile #${row.profile_id}` : "–"}
+                      {row.team_id != null ? ` • Team #${row.team_id}` : ""}
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border border-stone-200 bg-stone-50/40 px-3 py-2">
+                    <p className="text-xs font-medium text-stone-500">Message</p>
+                    <p className="mt-1 whitespace-pre-wrap text-sm text-stone-900 line-clamp-6">
+                      {row.message?.trim() ? row.message : "—"}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-lg border border-stone-200 bg-stone-50/40 px-3 py-2">
+                      <p className="text-xs font-medium text-stone-500">Device</p>
+                      <p className="mt-0.5 text-sm text-stone-900">
+                        {row.device_platform ?? "–"}
+                      </p>
+                      <p className="mt-0.5 truncate text-xs text-stone-500">
+                        {row.device_model ?? ""}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-stone-200 bg-stone-50/40 px-3 py-2">
+                      <p className="text-xs font-medium text-stone-500">App</p>
+                      <p className="mt-0.5 text-sm text-stone-900">
+                        {row.app_version ?? "–"}
+                      </p>
+                      <p className="mt-0.5 truncate text-xs text-stone-500">
+                        {row.app_build ?? ""}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            ))}
+
+            {hasMore && (
+              <div
+                ref={cardSentinelRef}
+                className="rounded-xl border border-dashed border-stone-200 bg-white px-4 py-5 text-center text-sm text-stone-500 shadow-sm"
+              >
+                {loading ? "Loading more…" : "Scroll to load more"}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden overflow-x-auto rounded-xl border border-stone-200 bg-white shadow-sm sm:block">
         <table className="min-w-full divide-y divide-stone-200">
           <thead>
             <tr>
@@ -220,14 +325,14 @@ export function FeedbackListClient({
                         {updatingId === row.id
                           ? "Saving…"
                           : row.handled
-                          ? "Handled"
-                          : "New"}
+                            ? "Handled"
+                            : "New"}
                       </button>
                     </td>
                   </tr>
                 ))}
                 {hasMore && (
-                  <tr ref={sentinelRef}>
+                  <tr ref={tableSentinelRef}>
                     <td colSpan={7} className={tdClass + " text-center"}>
                       <span className="text-sm text-stone-500">
                         {loading ? "Loading more…" : "Scroll to load more"}

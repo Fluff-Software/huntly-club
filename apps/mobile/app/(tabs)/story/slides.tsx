@@ -9,8 +9,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Image,
-  Platform,
-} from "react-native";
+  Platform } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   FadeIn,
@@ -21,8 +20,7 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withDelay,
-  cancelAnimation,
-} from "react-native-reanimated";
+  cancelAnimation } from "react-native-reanimated";
 import { MaterialIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
@@ -58,9 +56,7 @@ function imageSlideEntering() {
     initialValues: { opacity: 0, transform: [{ scale: 0.96 }] },
     animations: {
       opacity: withTiming(1, { duration: 450 }),
-      transform: [{ scale: withTiming(1, { duration: 450 }) }],
-    },
-  };
+      transform: [{ scale: withTiming(1, { duration: 450 }) }] } };
 }
 
 const WORD_DURATION = 140;
@@ -74,8 +70,7 @@ function AnimatedSentence({
   sentence,
   isActive,
   scaleW,
-  slideStyles,
-}: {
+  slideStyles }: {
   sentence: string;
   isActive: boolean;
   scaleW: (n: number) => number;
@@ -115,8 +110,7 @@ function ImageSlide({
   isActive,
   onPress,
   width,
-  slideStyles,
-}: {
+  slideStyles }: {
   imageUri: string;
   isActive: boolean;
   onPress?: () => void;
@@ -181,8 +175,7 @@ function TextImageSlide({
   width,
   height,
   isTablet,
-  slideStyles,
-}: {
+  slideStyles }: {
   text: string;
   imageUri: string;
   isActive: boolean;
@@ -261,8 +254,7 @@ function SlideItem({
   width,
   height,
   isTablet,
-  slideStyles,
-}: {
+  slideStyles }: {
   slide: StorySlide;
   isActive: boolean;
   onPress?: () => void;
@@ -334,8 +326,7 @@ function ProgressDot({
   autoPlay,
   duration,
   dotSize,
-  pillWidth,
-}: {
+  pillWidth }: {
   isActive: boolean;
   autoPlay: boolean;
   duration: number;
@@ -354,8 +345,7 @@ function ProgressDot({
   }, [isActive, autoPlay, duration]);
 
   const fillStyle = useAnimatedStyle(() => ({
-    width: progress.value * pillWidth,
-  }));
+    width: progress.value * pillWidth }));
 
   if (isActive && autoPlay) {
     return (
@@ -365,16 +355,14 @@ function ProgressDot({
           height: dotSize,
           borderRadius: dotSize / 2,
           backgroundColor: "rgba(255,255,255,0.4)",
-          overflow: "hidden",
-        }}
+          overflow: "hidden" }}
       >
         <Animated.View
           style={[
             {
               height: dotSize,
               backgroundColor: CREAM,
-              borderRadius: dotSize / 2,
-            },
+              borderRadius: dotSize / 2 },
             fillStyle,
           ]}
         />
@@ -388,8 +376,7 @@ function ProgressDot({
         width: dotSize,
         height: dotSize,
         borderRadius: dotSize / 2,
-        backgroundColor: isActive ? CREAM : "rgba(255,255,255,0.4)",
-      }}
+        backgroundColor: isActive ? CREAM : "rgba(255,255,255,0.4)" }}
     />
   );
 }
@@ -412,8 +399,7 @@ function BouncingDot({ delay, scaleW }: { delay: number; scaleW: (n: number) => 
   }, []);
 
   const animStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-  }));
+    transform: [{ translateY: translateY.value }] }));
 
   return (
     <Animated.View
@@ -425,8 +411,7 @@ function BouncingDot({ delay, scaleW }: { delay: number; scaleW: (n: number) => 
           borderRadius: scaleW(4),
           backgroundColor: CREAM,
           marginHorizontal: scaleW(4),
-          opacity: 0.7,
-        },
+          opacity: 0.7 },
       ]}
     />
   );
@@ -435,7 +420,6 @@ function BouncingDot({ delay, scaleW }: { delay: number; scaleW: (n: number) => 
 function StoryLoadingScreen({ scaleW }: { scaleW: (n: number) => number }) {
   return (
     <Animated.View
-      entering={FadeIn.duration(400)}
       style={{ alignItems: "center", justifyContent: "center", gap: scaleW(16) }}
     >
       <Text
@@ -443,8 +427,7 @@ function StoryLoadingScreen({ scaleW }: { scaleW: (n: number) => number }) {
           color: CREAM,
           fontSize: scaleW(15),
           fontWeight: "500",
-          opacity: 0.8,
-        }}
+          opacity: 0.8 }}
       >
         Getting your story ready…
       </Text>
@@ -554,8 +537,7 @@ export default function StorySlidesScreen() {
       }
       flatListRef.current?.scrollToOffset({
         offset: (idx + 1) * width,
-        animated: true,
-      });
+        animated: true });
     }, AUTO_PLAY_INTERVAL_MS);
     return () => clearInterval(id);
   }, [autoPlay, slides.length, width]);
@@ -569,8 +551,7 @@ export default function StorySlidesScreen() {
     if (currentIndex < slides.length - 1) {
       flatListRef.current?.scrollToOffset({
         offset: (currentIndex + 1) * width,
-        animated: true,
-      });
+        animated: true });
     }
   }, [currentIndex, width, slides.length]);
 
@@ -602,48 +583,39 @@ export default function StorySlidesScreen() {
       StyleSheet.create({
         container: { flex: 1, backgroundColor: STORY_CONTAINER_BG },
         slidesWrapper: {
-          flex: 1,
-        },
+          flex: 1 },
         loadingContainer: {
           justifyContent: "center",
-          alignItems: "center",
-        },
+          alignItems: "center" },
         slide: {
           flex: 1,
           justifyContent: "center",
-          alignItems: "center",
-        },
+          alignItems: "center" },
         slideInner: {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          maxWidth: "100%",
-        },
+          maxWidth: "100%" },
         sentence: {
           color: "#FFF",
           fontWeight: "600",
-          textAlign: "center",
-        },
+          textAlign: "center" },
         letterRow: {
           flexDirection: "row",
           flexWrap: "wrap",
           justifyContent: "center",
           alignItems: "center",
-          paddingHorizontal: scaleW(32),
-        },
+          paddingHorizontal: scaleW(32) },
         slideImage: {
           width: "100%",
           flex: 1,
-          maxWidth: width,
-        },
+          maxWidth: width },
         slideImageWrap: {
           flex: 1,
           justifyContent: "center",
-          alignItems: "center",
-        },
+          alignItems: "center" },
         slideImageBgLayer: {
-          ...StyleSheet.absoluteFillObject,
-        },
+          ...StyleSheet.absoluteFillObject },
         bottomControls: {
           position: "absolute",
           bottom: 0,
@@ -651,21 +623,18 @@ export default function StorySlidesScreen() {
           right: 0,
           flexDirection: "column",
           alignItems: "center",
-          paddingBottom: insets.bottom,
-        },
+          paddingBottom: insets.bottom },
         playButton: {
           padding: scaleW(10),
           borderRadius: scaleW(20),
           backgroundColor: "rgba(255,255,255,0.25)",
-          marginBottom: scaleW(8),
-        },
+          marginBottom: scaleW(8) },
         dotsRow: {
           flexDirection: "row",
           justifyContent: "center",
           alignItems: "center",
           gap: scaleW(8),
-          paddingVertical: scaleW(12),
-        },
+          paddingVertical: scaleW(12) },
         missionsCta: {
           position: "absolute",
           bottom: scaleW(56) + insets.bottom,
@@ -681,19 +650,15 @@ export default function StorySlidesScreen() {
           shadowOpacity: 0.2,
           shadowRadius: 4,
           shadowOffset: { width: 0, height: 2 },
-          elevation: 3,
-        },
+          elevation: 3 },
         missionsCtaText: {
           fontSize: scaleW(16),
           fontWeight: "600",
-          color: DARK_GREEN,
-        },
+          color: DARK_GREEN },
         dot: {
           width: scaleW(8),
           height: scaleW(8),
-          borderRadius: scaleW(4),
-        },
-      }),
+          borderRadius: scaleW(4) } }),
     [scaleW, insets.bottom, width]
   );
 
@@ -743,8 +708,7 @@ export default function StorySlidesScreen() {
           getItemLayout={(_, index) => ({
             length: width,
             offset: width * index,
-            index,
-          })}
+            index })}
         />
         <View style={styles.bottomControls}>
           {currentIndex !== slides.length - 1 && (

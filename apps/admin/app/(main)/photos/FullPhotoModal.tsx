@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect, useCallback } from "react";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 4;
@@ -13,6 +14,8 @@ type Props = {
 };
 
 export function FullPhotoModal({ photoUrl, open, onClose }: Props) {
+  useBodyScrollLock(open);
+
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);

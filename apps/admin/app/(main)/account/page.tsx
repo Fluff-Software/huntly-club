@@ -7,7 +7,10 @@ import { Button } from "@/components/Button";
 
 type MfaFactor = {
   id: string;
-  factorType: "totp" | "phone";
+  factorType?: "totp" | "phone" | "webauthn";
+  factor_type?: "totp" | "phone" | "webauthn";
+  friendlyName?: string;
+  friendly_name?: string;
   status: "unverified" | "verified";
 };
 
@@ -19,6 +22,10 @@ type TotpEnrollment = {
     secret?: string;
   };
 };
+
+function isTotpFactor(factor: MfaFactor) {
+  return factor.factorType === "totp" || factor.factor_type === "totp";
+}
 
 export default function AccountPage() {
   const router = useRouter();
@@ -63,10 +70,9 @@ export default function AccountPage() {
 
       const factors =
         (data?.all as unknown as MfaFactor[] | undefined) ?? [];
-      const totpFactor =
-        factors.find(
-          (f) => f.factorType === "totp" && f.status === "verified",
-        ) ?? factors.find((f) => f.factorType === "totp");
+      const totpFactor = factors.find(
+        (f) => isTotpFactor(f) && f.status === "verified",
+      );
 
       setFactor(totpFactor ?? null);
       setLoading(false);
@@ -83,17 +89,58 @@ export default function AccountPage() {
 
     try {
       const supabase = createClient();
+      const friendlyName = "Admin authenticator";
 
-      const {
-        data,
-        error: enrolError,
-      } = await supabase.auth.mfa.enroll({
-        factorType: "totp",
-      });
+      async function enrollTotp() {
+        return supabase.auth.mfa.enroll({
+          factorType: "totp",
+          friendlyName,
+          issuer: "Huntly World Admin",
+        });
+      }
+
+      let { data, error: enrolError } = await enrollTotp();
+
+      // Recover from stale unverified factors created by aborted setup attempts.
+      if (
+        enrolError?.message?.includes("friendly name") &&
+        enrolError?.message?.includes("already exists")
+      ) {
+        const { data: listedFactors, error: listError } =
+          await supabase.auth.mfa.listFactors();
+
+        if (!listError) {
+          const candidates =
+            (listedFactors?.all as unknown as MfaFactor[] | undefined) ?? [];
+          const staleFactors = candidates.filter(
+            (f) =>
+              isTotpFactor(f) &&
+              f.status === "unverified" &&
+              (f.friendlyName === friendlyName ||
+                f.friendly_name === friendlyName),
+          );
+
+          for (const staleFactor of staleFactors) {
+            const { error: unenrollError } = await supabase.auth.mfa.unenroll({
+              factorId: staleFactor.id,
+            });
+            if (unenrollError) {
+              console.error("Failed to remove stale MFA factor", unenrollError);
+            }
+          }
+
+          const retry = await enrollTotp();
+          data = retry.data;
+          enrolError = retry.error;
+        }
+      }
 
       if (enrolError || !data) {
         console.error("Failed to start MFA enrolment", enrolError);
-        setError("Could not start two-factor enrolment. Please try again.");
+        setError(
+          enrolError?.message ||
+            "Could not start two-factor enrolment. Please try again.",
+        );
         return;
       }
 
@@ -165,10 +212,9 @@ export default function AccountPage() {
 
       const factors =
         (data?.all as unknown as MfaFactor[] | undefined) ?? [];
-      const totpFactor =
-        factors.find(
-          (f) => f.factorType === "totp" && f.status === "verified",
-        ) ?? factors.find((f) => f.factorType === "totp");
+      const totpFactor = factors.find(
+        (f) => isTotpFactor(f) && f.status === "verified",
+      );
 
       setFactor(totpFactor ?? null);
     } finally {
@@ -213,7 +259,7 @@ export default function AccountPage() {
             </div>
             <div className="mt-3 flex items-center sm:mt-0">
               <span
-                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${
                   hasTotp
                     ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200"
                     : "bg-stone-50 text-stone-700 ring-1 ring-stone-200"

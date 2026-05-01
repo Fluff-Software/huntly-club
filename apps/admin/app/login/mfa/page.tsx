@@ -7,7 +7,8 @@ import { Button } from "@/components/Button";
 
 type MfaFactor = {
   id: string;
-  factorType: "totp" | "phone";
+  factorType?: "totp" | "phone" | "webauthn";
+  factor_type?: "totp" | "phone" | "webauthn";
   status: "unverified" | "verified";
 };
 
@@ -43,10 +44,11 @@ export default function LoginMfaPage() {
 
       const factors =
         (data?.all as unknown as MfaFactor[] | undefined) ?? [];
-      const totpFactor =
-        factors.find(
-          (f) => f.factorType === "totp" && f.status === "verified",
-        ) ?? factors.find((f) => f.factorType === "totp");
+      const totpFactor = factors.find(
+        (f) =>
+          (f.factorType === "totp" || f.factor_type === "totp") &&
+          f.status === "verified",
+      );
 
       if (!totpFactor) {
         router.replace("/account?requireMfa=1");

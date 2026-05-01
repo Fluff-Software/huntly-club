@@ -6,8 +6,7 @@ import {
   Platform,
   Alert,
   View,
-  ScrollView,
-} from "react-native";
+  ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
 import { type PurchasesPackage } from "@/services/purchasesService";
@@ -24,8 +23,7 @@ export default function SubscriptionScreen() {
     isLoading,
     purchasePackage,
     presentPaywall,
-    presentCustomerCenter,
-  } = usePurchases();
+    presentCustomerCenter } = usePurchases();
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
 
   useEffect(() => {

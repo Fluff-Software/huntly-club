@@ -78,22 +78,16 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-  },
+    padding: 20 },
   loader: {
-    marginBottom: 20,
-  },
+    marginBottom: 20 },
   message: {
     textAlign: 'center',
-    marginBottom: 10,
-  },
+    marginBottom: 10 },
   error: {
     textAlign: 'center',
     color: '#ef4444',
-    marginBottom: 10,
-  },
+    marginBottom: 10 },
   redirectText: {
     marginTop: 20,
-    opacity: 0.7,
-  },
-}); 
+    opacity: 0.7 } }); 

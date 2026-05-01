@@ -76,12 +76,7 @@ export default async function BadgesAdminPage() {
                 <span className="text-xs text-stone-500">
                   {groupBadges.length} badge{groupBadges.length === 1 ? "" : "s"}
                 </span>
-                <form
-                  action={async (formData) => {
-                    await renameBadgeGroup(formData);
-                  }}
-                  className="flex items-center gap-2"
-                >
+                <form action={renameBadgeGroup} className="flex items-center gap-2">
                   <input type="hidden" name="old_group" value={groupName} />
                   <input
                     type="text"

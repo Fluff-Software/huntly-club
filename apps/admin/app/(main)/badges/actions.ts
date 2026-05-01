@@ -203,22 +203,15 @@ export async function updateBadge(formData: FormData): Promise<{ error?: string 
   }
 }
 
-export async function deleteBadge(
-  formData: FormData
-): Promise<{ error?: string; success?: boolean }> {
-  try {
-    const supabase = createServerSupabaseClient();
-    const id = Number.parseInt(String(formData.get("id") ?? "0"), 10);
-    if (!id) return { error: "Missing badge id." };
+export async function deleteBadge(formData: FormData): Promise<void> {
+  const supabase = createServerSupabaseClient();
+  const id = Number.parseInt(String(formData.get("id") ?? "0"), 10);
+  if (!id) throw new Error("Missing badge id.");
 
-    const { error } = await supabase.from("badges").delete().eq("id", id);
-    if (error) return { error: error.message };
+  const { error } = await supabase.from("badges").delete().eq("id", id);
+  if (error) throw new Error(error.message);
 
-    revalidatePath("/badges");
-    return { success: true };
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : "Failed to delete badge" };
-  }
+  revalidatePath("/badges");
 }
 
 export async function assignBadgeToProfile(
@@ -264,27 +257,20 @@ export async function assignBadgeToProfile(
   }
 }
 
-export async function renameBadgeGroup(
-  formData: FormData
-): Promise<{ error?: string; success?: boolean }> {
-  try {
-    const supabase = createServerSupabaseClient();
-    const oldGroup = String(formData.get("old_group") ?? "").trim();
-    const newGroup = String(formData.get("new_group") ?? "").trim();
+export async function renameBadgeGroup(formData: FormData): Promise<void> {
+  const supabase = createServerSupabaseClient();
+  const oldGroup = String(formData.get("old_group") ?? "").trim();
+  const newGroup = String(formData.get("new_group") ?? "").trim();
 
-    if (!oldGroup) return { error: "Missing current badge group." };
-    if (!newGroup) return { error: "New badge group name is required." };
-    if (oldGroup === newGroup) return { success: true };
+  if (!oldGroup) throw new Error("Missing current badge group.");
+  if (!newGroup) throw new Error("New badge group name is required.");
+  if (oldGroup === newGroup) return;
 
-    const { error } = await supabase
-      .from("badges")
-      .update({ sort_group: newGroup })
-      .eq("sort_group", oldGroup);
+  const { error } = await supabase
+    .from("badges")
+    .update({ sort_group: newGroup })
+    .eq("sort_group", oldGroup);
 
-    if (error) return { error: error.message };
-    revalidatePath("/badges");
-    return { success: true };
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : "Failed to rename badge group" };
-  }
+  if (error) throw new Error(error.message);
+  revalidatePath("/badges");
 }

@@ -1,244 +1,149 @@
-import React, {
-  useState,
-  useCallback,
-  useRef,
-  useMemo,
-  useEffect } from "react";
-import {
-  View,
-  ScrollView,
-  StyleSheet,
-  Pressable,
-  ActivityIndicator } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useFocusEffect } from "expo-router";
+import React from "react";
+import { View, Image, Pressable, StyleSheet, ImageBackground } from "react-native";
+import { router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
-import { JournalEntryCard } from "@/components/JournalEntryCard";
-import { JournalMissionCard } from "@/components/JournalMissionCard";
-import { AddJournalEntryModal } from "@/components/AddJournalEntryModal";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
-import { useAuth } from "@/contexts/AuthContext";
-import { usePlayer } from "@/contexts/PlayerContext";
-import { useUser } from "@/contexts/UserContext";
-import {
-  getJournalTimeline,
-  type JournalEntry,
-  type JournalTimelineItem } from "@/services/journalService";
 
-const JOURNAL_AMBER = "#B07D3E";
-const CREAM = "#F4F0EB";
+const BACKPACK_BG = require("@/assets/images/backpack-bg.png");
 
-export default function JournalScreen() {
+function BackpackTile({
+  title,
+  subtitle,
+  cta,
+  bgColor,
+  art,
+  artStyle,
+  onPress,
+}: {
+  title: string;
+  subtitle: string;
+  cta: string;
+  bgColor: string;
+  art: number;
+  artStyle: { width: number; height: number; right?: number; bottom?: number };
+  onPress: () => void;
+}) {
   const { scaleW } = useLayoutScale();
-  const { user } = useAuth();
-  const { profiles } = usePlayer();
-  const { teamId } = useUser();
-
-  const [timeline, setTimeline] = useState<JournalTimelineItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
-  const [showAddModal, setShowAddModal] = useState(false);
-
-  const isMountedRef = useRef(true);
-  const scrollRef = useRef<ScrollView>(null);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
-
-  const loadTimeline = useCallback(async () => {
-    if (!user?.id) return;
-
-    const profileIds = profiles.map((p) => p.id);
-
-    try {
-      const data = await getJournalTimeline(user.id, profileIds);
-      if (isMountedRef.current) {
-        setTimeline(data);
-      }
-    } catch (err) {
-      console.error("Error loading journal timeline:", err);
-    } finally {
-      if (isMountedRef.current) {
-        setLoading(false);
-        setHasLoadedOnce(true);
-      }
-    }
-  }, [user?.id, profiles]);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadTimeline();
-      scrollRef.current?.scrollTo({ y: 0, animated: false });
-    }, [loadTimeline])
-  );
-
-  const handleEntryAdded = useCallback((newEntry: JournalEntry) => {
-    const newItem: JournalTimelineItem = {
-      type: "manual",
-      sortDate: `${newEntry.entry_date}T23:59:59`,
-      entry: newEntry };
-    setTimeline((prev) => [newItem, ...prev]);
-  }, []);
-
-  const styles = useMemo(
-    () =>
-      StyleSheet.create({
-        container: {
-          flex: 1,
-          backgroundColor: JOURNAL_AMBER },
-        scrollContent: {
-          flexGrow: 1,
-          paddingTop: scaleW(12),
-          paddingBottom: scaleW(100), // room for FAB
-        },
-        heading: {
-          fontSize: scaleW(24),
-          fontWeight: "700",
-          color: "#FFF",
-          textAlign: "center",
-          marginBottom: scaleW(4) },
-        subtitle: {
-          fontSize: scaleW(14),
-          color: "rgba(255,255,255,0.8)",
-          textAlign: "center",
-          marginBottom: scaleW(20) },
-        loadingContainer: {
-          paddingVertical: scaleW(48),
-          alignItems: "center" },
-        emptyContainer: {
-          paddingVertical: scaleW(48),
-          paddingHorizontal: scaleW(32),
-          alignItems: "center" },
-        emptyTitle: {
-          fontSize: scaleW(20),
-          fontWeight: "700",
-          color: "#FFF",
-          textAlign: "center",
-          marginTop: scaleW(16),
-          marginBottom: scaleW(8) },
-        emptyBody: {
-          fontSize: scaleW(14),
-          color: "rgba(255,255,255,0.8)",
-          textAlign: "center",
-          lineHeight: scaleW(20),
-          marginBottom: scaleW(8) },
-        emptyAddButton: {
-          marginTop: scaleW(20),
-          backgroundColor: CREAM,
-          borderRadius: scaleW(28),
-          paddingVertical: scaleW(14),
-          paddingHorizontal: scaleW(28) },
-        emptyAddButtonText: {
-          fontSize: scaleW(15),
-          fontWeight: "700",
-          color: JOURNAL_AMBER },
-        fab: {
-          position: "absolute",
-          bottom: scaleW(24),
-          right: scaleW(24),
-          width: scaleW(56),
-          height: scaleW(56),
-          borderRadius: scaleW(28),
-          backgroundColor: CREAM,
-          alignItems: "center",
-          justifyContent: "center",
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: scaleW(3) },
-          shadowOpacity: 0.2,
-          shadowRadius: scaleW(6),
-          elevation: 6 } }),
-    [scaleW]
-  );
-
-  const showFab = teamId != null;
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <ScrollView
-        ref={scrollRef}
-        style={{ flex: 1 }}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-        overScrollMode="never"
+    <Pressable onPress={onPress}>
+      <View
+        style={{
+          backgroundColor: bgColor,
+          borderRadius: scaleW(18),
+          minHeight: scaleW(124),
+          overflow: "hidden",
+          shadowColor: "#000",
+          shadowOpacity: 0.25,
+          shadowRadius: 4,
+          shadowOffset: { width: 0, height: 2 },
+          borderWidth: 3,
+          borderColor: "#FFF",
+          elevation: 3,
+        }}
       >
-        <Animated.View entering={FadeInDown.duration(500).delay(0)}>
-          <ThemedText type="heading" style={styles.heading}>
-            Adventure Journal
-          </ThemedText>
-          <ThemedText style={styles.subtitle}>
-            Your family's outdoor story
-          </ThemedText>
-        </Animated.View>
-
-        {!hasLoadedOnce && loading && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#FFF" />
+        <Image
+          source={art}
+          resizeMode="contain"
+          style={{
+            position: "absolute",
+            bottom: artStyle.bottom ?? 0,
+            right: artStyle.right ?? 0,
+            ...artStyle,
+          }}
+        />
+        <View
+          style={{
+            padding: scaleW(16),
+            paddingRight: scaleW(122),
+            flex: 1,
+            gap: scaleW(8),
+          }}
+        >
+          <View style={{ gap: scaleW(3) }}>
+            <ThemedText
+              type="heading"
+              lightColor="#FFFFFF"
+              darkColor="#FFFFFF"
+              style={{ fontSize: scaleW(17), fontWeight: "800", lineHeight: scaleW(21) }}
+            >
+              {title}
+            </ThemedText>
+            <ThemedText
+              lightColor="rgba(255,255,255,0.85)"
+              darkColor="rgba(255,255,255,0.85)"
+              style={{ fontSize: scaleW(14), fontWeight: "500", lineHeight: scaleW(18) }}
+            >
+              {subtitle}
+            </ThemedText>
           </View>
-        )}
-
-        {hasLoadedOnce && timeline.length === 0 && (
-          <Animated.View
-            style={styles.emptyContainer}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              alignSelf: "flex-start",
+              backgroundColor: "rgba(255,255,255,0.2)",
+              borderRadius: scaleW(20),
+              paddingVertical: scaleW(6),
+              paddingHorizontal: scaleW(12),
+              gap: scaleW(4),
+            }}
           >
-            <MaterialIcons name="eco" size={scaleW(48)} color={CREAM} />
-            <ThemedText style={styles.emptyTitle}>
-              Your adventures start here!
+            <ThemedText
+              lightColor="#FFFFFF"
+              darkColor="#FFFFFF"
+              style={{ fontSize: scaleW(14), fontWeight: "700" }}
+            >
+              {cta}
             </ThemedText>
-            <ThemedText style={styles.emptyBody}>
-              Completed missions will appear here automatically.
-            </ThemedText>
-            <ThemedText style={styles.emptyBody}>
-              Add your own adventures to build your family's story.
-            </ThemedText>
-            {showFab && (
-              <Pressable
-                style={styles.emptyAddButton}
-                onPress={() => setShowAddModal(true)}
-              >
-                <ThemedText style={styles.emptyAddButtonText}>
-                  Add your first entry
-                </ThemedText>
-              </Pressable>
-            )}
-          </Animated.View>
-        )}
+            <MaterialIcons name="chevron-right" size={scaleW(14)} color="#FFFFFF" />
+          </View>
+        </View>
+      </View>
+    </Pressable>
+  );
+}
 
-        {hasLoadedOnce &&
-          timeline.map((item, index) =>
-            item.type === "manual" ? (
-              <JournalEntryCard
-                key={`manual-${item.entry.id}`}
-                entry={item.entry}
-                animationDelay={Math.min(index * 40, 400)}
-              />
-            ) : (
-              <JournalMissionCard
-                key={`mission-${item.mission.id}`}
-                mission={item.mission}
-                animationDelay={Math.min(index * 40, 400)}
-              />
-            )
-          )}
-      </ScrollView>
+export default function BackpackScreen() {
+  const { scaleW } = useLayoutScale();
 
-      {showFab && (
-        <Pressable style={styles.fab} onPress={() => setShowAddModal(true)}>
-          <MaterialIcons name="add" size={scaleW(28)} color={JOURNAL_AMBER} />
-        </Pressable>
-      )}
-
-      <AddJournalEntryModal
-        visible={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onSuccess={handleEntryAdded}
-      />
+  return (
+    <SafeAreaView style={styles.container} edges={[]}>
+      <ImageBackground source={BACKPACK_BG} style={styles.background} resizeMode="cover">
+        <View style={[styles.tilesContainer, { gap: scaleW(14) }]}>
+          <BackpackTile
+            title="See your Journal"
+            subtitle="Read your family stories"
+            cta="Open"
+            bgColor="#5B7FA6"
+            art={require("@/assets/images/journal-bg.png")}
+            artStyle={{ width: scaleW(118), height: scaleW(100) }}
+            onPress={() => router.push("/(tabs)/journal-book")}
+          />
+          <BackpackTile
+            title="Badges & Rewards"
+            subtitle="Track badges you've earned"
+            cta="View badges"
+            bgColor="#62A94F"
+            art={require("@/assets/images/backpack-badges-v2.png")}
+            artStyle={{ width: scaleW(136), height: scaleW(120), right: -scaleW(25), bottom: -scaleW(10) }}
+            onPress={() => router.push("/(tabs)/badges")}
+          />
+        </View>
+      </ImageBackground>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  background: { flex: 1 },
+  tilesContainer: {
+    flex: 1,
+    justifyContent: "center",
+    width: "88%",
+    alignSelf: "center",
+  },
+});

@@ -31,6 +31,8 @@ import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useUser } from "@/contexts/UserContext";
 import { getActivityById } from "@/services/packService";
+import type { Badge } from "@/services/badgeService";
+import { completeActivity as completeActivityService } from "@/services/activityService";
 import {
   ensureProgressRows,
   completeProgressRows,
@@ -126,7 +128,7 @@ export default function CompletionScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { scaleW } = useLayoutScale();
-  const { profiles } = usePlayer();
+  const { profiles, refreshProfiles } = usePlayer();
   const { teamId } = useUser();
   const [activity, setActivity] = useState<MissionDebriefActivity | null>(null);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<number[]>([]);
@@ -358,6 +360,27 @@ export default function CompletionScreen() {
         }
       }
 
+      // Keep XP/team stats + badge evaluation aligned with normal mission completion flow.
+      // Only run for first-time completions to avoid double-awarding on replays.
+      const unlockedBadges: Array<{
+        badge_id: number;
+        badge_name: string;
+        profile_id: number;
+      }> = [];
+      for (const row of newlyCompleting) {
+        const completionResult = await completeActivityService(activity.id, row.profile_id);
+        for (const unlocked of completionResult.newBadges ?? []) {
+          const badge = unlocked as Badge;
+          unlockedBadges.push({
+            badge_id: badge.id,
+            badge_name: badge.name,
+            profile_id: row.profile_id,
+          });
+        }
+      }
+
+      await refreshProfiles();
+
       // 4–5: Upload each photo to Supabase bucket "user-activity-photos"
       const uploaded: { profileId: number; photoUrl: string }[] = [];
       for (const profileId of selectedPlayerIds) {
@@ -409,7 +432,9 @@ export default function CompletionScreen() {
         pathname: "/(tabs)/activity/mission/reward" as const,
         params: {
           activityId: String(activity.id),
-          achievements: JSON.stringify(achievementsForReward) } });
+          achievements: JSON.stringify(achievementsForReward),
+          unlockedBadges: JSON.stringify(unlockedBadges),
+        } });
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Something went wrong.";

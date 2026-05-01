@@ -1,7 +1,8 @@
 import React from "react";
-import { View, Modal, Pressable, Dimensions, Image } from "react-native";
+import { View, Modal, Pressable, Image } from "react-native";
 import { ThemedText } from "./ThemedText";
 import { Badge, getBadgeDisplay } from "@/services/badgeService";
+import { useLayoutScale } from "@/hooks/useLayoutScale";
 
 interface BadgePopupModalProps {
   visible: boolean;
@@ -10,43 +11,28 @@ interface BadgePopupModalProps {
   onViewAllBadges: () => void;
 }
 
-const { width, height } = Dimensions.get("window");
-
-// Helper function to get local image source
-const getLocalImageSource = (imagePath: string) => {
-  if (imagePath.includes("first-steps-badge")) {
-    return require("@/assets/images/first-steps-badge.png");
-  }
-  // Add more cases as needed
-  return null;
-};
-
 export const BadgePopupModal: React.FC<BadgePopupModalProps> = ({
   visible,
   badge,
   onClose,
   onViewAllBadges,
 }) => {
+  const { scaleW, isTablet } = useLayoutScale();
   if (!badge) return null;
 
   const badgeDisplay = getBadgeDisplay(badge);
 
   const getImageSource = () => {
-    if (badgeDisplay.type === "image") {
-      if (badgeDisplay.content.startsWith("http")) {
-        return { uri: badgeDisplay.content };
-      } else {
-        // Handle local images
-        const localSource = getLocalImageSource(badgeDisplay.content);
-        if (localSource) {
-          return localSource;
-        }
-      }
+    if (badgeDisplay.type === "image" && badgeDisplay.content.startsWith("http")) {
+      return { uri: badgeDisplay.content };
     }
     return null;
   };
 
   const imageSource = getImageSource();
+  const cardPadding = scaleW(isTablet ? 26 : 20);
+  const iconOuter = scaleW(isTablet ? 140 : 120);
+  const iconInner = scaleW(isTablet ? 104 : 88);
 
   return (
     <Modal
@@ -55,34 +41,50 @@ export const BadgePopupModal: React.FC<BadgePopupModalProps> = ({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View className="flex-1 bg-black/50 justify-center items-center p-6">
-        <View className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-soft">
+      <View
+        className="flex-1 bg-black/50 justify-center items-center"
+        style={{ padding: scaleW(20) }}
+      >
+        <View
+          className="bg-white rounded-3xl w-full shadow-soft"
+          style={{ padding: cardPadding, maxWidth: scaleW(isTablet ? 460 : 360) }}
+        >
           {/* Header with Close Button */}
-          <View className="flex-row items-center justify-between mb-6">
+          <View
+            className="flex-row items-center justify-between"
+            style={{ marginBottom: scaleW(16) }}
+          >
             <ThemedText type="subtitle" className="text-huntly-forest">
               Badge Earned!
             </ThemedText>
             <Pressable
               onPress={onClose}
-              className="w-8 h-8 bg-gray-100 rounded-full items-center justify-center"
+              className="bg-gray-100 rounded-full items-center justify-center"
+              style={{ width: scaleW(32), height: scaleW(32) }}
             >
-              <ThemedText className="text-huntly-charcoal text-lg font-bold">
+              <ThemedText
+                className="text-huntly-charcoal font-bold"
+                style={{ fontSize: scaleW(16) }}
+              >
                 ×
               </ThemedText>
             </Pressable>
           </View>
 
           {/* Badge Icon */}
-          <View className="items-center mb-6">
-            <View className="w-32 h-32 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full items-center justify-center mb-4 shadow-soft">
+          <View className="items-center" style={{ marginBottom: scaleW(16) }}>
+            <View
+              className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full items-center justify-center shadow-soft"
+              style={{ width: iconOuter, height: iconOuter, marginBottom: scaleW(10) }}
+            >
               {badgeDisplay.type === "image" && imageSource ? (
                 <Image
                   source={imageSource}
-                  className="w-24 h-24"
+                  style={{ width: iconInner, height: iconInner }}
                   resizeMode="contain"
                 />
               ) : (
-                <ThemedText className="text-6xl">
+                <ThemedText style={{ fontSize: scaleW(52), lineHeight: scaleW(56) }}>
                   {badgeDisplay.content}
                 </ThemedText>
               )}
@@ -92,7 +94,8 @@ export const BadgePopupModal: React.FC<BadgePopupModalProps> = ({
           {/* Badge Title */}
           <ThemedText
             type="title"
-            className="text-huntly-forest text-center mb-3"
+            className="text-huntly-forest text-center"
+            style={{ marginBottom: scaleW(8) }}
           >
             {badge.name}
           </ThemedText>
@@ -100,7 +103,8 @@ export const BadgePopupModal: React.FC<BadgePopupModalProps> = ({
           {/* Badge Description */}
           <ThemedText
             type="body"
-            className="text-huntly-charcoal text-center mb-6 leading-6"
+            className="text-huntly-charcoal text-center"
+            style={{ marginBottom: scaleW(16), lineHeight: scaleW(24) }}
           >
             {badge.description}
           </ThemedText>
@@ -109,7 +113,8 @@ export const BadgePopupModal: React.FC<BadgePopupModalProps> = ({
           <View className="space-y-3">
             <Pressable
               onPress={onViewAllBadges}
-              className="bg-huntly-leaf py-4 rounded-2xl items-center shadow-soft"
+              className="bg-huntly-leaf rounded-2xl items-center shadow-soft"
+              style={{ paddingVertical: scaleW(12) }}
             >
               <ThemedText type="defaultSemiBold" className="text-white">
                 View All Badges
@@ -118,7 +123,8 @@ export const BadgePopupModal: React.FC<BadgePopupModalProps> = ({
 
             <Pressable
               onPress={onClose}
-              className="bg-gray-100 py-4 rounded-2xl items-center"
+              className="bg-gray-100 rounded-2xl items-center"
+              style={{ paddingVertical: scaleW(12) }}
             >
               <ThemedText
                 type="defaultSemiBold"

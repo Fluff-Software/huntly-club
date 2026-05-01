@@ -50,15 +50,17 @@ const HUNTLY_CHARCOAL = "#3D3D3D";
 function TabIcon({
   source,
   color,
-  size = 24 }: {
+  size = 24,
+  useTint = true }: {
   source: number;
   color: string;
   size?: number;
+  useTint?: boolean;
 }) {
   return (
     <Image
       source={source}
-      style={[styles.tabIcon, { width: size, height: size, tintColor: color }]}
+      style={[styles.tabIcon, { width: size, height: size }, useTint ? { tintColor: color } : null]}
       resizeMode="contain"
     />
   );
@@ -448,7 +450,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="journal"
         options={{
-          title: "Journal",
+          title: "Backpack",
           tabBarIcon: ({ color }) => (
             <View style={[styles.storyIconWrapper, { width: scaleW(44), height: scaleW(44) }]}>
               {tutorialStep === "click_journal" && (
@@ -456,10 +458,20 @@ export default function TabLayout() {
                   <StoryTabPulse size={scaleW(44)} />
                 </View>
               )}
-              <MaterialIcons name="auto-stories" size={scaleW(24)} color={color} />
+              <MaterialIcons name="workspace-premium" size={scaleW(24)} color={color} />
             </View>
           ),
           href: profiles.length > 0 ? undefined : null }}
+      />
+      <Tabs.Screen
+        name="journal-book"
+        options={{
+          href: null }}
+      />
+      <Tabs.Screen
+        name="badges"
+        options={{
+          href: null }}
       />
       <Tabs.Screen
         name="testing"

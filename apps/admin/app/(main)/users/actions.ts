@@ -390,6 +390,12 @@ export async function deleteUserAdmin(userId: string): Promise<DeleteUserResult>
         .from("user_achievements")
         .delete()
         .in("profile_id", profileIds);
+
+      // Badge cleanup by profile for extra safety in case of legacy/misaligned rows.
+      await supabase
+        .from("user_badges")
+        .delete()
+        .in("profile_id", profileIds);
     }
 
     // Tables keyed by user_id

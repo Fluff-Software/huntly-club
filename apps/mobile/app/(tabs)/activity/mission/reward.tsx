@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
   InteractionManager } from "react-native";
 import ConfettiCannon from "react-native-confetti-cannon";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
@@ -54,13 +54,23 @@ const WELL_DONE_HEADLINES = [
 ];
 
 type RewardAchievement = { profile_name: string; message: string; xp: number };
+type UnlockedBadgePayload = {
+  badge_id: number;
+  badge_name: string;
+  profile_id: number;
+};
 
 export default function RewardScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const { scaleW } = useLayoutScale();
+  const insets = useSafeAreaInsets();
   const { updateStartMissionStep } = useUser();
-  const params = useLocalSearchParams<{ activityId?: string; achievements?: string }>();
+  const params = useLocalSearchParams<{
+    activityId?: string;
+    achievements?: string;
+    unlockedBadges?: string;
+  }>();
 
   const wellDoneHeadline = useMemo(
     () => WELL_DONE_HEADLINES[Math.floor(Math.random() * WELL_DONE_HEADLINES.length)],
@@ -70,6 +80,8 @@ export default function RewardScreen() {
   const [activityCard, setActivityCard] = useState<MissionCardData | null>(null);
   const [activityXp, setActivityXp] = useState<number | null>(null);
   const [achievements, setAchievements] = useState<RewardAchievement[]>([]);
+  const [unlockedBadges, setUnlockedBadges] = useState<UnlockedBadgePayload[]>([]);
+  const [badgeNoticeDismissed, setBadgeNoticeDismissed] = useState(false);
   const [goingHome, setGoingHome] = useState(false);
 
   useEffect(() => {
@@ -106,11 +118,26 @@ export default function RewardScreen() {
     }
   }, [params.achievements]);
 
+  useEffect(() => {
+    try {
+      const raw = params.unlockedBadges;
+      if (raw) {
+        const parsed = JSON.parse(raw) as UnlockedBadgePayload[];
+        setUnlockedBadges(Array.isArray(parsed) ? parsed : []);
+      } else {
+        setUnlockedBadges([]);
+      }
+    } catch {
+      setUnlockedBadges([]);
+    }
+  }, [params.unlockedBadges]);
+
   const confettiRef = useRef<ConfettiCannon>(null);
   const celebrateScale = useSharedValue(0.85);
   const goHomeScale = useSharedValue(1);
   const stampScale = useSharedValue(1.5);
   const stampOpacity = useSharedValue(0);
+  const badgeNoticeY = useSharedValue(-120);
 
   const cardCelebrateStyle = useAnimatedStyle(() => ({
     transform: [{ scale: celebrateScale.value }] }));
@@ -119,6 +146,10 @@ export default function RewardScreen() {
   const stampAnimatedStyle = useAnimatedStyle(() => ({
     opacity: stampOpacity.value,
     transform: [{ rotate: "-12deg" }, { scale: stampScale.value }] }));
+  const badgeNoticeAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: badgeNoticeY.value }],
+    opacity: unlockedBadges.length > 0 ? 1 : 0,
+  }));
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", (e) => {
@@ -146,6 +177,13 @@ export default function RewardScreen() {
   }, []);
 
   useEffect(() => {
+    if (unlockedBadges.length === 0) return;
+    setBadgeNoticeDismissed(false);
+    badgeNoticeY.value = -120;
+    badgeNoticeY.value = withSpring(0, { damping: 16, stiffness: 180 });
+  }, [unlockedBadges.length, badgeNoticeY]);
+
+  useEffect(() => {
     const t = setTimeout(() => confettiRef.current?.start?.(), 0);
     return () => clearTimeout(t);
   }, []);
@@ -161,6 +199,18 @@ export default function RewardScreen() {
         console.error("Error completing starter mission onboarding:", error);
         setGoingHome(false);
       }
+    });
+  };
+
+  const handleViewUnlockedBadge = () => {
+    const firstUnlocked = unlockedBadges[0];
+    if (!firstUnlocked) return;
+    router.replace({
+      pathname: "/(tabs)/badges",
+      params: {
+        autoOpenBadgeId: String(firstUnlocked.badge_id),
+        profileId: String(firstUnlocked.profile_id),
+      },
     });
   };
 
@@ -430,6 +480,86 @@ export default function RewardScreen() {
           </Pressable>
         </Animated.View>
       </ScrollView>
+      {unlockedBadges.length > 0 && !badgeNoticeDismissed ? (
+        <Animated.View
+          style={[
+            {
+              position: "absolute",
+              top: insets.top + scaleW(8),
+              left: "4%",
+              width: "92%",
+              zIndex: 1000,
+              borderRadius: scaleW(14),
+              backgroundColor: "#FFFFFF",
+              paddingTop: scaleW(10),
+              paddingBottom: scaleW(10),
+              paddingHorizontal: scaleW(12),
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 3 },
+              shadowOpacity: 0.18,
+              shadowRadius: 6,
+              elevation: 6,
+              alignItems: "center",
+            },
+            badgeNoticeAnimatedStyle,
+          ]}
+        >
+          <View
+            style={{
+              width: "100%",
+              minHeight: scaleW(28),
+              justifyContent: "center",
+              alignItems: "center",
+              marginBottom: scaleW(8),
+              position: "relative",
+              paddingHorizontal: scaleW(28),
+            }}
+          >
+            <Pressable
+              onPress={() => setBadgeNoticeDismissed(true)}
+              style={{
+                position: "absolute",
+                top: "50%",
+                right: 0,
+                marginTop: -scaleW(11),
+                width: scaleW(22),
+                height: scaleW(22),
+                borderRadius: scaleW(11),
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: "rgba(0,0,0,0.06)",
+              }}
+            >
+              <Text style={{ fontSize: scaleW(14), color: "#2f3336", fontWeight: "700" }}>×</Text>
+            </Pressable>
+            <Text
+              style={{
+                fontSize: scaleW(14),
+                fontWeight: "700",
+                color: "#1F3F2D",
+                textAlign: "center",
+                lineHeight: scaleW(18),
+              }}
+              numberOfLines={2}
+            >
+              You unlocked a badge: {unlockedBadges[0]?.badge_name}
+            </Text>
+          </View>
+          <Pressable
+            onPress={handleViewUnlockedBadge}
+            style={{
+              borderRadius: scaleW(10),
+              backgroundColor: HUNTLY_GREEN,
+              paddingVertical: scaleW(8),
+              paddingHorizontal: scaleW(12),
+            }}
+          >
+            <Text style={{ color: "#fff", fontSize: scaleW(13), fontWeight: "600" }}>
+              Click here to see
+            </Text>
+          </Pressable>
+        </Animated.View>
+      ) : null}
       <View
         style={[StyleSheet.absoluteFill, { zIndex: 9999, elevation: 9999 }]}
         pointerEvents="none"

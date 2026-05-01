@@ -276,7 +276,7 @@ export default function ActivityDetailScreen() {
         onViewAllBadges={() => {
           setShowBadgePopup(false);
           setEarnedBadge(null);
-          router.push("/");
+          router.push("/(tabs)/badges");
         }}
       />
     </BaseLayout>

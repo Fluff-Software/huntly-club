@@ -113,6 +113,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     checkAutomatically: "NEVER",
   },
   plugins: [
+    "./plugins/withLiveActivities",
     "expo-router",
     "expo-notifications",
     [

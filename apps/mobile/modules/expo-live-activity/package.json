@@ -1,0 +1,14 @@
+{
+  "name": "expo-live-activity",
+  "version": "1.0.0",
+  "description": "Live Activity (ActivityKit) support for Huntly",
+  "main": "index.ts",
+  "files": [
+    "index.ts",
+    "ios",
+    "expo-module.config.json"
+  ],
+  "peerDependencies": {
+    "expo": "*"
+  }
+}

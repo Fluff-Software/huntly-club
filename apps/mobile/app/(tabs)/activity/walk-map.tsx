@@ -11,6 +11,11 @@ import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { addWalkPhotoUri, getWalkPhotoUris, setCurrentWalkSession } from "../../../services/walkSessionService";
+import {
+  startSessionLiveActivity,
+  maybeUpdateSessionLiveActivity,
+  endSessionLiveActivity,
+} from "../../../services/liveActivityService";
 
 const FOREST_DARK = "#2D4A35";
 const LIGHT_GREEN_BG = "#EEF5EE";
@@ -100,6 +105,7 @@ export default function WalkMapScreen() {
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude });
         setStatus("ready");
+        startSessionLiveActivity("walk", 0);
       } catch (e) {
         if (cancelled) return;
         setErrorMessage(e instanceof Error ? e.message : "Failed to get your location");
@@ -139,7 +145,13 @@ export default function WalkMapScreen() {
               if (prev.length === 0) return [next];
               const last = prev[prev.length - 1]!;
               if (metersBetween(last, next) < 2) return prev;
-              return prev.concat(next);
+              const updated = prev.concat(next);
+              let dist = 0;
+              for (let i = 1; i < updated.length; i++) {
+                dist += metersBetween(updated[i - 1]!, updated[i]!);
+              }
+              maybeUpdateSessionLiveActivity(dist);
+              return updated;
             });
           }
         );
@@ -437,14 +449,16 @@ export default function WalkMapScreen() {
 
   const confirmComplete = () => {
     const endedAt = new Date();
+    const finalSteps = stepsStatus === "ready" ? steps : null;
     setCurrentWalkSession({
       startedAt: startedAt.toISOString(),
       endedAt: endedAt.toISOString(),
-      steps: stepsStatus === "ready" ? steps : null,
+      steps: finalSteps,
       distanceMeters,
       route: trail,
       endedAtCoords: coords,
       photoUris: getWalkPhotoUris() });
+    endSessionLiveActivity(distanceMeters, finalSteps ?? undefined);
     closeConfirm();
     router.replace("/(tabs)/activity/walk-finish");
   };

@@ -10,6 +10,11 @@ import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { addCyclePhotoUri, getCyclePhotoUris, setCurrentCycleSession } from "../../../services/cycleSessionService";
+import {
+  startSessionLiveActivity,
+  maybeUpdateSessionLiveActivity,
+  endSessionLiveActivity,
+} from "../../../services/liveActivityService";
 
 const FOREST_DARK = "#2D4A35";
 const LIGHT_GREEN_BG = "#EEF5EE";
@@ -79,6 +84,7 @@ export default function CycleMapScreen() {
         if (cancelled) return;
         setCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
         setStatus("ready");
+        startSessionLiveActivity("cycle", 0);
       } catch (e) {
         if (cancelled) return;
         setErrorMessage(e instanceof Error ? e.message : "Failed to get your location");
@@ -112,7 +118,13 @@ export default function CycleMapScreen() {
               if (prev.length === 0) return [next];
               const last = prev[prev.length - 1]!;
               if (metersBetween(last, next) < 2) return prev;
-              return prev.concat(next);
+              const updated = prev.concat(next);
+              let dist = 0;
+              for (let i = 1; i < updated.length; i++) {
+                dist += metersBetween(updated[i - 1]!, updated[i]!);
+              }
+              maybeUpdateSessionLiveActivity(dist);
+              return updated;
             });
           }
         );
@@ -327,6 +339,7 @@ export default function CycleMapScreen() {
       route: trail,
       endedAtCoords: coords,
       photoUris: getCyclePhotoUris() });
+    endSessionLiveActivity(distanceMeters);
     closeConfirm();
     router.replace("/(tabs)/activity/cycle-finish");
   };

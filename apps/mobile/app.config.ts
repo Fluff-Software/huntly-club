@@ -75,7 +75,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ,
     infoPlist: {
       NSMotionUsageDescription:
-        "Huntly World uses motion data to count your steps during walks.",
+        "Huntly World uses motion data to count your steps during walks, so your family can track how active you've been on your adventures.",
+      NSLocationWhenInUseUsageDescription:
+        "Huntly World uses your location to track your walk and cycle routes during activities.",
+      NSUserNotificationUsageDescription:
+        "Huntly World sends notifications to let your family know about new missions, photo reviews, and club updates.",
     },
   },
   android: {
@@ -85,7 +89,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     package: androidPackage[variant],
     googleServicesFile: "./google-services.json",
-    permissions: ["ACTIVITY_RECOGNITION"],
+    permissions: ["ACTIVITY_RECOGNITION", "ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
     intentFilters: [
       {
         action: "VIEW",
@@ -115,6 +119,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     "expo-router",
     "expo-notifications",
+    [
+      "expo-location",
+      {
+        locationWhenInUsePermission:
+          "Huntly World uses your location to track your walk and cycle routes during activities.",
+      },
+    ],
     [
       "expo-image-picker",
       {

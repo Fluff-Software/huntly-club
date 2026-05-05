@@ -232,31 +232,58 @@ export default function MissionGalleryScreen() {
         viewerOverlay: {
           flex: 1,
           backgroundColor: "rgba(0,0,0,0.92)",
+        },
+        fullScreenWrap: {
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.92)",
           justifyContent: "center",
           alignItems: "center",
         },
-        viewerTopBar: {
+        fullScreenToolbar: {
           position: "absolute",
           top: 0,
           left: 0,
           right: 0,
-          paddingTop: scaleW(52),
-          paddingHorizontal: scaleW(16),
-          paddingBottom: scaleW(12),
           flexDirection: "row",
-          alignItems: "center",
           justifyContent: "space-between",
+          alignItems: "center",
+          paddingHorizontal: scaleW(16),
+          paddingTop: scaleW(50),
+          paddingBottom: scaleW(16),
         },
-        viewerBtn: {
+        fullScreenBackBtn: {
           paddingVertical: scaleW(10),
-          paddingHorizontal: scaleW(12),
+          paddingHorizontal: scaleW(16),
           borderRadius: scaleW(10),
-          backgroundColor: "rgba(255,255,255,0.12)",
+          backgroundColor: "rgba(0,0,0,0.5)",
           flexDirection: "row",
           alignItems: "center",
           gap: scaleW(8),
         },
-        viewerBtnText: { color: "#FFF", fontWeight: "700", fontSize: scaleW(13) },
+        fullScreenBtnText: { fontSize: scaleW(15), fontWeight: "800", color: "#FFF" },
+        fullScreenCounterText: { fontSize: scaleW(14), fontWeight: "800", color: "rgba(255,255,255,0.9)" },
+        fullScreenPageIndicator: {
+          position: "absolute",
+          bottom: scaleW(24),
+          left: 0,
+          right: 0,
+          flexDirection: "row",
+          justifyContent: "center",
+          alignItems: "center",
+          gap: scaleW(8),
+        },
+        fullScreenPageDot: {
+          width: scaleW(8),
+          height: scaleW(8),
+          borderRadius: scaleW(4),
+          backgroundColor: "rgba(255,255,255,0.5)",
+        },
+        fullScreenPageDotActive: {
+          backgroundColor: "#FFF",
+          width: scaleW(10),
+          height: scaleW(10),
+          borderRadius: scaleW(5),
+        },
       }),
     [scaleW]
   );
@@ -385,46 +412,63 @@ export default function MissionGalleryScreen() {
         supportedOrientations={["portrait", "landscape"]}
       >
         <View style={styles.viewerOverlay}>
-          <FlatList
-            data={viewerPhotos}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            initialScrollIndex={
-              viewerPhotos.length > 0
-                ? Math.min(viewerIndex, Math.max(0, viewerPhotos.length - 1))
-                : undefined
-            }
-            getItemLayout={(_, index) => ({
-              length: viewerWidth,
-              offset: viewerWidth * index,
-              index,
-            })}
-            keyExtractor={(p, i) => `${p.uri}-${i}`}
-            renderItem={({ item }) => (
-              <View style={{ width: viewerWidth, height: viewerHeight }}>
-                <Image
-                  source={{ uri: item.uri }}
-                  style={StyleSheet.absoluteFillObject}
-                  resizeMode="contain"
-                />
+          <View style={styles.fullScreenWrap} pointerEvents="box-none">
+            <FlatList
+              data={viewerPhotos}
+              horizontal
+              pagingEnabled
+              decelerationRate="fast"
+              showsHorizontalScrollIndicator={false}
+              initialScrollIndex={
+                viewerPhotos.length > 0
+                  ? Math.min(viewerIndex, Math.max(0, viewerPhotos.length - 1))
+                  : undefined
+              }
+              getItemLayout={(_, index) => ({
+                length: viewerWidth,
+                offset: viewerWidth * index,
+                index,
+              })}
+              keyExtractor={(p, i) => `${p.uri}-${i}`}
+              renderItem={({ item }) => (
+                <View style={{ width: viewerWidth, height: viewerHeight }}>
+                  <Image
+                    source={{ uri: item.uri }}
+                    style={StyleSheet.absoluteFillObject}
+                    resizeMode="contain"
+                  />
+                </View>
+              )}
+              onMomentumScrollEnd={(e) => {
+                const idx = Math.round(e.nativeEvent.contentOffset.x / viewerWidth);
+                setViewerIndex(Math.min(Math.max(idx, 0), Math.max(0, viewerPhotos.length - 1)));
+              }}
+              removeClippedSubviews={Platform.OS !== "android"}
+            />
+
+            <View style={styles.fullScreenToolbar} pointerEvents="box-none">
+              <Pressable style={styles.fullScreenBackBtn} onPress={closeViewer}>
+                <MaterialIcons name="arrow-back" size={scaleW(18)} color="#FFF" />
+                <ThemedText style={styles.fullScreenBtnText}>Back</ThemedText>
+              </Pressable>
+              <ThemedText style={styles.fullScreenCounterText}>
+                {viewerPhotos.length > 0 ? viewerIndex + 1 : 0}/{viewerPhotos.length}
+              </ThemedText>
+            </View>
+
+            {viewerPhotos.length > 1 && (
+              <View style={styles.fullScreenPageIndicator} pointerEvents="none">
+                {viewerPhotos.map((_, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.fullScreenPageDot,
+                      i === viewerIndex && styles.fullScreenPageDotActive,
+                    ]}
+                  />
+                ))}
               </View>
             )}
-            onMomentumScrollEnd={(e) => {
-              const idx = Math.round(e.nativeEvent.contentOffset.x / viewerWidth);
-              setViewerIndex(Math.min(Math.max(idx, 0), Math.max(0, viewerPhotos.length - 1)));
-            }}
-            removeClippedSubviews={Platform.OS !== "android"}
-          />
-
-          <View style={styles.viewerTopBar} pointerEvents="box-none">
-            <Pressable style={styles.viewerBtn} onPress={closeViewer}>
-              <MaterialIcons name="close" size={scaleW(18)} color="#FFF" />
-              <ThemedText style={styles.viewerBtnText}>Close</ThemedText>
-            </Pressable>
-            <ThemedText style={{ color: "rgba(255,255,255,0.85)", fontWeight: "700" }}>
-              {viewerPhotos.length > 0 ? viewerIndex + 1 : 0}/{viewerPhotos.length}
-            </ThemedText>
           </View>
         </View>
       </Modal>

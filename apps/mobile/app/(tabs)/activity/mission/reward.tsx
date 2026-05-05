@@ -114,6 +114,10 @@ export default function RewardScreen() {
       setShowOthersButton(false);
       return;
     }
+    if (profiles.length === 0) {
+      setShowOthersButton(false);
+      return;
+    }
     let cancelled = false;
     const excludeProfileIds = profiles.map((p) => p.id);
     hasOtherApprovedMissionPhotos(activityId, excludeProfileIds)

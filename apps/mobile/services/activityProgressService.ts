@@ -524,9 +524,12 @@ export const hasOtherApprovedMissionPhotos = async (
   activityId: number,
   excludeProfileIds: number[]
 ): Promise<boolean> => {
+  // If we don't know who "self" is yet, do not risk showing the button based on our own photos.
+  if (excludeProfileIds.length === 0) return false;
+
   let query = supabase
     .from("user_activity_photos")
-    .select("photo_id", { head: true })
+    .select("photo_id", { head: true, count: "exact" })
     .eq("activity_id", activityId)
     .eq("status", 1)
     .limit(1);
@@ -536,13 +539,12 @@ export const hasOtherApprovedMissionPhotos = async (
     query = query.not("profile_id", "in", notIn);
   }
 
-  const { data, error } = await query;
+  const { count, error } = await query;
   if (error) {
     console.error("Error checking other approved mission photos:", error);
     return false;
   }
-  // With head:true, data is typically null; presence is best-effort.
-  return (data ?? []).length > 0;
+  return (count ?? 0) > 0;
 };
 
 export type MissionPhotoGroup = {

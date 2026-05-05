@@ -526,7 +526,7 @@ export const hasOtherApprovedMissionPhotos = async (
 ): Promise<boolean> => {
   let query = supabase
     .from("user_activity_photos")
-    .select("photo_id", { head: false })
+    .select("photo_id", { head: true })
     .eq("activity_id", activityId)
     .eq("status", 1)
     .limit(1);
@@ -541,6 +541,7 @@ export const hasOtherApprovedMissionPhotos = async (
     console.error("Error checking other approved mission photos:", error);
     return false;
   }
+  // With head:true, data is typically null; presence is best-effort.
   return (data ?? []).length > 0;
 };
 

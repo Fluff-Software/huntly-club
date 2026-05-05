@@ -366,7 +366,11 @@ export default function MissionGalleryScreen() {
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
-            initialScrollIndex={Math.min(viewerIndex, Math.max(0, viewerPhotos.length - 1))}
+            initialScrollIndex={
+              viewerPhotos.length > 0
+                ? Math.min(viewerIndex, Math.max(0, viewerPhotos.length - 1))
+                : undefined
+            }
             getItemLayout={(_, index) => ({
               length: viewerWidth,
               offset: viewerWidth * index,

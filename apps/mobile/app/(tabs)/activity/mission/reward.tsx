@@ -391,7 +391,7 @@ export default function RewardScreen() {
           borderRadius: scaleW(24),
           alignItems: "center",
           marginHorizontal: scaleW(52),
-          marginTop: scaleW(showOthersButton ? 14 : 32),
+          marginTop: scaleW(32),
           marginBottom: scaleW(64),
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 2 },
@@ -523,7 +523,10 @@ export default function RewardScreen() {
           style={goHomeAnimatedStyle}
         >
           <Pressable
-            style={styles.goHomeButton}
+            style={[
+              styles.goHomeButton,
+              showOthersButton ? { marginTop: scaleW(14) } : null,
+            ]}
             disabled={goingHome}
             onPress={handleGoHome}
             onPressIn={() => {

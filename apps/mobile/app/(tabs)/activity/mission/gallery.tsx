@@ -21,11 +21,11 @@ import {
   getRandomMissionPhotoGroups,
   type MissionPhotoGroup,
 } from "@/services/activityProgressService";
-import { getTeamCardConfig } from "@/utils/teamUtils";
 
 const PAGE_BG = "#F3F5F0";
 const INK = "#1F2937";
 const HUNTLY_GREEN = "#4F6F52";
+const SUBTLE = "rgba(31,41,55,0.62)";
 
 type GalleryPhoto = { uri: string };
 
@@ -89,33 +89,51 @@ export default function MissionGalleryScreen() {
     () =>
       StyleSheet.create({
         container: { flex: 1, backgroundColor: PAGE_BG },
-        header: {
-          paddingHorizontal: scaleW(16),
-          paddingTop: scaleW(10),
-          paddingBottom: scaleW(10),
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-        },
-        headerTitle: {
-          fontSize: scaleW(16),
-          fontWeight: "700",
-          color: INK,
-        },
-        headerBtn: {
-          width: scaleW(40),
-          height: scaleW(40),
-          borderRadius: scaleW(20),
-          backgroundColor: "#FFFFFF",
-          alignItems: "center",
-          justifyContent: "center",
-          shadowColor: "#000",
-          shadowOpacity: 0.08,
-          shadowRadius: 6,
-          shadowOffset: { width: 0, height: 2 },
-          elevation: 2,
-        },
         scroll: { flex: 1, paddingHorizontal: scaleW(18) },
+        hero: {
+          backgroundColor: "#FFFFFF",
+          borderRadius: scaleW(20),
+          padding: scaleW(16),
+          marginTop: scaleW(6),
+          marginBottom: scaleW(18),
+          shadowColor: "#000",
+          shadowOpacity: 0.06,
+          shadowRadius: 10,
+          shadowOffset: { width: 0, height: 3 },
+          elevation: 2,
+          borderWidth: 1,
+          borderColor: "rgba(0,0,0,0.06)",
+        },
+        heroTitle: {
+          color: INK,
+          fontSize: scaleW(20),
+          fontWeight: "900",
+          textAlign: "center",
+          marginBottom: scaleW(6),
+        },
+        heroSubtitle: {
+          color: SUBTLE,
+          fontSize: scaleW(13),
+          fontWeight: "700",
+          textAlign: "center",
+          lineHeight: scaleW(18),
+        },
+        heroHint: {
+          marginTop: scaleW(10),
+          alignSelf: "center",
+          paddingHorizontal: scaleW(12),
+          paddingVertical: scaleW(8),
+          borderRadius: scaleW(999),
+          backgroundColor: "rgba(79,111,82,0.10)",
+          borderWidth: 1,
+          borderColor: "rgba(79,111,82,0.20)",
+        },
+        heroHintText: {
+          color: HUNTLY_GREEN,
+          fontSize: scaleW(12),
+          fontWeight: "900",
+          letterSpacing: 0.2,
+        },
         loadingWrap: {
           flex: 1,
           alignItems: "center",
@@ -138,38 +156,7 @@ export default function MissionGalleryScreen() {
         },
         retryText: { color: "#FFF", fontWeight: "700", fontSize: scaleW(13) },
         groupWrap: {
-          marginBottom: scaleW(32),
-          backgroundColor: "#FFFFFF",
-          borderRadius: scaleW(20),
-          padding: scaleW(14),
-          shadowColor: "#000",
-          shadowOpacity: 0.08,
-          shadowRadius: 10,
-          shadowOffset: { width: 0, height: 3 },
-          elevation: 2,
-          borderWidth: 1,
-          borderColor: "rgba(0,0,0,0.06)",
-        },
-        groupHeaderRow: {
-          flexDirection: "row",
-          alignItems: "center",
-          gap: scaleW(10),
-          marginBottom: scaleW(10),
-        },
-        teamBadge: {
-          width: scaleW(38),
-          height: scaleW(38),
-        },
-        nicknameText: {
-          color: INK,
-          fontSize: scaleW(17),
-          fontWeight: "800",
-          flex: 1,
-        },
-        photoCountText: {
-          color: "#6B7280",
-          fontSize: scaleW(12),
-          fontWeight: "800",
+          marginBottom: scaleW(26),
         },
         stackPressable: {
           width: "100%",
@@ -222,6 +209,26 @@ export default function MissionGalleryScreen() {
           textAlign: "center",
           lineHeight: scaleW(18),
         },
+        goBackButton: {
+          backgroundColor: "#FFFFFF",
+          borderRadius: scaleW(24),
+          paddingVertical: scaleW(14),
+          alignItems: "center",
+          marginTop: scaleW(18),
+          marginHorizontal: scaleW(52),
+          shadowColor: "#000",
+          shadowOpacity: 0.12,
+          shadowRadius: 6,
+          shadowOffset: { width: 0, height: 2 },
+          elevation: 2,
+          borderWidth: 1,
+          borderColor: "rgba(0,0,0,0.08)",
+        },
+        goBackButtonText: {
+          color: HUNTLY_GREEN,
+          fontSize: scaleW(16),
+          fontWeight: "900",
+        },
         viewerOverlay: {
           flex: 1,
           backgroundColor: "rgba(0,0,0,0.92)",
@@ -260,14 +267,6 @@ export default function MissionGalleryScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <View style={styles.header}>
-        <Pressable style={styles.headerBtn} onPress={() => router.back()}>
-          <MaterialIcons name="arrow-back" size={scaleW(20)} color={INK} />
-        </Pressable>
-        <ThemedText style={styles.headerTitle}>Mission Gallery</ThemedText>
-        <View style={{ width: scaleW(40), height: scaleW(40) }} />
-      </View>
-
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={{ paddingBottom: insets.bottom + scaleW(32) }}
@@ -275,6 +274,18 @@ export default function MissionGalleryScreen() {
         bounces={false}
         overScrollMode="never"
       >
+        <View style={styles.hero}>
+          <ThemedText type="heading" style={styles.heroTitle}>
+            Inspiration gallery
+          </ThemedText>
+          <ThemedText style={styles.heroSubtitle}>
+            Here are a few moments from other members doing this mission.
+          </ThemedText>
+          <View style={styles.heroHint}>
+            <ThemedText style={styles.heroHintText}>Tap a stack to view</ThemedText>
+          </View>
+        </View>
+
         {loading ? (
           <View style={styles.loadingWrap}>
             <ActivityIndicator size="large" color={HUNTLY_GREEN} />
@@ -293,7 +304,7 @@ export default function MissionGalleryScreen() {
           <View style={styles.emptyWrap}>
             <ThemedText style={styles.emptyTitle}>Nothing yet</ThemedText>
             <ThemedText style={styles.emptyText}>
-              There aren’t any approved photos from other explorers for this mission yet. Check back later.
+              There aren’t any photos from other explorers for this mission yet. Check back later.
             </ThemedText>
             <Pressable style={styles.retryBtn} onPress={load}>
               <ThemedText style={styles.retryText}>Refresh</ThemedText>
@@ -301,9 +312,6 @@ export default function MissionGalleryScreen() {
           </View>
         ) : (
           groups.map((g, groupIndex) => {
-            const author = g.author?.trim() ? g.author.trim() : "Explorer";
-            const team = g.team_name?.trim() ? g.team_name.trim() : null;
-            const badge = getTeamCardConfig(team ?? undefined).badgeImage;
             const previewPhotos = g.photos.slice(0, 4);
             // Index 0 should be the front/top card (no rotation).
             const rotations = [0, -6, 4, -2];
@@ -316,13 +324,6 @@ export default function MissionGalleryScreen() {
 
             return (
               <View key={`${g.user_activity_id}-${groupIndex}`} style={styles.groupWrap}>
-                <View style={styles.groupHeaderRow}>
-                  <Image source={badge} style={styles.teamBadge} resizeMode="contain" />
-                  <ThemedText style={styles.nicknameText} numberOfLines={1}>
-                    {author}
-                  </ThemedText>
-                </View>
-
                 <Pressable
                   style={styles.stackPressable}
                   onPress={() => openViewer(g.photos, 0)}
@@ -368,6 +369,12 @@ export default function MissionGalleryScreen() {
             );
           })
         )}
+
+        <Pressable style={styles.goBackButton} onPress={() => router.back()}>
+          <ThemedText type="heading" style={styles.goBackButtonText}>
+            Go Back
+          </ThemedText>
+        </Pressable>
       </ScrollView>
 
       <Modal

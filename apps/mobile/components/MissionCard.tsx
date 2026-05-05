@@ -238,14 +238,6 @@ export function MissionCard({
             </ThemedText>
           </Pressable>
         )}
-        {__DEV__ && (
-          <Pressable style={styles.devGalleryButton} onPress={handleOpenGallery}>
-            <MaterialIcons name="photo-library" size={scaleW(16)} color="#1F3F2D" />
-            <ThemedText style={styles.devGalleryButtonText}>
-              Dev: Open mission gallery
-            </ThemedText>
-          </Pressable>
-        )}
       </View>
     </View>
   );

@@ -70,11 +70,11 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
       disabled: isPending || !current,
     });
 
-  const handleDenyConfirm = (reason: string) => {
+  const handleDenyConfirm = (reason: string, sendEmail: boolean) => {
     if (!current) return;
     setPendingAction("deny");
     startTransition(async () => {
-      await denyPhoto({}, current.photo_id, reason || undefined);
+      await denyPhoto({}, current.photo_id, reason || undefined, sendEmail);
       setDenyReasonOpen(false);
       setPhotos((prev) => prev.slice(1));
       if (photos.length <= 1) router.refresh();

@@ -6,10 +6,11 @@ import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 type Props = {
   open: boolean;
   onClose: () => void;
-  onConfirm: (reason: string) => void | Promise<void>;
+  onConfirm: (reason: string, sendEmail: boolean) => void | Promise<void>;
   title?: string;
   message?: string;
   confirmLabel?: string;
+  confirmNoEmailLabel?: string;
   pending?: boolean;
 };
 
@@ -20,6 +21,7 @@ export function DenyReasonModal({
   title = "Deny photo",
   message = "Please provide a reason for denying this photo.",
   confirmLabel = "Deny",
+  confirmNoEmailLabel = "Deny (silent)",
   pending = false,
 }: Props) {
   useBodyScrollLock(open);
@@ -51,9 +53,9 @@ export function DenyReasonModal({
   const reasonTrimmed = reason.trim();
   const canConfirm = reasonTrimmed.length > 0;
 
-  async function handleConfirm() {
+  async function handleConfirm(sendEmail: boolean) {
     if (!canConfirm) return;
-    await onConfirm(reasonTrimmed);
+    await onConfirm(reasonTrimmed, sendEmail);
     setReason("");
   }
 
@@ -97,7 +99,15 @@ export function DenyReasonModal({
           </button>
           <button
             type="button"
-            onClick={handleConfirm}
+            onClick={() => handleConfirm(false)}
+            disabled={pending || !canConfirm}
+            className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-huntly-sage focus:ring-offset-2 disabled:opacity-50"
+          >
+            {confirmNoEmailLabel}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleConfirm(true)}
             disabled={pending || !canConfirm}
             className="rounded-lg border border-red-300 bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2 disabled:opacity-50"
           >

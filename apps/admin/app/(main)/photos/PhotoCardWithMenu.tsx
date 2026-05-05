@@ -123,9 +123,11 @@ export function PhotoCardWithMenu({ photo, variant }: Props) {
         <DenyReasonModal
           open={denyReasonOpen}
           onClose={() => setDenyReasonOpen(false)}
-          onConfirm={async (reason) => {
+          onConfirm={async (reason, sendEmail) => {
             setDenyReasonOpen(false);
-            await handleAction(() => denyPhoto({}, photo.photo_id, reason || undefined));
+            await handleAction(() =>
+              denyPhoto({}, photo.photo_id, reason || undefined, sendEmail)
+            );
           }}
           pending={pending}
         />

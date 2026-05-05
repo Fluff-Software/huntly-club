@@ -11,7 +11,7 @@ import {
   Dimensions,
   Platform,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
@@ -21,16 +21,19 @@ import {
   getRandomMissionPhotoGroups,
   type MissionPhotoGroup,
 } from "@/services/activityProgressService";
+import { getTeamCardConfig } from "@/utils/teamUtils";
 
-const FOREST_DARK = "#2D4A35";
+const PAGE_BG = "#F3F5F0";
+const INK = "#1F2937";
 const HUNTLY_GREEN = "#4F6F52";
 
-type GalleryPhoto = { uri: string; groupIndex: number; photoIndex: number };
+type GalleryPhoto = { uri: string };
 
 export default function MissionGalleryScreen() {
   const router = useRouter();
   const { scaleW } = useLayoutScale();
   const { profiles } = usePlayer();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ activityId?: string }>();
 
   const activityId = params.activityId ? Number(params.activityId) : null;
@@ -73,22 +76,10 @@ export default function MissionGalleryScreen() {
     }, [load])
   );
 
-  const flatPhotos = useMemo(() => {
-    const out: GalleryPhoto[] = [];
-    groups.forEach((g, groupIndex) => {
-      g.photos.forEach((uri, photoIndex) => {
-        out.push({ uri, groupIndex, photoIndex });
-      });
-    });
-    return out;
-  }, [groups]);
-
-  const openViewer = (groupIndex: number, photoIndex: number) => {
-    const startIndex = flatPhotos.findIndex(
-      (p) => p.groupIndex === groupIndex && p.photoIndex === photoIndex
-    );
-    setViewerPhotos(flatPhotos);
-    setViewerIndex(Math.max(0, startIndex));
+  const openViewer = (photos: string[], startIndex: number = 0) => {
+    const list = photos.map((uri) => ({ uri }));
+    setViewerPhotos(list);
+    setViewerIndex(Math.max(0, Math.min(startIndex, Math.max(0, list.length - 1))));
     setViewerOpen(true);
   };
 
@@ -97,7 +88,7 @@ export default function MissionGalleryScreen() {
   const styles = useMemo(
     () =>
       StyleSheet.create({
-        container: { flex: 1, backgroundColor: FOREST_DARK },
+        container: { flex: 1, backgroundColor: PAGE_BG },
         header: {
           paddingHorizontal: scaleW(16),
           paddingTop: scaleW(10),
@@ -109,38 +100,22 @@ export default function MissionGalleryScreen() {
         headerTitle: {
           fontSize: scaleW(16),
           fontWeight: "700",
-          color: "#FFF",
+          color: INK,
         },
         headerBtn: {
           width: scaleW(40),
           height: scaleW(40),
           borderRadius: scaleW(20),
-          backgroundColor: "rgba(255,255,255,0.12)",
+          backgroundColor: "#FFFFFF",
           alignItems: "center",
           justifyContent: "center",
+          shadowColor: "#000",
+          shadowOpacity: 0.08,
+          shadowRadius: 6,
+          shadowOffset: { width: 0, height: 2 },
+          elevation: 2,
         },
         scroll: { flex: 1, paddingHorizontal: scaleW(18) },
-        introCard: {
-          backgroundColor: "rgba(255,255,255,0.10)",
-          borderRadius: scaleW(16),
-          padding: scaleW(14),
-          marginBottom: scaleW(14),
-          borderWidth: 1,
-          borderColor: "rgba(255,255,255,0.12)",
-        },
-        introTitle: {
-          fontSize: scaleW(18),
-          fontWeight: "800",
-          color: "#FFF",
-          textAlign: "center",
-          marginBottom: scaleW(6),
-        },
-        introSubtitle: {
-          fontSize: scaleW(13),
-          color: "rgba(255,255,255,0.85)",
-          textAlign: "center",
-          lineHeight: scaleW(18),
-        },
         loadingWrap: {
           flex: 1,
           alignItems: "center",
@@ -162,54 +137,73 @@ export default function MissionGalleryScreen() {
           backgroundColor: HUNTLY_GREEN,
         },
         retryText: { color: "#FFF", fontWeight: "700", fontSize: scaleW(13) },
-        groupCard: {
-          backgroundColor: "#FFF",
-          borderRadius: scaleW(16),
-          overflow: "hidden",
-          marginBottom: scaleW(14),
-          borderWidth: 2,
-          borderColor: "rgba(255,255,255,0.9)",
+        groupWrap: {
+          marginBottom: scaleW(32),
+          backgroundColor: "#FFFFFF",
+          borderRadius: scaleW(20),
+          padding: scaleW(14),
           shadowColor: "#000",
-          shadowOpacity: 0.12,
-          shadowRadius: 6,
-          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 10,
+          shadowOffset: { width: 0, height: 3 },
           elevation: 2,
+          borderWidth: 1,
+          borderColor: "rgba(0,0,0,0.06)",
         },
-        groupHeader: {
-          paddingHorizontal: scaleW(14),
-          paddingVertical: scaleW(12),
-          borderBottomWidth: 1,
-          borderBottomColor: "rgba(0,0,0,0.06)",
+        groupHeaderRow: {
           flexDirection: "row",
           alignItems: "center",
-          justifyContent: "space-between",
           gap: scaleW(10),
+          marginBottom: scaleW(10),
         },
-        groupHeaderTitle: {
-          fontSize: scaleW(14),
+        teamBadge: {
+          width: scaleW(38),
+          height: scaleW(38),
+        },
+        nicknameText: {
+          color: INK,
+          fontSize: scaleW(17),
           fontWeight: "800",
-          color: "#1a1a1a",
           flex: 1,
         },
-        groupHeaderMeta: {
+        photoCountText: {
+          color: "#6B7280",
           fontSize: scaleW(12),
-          fontWeight: "700",
-          color: "#2D5A27",
+          fontWeight: "800",
         },
-        photoRow: {
-          flexDirection: "row",
-          gap: scaleW(8),
-          paddingHorizontal: scaleW(12),
-          paddingVertical: scaleW(12),
+        stackPressable: {
+          width: "100%",
+          aspectRatio: 5 / 4,
+          borderRadius: scaleW(18),
+          overflow: "visible",
         },
-        photoTile: {
+        stackInner: {
           flex: 1,
-          aspectRatio: 1,
-          borderRadius: scaleW(12),
-          overflow: "hidden",
-          backgroundColor: "#EEE",
+          padding: scaleW(16),
         },
-        photo: { width: "100%", height: "100%" },
+        stackStage: {
+          flex: 1,
+          borderRadius: scaleW(18),
+          position: "relative",
+        },
+        stackCard: {
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+          borderRadius: scaleW(18),
+          backgroundColor: "#FFF",
+          shadowColor: "#000",
+          shadowOpacity: 0.18,
+          shadowRadius: 10,
+          shadowOffset: { width: 0, height: 4 },
+          elevation: 4,
+          overflow: "hidden",
+          borderWidth: 1,
+          borderColor: "rgba(0,0,0,0.06)",
+        },
+        stackImage: { width: "100%", height: "100%" },
         emptyWrap: {
           paddingVertical: scaleW(36),
           paddingHorizontal: scaleW(24),
@@ -217,13 +211,13 @@ export default function MissionGalleryScreen() {
           gap: scaleW(10),
         },
         emptyTitle: {
-          color: "#FFF",
+          color: INK,
           fontSize: scaleW(18),
           fontWeight: "800",
           textAlign: "center",
         },
         emptyText: {
-          color: "rgba(255,255,255,0.85)",
+          color: "#4B5563",
           fontSize: scaleW(13),
           textAlign: "center",
           lineHeight: scaleW(18),
@@ -261,15 +255,14 @@ export default function MissionGalleryScreen() {
   );
 
   const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
-  const viewerPadding = scaleW(16) * 2;
-  const viewerWidth = screenWidth - viewerPadding;
-  const viewerHeight = screenHeight - viewerPadding;
+  const viewerWidth = screenWidth;
+  const viewerHeight = screenHeight;
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <View style={styles.header}>
         <Pressable style={styles.headerBtn} onPress={() => router.back()}>
-          <MaterialIcons name="arrow-back" size={scaleW(20)} color="#FFF" />
+          <MaterialIcons name="arrow-back" size={scaleW(20)} color={INK} />
         </Pressable>
         <ThemedText style={styles.headerTitle}>Mission Gallery</ThemedText>
         <View style={{ width: scaleW(40), height: scaleW(40) }} />
@@ -277,24 +270,15 @@ export default function MissionGalleryScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={{ paddingBottom: scaleW(24) }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + scaleW(32) }}
         showsVerticalScrollIndicator={false}
         bounces={false}
         overScrollMode="never"
       >
-        <View style={styles.introCard}>
-          <ThemedText type="heading" style={styles.introTitle}>
-            See how others did
-          </ThemedText>
-          <ThemedText style={styles.introSubtitle}>
-            These are approved photos from other explorers who completed this mission.
-          </ThemedText>
-        </View>
-
         {loading ? (
           <View style={styles.loadingWrap}>
-            <ActivityIndicator size="large" color="#FFF" />
-            <ThemedText style={{ color: "rgba(255,255,255,0.9)", fontWeight: "700" }}>
+            <ActivityIndicator size="large" color={HUNTLY_GREEN} />
+            <ThemedText style={{ color: INK, fontWeight: "800" }}>
               Loading gallery…
             </ThemedText>
           </View>
@@ -319,34 +303,67 @@ export default function MissionGalleryScreen() {
           groups.map((g, groupIndex) => {
             const author = g.author?.trim() ? g.author.trim() : "Explorer";
             const team = g.team_name?.trim() ? g.team_name.trim() : null;
-            const meta = team ? `${author} • ${team}` : author;
-            const topPhotos = g.photos.slice(0, 3);
+            const badge = getTeamCardConfig(team ?? undefined).badgeImage;
+            const previewPhotos = g.photos.slice(0, 4);
+            // Index 0 should be the front/top card (no rotation).
+            const rotations = [0, -6, 4, -2];
+            const offsets = [
+              { x: 0, y: 0 },
+              { x: -6, y: 6 },
+              { x: 6, y: 4 },
+              { x: -3, y: 2 },
+            ];
 
             return (
-              <View key={`${g.user_activity_id}-${groupIndex}`} style={styles.groupCard}>
-                <View style={styles.groupHeader}>
-                  <ThemedText style={styles.groupHeaderTitle} numberOfLines={1}>
-                    {meta}
-                  </ThemedText>
-                  <ThemedText style={styles.groupHeaderMeta}>
-                    {g.photos.length} photo{g.photos.length === 1 ? "" : "s"}
+              <View key={`${g.user_activity_id}-${groupIndex}`} style={styles.groupWrap}>
+                <View style={styles.groupHeaderRow}>
+                  <Image source={badge} style={styles.teamBadge} resizeMode="contain" />
+                  <ThemedText style={styles.nicknameText} numberOfLines={1}>
+                    {author}
                   </ThemedText>
                 </View>
-                <View style={styles.photoRow}>
-                  {topPhotos.map((uri, photoIndex) => (
-                    <Pressable
-                      key={`${uri}-${photoIndex}`}
-                      style={styles.photoTile}
-                      onPress={() => openViewer(groupIndex, photoIndex)}
-                    >
-                      <Image source={{ uri }} style={styles.photo} resizeMode="cover" />
-                    </Pressable>
-                  ))}
-                  {topPhotos.length < 3 &&
-                    Array.from({ length: 3 - topPhotos.length }).map((_, i) => (
-                      <View key={`empty-${i}`} style={styles.photoTile} />
-                    ))}
-                </View>
+
+                <Pressable
+                  style={styles.stackPressable}
+                  onPress={() => openViewer(g.photos, 0)}
+                  disabled={g.photos.length === 0}
+                >
+                  <View style={styles.stackInner}>
+                    <View style={styles.stackStage}>
+                      {previewPhotos.map((uri, i) => {
+                        const rot = rotations[Math.min(i, rotations.length - 1)];
+                        const off = offsets[Math.min(i, offsets.length - 1)];
+                        // Front = first photo (i=0), back = last photo.
+                        const zIndex = previewPhotos.length - i;
+                        return (
+                          <View
+                            key={`${uri}-${i}`}
+                            style={[
+                              styles.stackCard,
+                              {
+                                zIndex,
+                                transform: [
+                                  { translateX: scaleW(off.x) },
+                                  { translateY: scaleW(off.y) },
+                                  { rotate: `${rot}deg` },
+                                ],
+                              },
+                            ]}
+                          >
+                            <Image source={{ uri }} style={styles.stackImage} resizeMode="cover" />
+                          </View>
+                        );
+                      })}
+                      {previewPhotos.length === 0 ? (
+                        <View style={[styles.stackCard, { justifyContent: "center", alignItems: "center" }]}>
+                          <ThemedText style={{ color: "#374151", fontWeight: "700" }}>
+                            No photos
+                          </ThemedText>
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
+                </Pressable>
               </View>
             );
           })

@@ -14,12 +14,20 @@ const ARC_ICONS: Record<string, string> = {
   resolution: "🌟",
 };
 
+type ChapterArcDraftItem = {
+  week_number?: number;
+  title?: string;
+  summary?: string;
+  arc_position?: string;
+  key_themes?: string[];
+};
+
 async function getSeason(id: number) {
   const supabase = createServerSupabaseClient();
   const { data, error } = await supabase
     .from("seasons")
     .select(
-      "id, name, slug, brief, concept_summary, theme_keywords, target_age_min, target_age_max, content_status, updated_at"
+      "id, name, slug, brief, concept_summary, theme_keywords, target_age_min, target_age_max, content_status, updated_at, draft_payload"
     )
     .eq("id", id)
     .single();
@@ -50,6 +58,15 @@ export default async function SeasonWorkspacePage({
   const [season, chapters] = await Promise.all([getSeason(id), getChapters(id)]);
 
   if (!season) notFound();
+
+  const draftChapterArc = (() => {
+    const payload = (season as unknown as { draft_payload?: unknown }).draft_payload as
+      | { chapter_arc?: ChapterArcDraftItem[] }
+      | null
+      | undefined;
+    const items = payload?.chapter_arc;
+    return Array.isArray(items) ? items : [];
+  })();
 
   const nextStatus =
     season.content_status === "concept"
@@ -203,7 +220,7 @@ export default async function SeasonWorkspacePage({
             </h2>
           </div>
 
-          {chapters.length === 0 ? (
+          {chapters.length === 0 && draftChapterArc.length === 0 ? (
             <div className="rounded-xl border border-dashed border-stone-300 bg-stone-50/50 py-12 text-center">
               <p className="text-sm text-stone-500">
                 No chapters yet. Ask Compass to generate the 12-chapter arc →
@@ -211,6 +228,47 @@ export default async function SeasonWorkspacePage({
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {draftChapterArc.length > 0 &&
+                draftChapterArc.map((draft, i) => {
+                  const week = draft.week_number ?? i + 1;
+                  const arc = draft.arc_position ?? "";
+                  const arcLabel = arc
+                    ? arc.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+                    : "Draft";
+                  return (
+                    <div
+                      key={`draft-${i}`}
+                      className="flex flex-col gap-2 rounded-xl border border-dashed border-huntly-forest/30 bg-huntly-forest/5 p-4 shadow-sm"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium text-stone-500">
+                          Draft · Week {week}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          {arc && (
+                            <span title={arc}>
+                              {ARC_ICONS[arc] ?? ""}
+                            </span>
+                          )}
+                          <span className="rounded-full border border-huntly-forest/20 bg-white px-2 py-0.5 text-[11px] font-medium text-huntly-forest">
+                            {arcLabel}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-sm font-medium text-stone-900 line-clamp-2">
+                        {draft.title ?? `Draft chapter ${week}`}
+                      </p>
+                      {draft.summary && (
+                        <p className="text-xs text-stone-600 line-clamp-2">
+                          {draft.summary}
+                        </p>
+                      )}
+                      <p className="text-[11px] text-stone-500">
+                        Saved to season draft. Create chapters to turn this into real content.
+                      </p>
+                    </div>
+                  );
+                })}
               {chapters.map((chapter) => (
                 <Link
                   key={chapter.id}

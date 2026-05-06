@@ -263,6 +263,54 @@ export async function applyCompassGeneration(opts: {
   return {};
 }
 
+export async function discardSeasonChapterArcDraftItem(opts: {
+  seasonId: number;
+  index: number;
+}): Promise<{ error?: string }> {
+  const supabase = createServerSupabaseClient();
+
+  const { data: season, error: fetchError } = await supabase
+    .from("seasons")
+    .select("draft_payload")
+    .eq("id", opts.seasonId)
+    .single();
+
+  if (fetchError || !season) return { error: "Season not found" };
+
+  const draftPayload = (season as { draft_payload?: unknown }).draft_payload as
+    | { chapter_arc?: unknown }
+    | null
+    | undefined;
+
+  const existing = (draftPayload as { chapter_arc?: unknown[] } | null | undefined)
+    ?.chapter_arc;
+
+  if (!Array.isArray(existing)) return {};
+  if (opts.index < 0 || opts.index >= existing.length) return {};
+
+  const nextArc = existing.filter((_, i) => i !== opts.index);
+  const nextPayload =
+    nextArc.length === 0
+      ? null
+      : {
+          ...(draftPayload ?? {}),
+          chapter_arc: nextArc,
+        };
+
+  const { error: updateError } = await supabase
+    .from("seasons")
+    .update({
+      draft_payload: nextPayload,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", opts.seasonId);
+
+  if (updateError) return { error: updateError.message };
+
+  revalidatePath(`/season-builder/${opts.seasonId}`);
+  return {};
+}
+
 export async function publishSeason(
   seasonId: number
 ): Promise<{ error?: string }> {

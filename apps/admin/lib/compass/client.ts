@@ -5,8 +5,8 @@ export const COMPASS_MODELS = {
   default: "anthropic/claude-sonnet-4-6",
   utility: "anthropic/claude-haiku-4-5-20251001",
   // Image generation via OpenRouter
-  imageFast: "black-forest-labs/flux-schnell",
-  imageQuality: "black-forest-labs/flux-1.1-pro",
+  imageFast: "black-forest-labs/flux.2-klein-4b",
+  imageQuality: "black-forest-labs/flux.2-pro",
 } as const;
 
 export type CompassModel = (typeof COMPASS_MODELS)[keyof typeof COMPASS_MODELS];
@@ -15,8 +15,9 @@ export type CompassModel = (typeof COMPASS_MODELS)[keyof typeof COMPASS_MODELS];
 export const MODEL_COSTS: Record<CompassModel, { input: number; output: number } | { perImage: number }> = {
   [COMPASS_MODELS.default]: { input: 3.0, output: 15.0 },
   [COMPASS_MODELS.utility]: { input: 0.8, output: 4.0 },
-  [COMPASS_MODELS.imageFast]: { perImage: 0.003 },
-  [COMPASS_MODELS.imageQuality]: { perImage: 0.04 },
+  // Approximate; OpenRouter/BFL pricing is per-megapixel for flux.2 models
+  [COMPASS_MODELS.imageFast]: { perImage: 0.014 },
+  [COMPASS_MODELS.imageQuality]: { perImage: 0.03 },
 };
 
 export function createCompassClient() {

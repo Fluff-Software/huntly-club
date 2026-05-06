@@ -54,7 +54,7 @@ Arc position: ${input.arcPosition}
 Return a JSON array of exactly ${slideCount} slide objects. Each must have:
 - type: one of "text", "image", or "text-image"
 - value: the story text (2–4 short sentences, age-appropriate, active voice, no over-explanation)
-- image_prompt: a detailed illustration prompt consistent with Huntly World's visual style — real outdoors, adventure club feel, no fantasy imagery
+- image_prompt: REQUIRED only when type is "image" or "text-image". Omit image_prompt entirely for "text" slides.
 
 Use a mix of types. Start with "text", use "text-image" for dramatic moments, "image" sparingly.
 

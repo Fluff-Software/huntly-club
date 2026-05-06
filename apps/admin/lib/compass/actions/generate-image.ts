@@ -89,48 +89,129 @@ export async function generateImage(
 
   const client = createCompassClient();
 
-  // Build request body — flux-1.1-pro supports image conditioning via `image` + `strength`
-  // flux-schnell does not support conditioning, so we only pass it for quality model
-  const imageRequestBody: Record<string, unknown> = {
-    model,
-    prompt: enhancedPrompt,
-    n: 1,
-    size,
-  };
+  // OpenRouter image generation uses chat completions with `modalities: ["image"]`.
+  // It returns a base64 data URL in `message.images[].image_url.url`.
+  const aspectRatio =
+    size === "1792x1024" ? "16:9" : size === "1024x1792" ? "9:16" : "1:1";
 
+  const messages: Array<Record<string, unknown>> = [
+    { role: "user", content: enhancedPrompt },
+  ];
+
+  // Optional reference image conditioning (only for quality + if the model supports it).
+  // We provide it as an input image to the message; models that don't support it will ignore it.
   if (quality === "quality" && referenceImageUrl) {
-    imageRequestBody.image = referenceImageUrl;
-    // Low strength: generation is mostly prompt-driven but anchored to the reference
-    imageRequestBody.strength = 0.25;
+    messages.unshift({
+      role: "user",
+      content: [
+        {
+          type: "image_url",
+          image_url: { url: referenceImageUrl },
+        },
+        { type: "text", text: "Reference image for character consistency." },
+      ],
+    });
   }
 
-  let imageUrl: string;
+  let dataUrl: string;
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const response = await client.images.generate(imageRequestBody as any);
-    const url = response.data?.[0]?.url;
-    if (!url) return { error: "No image URL returned from Compass" };
-    imageUrl = url;
+    const response = await client.chat.completions.create({
+      model,
+      // OpenRouter extension
+      modalities: ["image"],
+      stream: false,
+      // OpenAI-compatible shape; we keep this loose because OpenRouter adds fields.
+      messages: messages as any,
+      image_config: {
+        aspect_ratio: aspectRatio,
+        image_size: quality === "quality" ? "2K" : "1K",
+      },
+    } as any);
+
+    const first = (response as any)?.choices?.[0]?.message?.images?.[0]?.image_url
+      ?.url;
+    if (!first || typeof first !== "string") {
+      return { error: "No image returned from Compass" };
+    }
+    dataUrl = first;
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Image generation failed" };
+    const anyErr = e as {
+      status?: number;
+      message?: string;
+      error?: { message?: string };
+      response?: { status?: number; data?: unknown };
+    };
+
+    const status = anyErr.status ?? anyErr.response?.status;
+    const message =
+      (typeof anyErr.error?.message === "string" && anyErr.error.message) ||
+      (typeof anyErr.message === "string" && anyErr.message) ||
+      "Image generation failed";
+
+    // Helpful for debugging provider failures without leaking huge payloads.
+    if (status) {
+      console.error("generateImage provider error", {
+        status,
+        model,
+        imageAssetId,
+        message,
+        responseData: anyErr.response?.data,
+      });
+    } else {
+      console.error("generateImage unknown error", { model, imageAssetId, message, e });
+    }
+
+    if (status === 429) {
+      return {
+        error:
+          "Provider rate-limited the image request (429). Try again in ~30–120s, or switch quality/fast model.",
+      };
+    }
+
+    return { error: status ? `${status} ${message}` : message };
   }
 
-  // Download the generated image
-  let imageBuffer: ArrayBuffer;
+  // Decode the returned image (OpenRouter may return either a data URL or an https URL)
+  let bytes: Uint8Array;
+  let contentType = "image/png";
+  let extension = "png";
   try {
-    const fetchResponse = await fetch(imageUrl);
-    if (!fetchResponse.ok) return { error: "Failed to download generated image" };
-    imageBuffer = await fetchResponse.arrayBuffer();
-  } catch {
-    return { error: "Failed to download generated image" };
+    if (/^data:image\//.test(dataUrl)) {
+      const match = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/.exec(dataUrl);
+      if (!match) return { error: `Invalid image data URL returned (${dataUrl.slice(0, 40)}…)` };
+      contentType = match[1] ?? "image/png";
+      const base64 = match[2] ?? "";
+      bytes = Buffer.from(base64, "base64");
+    } else if (/^https?:\/\//.test(dataUrl)) {
+      const fetchResponse = await fetch(dataUrl);
+      if (!fetchResponse.ok) {
+        return { error: `Failed to download generated image (${fetchResponse.status})` };
+      }
+      contentType = fetchResponse.headers.get("content-type") ?? "image/png";
+      const buf = await fetchResponse.arrayBuffer();
+      bytes = new Uint8Array(buf);
+    } else {
+      return { error: `Unexpected image value returned (${dataUrl.slice(0, 60)}…)` };
+    }
+
+    extension =
+      contentType === "image/webp"
+        ? "webp"
+        : contentType === "image/jpeg"
+        ? "jpg"
+        : "png";
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Failed to decode generated image";
+    return { error: `${msg} (${String(dataUrl).slice(0, 60)}…)` };
   }
 
   // Upload to Supabase Storage
-  const fileName = `compass-generated/${imageAssetId}-${Date.now()}.webp`;
+  const fileName = `compass-generated/${imageAssetId}-${Date.now()}.${extension}`;
   const { error: uploadError } = await supabase.storage
     .from("season-images")
-    .upload(fileName, imageBuffer, {
-      contentType: "image/webp",
+    .upload(fileName, bytes, {
+      contentType,
       upsert: true,
     });
 
@@ -160,7 +241,7 @@ export async function generateImage(
       model,
       input: { prompt, enhancedPrompt, size, quality, referenceImageUsed: !!referenceImageUrl } as object,
       system_prompt_version: "generate-image-v2",
-      output: { image_url: publicUrl, original_url: imageUrl } as object,
+      output: { image_url: publicUrl, original_url: dataUrl } as object,
       tokens_in: 0,
       tokens_out: 0,
       cost_usd: estimatedCost,

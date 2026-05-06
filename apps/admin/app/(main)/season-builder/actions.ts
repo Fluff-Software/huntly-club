@@ -237,6 +237,65 @@ export async function applyCompassGeneration(opts: {
 
   if (updateError) return { error: updateError.message };
 
+  // If story pages were accepted, create image assets for slide prompts.
+  if (opts.entityType === "chapter") {
+    const maybeSlides = (opts.acceptedFields as { body_slides?: unknown }).body_slides;
+    if (Array.isArray(maybeSlides) && maybeSlides.length > 0) {
+      const prompts = maybeSlides
+        .map((s, i) => {
+          const obj = s as Record<string, unknown> | null;
+          const type =
+            obj && typeof obj === "object" && typeof obj.type === "string"
+              ? obj.type
+              : "";
+          const imagePrompt =
+            obj && typeof obj === "object" && typeof obj.image_prompt === "string"
+              ? obj.image_prompt.trim()
+              : "";
+          return { slotKey: `slide-${i + 1}`, prompt: imagePrompt };
+        })
+        .filter((p, i) => {
+          const obj = maybeSlides[i] as Record<string, unknown> | null;
+          const type =
+            obj && typeof obj === "object" && typeof obj.type === "string"
+              ? obj.type
+              : "";
+          return type !== "text" && !!p.prompt;
+        });
+
+      if (prompts.length > 0) {
+        const slotKeys = prompts.map((p) => p.slotKey);
+        const { data: existingAssets } = await supabase
+          .from("image_assets")
+          .select("slot_key")
+          .eq("entity_type", "story_slide")
+          .eq("entity_id", opts.entityId)
+          .in("slot_key", slotKeys);
+
+        const existingKeys = new Set(
+          (existingAssets ?? [])
+            .map((a) => a.slot_key)
+            .filter((k): k is string => typeof k === "string")
+        );
+
+        const toInsert = prompts
+          .filter((p) => !existingKeys.has(p.slotKey))
+          .map((p) => ({
+            entity_type: "story_slide",
+            entity_id: opts.entityId,
+            slot_key: p.slotKey,
+            prompt: p.prompt,
+            prompt_status: "approved",
+            status: "prompt_ready",
+          }));
+
+        if (toInsert.length > 0) {
+          await supabase.from("image_assets").insert(toInsert);
+        }
+      }
+    }
+  }
+
   // Mark generation accepted
   await supabase
     .from("compass_generations")
@@ -260,6 +319,7 @@ export async function applyCompassGeneration(opts: {
   }
 
   revalidatePath(`/season-builder/${opts.seasonId}`);
+  revalidatePath(`/season-builder/${opts.seasonId}/images`);
   return {};
 }
 
@@ -309,6 +369,98 @@ export async function discardSeasonChapterArcDraftItem(opts: {
 
   revalidatePath(`/season-builder/${opts.seasonId}`);
   return {};
+}
+
+export async function createChapterFromSeasonChapterArcDraftItem(opts: {
+  seasonId: number;
+  index: number;
+}): Promise<{ error?: string; chapterId?: number }> {
+  const supabase = createServerSupabaseClient();
+
+  const { data: season, error: fetchError } = await supabase
+    .from("seasons")
+    .select("draft_payload")
+    .eq("id", opts.seasonId)
+    .single();
+
+  if (fetchError || !season) return { error: "Season not found" };
+
+  const draftPayload = (season as { draft_payload?: unknown }).draft_payload as
+    | { chapter_arc?: unknown }
+    | null
+    | undefined;
+
+  const existingArc = (draftPayload as { chapter_arc?: unknown[] } | null | undefined)
+    ?.chapter_arc;
+
+  if (!Array.isArray(existingArc)) return { error: "No chapter arc draft found" };
+  if (opts.index < 0 || opts.index >= existingArc.length) return { error: "Draft item not found" };
+
+  const raw = existingArc[opts.index] as Record<string, unknown> | null;
+  if (!raw || typeof raw !== "object") return { error: "Invalid draft item" };
+
+  const weekNumber =
+    typeof raw.week_number === "number" && Number.isFinite(raw.week_number)
+      ? raw.week_number
+      : opts.index + 1;
+
+  const title = typeof raw.title === "string" ? raw.title.trim() : "";
+  const summary = typeof raw.summary === "string" ? raw.summary.trim() : "";
+  const arcPosition =
+    typeof raw.arc_position === "string" ? raw.arc_position.trim() : "";
+
+  if (weekNumber < 1 || weekNumber > 12) return { error: "Week must be 1–12" };
+
+  const { data: existingChapter } = await supabase
+    .from("chapters")
+    .select("id")
+    .eq("season_id", opts.seasonId)
+    .eq("week_number", weekNumber)
+    .maybeSingle();
+
+  if (existingChapter?.id) {
+    return { error: `Week ${weekNumber} already exists` };
+  }
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("chapters")
+    .insert({
+      season_id: opts.seasonId,
+      week_number: weekNumber,
+      title: title || `Chapter ${weekNumber}`,
+      summary: summary || null,
+      arc_position: arcPosition || null,
+      unlock_date: "2100-01-01",
+      content_status: "concept",
+    })
+    .select("id")
+    .single();
+
+  if (insertError) return { error: insertError.message };
+
+  // Remove the draft item so it can't be applied twice
+  const nextArc = existingArc.filter((_, i) => i !== opts.index);
+  const nextPayload =
+    nextArc.length === 0
+      ? null
+      : {
+          ...(draftPayload ?? {}),
+          chapter_arc: nextArc,
+        };
+
+  const { error: payloadUpdateError } = await supabase
+    .from("seasons")
+    .update({
+      draft_payload: nextPayload,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", opts.seasonId);
+
+  if (payloadUpdateError) return { error: payloadUpdateError.message };
+
+  revalidatePath(`/season-builder/${opts.seasonId}`);
+  revalidatePath(`/season-builder/${opts.seasonId}/chapters/${inserted.id}`);
+  return { chapterId: inserted.id };
 }
 
 export async function publishSeason(

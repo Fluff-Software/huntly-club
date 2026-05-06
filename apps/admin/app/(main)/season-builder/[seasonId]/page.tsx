@@ -4,7 +4,7 @@ import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { Button } from "@/components/Button";
 import { StatusPill, type ContentStatus } from "@/components/StatusPill";
 import { CompassPanel } from "@/components/compass/CompassPanel";
-import { discardSeasonChapterArcDraftItem } from "../actions";
+import { discardSeasonChapterArcDraftItem, createChapterFromSeasonChapterArcDraftItem } from "../actions";
 
 const ARC_ICONS: Record<string, string> = {
   setup: "🌱",
@@ -268,19 +268,38 @@ export default async function SeasonWorkspacePage({
                         <p className="text-[11px] text-stone-500">
                           Saved to season draft.
                         </p>
-                        <form
-                          action={async () => {
-                            "use server";
-                            await discardSeasonChapterArcDraftItem({ seasonId: id, index: i });
-                          }}
-                        >
-                          <button
-                            type="submit"
-                            className="rounded-lg border border-stone-200 bg-white px-2.5 py-1 text-[11px] font-medium text-stone-600 hover:bg-stone-50"
+                        <div className="flex items-center gap-2">
+                          <form
+                            action={async () => {
+                              "use server";
+                              const result = await createChapterFromSeasonChapterArcDraftItem({
+                                seasonId: id,
+                                index: i,
+                              });
+                              if (result.error) throw new Error(result.error);
+                            }}
                           >
-                            Discard
-                          </button>
-                        </form>
+                            <button
+                              type="submit"
+                              className="rounded-lg border border-huntly-forest/30 bg-white px-2.5 py-1 text-[11px] font-medium text-huntly-forest hover:bg-stone-50"
+                            >
+                              Create chapter
+                            </button>
+                          </form>
+                          <form
+                            action={async () => {
+                              "use server";
+                              await discardSeasonChapterArcDraftItem({ seasonId: id, index: i });
+                            }}
+                          >
+                            <button
+                              type="submit"
+                              className="rounded-lg border border-stone-200 bg-white px-2.5 py-1 text-[11px] font-medium text-stone-600 hover:bg-stone-50"
+                            >
+                              Discard
+                            </button>
+                          </form>
+                        </div>
                       </div>
                     </div>
                   );

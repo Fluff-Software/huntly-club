@@ -37,6 +37,7 @@ export function useFirstSeason(): {
     const { data: seasons, error: err } = await supabase
       .from("seasons")
       .select("id, name, hero_image, story, story_parts, story_slides, created_at")
+      .eq("content_status", "published")
       .order("created_at", { ascending: false });
     if (err) {
       setError(err.message ?? "Failed to load season");

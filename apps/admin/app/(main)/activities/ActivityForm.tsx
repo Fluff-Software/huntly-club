@@ -48,6 +48,9 @@ type ActivityFormProps = {
     debrief_photo_label?: string | null;
     debrief_question_1?: string | null;
     debrief_question_2?: string | null;
+    mission_type?: string | null;
+    safety_notes?: string | null;
+    content_status?: string | null;
   };
 };
 
@@ -606,6 +609,43 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
         defaultValue={initial?.image}
         help="Upload to Supabase Storage."
       />
+
+      {/* Mission type (Season Builder field) */}
+      <div>
+        <label className="mb-1 block text-sm font-medium text-stone-700">Mission type</label>
+        <div className="flex gap-3">
+          {(["outdoor", "indoor", "hybrid"] as const).map((type) => (
+            <label
+              key={type}
+              className="flex cursor-pointer items-center gap-2 rounded-lg border border-stone-200 px-3 py-2 text-sm has-[:checked]:border-huntly-forest/40 has-[:checked]:bg-huntly-forest/5"
+            >
+              <input
+                type="radio"
+                name="mission_type"
+                value={type}
+                defaultChecked={initial?.mission_type === type}
+                className="text-huntly-forest focus:ring-huntly-sage"
+              />
+              <span className="capitalize text-stone-700">{type}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Safety notes (Season Builder field) */}
+      <div>
+        <label htmlFor="safety_notes" className="mb-1 block text-sm font-medium text-stone-700">
+          Safety notes
+        </label>
+        <textarea
+          id="safety_notes"
+          name="safety_notes"
+          rows={2}
+          defaultValue={initial?.safety_notes ?? ""}
+          placeholder="e.g. Always stay with a grown-up. Watch your step on uneven ground."
+          className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 placeholder-stone-400 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+        />
+      </div>
 
       <div>
         <label htmlFor="xp" className="mb-1 block text-sm font-medium text-stone-700">

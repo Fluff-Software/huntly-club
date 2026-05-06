@@ -1,0 +1,80 @@
+"use server";
+
+import { COMPASS_MODELS } from "../client";
+import { runCompassAction, type CompassActionResult } from "../run-action";
+import { stripCodeFences } from "../parse-utils";
+
+export type StorySlide = {
+  type: "text" | "image" | "text-image";
+  value: string;
+  image?: string;
+  image_prompt?: string;
+};
+
+type Input = {
+  seasonBrief: string;
+  captainSlug?: string;
+  chapterTitle: string;
+  chapterSummary: string;
+  arcPosition: string;
+  targetAgeMin: number;
+  targetAgeMax: number;
+  slideCount?: number;
+};
+
+const SYSTEM_PROMPT_VERSION = "generate-story-pages-v2";
+
+export async function generateStoryPages(
+  input: Input,
+  createdBy?: string
+): Promise<CompassActionResult<StorySlide[]>> {
+  const slideCount = input.slideCount ?? 5;
+
+  const captainNote = input.captainSlug
+    ? `The featured captain for this chapter is ${input.captainSlug}. Write their dialogue and lines in their distinct voice as described in the world guide above.`
+    : `Any of the three captains (Bella, Felix, Oli) may appear. Keep their voices distinct.`;
+
+  const system = `You are Compass, the story writer for Huntly World.
+You write story slides for children aged ${input.targetAgeMin}–${input.targetAgeMax}.
+Each slide should be short, confident, lightly mysterious, and always lead toward outdoor action or discovery.
+${captainNote}
+You always respond with valid JSON only — no prose, no markdown fences.
+
+Season brief:
+${input.seasonBrief}`;
+
+  const messages = [
+    {
+      role: "user" as const,
+      content: `Write ${slideCount} story slides for the chapter "${input.chapterTitle}".
+
+Chapter summary: ${input.chapterSummary}
+Arc position: ${input.arcPosition}
+
+Return a JSON array of exactly ${slideCount} slide objects. Each must have:
+- type: one of "text", "image", or "text-image"
+- value: the story text (2–4 short sentences, age-appropriate, active voice, no over-explanation)
+- image_prompt: a detailed illustration prompt consistent with Huntly World's visual style — real outdoors, adventure club feel, no fantasy imagery
+
+Use a mix of types. Start with "text", use "text-image" for dramatic moments, "image" sparingly.
+
+Respond with the JSON array only.`,
+    },
+  ];
+
+  return runCompassAction<Input, StorySlide[]>({
+    action: "generate_story_pages",
+    entityType: "chapter",
+    model: COMPASS_MODELS.default,
+    systemPromptVersion: SYSTEM_PROMPT_VERSION,
+    system,
+    messages,
+    input,
+    createdBy,
+    parseOutput: (raw) => {
+      const parsed = JSON.parse(stripCodeFences(raw));
+      if (!Array.isArray(parsed)) throw new Error("Expected JSON array");
+      return parsed as StorySlide[];
+    },
+  });
+}

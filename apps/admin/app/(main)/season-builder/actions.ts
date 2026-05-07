@@ -164,6 +164,47 @@ export async function advanceChapterStatus(
   return {};
 }
 
+export async function advanceActivityStatus(
+  activityId: number,
+  seasonId: number,
+  chapterId: number,
+  toStatus: ContentStatus,
+  note?: string
+): Promise<{ error?: string }> {
+  const supabase = createServerSupabaseClient();
+
+  const { data: activity, error: fetchError } = await supabase
+    .from("activities")
+    .select("content_status")
+    .eq("id", activityId)
+    .single();
+
+  if (fetchError || !activity) return { error: "Mission not found" };
+
+  const { error: updateError } = await supabase
+    .from("activities")
+    .update({ content_status: toStatus, updated_at: new Date().toISOString() })
+    .eq("id", activityId);
+
+  if (updateError) return { error: updateError.message };
+
+  await supabase.from("approvals").insert({
+    entity_type: "activity",
+    entity_id: activityId,
+    from_status: activity.content_status,
+    to_status: toStatus,
+    note: note ?? null,
+  });
+
+  revalidatePath(`/season-builder/${seasonId}`);
+  revalidatePath(`/season-builder/${seasonId}/chapters/${chapterId}`);
+  revalidatePath(
+    `/season-builder/${seasonId}/chapters/${chapterId}/missions/${activityId}`
+  );
+  revalidatePath(`/season-builder/${seasonId}/publish`);
+  return {};
+}
+
 export async function saveChapterDraft(
   chapterId: number,
   seasonId: number,

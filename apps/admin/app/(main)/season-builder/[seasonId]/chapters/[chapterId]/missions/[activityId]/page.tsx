@@ -56,6 +56,8 @@ export default async function MissionEditorPage({
 
   if (!activity) notFound();
 
+  const status = (activity.content_status as ContentStatus) ?? "concept";
+
   return (
     <div className="flex flex-col gap-6">
       {/* Breadcrumb */}
@@ -82,10 +84,56 @@ export default async function MissionEditorPage({
                   {activity.title ?? activity.name}
                 </h1>
                 <StatusPill
-                  status={(activity.content_status as ContentStatus) ?? "concept"}
+                  status={status}
                 />
               </div>
               <div className="flex items-center gap-2">
+                {status !== "approved" && status !== "published" && (
+                  <form
+                    action={async () => {
+                      "use server";
+                      const { advanceActivityStatus } = await import(
+                        "@/app/(main)/season-builder/actions"
+                      );
+                      await advanceActivityStatus(
+                        activityIdNum,
+                        seasonIdNum,
+                        chapterIdNum,
+                        "in_review"
+                      );
+                    }}
+                  >
+                    <button
+                      type="submit"
+                      className="rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-50"
+                    >
+                      Submit for review
+                    </button>
+                  </form>
+                )}
+                {status === "in_review" && (
+                  <form
+                    action={async () => {
+                      "use server";
+                      const { advanceActivityStatus } = await import(
+                        "@/app/(main)/season-builder/actions"
+                      );
+                      await advanceActivityStatus(
+                        activityIdNum,
+                        seasonIdNum,
+                        chapterIdNum,
+                        "approved"
+                      );
+                    }}
+                  >
+                    <button
+                      type="submit"
+                      className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700"
+                    >
+                      Approve mission ✓
+                    </button>
+                  </form>
+                )}
                 <Link
                   href={`/activities/${activityId}/edit`}
                   className="rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-50"

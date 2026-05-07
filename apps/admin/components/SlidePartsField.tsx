@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/Button";
 import { uploadSlideImage } from "@/lib/upload-actions";
@@ -31,6 +31,10 @@ export function SlidePartsField({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+
+  useEffect(() => {
+    setSlides(initialSlides.length > 0 ? initialSlides : [{ type: "text", value: "" }]);
+  }, [initialSlides]);
 
   const addSlide = () => setSlides((prev) => [...prev, { type: "text", value: "" }]);
   const removeSlide = (index: number) =>

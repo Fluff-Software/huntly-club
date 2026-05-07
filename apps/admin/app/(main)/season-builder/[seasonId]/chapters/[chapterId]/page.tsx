@@ -19,7 +19,7 @@ async function getChapter(chapterId: number) {
   const { data, error } = await supabase
     .from("chapters")
     .select(
-      "id, season_id, week_number, title, summary, arc_position, body_slides, content_status"
+      "id, season_id, week_number, title, summary, arc_position, body_slides, content_status, draft_payload"
     )
     .eq("id", chapterId)
     .single();
@@ -63,6 +63,15 @@ export default async function ChapterEditorPage({
   ]);
 
   if (!chapter) notFound();
+
+  const draftMissions = (() => {
+    const payload = (chapter as unknown as { draft_payload?: unknown }).draft_payload as
+      | { missions?: unknown }
+      | null
+      | undefined;
+    const missions = payload?.missions;
+    return Array.isArray(missions) ? missions : [];
+  })();
 
   return (
     <div className="flex flex-col gap-6">
@@ -153,6 +162,65 @@ export default async function ChapterEditorPage({
                 Missions ({activities.length})
               </h2>
             </div>
+
+            {draftMissions.length > 0 && (
+              <div className="mb-5">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+                    Draft missions (Compass)
+                  </p>
+                  <p className="text-xs text-stone-400">
+                    {draftMissions.length} saved to chapter draft
+                  </p>
+                </div>
+                <ul className="grid grid-cols-1 gap-2">
+                  {draftMissions.map((m, i) => {
+                    const mission = m as {
+                      title?: string;
+                      name?: string;
+                      mission_type?: string;
+                      estimated_duration?: string;
+                      description?: string;
+                    } | null;
+                    const title =
+                      (mission?.title ?? "").trim() ||
+                      (mission?.name ?? "").trim() ||
+                      `Draft mission ${i + 1}`;
+                    return (
+                      <li
+                        key={`draft-mission-${i}`}
+                        className="rounded-xl border border-dashed border-huntly-forest/30 bg-huntly-forest/5 p-3"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-stone-900 truncate">
+                              {title}
+                            </p>
+                            {(mission?.mission_type || mission?.estimated_duration) && (
+                              <p className="mt-0.5 text-xs text-stone-500">
+                                {mission?.mission_type ? (
+                                  <span className="capitalize">{mission.mission_type}</span>
+                                ) : null}
+                                {mission?.mission_type && mission?.estimated_duration ? " · " : null}
+                                {mission?.estimated_duration ?? null}
+                              </p>
+                            )}
+                            {mission?.description && (
+                              <p className="mt-1 text-xs text-stone-600 line-clamp-2">
+                                {mission.description}
+                              </p>
+                            )}
+                          </div>
+                          <span className="shrink-0 rounded-full border border-huntly-forest/20 bg-white px-2 py-0.5 text-[11px] font-medium text-huntly-forest">
+                            Draft
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
 
             {activities.length === 0 ? (
               <p className="rounded-xl border border-dashed border-stone-300 bg-stone-50/50 py-8 text-center text-sm text-stone-500">

@@ -53,13 +53,6 @@ async function getReadinessChecks(seasonId: number) {
     href: `/season-builder/${seasonId}/brief`,
   });
 
-  checks.push({
-    label: "Season is approved",
-    passed: season?.content_status === "approved" || season?.content_status === "published",
-    detail: `Current status: ${season?.content_status ?? "?"}`,
-    href: `/season-builder/${seasonId}`,
-  });
-
   // Chapters
   const chaptersArr = chapters ?? [];
 

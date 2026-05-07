@@ -60,6 +60,9 @@ export default async function SeasonWorkspacePage({
 
   if (!season) notFound();
 
+  const seasonStatus: ContentStatus =
+    season.content_status === "published" ? "published" : "concept";
+
   const draftChapterArc = (() => {
     const payload = (season as unknown as { draft_payload?: unknown }).draft_payload as
       | { chapter_arc?: ChapterArcDraftItem[] }
@@ -68,17 +71,6 @@ export default async function SeasonWorkspacePage({
     const items = payload?.chapter_arc;
     return Array.isArray(items) ? items : [];
   })();
-
-  const nextStatus =
-    season.content_status === "concept"
-      ? "outline"
-      : season.content_status === "outline"
-      ? "drafting"
-      : season.content_status === "drafting"
-      ? "in_review"
-      : season.content_status === "in_review"
-      ? "approved"
-      : null;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-0">
@@ -96,7 +88,7 @@ export default async function SeasonWorkspacePage({
             <h1 className="text-xl font-semibold text-stone-900 truncate">
               {season.name}
             </h1>
-            <StatusPill status={(season.content_status as ContentStatus) ?? "concept"} />
+            <StatusPill status={seasonStatus} />
           </div>
           {season.concept_summary && (
             <p className="text-sm text-stone-500 mt-1">{season.concept_summary}</p>
@@ -190,27 +182,6 @@ export default async function SeasonWorkspacePage({
               ))}
             </div>
           </div>
-
-          {nextStatus && (
-            <form
-              action={async () => {
-                "use server";
-                const { advanceSeasonStatus } = await import("../actions");
-                await advanceSeasonStatus(id, nextStatus as ContentStatus);
-              }}
-            >
-              <button
-                type="submit"
-                className="w-full rounded-xl border border-huntly-forest/30 bg-huntly-forest/5 px-4 py-2.5 text-sm font-medium text-huntly-forest transition-colors hover:bg-huntly-forest/10 focus:outline-none focus:ring-2 focus:ring-huntly-sage"
-              >
-                Move to{" "}
-                {nextStatus.replace("_", " ").replace(/\b\w/g, (c) =>
-                  c.toUpperCase()
-                )}{" "}
-                →
-              </button>
-            </form>
-          )}
         </aside>
 
         {/* Centre — chapter strip */}

@@ -95,7 +95,7 @@ export async function updateSeasonBrief(
 
 export async function advanceSeasonStatus(
   seasonId: number,
-  toStatus: ContentStatus,
+  toStatus: "concept" | "published",
   note?: string
 ): Promise<{ error?: string }> {
   const supabase = createServerSupabaseClient();

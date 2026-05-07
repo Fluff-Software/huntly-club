@@ -82,7 +82,7 @@ export default function NewSeasonBuilderPage() {
               id="target_age_min"
               name="target_age_min"
               type="number"
-              defaultValue={5}
+              defaultValue={4}
               min={2}
               max={18}
               className="w-full rounded-xl border border-stone-300 px-3 py-2.5 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-2 focus:ring-huntly-sage/20"
@@ -99,7 +99,7 @@ export default function NewSeasonBuilderPage() {
               id="target_age_max"
               name="target_age_max"
               type="number"
-              defaultValue={10}
+              defaultValue={14}
               min={2}
               max={18}
               className="w-full rounded-xl border border-stone-300 px-3 py-2.5 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-2 focus:ring-huntly-sage/20"

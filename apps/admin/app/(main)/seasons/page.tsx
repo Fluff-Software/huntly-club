@@ -53,6 +53,8 @@ export default async function SeasonsPage() {
         <ul className="divide-y divide-stone-200 rounded-xl border border-stone-200 bg-white shadow-sm">
           {seasons.map((season) => {
             const { total, approved } = chapterStats(season.id);
+            const seasonStatus: ContentStatus =
+              season.content_status === "published" ? "published" : "concept";
             return (
               <li
                 key={season.id}
@@ -67,7 +69,7 @@ export default async function SeasonsPage() {
                       {season.name ?? `Season ${season.id}`}
                     </Link>
                     <StatusPill
-                      status={(season.content_status as ContentStatus) ?? "concept"}
+                      status={seasonStatus}
                       size="sm"
                     />
                   </div>

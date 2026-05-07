@@ -59,12 +59,66 @@ export async function approveImageAsset(
   seasonId: number
 ): Promise<{ error?: string }> {
   const supabase = createServerSupabaseClient();
+  const { data: asset, error: fetchError } = await supabase
+    .from("image_assets")
+    .select("id, entity_type, entity_id, slot_key, storage_path")
+    .eq("id", imageAssetId)
+    .single();
+
+  if (fetchError || !asset) return { error: "Image asset not found" };
+  if (!asset.storage_path) return { error: "No generated image found to approve" };
+
   const { error } = await supabase
     .from("image_assets")
     .update({ status: "approved" })
     .eq("id", imageAssetId);
 
   if (error) return { error: error.message };
+
+  // If this asset corresponds to a story slide, apply it back onto the chapter slides.
+  if (asset.entity_type === "story_slide" && asset.slot_key) {
+    const m = /^slide-(\d+)$/.exec(asset.slot_key);
+    const slideIndex = m ? parseInt(m[1]!, 10) - 1 : -1;
+
+    if (Number.isFinite(slideIndex) && slideIndex >= 0) {
+      const { data: chapter } = await supabase
+        .from("chapters")
+        .select("id, body_slides")
+        .eq("id", asset.entity_id)
+        .single();
+
+      const slides = (chapter?.body_slides as unknown[]) ?? [];
+      if (Array.isArray(slides) && slideIndex < slides.length) {
+        const nextSlides = [...slides];
+        const raw = nextSlides[slideIndex];
+
+        if (raw && typeof raw === "object") {
+          const slide = raw as Record<string, unknown>;
+          const type = typeof slide.type === "string" ? slide.type : "";
+
+          if (type === "image") {
+            // Support both SlidePartsField schema and StorySlide schema.
+            nextSlides[slideIndex] = { ...slide, value: asset.storage_path };
+          } else if (type === "text-image") {
+            // SlidePartsField: { text, image } / StorySlide: { value, image? }
+            if (typeof slide.text === "string") {
+              nextSlides[slideIndex] = { ...slide, image: asset.storage_path };
+            } else {
+              nextSlides[slideIndex] = { ...slide, image: asset.storage_path };
+            }
+          }
+
+          await supabase
+            .from("chapters")
+            .update({ body_slides: nextSlides, updated_at: new Date().toISOString() })
+            .eq("id", asset.entity_id);
+
+          revalidatePath(`/season-builder/${seasonId}/chapters/${asset.entity_id}`);
+        }
+      }
+    }
+  }
+
   revalidatePath(`/season-builder/${seasonId}/images`);
   return {};
 }

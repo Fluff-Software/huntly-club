@@ -26,31 +26,44 @@ export type GenerateImageResult = {
 
 function buildEnhancedPrompt(prompt: string): {
   enhancedPrompt: string;
-  referenceImageUrl: string | null;
+  referenceImageUrls: string[];
 } {
   const captainsInPrompt = detectCaptainsInPrompt(prompt);
 
   if (captainsInPrompt.length === 0) {
-    return { enhancedPrompt: prompt, referenceImageUrl: null };
+    const fallback = getCaptainReferenceImageUrl("bella");
+    const enhancedPrompt = [
+      `STYLE CONSISTENCY REQUIRED. Match the stylization, rendering style, and overall look of the provided reference images.`,
+      ``,
+      prompt,
+    ].join("\n");
+    return {
+      enhancedPrompt,
+      referenceImageUrls: fallback ? [fallback] : [],
+    };
   }
 
   // Inject visual anchors for each captain detected
   const anchorLines = captainsInPrompt.map(
     (c) =>
-      `${c.name} (${c.team} captain): ${c.imageAnchors}. Always depicted as a real child in an outdoor adventure brand world — not a cartoon or fantasy hero.`
+      `${c.name} (${c.team} captain, age 14): ${c.imageAnchors}. Always depicted as a real 14-year-old in an outdoor adventure brand world — not a cartoon, toddler, or fantasy hero.`
   );
 
   const enhancedPrompt = [
     `CHARACTER CONSISTENCY REQUIRED. The following characters must match their established appearance exactly:`,
     ...anchorLines,
     ``,
+    `STYLE CONSISTENCY REQUIRED. Match the stylization, rendering style, and overall look of the provided reference images.`,
+    ``,
     prompt,
   ].join("\n");
 
-  // Use the first detected captain's reference image for conditioning
-  const referenceImageUrl = getCaptainReferenceImageUrl(captainsInPrompt[0].slug);
+  // Use all detected captains' reference images for conditioning
+  const referenceImageUrls = captainsInPrompt
+    .map((c) => getCaptainReferenceImageUrl(c.slug))
+    .filter((u): u is string => typeof u === "string" && u.length > 0);
 
-  return { enhancedPrompt, referenceImageUrl };
+  return { enhancedPrompt, referenceImageUrls };
 }
 
 export async function generateImage(
@@ -85,7 +98,7 @@ export async function generateImage(
     };
   }
 
-  const { enhancedPrompt, referenceImageUrl } = buildEnhancedPrompt(prompt);
+  const { enhancedPrompt, referenceImageUrls } = buildEnhancedPrompt(prompt);
 
   const client = createCompassClient();
 
@@ -100,15 +113,18 @@ export async function generateImage(
 
   // Optional reference image conditioning (only for quality + if the model supports it).
   // We provide it as an input image to the message; models that don't support it will ignore it.
-  if (quality === "quality" && referenceImageUrl) {
+  if (referenceImageUrls.length > 0) {
     messages.unshift({
       role: "user",
       content: [
-        {
+        ...referenceImageUrls.map((url) => ({
           type: "image_url",
-          image_url: { url: referenceImageUrl },
+          image_url: { url },
+        })),
+        {
+          type: "text",
+          text: "Reference images for character consistency (one per captain).",
         },
-        { type: "text", text: "Reference image for character consistency." },
       ],
     });
   }
@@ -172,17 +188,21 @@ export async function generateImage(
     return { error: status ? `${status} ${message}` : message };
   }
 
-  // Decode the returned image (OpenRouter may return either a data URL or an https URL)
+  // Decode the returned image (OpenRouter may return either a data URL or an https URL).
+  // Note: some providers return very large base64 strings; parsing them with regex/Buffer can
+  // trigger V8 stack/memory issues. Using fetch() for data URLs is more robust.
   let bytes: Uint8Array;
   let contentType = "image/png";
   let extension = "png";
   try {
     if (/^data:image\//.test(dataUrl)) {
-      const match = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/.exec(dataUrl);
-      if (!match) return { error: `Invalid image data URL returned (${dataUrl.slice(0, 40)}…)` };
-      contentType = match[1] ?? "image/png";
-      const base64 = match[2] ?? "";
-      bytes = Buffer.from(base64, "base64");
+      const res = await fetch(dataUrl);
+      if (!res.ok) {
+        return { error: `Failed to read generated image data URL (${res.status})` };
+      }
+      contentType = res.headers.get("content-type") ?? "image/png";
+      const buf = await res.arrayBuffer();
+      bytes = new Uint8Array(buf);
     } else if (/^https?:\/\//.test(dataUrl)) {
       const fetchResponse = await fetch(dataUrl);
       if (!fetchResponse.ok) {
@@ -203,7 +223,7 @@ export async function generateImage(
         : "png";
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Failed to decode generated image";
-    return { error: `${msg} (${String(dataUrl).slice(0, 60)}…)` };
+    return { error: msg };
   }
 
   // Upload to Supabase Storage
@@ -239,9 +259,23 @@ export async function generateImage(
       entity_type: "image_asset",
       entity_id: imageAssetId,
       model,
-      input: { prompt, enhancedPrompt, size, quality, referenceImageUsed: !!referenceImageUrl } as object,
+      input: {
+        prompt,
+        enhancedPrompt,
+        size,
+        quality,
+        referenceImagesUsed: referenceImageUrls.length,
+      } as object,
       system_prompt_version: "generate-image-v2",
-      output: { image_url: publicUrl, original_url: dataUrl } as object,
+      output: {
+        image_url: publicUrl,
+        original_url: null,
+        original_url_meta: {
+          kind: dataUrl.startsWith("data:") ? "data_url" : dataUrl.startsWith("http") ? "http_url" : "unknown",
+          prefix: dataUrl.slice(0, 48),
+          length: dataUrl.length,
+        },
+      } as object,
       tokens_in: 0,
       tokens_out: 0,
       cost_usd: estimatedCost,

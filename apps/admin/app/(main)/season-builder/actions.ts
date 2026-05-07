@@ -210,6 +210,101 @@ export async function saveChapterDraft(
   return {};
 }
 
+export async function acceptCompassStoryPages(opts: {
+  generationId: number;
+  seasonId: number;
+  chapterId: number;
+  slides: Array<{
+    type: "text" | "image" | "text-image";
+    value: string;
+    image_prompt?: string;
+  }>;
+}): Promise<{ error?: string }> {
+  const supabase = createServerSupabaseClient();
+
+  const normalizedSlides = opts.slides.map((s) => {
+    const text = (s.value ?? "").trim();
+    if (s.type === "text") return { type: "text", value: text };
+    if (s.type === "image") return { type: "image", value: "" };
+    return { type: "text-image", text, image: "" };
+  });
+
+  const { error: updateError } = await supabase
+    .from("chapters")
+    .update({
+      body_slides: normalizedSlides,
+      last_compass_generation_id: opts.generationId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", opts.chapterId);
+
+  if (updateError) return { error: updateError.message };
+
+  const prompts = opts.slides
+    .map((s, i) => ({
+      type: s.type,
+      slotKey: `slide-${i + 1}`,
+      prompt: (s.image_prompt ?? "").trim(),
+    }))
+    .filter((p) => p.type !== "text" && !!p.prompt);
+
+  if (prompts.length > 0) {
+    const slotKeys = prompts.map((p) => p.slotKey);
+    const { data: existingAssets } = await supabase
+      .from("image_assets")
+      .select("slot_key")
+      .eq("entity_type", "story_slide")
+      .eq("entity_id", opts.chapterId)
+      .in("slot_key", slotKeys);
+
+    const existingKeys = new Set(
+      (existingAssets ?? [])
+        .map((a) => a.slot_key)
+        .filter((k): k is string => typeof k === "string")
+    );
+
+    const toInsert = prompts
+      .filter((p) => !existingKeys.has(p.slotKey))
+      .map((p) => ({
+        entity_type: "story_slide",
+        entity_id: opts.chapterId,
+        slot_key: p.slotKey,
+        prompt: p.prompt,
+        prompt_status: "approved",
+        status: "prompt_ready",
+      }));
+
+    if (toInsert.length > 0) {
+      await supabase.from("image_assets").insert(toInsert);
+    }
+  }
+
+  await supabase
+    .from("compass_generations")
+    .update({ accepted: true, accepted_at: new Date().toISOString() })
+    .eq("id", opts.generationId);
+
+  const { data: snap } = await supabase
+    .from("chapters")
+    .select("*")
+    .eq("id", opts.chapterId)
+    .single();
+
+  if (snap) {
+    await supabase.from("revisions").insert({
+      entity_type: "chapter",
+      entity_id: opts.chapterId,
+      snapshot: snap as object,
+      summary: `Compass: accepted ${normalizedSlides.length} story slides`,
+    });
+  }
+
+  revalidatePath(`/season-builder/${opts.seasonId}`);
+  revalidatePath(`/season-builder/${opts.seasonId}/chapters/${opts.chapterId}`);
+  revalidatePath(`/season-builder/${opts.seasonId}/images`);
+  return {};
+}
+
 export async function applyCompassGeneration(opts: {
   generationId: number;
   entityType: "season" | "chapter" | "activity";

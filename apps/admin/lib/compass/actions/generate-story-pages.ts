@@ -56,6 +56,12 @@ Return a JSON array of exactly ${slideCount} slide objects. Each must have:
 - value: the story text (2–4 short sentences, age-appropriate, active voice, no over-explanation)
 - image_prompt: REQUIRED only when type is "image" or "text-image". Omit image_prompt entirely for "text" slides.
 
+Image prompt rules:
+- If a captain appears in the scene, refer to them ONLY by name: "Bella", "Felix", or "Oli".
+- If multiple captains appear, explicitly list their names (e.g. "Bella and Felix", "Felix and Oli", "Bella, Oli, and Felix"). Do NOT use generic phrases like "a group of explorers" or "three young people".
+- Do NOT describe the captain's physical appearance (hair, clothes, facial features, etc). Character consistency is handled later.
+- Focus the image_prompt on the setting, action, mood, lighting, and key objects.
+
 Use a mix of types. Start with "text", use "text-image" for dramatic moments, "image" sparingly.
 
 Respond with the JSON array only.`,

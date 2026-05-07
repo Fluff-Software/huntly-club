@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { DiffReviewer } from "./DiffReviewer";
 import {
   generateChapterArc,
@@ -62,6 +63,7 @@ type GenerationResult =
   | { type: "missions"; generationId: number; output: GeneratedMission[]; costUsd: number };
 
 export function CompassPanel(props: CompassPanelProps) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [generation, setGeneration] = useState<GenerationResult | null>(null);
@@ -242,7 +244,10 @@ export function CompassPanel(props: CompassPanelProps) {
           }
           entityType={props.scope === "season" ? "season" : "chapter"}
           onClose={() => setGeneration(null)}
-          onAccepted={() => setGeneration(null)}
+          onAccepted={() => {
+            setGeneration(null);
+            router.refresh();
+          }}
         />
       )}
     </>

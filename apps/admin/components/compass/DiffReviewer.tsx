@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import type { ChapterArcItem } from "@/lib/compass/actions/generate-chapter-arc";
 import type { StorySlide } from "@/lib/compass/actions/generate-story-pages";
 import type { GeneratedMission } from "@/lib/compass/actions/generate-missions";
-import { applyCompassGeneration } from "@/app/(main)/season-builder/actions";
+import { applyCompassGeneration, acceptCompassStoryPages } from "@/app/(main)/season-builder/actions";
 
 type ChapterArcGeneration = {
   type: "chapter_arc";
@@ -344,13 +344,11 @@ function StoryPagesReviewer({
   function handleAccept() {
     setError(null);
     startTransition(async () => {
-      const result = await applyCompassGeneration({
+      const result = await acceptCompassStoryPages({
         generationId: generation.generationId,
-        entityType: "chapter",
-        entityId,
         seasonId,
-        acceptedFields: { body_slides: acceptedSlides },
-        summary: `Compass: accepted ${acceptedSlides.length} story slides`,
+        chapterId: entityId,
+        slides: acceptedSlides,
       });
       if (result.error) setError(result.error);
       else onAccepted();

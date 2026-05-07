@@ -215,6 +215,25 @@ export default async function ChapterEditorPage({
                             <form
                               action={async () => {
                                 "use server";
+                                const { createMissionFromChapterMissionDraftItem } = await import("../../../actions");
+                                const result = await createMissionFromChapterMissionDraftItem({
+                                  seasonId: seasonIdNum,
+                                  chapterId: chapterIdNum,
+                                  index: i,
+                                });
+                                if (result.error) throw new Error(result.error);
+                              }}
+                            >
+                              <button
+                                type="submit"
+                                className="rounded-lg border border-huntly-forest/30 bg-white px-2.5 py-1 text-[11px] font-medium text-huntly-forest hover:bg-stone-50"
+                              >
+                                Create mission
+                              </button>
+                            </form>
+                            <form
+                              action={async () => {
+                                "use server";
                                 const { discardChapterMissionDraftItem } = await import("../../../actions");
                                 const result = await discardChapterMissionDraftItem({
                                   seasonId: seasonIdNum,

@@ -4,34 +4,27 @@ import { COMPASS_MODELS } from "../client";
 import { runCompassAction, type CompassActionResult } from "../run-action";
 import { stripCodeFences } from "../parse-utils";
 
-export type MissionStep = {
-  order: number;
-  title: string;
-  instruction: string;
-  tip?: string;
-  captain_line?: string;
-  duration_minutes?: number;
-  image_prompt?: string;
-};
-
-export type Supply = {
-  name: string;
-  required: boolean;
-  note?: string;
-};
-
 export type GeneratedMission = {
   name: string;
   title: string;
   description: string;
   mission_type: "outdoor" | "indoor" | "hybrid";
-  estimated_duration: string;
-  safety_notes: string;
-  supplies: Supply[];
-  steps: MissionStep[];
-  intro_captain_dialogue?: string;
+  estimated_duration?: string;
+  optional_items?: string;
+  intro_character_name?: string;
+  intro_captain?: string;
+  intro_captain_pose?: string;
+  intro_dialogue?: string;
+  preparation_message?: string;
+  reminder_message?: string;
+  prep_checklist?: Array<{ title: string; description: string }>;
+  steps?: Array<{ instruction: string; tip?: string; media_url?: string }>;
+  debrief_heading?: string;
+  debrief_photo_label?: string;
+  safety_notes?: string;
   debrief_question_1?: string;
   debrief_question_2?: string;
+  xp?: number;
 };
 
 type Input = {
@@ -45,7 +38,7 @@ type Input = {
   indoorCount?: number;
 };
 
-const SYSTEM_PROMPT_VERSION = "generate-missions-v2";
+const SYSTEM_PROMPT_VERSION = "generate-missions-v3";
 
 export async function generateMissions(
   input: Input,
@@ -76,18 +69,28 @@ ${input.seasonBrief}`;
 Chapter summary: ${input.chapterSummary}
 Mix: ${outdoorCount} outdoor + ${indoorCount} indoor mission(s).
 
-Return a JSON array of exactly ${totalCount} mission objects. Each must have:
-- name: short slug-style identifier (e.g. "trail-markers")
-- title: engaging display title
-- description: 2–3 sentence mission brief written directly to the child — active, exciting, grounded
+Return a JSON array of exactly ${totalCount} mission objects in the SAME SHAPE used by our mission editor form.
+
+Each mission object must include:
+- name: snake_case slug (e.g. "cloud_stories"). No timestamps.
+- title: display title
+- description: short child-facing description (1–2 sentences)
 - mission_type: "outdoor", "indoor", or "hybrid"
 - estimated_duration: e.g. "20–30 minutes"
-- safety_notes: 1–2 sentences of practical age-appropriate safety guidance (not scary, not preachy)
-- supplies: array of { name, required (bool), note? }
-- steps: array of 4–6 steps, each with { order, title, instruction, tip?, captain_line?, duration_minutes?, image_prompt? }
-- intro_captain_dialogue: 1–2 sentences from the captain briefing the explorer — in their distinct voice
-- debrief_question_1: open-ended reflection question about what they noticed or discovered
-- debrief_question_2: second reflection question
+- optional_items: comma-separated optional items (no "Required:" prefix)
+- intro_character_name: e.g. "Ollie Otter" (what shows in the name override field)
+- intro_captain: one of "bella" | "felix" | "oli" | null (or omit)
+- intro_captain_pose: e.g. "standing" (or omit)
+- intro_dialogue: 1–3 sentences from the captain (speech bubble)
+- prep_checklist: array of 3–6 items { title, description } describing "Before you start…" (not just a supplies list)
+- steps: array of 4–6 items { instruction, tip?, media_url? } (instruction is required; tip is optional)
+- debrief_heading: e.g. "Report Back to Ollie"
+- debrief_photo_label: e.g. "Show Ollie your cloud drawings"
+- debrief_question_1 and debrief_question_2
+- safety_notes: 1–2 sentences, practical and calm
+- xp: number (10–40)
+
+Do NOT include fields we didn't ask for. Use empty strings only if truly necessary; prefer omitting optional keys.
 
 Respond with the JSON array only.`,
     },

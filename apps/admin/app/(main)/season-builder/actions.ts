@@ -560,6 +560,262 @@ export async function discardChapterMissionDraftItem(opts: {
   return {};
 }
 
+type DraftMission = {
+  name?: string;
+  title?: string;
+  description?: string;
+  mission_type?: "outdoor" | "indoor" | "hybrid" | string;
+  estimated_duration?: string;
+  safety_notes?: string;
+  optional_items?: string;
+  intro_character_name?: string;
+  intro_captain?: string;
+  intro_captain_pose?: string;
+  intro_dialogue?: string;
+  preparation_message?: string;
+  reminder_message?: string;
+  prep_checklist?: Array<{ title?: string; description?: string }>;
+  steps?: Array<
+    | { instruction?: string; tip?: string; media_url?: string }
+    | {
+        order?: number;
+        title?: string;
+        instruction?: string;
+        tip?: string;
+        captain_line?: string;
+      }
+  >;
+  intro_captain_dialogue?: string;
+  supplies?: Array<{ name?: string; required?: boolean; note?: string }>;
+  debrief_heading?: string;
+  debrief_photo_label?: string;
+  debrief_question_1?: string;
+  debrief_question_2?: string;
+  xp?: number;
+};
+
+export async function createMissionFromChapterMissionDraftItem(opts: {
+  seasonId: number;
+  chapterId: number;
+  index: number;
+}): Promise<{ error?: string; activityId?: number }> {
+  const supabase = createServerSupabaseClient();
+
+  const { data: chapter, error: fetchError } = await supabase
+    .from("chapters")
+    .select("draft_payload")
+    .eq("id", opts.chapterId)
+    .single();
+
+  if (fetchError || !chapter) return { error: "Chapter not found" };
+
+  const draftPayload = (chapter as { draft_payload?: unknown }).draft_payload as
+    | Record<string, unknown>
+    | null
+    | undefined;
+
+  const existing = (draftPayload as { missions?: unknown[] } | null | undefined)
+    ?.missions;
+
+  if (!Array.isArray(existing)) return { error: "No mission drafts found" };
+  if (opts.index < 0 || opts.index >= existing.length) return { error: "Draft item not found" };
+
+  const raw = existing[opts.index] as DraftMission | null;
+  if (!raw || typeof raw !== "object") return { error: "Invalid draft item" };
+
+  const baseName = slugify((raw.name ?? raw.title ?? "mission").trim() || "mission");
+  const preferredName = typeof raw.name === "string" && raw.name.trim() ? raw.name.trim() : baseName;
+  const title = (raw.title ?? raw.name ?? "").trim() || "Untitled mission";
+
+  const optionalItems = (() => {
+    if (typeof raw.optional_items === "string" && raw.optional_items.trim()) {
+      return raw.optional_items.trim();
+    }
+    const supplies = Array.isArray(raw.supplies) ? raw.supplies : [];
+    const optional = supplies.filter((s) => !s?.required && typeof s?.name === "string");
+    const opt = optional.map((s) => (s.name ?? "").trim()).filter(Boolean);
+    return opt.length ? opt.join(", ") : null;
+  })();
+
+  const prepChecklist = (() => {
+    if (Array.isArray(raw.prep_checklist) && raw.prep_checklist.length > 0) {
+      const items = raw.prep_checklist
+        .map((p) => ({
+          title: typeof p?.title === "string" ? p.title.trim() : "",
+          description: typeof p?.description === "string" ? p.description.trim() : "",
+        }))
+        .filter((p) => p.title !== "" || p.description !== "");
+      return items.length ? items : null;
+    }
+    const supplies = Array.isArray(raw.supplies) ? raw.supplies : [];
+    const items = supplies
+      .map((s) => ({
+        title: typeof s?.name === "string" ? s.name.trim() : "",
+        description: typeof s?.note === "string" ? s.note.trim() : "",
+      }))
+      .filter((s) => s.title !== "" || s.description !== "");
+    return items.length > 0 ? items : null;
+  })();
+
+  const steps = (() => {
+    const rawSteps = Array.isArray(raw.steps) ? raw.steps : [];
+    if (rawSteps.length === 0) return null;
+    const looksLikeActivitySteps =
+      rawSteps.length > 0 &&
+      rawSteps.every((s) => s && typeof s === "object" && "instruction" in (s as object) && !("order" in (s as object)));
+    if (looksLikeActivitySteps) {
+      const mapped = rawSteps
+        .map((s) => {
+          const obj = s as { instruction?: string; tip?: string; media_url?: string };
+          const instruction = typeof obj.instruction === "string" ? obj.instruction.trim() : "";
+          if (!instruction) return null;
+          const tip = typeof obj.tip === "string" ? obj.tip.trim() : "";
+          const media = typeof obj.media_url === "string" ? obj.media_url.trim() : "";
+          return {
+            instruction,
+            tip: tip || null,
+            media_url: media || null,
+          };
+        })
+        .filter(Boolean) as Array<{ instruction: string; tip: string | null; media_url: string | null }>;
+      return mapped.length ? mapped : null;
+    }
+
+    const sorted = [...rawSteps].sort((a, b) => {
+      const ao = typeof (a as { order?: unknown })?.order === "number" ? (a as { order: number }).order : 0;
+      const bo = typeof (b as { order?: unknown })?.order === "number" ? (b as { order: number }).order : 0;
+      return ao - bo;
+    });
+
+    const mapped = sorted
+      .map((s) => {
+        const obj = s as {
+          title?: string;
+          instruction?: string;
+          tip?: string;
+          captain_line?: string;
+        };
+        const stepTitle = typeof obj.title === "string" ? obj.title.trim() : "";
+        const instruction = typeof obj.instruction === "string" ? obj.instruction.trim() : "";
+        const tip = typeof obj.tip === "string" ? obj.tip.trim() : "";
+        const captain = typeof obj.captain_line === "string" ? obj.captain_line.trim() : "";
+        const instructionText =
+          stepTitle && instruction ? `${stepTitle}: ${instruction}` : stepTitle || instruction;
+        const tipText = [tip, captain].filter(Boolean).join("\n");
+        if (!instructionText) return null;
+        return {
+          instruction: instructionText,
+          tip: tipText || null,
+          media_url: null,
+        };
+      })
+      .filter(Boolean) as Array<{ instruction: string; tip: string | null; media_url: null }>;
+    return mapped.length ? mapped : null;
+  })();
+
+  const activityInsert = {
+    name: preferredName,
+    title,
+    description: (raw.description ?? "").trim() || null,
+    xp: typeof raw.xp === "number" && Number.isFinite(raw.xp) ? raw.xp : 10,
+    categories: [],
+    mission_type: (raw.mission_type ?? null) as string | null,
+    safety_notes: (raw.safety_notes ?? "").trim() || null,
+    estimated_duration: (raw.estimated_duration ?? "").trim() || null,
+    optional_items: optionalItems,
+    prep_checklist: prepChecklist,
+    steps,
+    intro_character_name: (raw.intro_character_name ?? "").trim() || null,
+    intro_captain: (raw.intro_captain ?? "").trim() || null,
+    intro_captain_pose: (raw.intro_captain_pose ?? "").trim() || null,
+    intro_dialogue: ((raw.intro_dialogue ?? raw.intro_captain_dialogue) ?? "").trim() || null,
+    preparation_message: (raw.preparation_message ?? "").trim() || null,
+    reminder_message: (raw.reminder_message ?? "").trim() || null,
+    debrief_heading: (raw.debrief_heading ?? "").trim() || null,
+    debrief_photo_label: (raw.debrief_photo_label ?? "").trim() || null,
+    debrief_question_1: (raw.debrief_question_1 ?? "").trim() || null,
+    debrief_question_2: (raw.debrief_question_2 ?? "").trim() || null,
+  };
+
+  const tryInsert = async (nameToUse: string) =>
+    supabase
+      .from("activities")
+      .insert({ ...activityInsert, name: nameToUse })
+      .select("id")
+      .single();
+
+  let inserted;
+  let insertError;
+  {
+    const r = await tryInsert(preferredName);
+    inserted = r.data;
+    insertError = r.error;
+  }
+
+  if (insertError) {
+    const message = insertError.message ?? "";
+    const looksLikeUnique = /duplicate|unique/i.test(message);
+    if (looksLikeUnique) {
+      const fallback = `${preferredName}-${Date.now()}`;
+      const r2 = await tryInsert(fallback);
+      inserted = r2.data;
+      insertError = r2.error;
+    }
+  }
+
+  if (insertError || !inserted) return { error: insertError?.message ?? "Failed to create mission" };
+
+  const activityId = inserted.id as number;
+
+  const { data: lastLink } = await supabase
+    .from("chapter_activities")
+    .select("order")
+    .eq("chapter_id", opts.chapterId)
+    .order("order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const nextOrder =
+    typeof (lastLink as { order?: unknown } | null)?.order === "number"
+      ? ((lastLink as { order: number }).order ?? 0) + 1
+      : 0;
+
+  const { error: linkError } = await supabase.from("chapter_activities").insert({
+    chapter_id: opts.chapterId,
+    activity_id: activityId,
+    order: nextOrder,
+  });
+
+  if (linkError) return { error: linkError.message };
+
+  const nextMissions = existing.filter((_, i) => i !== opts.index);
+  const nextPayload = (() => {
+    if (!draftPayload || typeof draftPayload !== "object") return null;
+    if (nextMissions.length === 0) {
+      const { missions: _m, ...withoutMissions } = draftPayload;
+      return Object.keys(withoutMissions).length === 0 ? null : withoutMissions;
+    }
+    return { ...draftPayload, missions: nextMissions };
+  })();
+
+  const { error: payloadUpdateError } = await supabase
+    .from("chapters")
+    .update({
+      draft_payload: nextPayload,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", opts.chapterId);
+
+  if (payloadUpdateError) return { error: payloadUpdateError.message };
+
+  revalidatePath(`/season-builder/${opts.seasonId}`);
+  revalidatePath(`/season-builder/${opts.seasonId}/chapters/${opts.chapterId}`);
+  revalidatePath(
+    `/season-builder/${opts.seasonId}/chapters/${opts.chapterId}/missions/${activityId}`
+  );
+  return { activityId };
+}
+
 export async function createChapterFromSeasonChapterArcDraftItem(opts: {
   seasonId: number;
   index: number;

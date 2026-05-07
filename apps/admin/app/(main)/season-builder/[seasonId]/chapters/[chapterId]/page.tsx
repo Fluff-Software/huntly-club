@@ -211,9 +211,27 @@ export default async function ChapterEditorPage({
                               </p>
                             )}
                           </div>
-                          <span className="shrink-0 rounded-full border border-huntly-forest/20 bg-white px-2 py-0.5 text-[11px] font-medium text-huntly-forest">
-                            Draft
-                          </span>
+                          <div className="shrink-0 flex items-center gap-2">
+                            <form
+                              action={async () => {
+                                "use server";
+                                const { discardChapterMissionDraftItem } = await import("../../../actions");
+                                const result = await discardChapterMissionDraftItem({
+                                  seasonId: seasonIdNum,
+                                  chapterId: chapterIdNum,
+                                  index: i,
+                                });
+                                if (result.error) throw new Error(result.error);
+                              }}
+                            >
+                              <button
+                                type="submit"
+                                className="rounded-lg border border-stone-200 bg-white px-2.5 py-1 text-[11px] font-medium text-stone-600 hover:bg-stone-50"
+                              >
+                                Discard
+                              </button>
+                            </form>
+                          </div>
                         </div>
                       </li>
                     );

@@ -466,6 +466,100 @@ export async function discardSeasonChapterArcDraftItem(opts: {
   return {};
 }
 
+export async function discardChapterMissionsDraft(opts: {
+  seasonId: number;
+  chapterId: number;
+}): Promise<{ error?: string }> {
+  const supabase = createServerSupabaseClient();
+
+  const { data: chapter, error: fetchError } = await supabase
+    .from("chapters")
+    .select("draft_payload")
+    .eq("id", opts.chapterId)
+    .single();
+
+  if (fetchError || !chapter) return { error: "Chapter not found" };
+
+  const draftPayload = (chapter as { draft_payload?: unknown }).draft_payload as
+    | Record<string, unknown>
+    | null
+    | undefined;
+
+  if (!draftPayload || typeof draftPayload !== "object") return {};
+
+  const { missions: _missions, ...rest } = draftPayload;
+  const nextPayload = Object.keys(rest).length === 0 ? null : rest;
+
+  const { error: updateError } = await supabase
+    .from("chapters")
+    .update({
+      draft_payload: nextPayload,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", opts.chapterId);
+
+  if (updateError) return { error: updateError.message };
+
+  revalidatePath(`/season-builder/${opts.seasonId}`);
+  revalidatePath(`/season-builder/${opts.seasonId}/chapters/${opts.chapterId}`);
+  return {};
+}
+
+export async function discardChapterMissionDraftItem(opts: {
+  seasonId: number;
+  chapterId: number;
+  index: number;
+}): Promise<{ error?: string }> {
+  const supabase = createServerSupabaseClient();
+
+  const { data: chapter, error: fetchError } = await supabase
+    .from("chapters")
+    .select("draft_payload")
+    .eq("id", opts.chapterId)
+    .single();
+
+  if (fetchError || !chapter) return { error: "Chapter not found" };
+
+  const draftPayload = (chapter as { draft_payload?: unknown }).draft_payload as
+    | Record<string, unknown>
+    | null
+    | undefined;
+
+  const existing = (draftPayload as { missions?: unknown[] } | null | undefined)
+    ?.missions;
+
+  if (!Array.isArray(existing)) return {};
+  if (opts.index < 0 || opts.index >= existing.length) return {};
+
+  const nextMissions = existing.filter((_, i) => i !== opts.index);
+
+  const nextPayload = (() => {
+    if (!draftPayload || typeof draftPayload !== "object") return null;
+    const rest = { ...draftPayload, missions: nextMissions };
+    if (nextMissions.length === 0) {
+      // Drop missions key entirely if empty
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { missions: _m, ...withoutMissions } = rest;
+      return Object.keys(withoutMissions).length === 0 ? null : withoutMissions;
+    }
+    return rest;
+  })();
+
+  const { error: updateError } = await supabase
+    .from("chapters")
+    .update({
+      draft_payload: nextPayload,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", opts.chapterId);
+
+  if (updateError) return { error: updateError.message };
+
+  revalidatePath(`/season-builder/${opts.seasonId}`);
+  revalidatePath(`/season-builder/${opts.seasonId}/chapters/${opts.chapterId}`);
+  return {};
+}
+
 export async function createChapterFromSeasonChapterArcDraftItem(opts: {
   seasonId: number;
   index: number;

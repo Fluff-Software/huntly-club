@@ -38,6 +38,12 @@ function getConfig(): MailjetConfig {
  */
 export async function sendEmail(params: SendEmailParams): Promise<void> {
   const { to, subject, htmlPart, textPart, replyTo, headers } = params;
+  const toNormalized = (to ?? "").trim().toLowerCase();
+  if (toNormalized.endsWith("@example.invalid")) {
+    // Placeholder/sink domain: intentionally skip to avoid wasting email provider resources.
+    console.log("Mailjet send skipped for placeholder recipient:", toNormalized, subject);
+    return;
+  }
   if (!htmlPart && !textPart) {
     throw new Error("At least one of htmlPart or textPart is required");
   }
@@ -49,7 +55,7 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
     Messages: [
       {
         From: { Email: fromEmail, Name: fromName },
-        To: [{ Email: to }],
+        To: [{ Email: toNormalized }],
         Subject: subject,
         ...(Object.keys(messageHeaders).length > 0 && { Headers: messageHeaders }),
         ...(textPart && { TextPart: textPart }),

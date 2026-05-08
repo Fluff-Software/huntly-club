@@ -14,20 +14,17 @@ type ShowcaseSliderProps = {
 };
 
 export default function ShowcaseSlider({ slides }: ShowcaseSliderProps) {
+  const hasSlides = slides.length > 0;
   const [currentIndex, setCurrentIndex] = useState(1);
   const [isAnimating, setIsAnimating] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
 
-  if (!slides.length) {
-    return null;
-  }
-
   const loopedSlides = useMemo(
-    () => [slides[slides.length - 1], ...slides, slides[0]],
-    [slides],
+    () => (hasSlides ? [slides[slides.length - 1], ...slides, slides[0]] : []),
+    [hasSlides, slides],
   );
 
-  const activeIndex = (currentIndex - 1 + slides.length) % slides.length;
+  const activeIndex = hasSlides ? (currentIndex - 1 + slides.length) % slides.length : 0;
 
   const goToSlide = (index: number) => {
     setIsAnimating(true);
@@ -66,7 +63,7 @@ export default function ShowcaseSlider({ slides }: ShowcaseSliderProps) {
   }, [isAnimating]);
 
   useEffect(() => {
-    if (isPaused || slides.length <= 1) {
+    if (!hasSlides || isPaused || slides.length <= 1) {
       return;
     }
 
@@ -76,7 +73,11 @@ export default function ShowcaseSlider({ slides }: ShowcaseSliderProps) {
     }, 4500);
 
     return () => clearInterval(intervalId);
-  }, [isPaused, slides.length]);
+  }, [hasSlides, isPaused, slides.length]);
+
+  if (!hasSlides) {
+    return null;
+  }
 
   return (
     <div

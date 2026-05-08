@@ -120,14 +120,14 @@ Deno.serve(async (req) => {
     let notified = 0;
     for (const to of recipientEmails) {
       try {
-        await sendEmail({
+        const result = await sendEmail({
           to,
           subject,
           htmlPart,
           textPart,
           ...(replyTo && { replyTo }),
         });
-        notified += 1;
+        if (result.sent) notified += 1;
       } catch (e) {
         console.error("photo-review-admin-email: failed sending to", to, e);
       }

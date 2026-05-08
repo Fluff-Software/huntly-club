@@ -26,6 +26,12 @@ export type SendEmailParams = {
   headers?: Record<string, string>;
 };
 
+export type SendEmailResult = {
+  sent: boolean;
+  skipped: boolean;
+  to: string;
+};
+
 function getConfig(): MailjetConfig {
   const apiKey = deno?.env.get("MAILJET_API_KEY");
   const apiSecret = deno?.env.get("MAILJET_API_SECRET");
@@ -64,13 +70,13 @@ function subjectWithEnvPrefix(subject: string): string {
 /**
  * Send one email via Mailjet. At least one of htmlPart or textPart must be provided.
  */
-export async function sendEmail(params: SendEmailParams): Promise<void> {
+export async function sendEmail(params: SendEmailParams): Promise<SendEmailResult> {
   const { to, subject, htmlPart, textPart, replyTo, headers } = params;
   const toNormalized = (to ?? "").trim().toLowerCase();
   if (toNormalized.endsWith("@example.invalid")) {
     // Placeholder/sink domain: intentionally skip to avoid wasting email provider resources.
     console.log("Mailjet send skipped for placeholder recipient:", toNormalized, subject);
-    return;
+    return { sent: false, skipped: true, to: toNormalized };
   }
   if (!htmlPart && !textPart) {
     throw new Error("At least one of htmlPart or textPart is required");
@@ -104,4 +110,5 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
     console.error("Mailjet send failed:", res.status, errText);
     throw new Error(`Email could not be sent: ${res.status}`);
   }
+  return { sent: true, skipped: false, to: toNormalized };
 }

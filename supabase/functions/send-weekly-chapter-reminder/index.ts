@@ -258,14 +258,14 @@ deno.serve(async (req) => {
       const to = userResult?.user?.email?.trim().toLowerCase() ?? "";
       if (userError || !to) continue;
       try {
-        await sendEmail({
+        const result = await sendEmail({
           to,
           subject,
           htmlPart,
           textPart,
           ...(replyTo && { replyTo }),
         });
-        emailSent += 1;
+        if (result.sent) emailSent += 1;
       } catch (e) {
         console.error("send-weekly-chapter-reminder: failed for user", userId, e);
       }

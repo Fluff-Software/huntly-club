@@ -75,6 +75,17 @@ export async function approveImageAsset(
 
   if (error) return { error: error.message };
 
+  // If this asset is the mission cover image, apply it to the mission.
+  if (asset.entity_type === "activity" && asset.slot_key === "cover") {
+    await supabase
+      .from("activities")
+      .update({ image: asset.storage_path, updated_at: new Date().toISOString() })
+      .eq("id", asset.entity_id);
+
+    revalidatePath(`/season-builder/${seasonId}`);
+    revalidatePath(`/season-builder/${seasonId}/images`);
+  }
+
   // If this asset corresponds to a story slide, apply it back onto the chapter slides.
   if (asset.entity_type === "story_slide" && asset.slot_key) {
     const m = /^slide-(\d+)$/.exec(asset.slot_key);
@@ -132,7 +143,7 @@ export async function generateImageForAsset(
   const supabase = createServerSupabaseClient();
   const { data: asset, error: fetchError } = await supabase
     .from("image_assets")
-    .select("prompt")
+    .select("prompt, entity_type, slot_key")
     .eq("id", imageAssetId)
     .single();
 
@@ -145,6 +156,7 @@ export async function generateImageForAsset(
     prompt: asset.prompt,
     quality,
     size: "1792x1024",
+    disableReferenceImages: asset.entity_type === "activity" && asset.slot_key === "cover",
   });
 
   if (error) return { error };

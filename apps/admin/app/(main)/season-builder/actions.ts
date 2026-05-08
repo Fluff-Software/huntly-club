@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { ContentStatus } from "@/components/StatusPill";
+import { generateMissionCoverPrompt } from "@/lib/compass/actions/generate-mission-cover-prompt";
 
 export type SeasonBuilderFormState = {
   error?: string;
@@ -807,6 +808,61 @@ export async function createMissionFromChapterMissionDraftItem(opts: {
   if (insertError || !inserted) return { error: insertError?.message ?? "Failed to create mission" };
 
   const activityId = inserted.id as number;
+
+  // Create an image asset prompt for the mission cover (if missing).
+  // Note: requires `image_assets.entity_type` to allow 'activity'.
+  {
+    const { data: existingAsset } = await supabase
+      .from("image_assets")
+      .select("id")
+      .eq("entity_type", "activity")
+      .eq("entity_id", activityId)
+      .eq("slot_key", "cover")
+      .maybeSingle();
+
+    if (!existingAsset?.id) {
+      const { data: chapterMeta } = await supabase
+        .from("chapters")
+        .select("title, summary, season_id")
+        .eq("id", opts.chapterId)
+        .single();
+
+      const { data: seasonMeta } = await supabase
+        .from("seasons")
+        .select("brief, target_age_min, target_age_max")
+        .eq("id", chapterMeta?.season_id ?? opts.seasonId)
+        .single();
+
+      const compass = await generateMissionCoverPrompt({
+        seasonBrief: (seasonMeta?.brief ?? "").toString(),
+        chapterTitle: (chapterMeta?.title ?? "").toString(),
+        chapterSummary: (chapterMeta?.summary ?? "").toString(),
+        targetAgeMin: Number(seasonMeta?.target_age_min ?? 5),
+        targetAgeMax: Number(seasonMeta?.target_age_max ?? 10),
+        mission: {
+          title,
+          description: (raw.description ?? "").trim() || undefined,
+          mission_type: (raw.mission_type ?? null) as string | null,
+          estimated_duration: (raw.estimated_duration ?? "").trim() || undefined,
+          safety_notes: (raw.safety_notes ?? "").trim() || undefined,
+          optional_items: (raw.optional_items ?? "").trim() || undefined,
+          steps: Array.isArray(raw.steps) ? (raw.steps as any) : undefined,
+          supplies: Array.isArray(raw.supplies) ? (raw.supplies as any) : undefined,
+        },
+      });
+
+      const prompt = compass.output.prompt;
+
+      await supabase.from("image_assets").insert({
+        entity_type: "activity",
+        entity_id: activityId,
+        slot_key: "cover",
+        prompt,
+        prompt_status: "approved",
+        status: "prompt_ready",
+      });
+    }
+  }
 
   const { data: lastLink } = await supabase
     .from("chapter_activities")

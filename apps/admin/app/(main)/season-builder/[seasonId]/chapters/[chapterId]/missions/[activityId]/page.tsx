@@ -4,6 +4,8 @@ import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { StatusPill, type ContentStatus } from "@/components/StatusPill";
 import { CompassPanel } from "@/components/compass/CompassPanel";
 import { MissionEditorFields } from "./MissionEditorFields";
+import { MissionImagePanel } from "./MissionImagePanel";
+import { ensureActivityCoverImageAsset } from "./actions";
 
 async function getActivity(activityId: number) {
   const supabase = createServerSupabaseClient();
@@ -38,6 +40,18 @@ async function getChapter(chapterId: number) {
   return data;
 }
 
+async function getCoverImageAsset(activityId: number) {
+  const supabase = createServerSupabaseClient();
+  const { data } = await supabase
+    .from("image_assets")
+    .select("id, prompt, storage_path, status")
+    .eq("entity_type", "activity")
+    .eq("entity_id", activityId)
+    .eq("slot_key", "cover")
+    .maybeSingle();
+  return data ?? null;
+}
+
 export default async function MissionEditorPage({
   params,
 }: {
@@ -48,10 +62,11 @@ export default async function MissionEditorPage({
   const chapterIdNum = parseInt(chapterId);
   const activityIdNum = parseInt(activityId);
 
-  const [activity, season, chapter] = await Promise.all([
+  const [activity, season, chapter, coverAsset] = await Promise.all([
     getActivity(activityIdNum),
     getSeason(seasonIdNum),
     getChapter(chapterIdNum),
+    getCoverImageAsset(activityIdNum),
   ]);
 
   if (!activity) notFound();
@@ -157,6 +172,41 @@ export default async function MissionEditorPage({
         </div>
 
         <aside>
+          {coverAsset ? (
+            <div className="mb-4">
+              <MissionImagePanel
+                asset={coverAsset}
+                seasonId={seasonIdNum}
+                chapterId={chapterIdNum}
+                activityId={activityIdNum}
+              />
+            </div>
+          ) : (
+            <div className="mb-4 rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+              <p className="text-xs text-stone-600">
+                No mission image asset yet.
+              </p>
+              <form
+                className="mt-3"
+                action={async () => {
+                  "use server";
+                  await ensureActivityCoverImageAsset({
+                    seasonId: seasonIdNum,
+                    chapterId: chapterIdNum,
+                    activityId: activityIdNum,
+                  });
+                }}
+              >
+                <button
+                  type="submit"
+                  className="w-full rounded-lg border border-huntly-forest/30 bg-huntly-forest/5 px-3 py-2 text-xs font-medium text-huntly-forest hover:bg-huntly-forest/10"
+                >
+                  Create cover prompt
+                </button>
+              </form>
+            </div>
+          )}
+
           <CompassPanel
             scope="mission"
             seasonId={seasonIdNum}

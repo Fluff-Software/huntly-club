@@ -15,6 +15,7 @@ type GenerateImageOpts = {
   quality?: ImageQuality;
   size?: "1024x1024" | "1792x1024" | "1024x1792";
   createdBy?: string;
+  disableReferenceImages?: boolean;
 };
 
 export type GenerateImageResult = {
@@ -24,10 +25,23 @@ export type GenerateImageResult = {
   costUsd: number;
 };
 
-function buildEnhancedPrompt(prompt: string): {
+function buildEnhancedPrompt(
+  prompt: string,
+  opts?: { disableReferenceImages?: boolean }
+): {
   enhancedPrompt: string;
   referenceImageUrls: string[];
 } {
+  if (opts?.disableReferenceImages) {
+    const enhancedPrompt = [
+      `STYLE CONSISTENCY REQUIRED. Photoreal / high-quality illustration in the Huntly adventure brand world.`,
+      `No text, no logos, no watermarks.`,
+      ``,
+      prompt,
+    ].join("\n");
+    return { enhancedPrompt, referenceImageUrls: [] };
+  }
+
   const captainsInPrompt = detectCaptainsInPrompt(prompt);
 
   if (captainsInPrompt.length === 0) {
@@ -69,7 +83,14 @@ function buildEnhancedPrompt(prompt: string): {
 export async function generateImage(
   opts: GenerateImageOpts
 ): Promise<{ error?: string; result?: GenerateImageResult }> {
-  const { imageAssetId, prompt, quality = "fast", size = "1024x1024", createdBy } = opts;
+  const {
+    imageAssetId,
+    prompt,
+    quality = "fast",
+    size = "1024x1024",
+    createdBy,
+    disableReferenceImages = false,
+  } = opts;
 
   const dailyCeilingUsd = parseFloat(
     process.env.COMPASS_DAILY_COST_CEILING_USD ?? "5"
@@ -98,7 +119,9 @@ export async function generateImage(
     };
   }
 
-  const { enhancedPrompt, referenceImageUrls } = buildEnhancedPrompt(prompt);
+  const { enhancedPrompt, referenceImageUrls } = buildEnhancedPrompt(prompt, {
+    disableReferenceImages,
+  });
 
   const client = createCompassClient();
 

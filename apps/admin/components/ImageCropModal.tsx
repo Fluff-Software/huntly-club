@@ -17,8 +17,17 @@ type Props = {
   aspect?: number;
   enableBlur?: boolean;
   confirmLabel?: string;
+  initialState?: ImageCropState;
   onCancel: () => void;
-  onConfirm: (croppedFile: File) => void;
+  onConfirm: (croppedFile: File, state?: ImageCropState) => void;
+};
+
+export type ImageCropState = {
+  crop?: Crop;
+  lockAspect?: boolean;
+  blurPx?: number;
+  brushSize?: number;
+  blurMaskDataUrl?: string | null; // PNG data URL, natural-pixel-space alpha mask
 };
 
 function pickOutputType(file: File): "image/jpeg" | "image/webp" {
@@ -164,6 +173,7 @@ export function ImageCropModal({
   aspect = 16 / 9,
   enableBlur = false,
   confirmLabel = "Use crop",
+  initialState,
   onCancel,
   onConfirm,
 }: Props) {
@@ -213,15 +223,17 @@ export function ImageCropModal({
   useEffect(() => {
     if (!open) return;
     // Reset state when opening a new crop session
-    setCrop(undefined);
-    setLockAspect(true);
+    setCrop(initialState?.crop);
+    setLockAspect(initialState?.lockAspect ?? true);
     setIsCropping(false);
     setIsBlurring(false);
+    setBlurPx(initialState?.blurPx ?? 14);
+    setBrushSize(initialState?.brushSize ?? 46);
     setImageAspect(null);
     setImageSize(null);
     setError(null);
     setPending(false);
-  }, [open, file]);
+  }, [open, file, initialState?.blurPx, initialState?.brushSize, initialState?.crop, initialState?.lockAspect]);
 
   if (!open) return null;
 
@@ -282,17 +294,30 @@ export function ImageCropModal({
           ? { maskCanvas: blurMaskRef.current, blurPx }
           : undefined;
       const cropped = await getCroppedFile(file, imgRef.current, crop, type, blur);
-      onConfirm(cropped);
+      const state: ImageCropState = {
+        crop,
+        lockAspect,
+        blurPx,
+        brushSize,
+        blurMaskDataUrl:
+          enableBlur && blurMaskRef.current ? blurMaskRef.current.toDataURL("image/png") : null,
+      };
+      onConfirm(cropped, state);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to crop image");
       setPending(false);
     }
   }
 
-  function handleResetCrop() {
+  function handleResetCropOnly() {
     if (pending) return;
     setError(null);
     setCrop({ unit: "%", x: 0, y: 0, width: 100, height: 100 });
+  }
+
+  function handleClearBlurOnly() {
+    if (pending) return;
+    setError(null);
     if (enableBlur && blurMaskRef.current) {
       const m = blurMaskRef.current.getContext("2d");
       m?.clearRect(0, 0, blurMaskRef.current.width, blurMaskRef.current.height);
@@ -487,14 +512,28 @@ export function ImageCropModal({
                       const h = img.naturalHeight || img.height;
                       setImageAspect(w > 0 && h > 0 ? w / h : null);
                       setImageSize(w > 0 && h > 0 ? { w, h } : null);
-                      // Start with the full image selected (no crop).
-                      setCrop({ unit: "%", x: 0, y: 0, width: 100, height: 100 });
+                      // If no initial crop, start with full image selected (no crop).
+                      setCrop((prev) => prev ?? { unit: "%", x: 0, y: 0, width: 100, height: 100 });
 
                       if (enableBlur) {
                         const mask = document.createElement("canvas");
                         mask.width = Math.max(1, Math.round(w));
                         mask.height = Math.max(1, Math.round(h));
                         blurMaskRef.current = mask;
+                        const initialMask = initialState?.blurMaskDataUrl;
+                        if (initialMask) {
+                          const mimg = new window.Image();
+                          mimg.onload = () => {
+                            const mctx = mask.getContext("2d");
+                            if (mctx) {
+                              mctx.setTransform(1, 0, 0, 1, 0, 0);
+                              mctx.clearRect(0, 0, mask.width, mask.height);
+                              mctx.drawImage(mimg, 0, 0, mask.width, mask.height);
+                            }
+                            requestAnimationFrame(() => renderBlurOverlay());
+                          };
+                          mimg.src = initialMask;
+                        }
                         // Ensure overlay is synced when the image size changes.
                         requestAnimationFrame(() => renderBlurOverlay());
                       }
@@ -637,7 +676,7 @@ export function ImageCropModal({
                   <button
                     type="button"
                     disabled={pending}
-                    onClick={handleResetCrop}
+                    onClick={handleResetCropOnly}
                     className="inline-flex h-10 items-center rounded-full border border-stone-300 bg-white px-4 py-0 text-sm font-medium text-stone-800 shadow-sm transition-colors hover:bg-stone-50 disabled:opacity-50"
                   >
                     Reset
@@ -673,7 +712,7 @@ export function ImageCropModal({
                   </label>
                   <button
                     type="button"
-                    onClick={handleResetCrop}
+                    onClick={handleClearBlurOnly}
                     disabled={pending}
                     className="ml-auto rounded-md border border-stone-300 bg-white px-2 py-1 text-xs font-medium text-stone-700 hover:bg-stone-50 disabled:opacity-50"
                   >

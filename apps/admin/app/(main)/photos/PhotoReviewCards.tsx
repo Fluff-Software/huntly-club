@@ -9,7 +9,8 @@ import { FullPhotoModal } from "./FullPhotoModal";
 import { DenyReasonModal } from "./DenyReasonModal";
 import { ApprovePhotoModal } from "./ApprovePhotoModal";
 import { useSwipe } from "@/hooks/useSwipe";
-import { ImageCropModal } from "@/components/ImageCropModal";
+import { ImageCropModal, type ImageCropState } from "@/components/ImageCropModal";
+import { EditedPhotoPreviewModal } from "./EditedPhotoPreviewModal";
 
 export type ReviewPhoto = {
   photo_id: number;
@@ -49,6 +50,11 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
   const [editCropOpen, setEditCropOpen] = useState(false);
   const [editPendingFile, setEditPendingFile] = useState<File | null>(null);
   const [editLoading, setEditLoading] = useState(false);
+  const [editPreviewOpen, setEditPreviewOpen] = useState(false);
+  const [editDraftFile, setEditDraftFile] = useState<File | null>(null);
+  const [editDraftState, setEditDraftState] = useState<ImageCropState | null>(null);
+  const [editOriginalFile, setEditOriginalFile] = useState<File | null>(null);
+  const [editApproveError, setEditApproveError] = useState<string | null>(null);
 
   const current = photos[0];
   const remaining = photos.length;
@@ -81,6 +87,7 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
       const ext =
         type === "image/webp" ? "webp" : type === "image/png" ? "png" : "jpg";
       const file = new File([blob], `photo-${current.photo_id}.${ext}`, { type });
+      setEditOriginalFile(file);
       setEditPendingFile(file);
       setEditCropOpen(true);
       setApproveModalOpen(false);
@@ -137,18 +144,39 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
     setApproveModalOpen(true);
   }
 
-  function handleConfirmEditCrop(croppedFile: File) {
+  function handleConfirmEditCrop(croppedFile: File, state?: ImageCropState) {
     if (!current) return;
     setEditCropOpen(false);
     setEditPendingFile(null);
+    setEditDraftFile(croppedFile);
+    setEditDraftState(state ?? null);
+    setEditApproveError(null);
+    setEditPreviewOpen(true);
+  }
+
+  function handleKeepEditingDraft() {
+    if (isPending) return;
+    if (!editOriginalFile) {
+      setEditPreviewOpen(false);
+      setApproveModalOpen(true);
+      return;
+    }
+    setEditPreviewOpen(false);
+    // Re-open editor on the original image, but restore the prior crop/blur state.
+    setEditPendingFile(editOriginalFile);
+    setEditCropOpen(true);
+  }
+
+  function handleApproveDraft() {
+    if (!current || !editDraftFile || isPending) return;
     setPendingAction("approve");
+    setEditApproveError(null);
     startTransition(async () => {
       const fd = new FormData();
-      fd.set("file", croppedFile);
+      fd.set("file", editDraftFile);
       const result = await replaceReviewPhotoImage({}, current.photo_id, fd);
       if (result.error) {
-        // If upload/update fails, return to approve modal so admin can retry or approve as-is.
-        setApproveModalOpen(true);
+        setEditApproveError(result.error);
         return;
       }
 
@@ -159,6 +187,10 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
       }
 
       await approvePhoto({}, current.photo_id);
+      setEditPreviewOpen(false);
+      setEditDraftFile(null);
+      setEditDraftState(null);
+      setEditOriginalFile(null);
       setPhotos((prev) => prev.slice(1));
       if (photos.length <= 1) router.refresh();
     });
@@ -203,8 +235,17 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
         aspect={16 / 9}
         enableBlur
         confirmLabel="Use edit"
+        initialState={editDraftState ?? undefined}
         onCancel={handleCancelEditCrop}
         onConfirm={handleConfirmEditCrop}
+      />
+      <EditedPhotoPreviewModal
+        open={editPreviewOpen}
+        file={editDraftFile}
+        onKeepEditing={handleKeepEditingDraft}
+        onApprove={handleApproveDraft}
+        pending={isPending}
+        error={editApproveError}
       />
       <div className="mx-auto max-w-lg">
         <p className="mb-4 text-center text-sm text-stone-500">

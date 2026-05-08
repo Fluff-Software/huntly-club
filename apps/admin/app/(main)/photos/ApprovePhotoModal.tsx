@@ -48,7 +48,7 @@ export function ApprovePhotoModal({
           Approve photo?
         </h2>
         <p id="approve-photo-message" className="mt-2 text-sm text-stone-600">
-          You can edit the crop first, or approve as-is.
+          You can edit the photo first, or approve as-is.
         </p>
         <div className="mt-6 flex justify-end gap-2">
           <button

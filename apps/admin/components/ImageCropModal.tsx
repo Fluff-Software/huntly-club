@@ -125,10 +125,16 @@ export function ImageCropModal({
   const imgRef = useRef<HTMLImageElement | null>(null);
   const [crop, setCrop] = useState<Crop>();
   const [lockAspect, setLockAspect] = useState(true);
+  const [isCropping, setIsCropping] = useState(false);
   const [imageAspect, setImageAspect] = useState<number | null>(null);
   const [imageSize, setImageSize] = useState<{ w: number; h: number } | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function requestCancel() {
+    if (pending || isCropping) return;
+    onCancel();
+  }
 
   const previewUrl = useMemo(() => {
     if (!file) return null;
@@ -143,17 +149,18 @@ export function ImageCropModal({
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCancel();
+      if (e.key === "Escape") requestCancel();
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open, onCancel]);
+  }, [open, requestCancel]);
 
   useEffect(() => {
     if (!open) return;
     // Reset state when opening a new crop session
     setCrop(undefined);
     setLockAspect(true);
+    setIsCropping(false);
     setImageAspect(null);
     setImageSize(null);
     setError(null);
@@ -222,14 +229,29 @@ export function ImageCropModal({
     }
   }
 
+  function handleResetCrop() {
+    if (pending) return;
+    setError(null);
+    setCrop({ unit: "%", x: 0, y: 0, width: 100, height: 100 });
+  }
+
   return (
     <div
       className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-0 sm:p-4"
       aria-modal="true"
       role="dialog"
       aria-labelledby="image-crop-title"
-      onClick={() => !pending && onCancel()}
+      onClick={() => requestCancel()}
     >
+      <style jsx global>{`
+        /* When "preview" mode is on, keep a subtle mask to show what's cropped off. */
+        [data-crop-mask="off"] .ReactCrop__crop-mask {
+          opacity: 0.65 !important;
+        }
+        [data-crop-mask="off"] .ReactCrop__crop-selection {
+          box-shadow: none !important;
+        }
+      `}</style>
       <div
         className="flex h-[100dvh] w-full flex-col overflow-hidden bg-white shadow-xl sm:h-auto sm:max-h-[92dvh] sm:max-w-5xl sm:rounded-2xl sm:border sm:border-stone-200"
         onClick={(e) => e.stopPropagation()}
@@ -240,8 +262,8 @@ export function ImageCropModal({
           </h2>
           <button
             type="button"
-            onClick={onCancel}
-            disabled={pending}
+            onClick={requestCancel}
+            disabled={pending || isCropping}
             className="rounded-md px-2 py-1 text-sm text-stone-600 hover:bg-stone-100 disabled:opacity-50"
           >
             Close
@@ -250,7 +272,10 @@ export function ImageCropModal({
 
         <div className="flex min-h-0 flex-1 flex-col p-4">
           {/* Give crop handles room so they don't get clipped at edges */}
-          <div className="relative min-h-0 flex-1 rounded-lg bg-stone-900 p-3 sm:p-4">
+          <div
+            className="relative z-0 min-h-0 flex-1 rounded-lg bg-stone-900 p-3 sm:p-4"
+            data-crop-mask={isCropping ? "on" : "off"}
+          >
             {previewUrl ? (
               <ReactCrop
                 crop={crop}
@@ -258,7 +283,7 @@ export function ImageCropModal({
                 aspect={effectiveAspect}
                 keepSelection
                 ruleOfThirds
-                disabled={pending}
+                disabled={pending || !isCropping}
                 className="max-h-full overflow-visible"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -283,7 +308,7 @@ export function ImageCropModal({
             )}
           </div>
 
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative z-10 mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-col gap-2">
               <p className="text-xs text-stone-500">
                 Drag the crop box corners/edges to select the area. Then we’ll auto resize/compress before uploading.
@@ -291,46 +316,79 @@ export function ImageCropModal({
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  disabled={pending}
-                  onClick={() => {
-                    const next = !lockAspect;
-                    setLockAspect(next);
-                    applyOriginalAspectToCurrentCrop(next);
-                    if (!next) {
-                      // Keep the current selection when unlocking; if none yet, default to full image.
-                      setCrop((prev) => prev ?? { unit: "%", x: 0, y: 0, width: 100, height: 100 });
-                    }
-                  }}
-                  aria-pressed={lockAspect}
-                  className="group inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white px-2 py-1.5 text-sm font-medium text-stone-800 shadow-sm transition-colors hover:bg-stone-50 disabled:opacity-50"
-                  title={lockAspect ? "Aspect ratio locked" : "Free crop"}
+                  disabled={pending || !file}
+                  onClick={() => setIsCropping((v) => !v)}
+                  aria-pressed={isCropping}
+                  className="group inline-flex h-10 items-center gap-2 rounded-full border border-stone-300 bg-white px-3 py-0 text-sm font-medium text-stone-800 shadow-sm transition-colors hover:bg-stone-50 disabled:opacity-50"
+                  title={isCropping ? "Cropping (mask on)" : "Preview (mask off)"}
                 >
-                  <span className="text-xs text-stone-600">Original Ratio</span>
+                  <span className="text-xs text-stone-600">Crop</span>
                   <span
                     className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
-                      lockAspect ? "bg-stone-800" : "bg-stone-300"
+                      isCropping ? "bg-stone-800" : "bg-stone-300"
                     }`}
                   >
                     <span
                       className={`absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                        lockAspect ? "translate-x-5" : "translate-x-0"
+                        isCropping ? "translate-x-5" : "translate-x-0"
                       }`}
                     />
-                    <span className="absolute left-2 top-1.5 text-[10px] text-stone-700">
-                      {lockAspect ? "" : " "}
-                    </span>
-                    <span className="absolute right-2 top-1.5 text-[10px] text-white/80">
-                      {lockAspect ? "" : " "}
-                    </span>
                   </span>
                 </button>
+                {isCropping && (
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => {
+                      const next = !lockAspect;
+                      setLockAspect(next);
+                      applyOriginalAspectToCurrentCrop(next);
+                      if (!next) {
+                        // Keep the current selection when unlocking; if none yet, default to full image.
+                        setCrop((prev) => prev ?? { unit: "%", x: 0, y: 0, width: 100, height: 100 });
+                      }
+                    }}
+                    aria-pressed={lockAspect}
+                    className="group inline-flex h-10 items-center gap-2 rounded-full border border-stone-300 bg-white px-3 py-0 text-sm font-medium text-stone-800 shadow-sm transition-colors hover:bg-stone-50 disabled:opacity-50"
+                    title={lockAspect ? "Aspect ratio locked" : "Free crop"}
+                  >
+                    <span className="text-xs text-stone-600">Original Ratio</span>
+                    <span
+                      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
+                        lockAspect ? "bg-stone-800" : "bg-stone-300"
+                      }`}
+                    >
+                      <span
+                        className={`absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                          lockAspect ? "translate-x-5" : "translate-x-0"
+                        }`}
+                      />
+                      <span className="absolute left-2 top-1.5 text-[10px] text-stone-700">
+                        {lockAspect ? "" : " "}
+                      </span>
+                      <span className="absolute right-2 top-1.5 text-[10px] text-white/80">
+                        {lockAspect ? "" : " "}
+                      </span>
+                    </span>
+                  </button>
+                )}
+                {isCropping && (
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={handleResetCrop}
+                    className="inline-flex h-10 items-center rounded-full border border-stone-300 bg-white px-4 py-0 text-sm font-medium text-stone-800 shadow-sm transition-colors hover:bg-stone-50 disabled:opacity-50"
+                  >
+                    Reset
+                  </button>
+                )}
               </div>
             </div>
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                onClick={onCancel}
-                disabled={pending}
+                onClick={requestCancel}
+                disabled={pending || isCropping}
                 className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:opacity-50"
               >
                 Cancel
@@ -338,7 +396,7 @@ export function ImageCropModal({
               <button
                 type="button"
                 onClick={handleConfirm}
-                disabled={pending || !file || !crop}
+                disabled={pending || isCropping || !file || !crop}
                 className="rounded-lg border border-stone-300 bg-stone-800 px-3 py-2 text-sm font-medium text-white hover:bg-stone-900 disabled:opacity-50"
               >
                 {pending ? "Cropping…" : "Use crop"}

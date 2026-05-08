@@ -146,12 +146,21 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
       const fd = new FormData();
       fd.set("file", croppedFile);
       const result = await replaceReviewPhotoImage({}, current.photo_id, fd);
-      if (!result.error && result.url) {
+      if (result.error) {
+        // If upload/update fails, return to approve modal so admin can retry or approve as-is.
+        setApproveModalOpen(true);
+        return;
+      }
+
+      if (result.url) {
         setPhotos((prev) =>
           prev.map((p, i) => (i === 0 ? { ...p, photo_url: result.url! } : p))
         );
       }
-      setApproveModalOpen(true);
+
+      await approvePhoto({}, current.photo_id);
+      setPhotos((prev) => prev.slice(1));
+      if (photos.length <= 1) router.refresh();
     });
   }
 
@@ -190,8 +199,10 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
       <ImageCropModal
         open={editCropOpen}
         file={editPendingFile}
-        title="Crop photo"
+        title="Edit photo"
         aspect={16 / 9}
+        enableBlur
+        confirmLabel="Use edit"
         onCancel={handleCancelEditCrop}
         onConfirm={handleConfirmEditCrop}
       />

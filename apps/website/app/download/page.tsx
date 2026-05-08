@@ -16,7 +16,7 @@ export default function WaitlistPage() {
             <p className="text-sm leading-relaxed text-huntly-slate sm:text-base">
               Huntly World is available on the App Store and Google Play. Download the app to join the club and start exploring.
             </p>
-            <div className="mt-6 flex flex-col items-start gap-2">
+            <div className="mt-6 flex flex-wrap items-center gap-3">
               <Link href="https://apps.apple.com/us/app/huntly-world/id6745152309" className="btn-primary">
                 Download on the App Store
               </Link>

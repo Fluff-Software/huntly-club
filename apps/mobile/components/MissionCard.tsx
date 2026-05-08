@@ -152,6 +152,25 @@ export function MissionCard({
           shadowOffset: { width: 0, height: 1 },
           elevation: 2,
         },
+        devGalleryButton: {
+          marginTop: scaleW(10),
+          marginHorizontal: scaleW(24),
+          borderRadius: scaleW(16),
+          paddingVertical: scaleW(10),
+          paddingHorizontal: scaleW(12),
+          backgroundColor: "rgba(0,0,0,0.06)",
+          borderWidth: 1,
+          borderColor: "rgba(0,0,0,0.08)",
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: scaleW(8),
+        },
+        devGalleryButtonText: {
+          fontSize: scaleW(12),
+          fontWeight: "700",
+          color: "#1F3F2D",
+        },
       }),
     [scaleW, tiltDeg, marginTopOffset, completed]
   );
@@ -165,6 +184,13 @@ export function MissionCard({
         params: { id: card.id },
       } as Parameters<typeof router.push>[0]);
     }
+  };
+
+  const handleOpenGallery = () => {
+    router.push({
+      pathname: "/(tabs)/activity/mission/gallery",
+      params: { activityId: String(card.id) },
+    } as Parameters<typeof router.push>[0]);
   };
 
   return (

@@ -5,6 +5,7 @@ import { useActionState, useState, useRef, useEffect } from "react";
 import { useFormStatus } from "react-dom";
 import { Button } from "@/components/Button";
 import { ImageUploadField } from "@/components/ImageUploadField";
+import { ImageCropModal } from "@/components/ImageCropModal";
 import { uploadActivityImage } from "@/lib/upload-actions";
 import { resizeImageFileForUpload } from "@/lib/client-image-resize";
 
@@ -115,6 +116,9 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
   );
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const categoriesDropdownRef = useRef<HTMLDivElement>(null);
+  const [stepCropOpen, setStepCropOpen] = useState(false);
+  const [stepCropIndex, setStepCropIndex] = useState<number | null>(null);
+  const [stepPendingFile, setStepPendingFile] = useState<File | null>(null);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -128,7 +132,7 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
     }
   }, [categoriesOpen]);
 
-  async function handleStepImageUpload(index: number, file: File) {
+  async function uploadStepImage(index: number, file: File) {
     setStepsList((prev) =>
       prev.map((s, i) => (i === index ? { ...s, _uploading: true, _uploadError: null } : s))
     );
@@ -170,6 +174,27 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
           : s
       )
     );
+  }
+
+  function handleOpenStepCrop(index: number, file: File) {
+    setStepCropIndex(index);
+    setStepPendingFile(file);
+    setStepCropOpen(true);
+  }
+
+  function handleCancelStepCrop() {
+    setStepCropOpen(false);
+    setStepCropIndex(null);
+    setStepPendingFile(null);
+  }
+
+  function handleConfirmStepCrop(croppedFile: File) {
+    const idx = stepCropIndex;
+    setStepCropOpen(false);
+    setStepCropIndex(null);
+    setStepPendingFile(null);
+    if (idx == null) return;
+    void uploadStepImage(idx, croppedFile);
   }
 
   return (
@@ -489,7 +514,9 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
                             className="sr-only"
                             onChange={(e) => {
                               const f = e.target.files?.[0];
-                              if (f) handleStepImageUpload(index, f);
+                              if (!f) return;
+                              e.currentTarget.value = "";
+                              handleOpenStepCrop(index, f);
                             }}
                           />
                         </label>
@@ -515,7 +542,9 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
                         className="sr-only"
                         onChange={(e) => {
                           const f = e.target.files?.[0];
-                          if (f) handleStepImageUpload(index, f);
+                          if (!f) return;
+                          e.currentTarget.value = "";
+                          handleOpenStepCrop(index, f);
                         }}
                       />
                     </label>
@@ -736,6 +765,15 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
           </div>
         )}
       </div>
+
+      <ImageCropModal
+        open={stepCropOpen}
+        file={stepPendingFile}
+        title="Crop step image"
+        aspect={16 / 9}
+        onCancel={handleCancelStepCrop}
+        onConfirm={handleConfirmStepCrop}
+      />
     </form>
   );
 }

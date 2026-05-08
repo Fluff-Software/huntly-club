@@ -28,7 +28,9 @@ import { MissionCard } from "@/components/MissionCard";
 import { getActivityById, getActivityImageSource } from "@/services/packService";
 import type { MissionCardData } from "@/constants/missionCards";
 import { useUser } from "@/contexts/UserContext";
+import { usePlayer } from "@/contexts/PlayerContext";
 import { START_MISSION_STEP } from "@/constants/startMissionOnboarding";
+import { hasOtherApprovedMissionPhotos } from "@/services/activityProgressService";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -66,6 +68,7 @@ export default function RewardScreen() {
   const { scaleW } = useLayoutScale();
   const insets = useSafeAreaInsets();
   const { updateStartMissionStep } = useUser();
+  const { profiles } = usePlayer();
   const params = useLocalSearchParams<{
     activityId?: string;
     achievements?: string;
@@ -83,6 +86,7 @@ export default function RewardScreen() {
   const [unlockedBadges, setUnlockedBadges] = useState<UnlockedBadgePayload[]>([]);
   const [badgeNoticeDismissed, setBadgeNoticeDismissed] = useState(false);
   const [goingHome, setGoingHome] = useState(false);
+  const [showOthersButton, setShowOthersButton] = useState(false);
 
   useEffect(() => {
     const activityId = params.activityId ? Number(params.activityId) : null;
@@ -103,6 +107,32 @@ export default function RewardScreen() {
         setActivityXp(null);
       });
   }, [params.activityId]);
+
+  useEffect(() => {
+    const activityId = params.activityId ? Number(params.activityId) : null;
+    if (!activityId) {
+      setShowOthersButton(false);
+      return;
+    }
+    if (profiles.length === 0) {
+      setShowOthersButton(false);
+      return;
+    }
+    let cancelled = false;
+    const excludeProfileIds = profiles.map((p) => p.id);
+    hasOtherApprovedMissionPhotos(activityId, excludeProfileIds)
+      .then((hasAny) => {
+        if (cancelled) return;
+        setShowOthersButton(Boolean(hasAny));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setShowOthersButton(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [params.activityId, profiles]);
 
   useEffect(() => {
     try {
@@ -199,6 +229,15 @@ export default function RewardScreen() {
         console.error("Error completing starter mission onboarding:", error);
         setGoingHome(false);
       }
+    });
+  };
+
+  const handleSeeHowOthersDid = () => {
+    const activityId = params.activityId ? Number(params.activityId) : null;
+    if (!activityId) return;
+    router.push({
+      pathname: "/(tabs)/activity/mission/gallery",
+      params: { activityId: String(activityId) },
     });
   };
 
@@ -332,6 +371,24 @@ export default function RewardScreen() {
           fontSize: scaleW(15),
           fontWeight: "700",
           color: POINTS_GREEN },
+        seeOthersButton: {
+          backgroundColor: HUNTLY_GREEN,
+          paddingVertical: scaleW(14),
+          borderRadius: scaleW(24),
+          alignItems: "center",
+          marginHorizontal: scaleW(52),
+          marginTop: scaleW(22),
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.25,
+          shadowRadius: 2,
+          elevation: 2,
+        },
+        seeOthersButtonText: {
+          fontSize: scaleW(16),
+          fontWeight: "700",
+          color: "#FFF",
+        },
         goHomeButton: {
           backgroundColor: "#FFF",
           paddingVertical: scaleW(14),
@@ -455,11 +512,25 @@ export default function RewardScreen() {
           </Animated.View>
         )}
 
+        {showOthersButton && (
+          <Pressable
+            style={styles.seeOthersButton}
+            onPress={handleSeeHowOthersDid}
+          >
+            <ThemedText type="heading" style={styles.seeOthersButtonText}>
+              See how others did
+            </ThemedText>
+          </Pressable>
+        )}
+
         <Animated.View
           style={goHomeAnimatedStyle}
         >
           <Pressable
-            style={styles.goHomeButton}
+            style={[
+              styles.goHomeButton,
+              showOthersButton ? { marginTop: scaleW(14) } : null,
+            ]}
             disabled={goingHome}
             onPress={handleGoHome}
             onPressIn={() => {

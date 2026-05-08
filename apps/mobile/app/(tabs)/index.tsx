@@ -95,12 +95,13 @@ export default function HomeScreen() {
   const [clubCards, setClubCards] = useState<ClubPhotoCardItem[]>([]);
   const [clubCardsLoading, setClubCardsLoading] = useState(true);
   const [loadingMoreClubCards, setLoadingMoreClubCards] = useState(false);
+  const loadingMoreClubCardsRef = useRef(false);
   const [clubImageStatus, setClubImageStatus] = useState<Record<string, "loading" | "loaded" | "error">>({});
-  const [showClubSection, setShowClubSection] = useState(false);
   const [missionsTab, setMissionsTab] = useState<"missions" | "adventures">("missions");
   const initialIndex = 1; // activity (Welcome back)
   const [currentIndex, setCurrentIndex] = useState<number>(initialIndex);
   const currentMode = HOME_MODES[currentIndex] ?? "activity";
+  const teamCardConfig = team ? getTeamCardConfig(team.name) : null;
   const teamCardMessage = useMemo(() => TEAM_CARD_MESSAGES[Math.floor(Math.random() * TEAM_CARD_MESSAGES.length)], []);
   const speechBubbleMessage = useMemo(() => {
     const msgs = SPEECH_BUBBLE_MESSAGES(teamCardConfig?.leaderName ?? "");
@@ -121,7 +122,8 @@ export default function HomeScreen() {
   }, []);
 
   const loadMoreClubCards = async () => {
-    if (loadingMoreClubCards || clubCards.length === 0 || clubCards.length >= CLUB_CARDS_MAX) return;
+    if (loadingMoreClubCardsRef.current || clubCards.length === 0 || clubCards.length >= CLUB_CARDS_MAX) return;
+    loadingMoreClubCardsRef.current = true;
     setLoadingMoreClubCards(true);
     try {
       const excludeIds = clubCards.map((c) => c.id);
@@ -137,10 +139,9 @@ export default function HomeScreen() {
       // ignore; we already have cards
     } finally {
       setLoadingMoreClubCards(false);
+      loadingMoreClubCardsRef.current = false;
     }
   };
-
-  const teamCardConfig = team ? getTeamCardConfig(team.name) : null;
 
   const pagerRef = useRef<ScrollView>(null);
   const pagerX = useRef(new Animated.Value(width * initialIndex)).current;
@@ -184,15 +185,6 @@ export default function HomeScreen() {
     }, 150);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [teamCardConfig, teamCardOpacity, teamCardTranslateX]);
-
-  // Show club section as soon as data is ready.
-  useEffect(() => {
-    setShowClubSection(false);
-    if (clubCardsLoading || clubCards.length === 0) return;
-    let cancelled = false;
-    const timer = setTimeout(() => { if (!cancelled) setShowClubSection(true); }, 300);
-    return () => { cancelled = true; clearTimeout(timer); };
-  }, [clubCardsLoading, clubCards.length]);
 
   const resetToActivityPage = useCallback(() => {
     if (width <= 0) return;
@@ -677,7 +669,7 @@ export default function HomeScreen() {
         )}
 
         {/* Club photos */}
-        {showClubSection && (
+        {clubCards.length > 0 && (
           <AnimatedReanimated.View
             entering={FadeIn.duration(420).easing(Easing.out(Easing.cubic))}
           >

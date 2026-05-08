@@ -3,6 +3,10 @@
  * Requires env: MAILJET_API_KEY, MAILJET_API_SECRET, MAILJET_FROM_EMAIL, MAILJET_FROM_NAME.
  */
 const MAILJET_SEND_URL = "https://api.mailjet.com/v3.1/send";
+const DEV_SUBJECT_PREFIX = "Development: ";
+
+type DenoLike = { env: { get: (key: string) => string | undefined } };
+const deno = (globalThis as typeof globalThis & { Deno?: DenoLike }).Deno;
 
 export type MailjetConfig = {
   apiKey: string;
@@ -22,22 +26,58 @@ export type SendEmailParams = {
   headers?: Record<string, string>;
 };
 
+export type SendEmailResult = {
+  sent: boolean;
+  skipped: boolean;
+  to: string;
+};
+
 function getConfig(): MailjetConfig {
-  const apiKey = Deno.env.get("MAILJET_API_KEY");
-  const apiSecret = Deno.env.get("MAILJET_API_SECRET");
-  const fromEmail = Deno.env.get("MAILJET_FROM_EMAIL");
-  const fromName = Deno.env.get("MAILJET_FROM_NAME") ?? "Huntly World";
+  const apiKey = deno?.env.get("MAILJET_API_KEY");
+  const apiSecret = deno?.env.get("MAILJET_API_SECRET");
+  const fromEmail = deno?.env.get("MAILJET_FROM_EMAIL");
+  const fromName = deno?.env.get("MAILJET_FROM_NAME") ?? "Huntly World";
   if (!apiKey || !apiSecret || !fromEmail) {
     throw new Error("Missing Mailjet configuration (MAILJET_API_KEY, MAILJET_API_SECRET, MAILJET_FROM_EMAIL)");
   }
   return { apiKey, apiSecret, fromEmail, fromName };
 }
 
+function isDevelopmentEnv(): boolean {
+  const appEnv = (deno?.env.get("APP_ENV") ?? deno?.env.get("ENVIRONMENT") ?? "")
+    .trim()
+    .toLowerCase();
+  if (appEnv === "production" || appEnv === "prod") return false;
+  if (appEnv === "development" || appEnv === "dev" || appEnv === "local" || appEnv === "preview") return true;
+
+  const supabaseUrl = (deno?.env.get("SUPABASE_URL") ?? "").trim().toLowerCase();
+  if (!supabaseUrl) return false;
+  return (
+    supabaseUrl.includes("localhost") ||
+    supabaseUrl.includes("127.0.0.1") ||
+    supabaseUrl.includes("0.0.0.0")
+  );
+}
+
+function subjectWithEnvPrefix(subject: string): string {
+  const s = (subject ?? "").trim();
+  if (!s) return s;
+  if (!isDevelopmentEnv()) return s;
+  if (s.toLowerCase().startsWith(DEV_SUBJECT_PREFIX.toLowerCase())) return s;
+  return `${DEV_SUBJECT_PREFIX}${s}`;
+}
+
 /**
  * Send one email via Mailjet. At least one of htmlPart or textPart must be provided.
  */
-export async function sendEmail(params: SendEmailParams): Promise<void> {
+export async function sendEmail(params: SendEmailParams): Promise<SendEmailResult> {
   const { to, subject, htmlPart, textPart, replyTo, headers } = params;
+  const toNormalized = (to ?? "").trim().toLowerCase();
+  if (toNormalized.endsWith("@example.invalid")) {
+    // Placeholder/sink domain: intentionally skip to avoid wasting email provider resources.
+    console.log("Mailjet send skipped for placeholder recipient:", toNormalized, subject);
+    return { sent: false, skipped: true, to: toNormalized };
+  }
   if (!htmlPart && !textPart) {
     throw new Error("At least one of htmlPart or textPart is required");
   }
@@ -49,8 +89,8 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
     Messages: [
       {
         From: { Email: fromEmail, Name: fromName },
-        To: [{ Email: to }],
-        Subject: subject,
+        To: [{ Email: toNormalized }],
+        Subject: subjectWithEnvPrefix(subject),
         ...(Object.keys(messageHeaders).length > 0 && { Headers: messageHeaders }),
         ...(textPart && { TextPart: textPart }),
         ...(htmlPart && { HTMLPart: htmlPart }),
@@ -70,4 +110,5 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
     console.error("Mailjet send failed:", res.status, errText);
     throw new Error(`Email could not be sent: ${res.status}`);
   }
+  return { sent: true, skipped: false, to: toNormalized };
 }

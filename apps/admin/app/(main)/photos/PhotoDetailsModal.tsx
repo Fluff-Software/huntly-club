@@ -100,10 +100,10 @@ export function PhotoDetailsModal({
       <DenyReasonModal
         open={denyReasonOpen}
         onClose={() => setDenyReasonOpen(false)}
-        onConfirm={async (reason) => {
+        onConfirm={async (reason, sendEmail) => {
           setDenyReasonOpen(false);
           setActionPending(true);
-          const result = await denyPhoto({}, photoId, reason || undefined);
+          const result = await denyPhoto({}, photoId, reason || undefined, sendEmail);
           setActionPending(false);
           if (!result.error) {
             onClose();

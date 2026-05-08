@@ -114,14 +114,14 @@ deno.serve(async (req) => {
       }
 
       try {
-        await sendEmail({
+        const result = await sendEmail({
           to,
           subject,
           htmlPart,
           textPart,
           ...(replyTo && { replyTo }),
         });
-        sent += 1;
+        if (result.sent) sent += 1;
       } catch (e) {
         console.error("send-chapter-email: failed for user", userId, e);
       }

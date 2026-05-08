@@ -18,6 +18,7 @@ export default function MissionLayout() {
       <Stack.Screen name="prep" />
       <Stack.Screen name="steps" />
       <Stack.Screen name="completion" />
+      <Stack.Screen name="gallery" />
       <Stack.Screen
         name="reward"
         options={{

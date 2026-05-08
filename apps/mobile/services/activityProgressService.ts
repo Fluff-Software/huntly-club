@@ -514,6 +514,129 @@ export const getRandomActivityPhotos = async (
   return shuffled.slice(0, count);
 };
 
+function buildNotInFilter(values: number[]): string | null {
+  if (values.length === 0) return null;
+  // PostgREST expects: "(1,2,3)"
+  return `(${values.join(",")})`;
+}
+
+export const hasOtherApprovedMissionPhotos = async (
+  activityId: number,
+  excludeProfileIds: number[]
+): Promise<boolean> => {
+  // If we don't know who "self" is yet, do not risk showing the button based on our own photos.
+  if (excludeProfileIds.length === 0) return false;
+
+  let query = supabase
+    .from("user_activity_photos")
+    .select("photo_id", { head: true, count: "exact" })
+    .eq("activity_id", activityId)
+    .eq("status", 1)
+    .limit(1);
+
+  const notIn = buildNotInFilter(excludeProfileIds);
+  if (notIn) {
+    query = query.not("profile_id", "in", notIn);
+  }
+
+  const { count, error } = await query;
+  if (error) {
+    console.error("Error checking other approved mission photos:", error);
+    return false;
+  }
+  return (count ?? 0) > 0;
+};
+
+export type MissionPhotoGroup = {
+  user_activity_id: number;
+  profile_id: number;
+  photos: string[];
+  author?: string;
+  team_name?: string;
+};
+
+export const getRandomMissionPhotoGroups = async (
+  activityId: number,
+  excludeProfileIds: number[],
+  groupCount: number = 3
+): Promise<MissionPhotoGroup[]> => {
+  let query = supabase
+    .from("user_activity_photos")
+    .select("user_activity_id, profile_id, photo_url")
+    .eq("activity_id", activityId)
+    .eq("status", 1)
+    .not("user_activity_id", "is", null);
+
+  const notIn = buildNotInFilter(excludeProfileIds);
+  if (notIn) {
+    query = query.not("profile_id", "in", notIn);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("Error fetching mission photo groups:", error);
+    throw new Error(`Failed to fetch mission photo groups: ${error.message}`);
+  }
+
+  const rows = (data ?? []) as Array<{
+    user_activity_id: number | null;
+    profile_id: number | null;
+    photo_url: string | null;
+  }>;
+  if (rows.length === 0) return [];
+
+  const byProgressId = new Map<number, MissionPhotoGroup>();
+  for (const r of rows) {
+    const progressId = r.user_activity_id ?? null;
+    const profileId = r.profile_id ?? null;
+    const url = r.photo_url ?? "";
+    if (!progressId || !profileId || !url) continue;
+
+    const existing = byProgressId.get(progressId);
+    if (existing) {
+      existing.photos.push(url);
+      continue;
+    }
+    byProgressId.set(progressId, {
+      user_activity_id: progressId,
+      profile_id: profileId,
+      photos: [url],
+    });
+  }
+
+  const groups = [...byProgressId.values()].filter((g) => g.photos.length > 0);
+  if (groups.length === 0) return [];
+
+  // Randomly pick up to `groupCount` groups.
+  const shuffled = [...groups].sort(() => Math.random() - 0.5);
+  const picked = shuffled.slice(0, Math.max(0, groupCount));
+
+  // Best-effort: attach public nickname + team for display (no RLS).
+  const profileIds = [...new Set(picked.map((g) => g.profile_id))];
+  if (profileIds.length > 0) {
+    const { data: profilesData } = await supabase
+      .from("profile_public")
+      .select("id, nickname, team_name")
+      .in("id", profileIds);
+
+    const nickById: Record<number, string> = {};
+    const teamById: Record<number, string> = {};
+    for (const p of profilesData ?? []) {
+      nickById[p.id] = (p.nickname ?? "").trim();
+      teamById[p.id] = ((p.team_name as string | null) ?? "").toLowerCase();
+    }
+
+    for (const g of picked) {
+      const nick = nickById[g.profile_id];
+      const team = teamById[g.profile_id];
+      if (nick) g.author = nick;
+      if (team) g.team_name = team;
+    }
+  }
+
+  return picked;
+};
+
 export interface ClubPhotoCardItem {
   id: string;
   /** Thumbnail-sized URL optimised for cards. */

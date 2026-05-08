@@ -88,10 +88,10 @@ export function ApprovedDeniedGallery({ photos, variant }: Props) {
         <DenyReasonModal
           open={denyReasonOpen}
           onClose={() => setDenyReasonOpen(false)}
-          onConfirm={async (reason) => {
+          onConfirm={async (reason, sendEmail) => {
             setDenyReasonOpen(false);
             await handleBulkAction(() =>
-              bulkDenyPhotos({}, selectedArray, reason || undefined)
+              bulkDenyPhotos({}, selectedArray, reason || undefined, sendEmail)
             );
           }}
           title="Deny selected photos"

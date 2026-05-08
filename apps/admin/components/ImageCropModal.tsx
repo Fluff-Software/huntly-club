@@ -130,6 +130,7 @@ export function ImageCropModal({
   const [imageSize, setImageSize] = useState<{ w: number; h: number } | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isPortrait = imageAspect != null ? imageAspect < 1 : false;
 
   function requestCancel() {
     if (pending || isCropping) return;
@@ -273,7 +274,7 @@ export function ImageCropModal({
         <div className="flex min-h-0 flex-1 flex-col p-4">
           {/* Give crop handles room so they don't get clipped at edges */}
           <div
-            className="relative z-0 min-h-0 flex-1 rounded-lg bg-stone-900 p-3 sm:p-4"
+            className="relative z-0 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg bg-stone-900 p-3 sm:p-4"
             data-crop-mask={isCropping ? "on" : "off"}
           >
             {previewUrl ? (
@@ -284,14 +285,18 @@ export function ImageCropModal({
                 keepSelection
                 ruleOfThirds
                 disabled={pending || !isCropping}
-                className="max-h-full overflow-visible"
+                className="max-h-full max-w-full overflow-visible"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   ref={imgRef}
                   alt="Crop preview"
                   src={previewUrl}
-                  className="max-h-[58dvh] w-full select-none object-contain sm:max-h-[68dvh]"
+                  className={`max-w-full select-none object-contain ${
+                    isPortrait
+                      ? "h-[calc(100dvh-18rem)] w-auto sm:h-[calc(92dvh-18rem)]"
+                      : "h-auto w-full max-h-[calc(100dvh-18rem)] sm:max-h-[calc(92dvh-18rem)]"
+                  }`}
                   onLoad={(e) => {
                     const img = e.currentTarget;
                     const w = img.naturalWidth || img.width;

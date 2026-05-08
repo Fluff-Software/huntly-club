@@ -54,7 +54,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           </noscript>
         )}
         <div className="page-shell">
-          <header className="border-b-2 border-huntly-leaf/30 bg-huntly-parchment/95 backdrop-blur">
+          <header className="border-b border-huntly-stone/70 bg-huntly-parchment/95 backdrop-blur">
             <div className="section flex min-w-0 items-center justify-between gap-3 py-3 sm:gap-5 sm:py-4">
               <Link href="/" className="flex min-w-0 shrink items-center gap-2 sm:gap-3">
                 <div className="relative h-7 w-24 shrink-0 sm:h-8 sm:w-32 md:h-9 md:w-40">
@@ -95,7 +95,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
           <main className="page-main">{children}</main>
 
-          <footer className="border-t-2 border-huntly-stone bg-huntly-parchment py-6">
+          <footer className="border-t border-huntly-stone/80 bg-huntly-parchment py-6">
             <div className="section flex flex-col items-start justify-between gap-3 text-sm text-huntly-slate sm:flex-row sm:items-center">
               <div>
                 <p>© {new Date().getFullYear()} Fluff Software Limited.</p>

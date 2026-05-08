@@ -6,17 +6,17 @@ export const metadata = {
 
 export default function WaitlistPage() {
   return (
-    <>
-      <div className="bg-huntly-stone/20 py-10 sm:py-12">
-        <div className="section">
-          <div className="mx-auto max-w-2xl space-y-3">
+    <div className="flex min-h-[70vh] items-center bg-gradient-to-b from-huntly-stone/20 to-huntly-parchment py-10 sm:py-12">
+      <div className="section">
+        <div className="mx-auto max-w-2xl rounded-3xl border border-huntly-stone/70 bg-white/90 p-7 shadow-soft sm:p-10">
+          <div className="space-y-3">
             <h1 className="font-display text-2xl font-semibold text-huntly-forest sm:text-3xl">
               Join the club
             </h1>
             <p className="text-sm leading-relaxed text-huntly-slate sm:text-base">
               Huntly World is available on the App Store and Google Play. Download the app to join the club and start exploring.
             </p>
-            <div className="mt-6 flex flex-col gap-2 items-start">
+            <div className="mt-6 flex flex-col items-start gap-2">
               <Link href="https://apps.apple.com/us/app/huntly-world/id6745152309" className="btn-primary">
                 Download on the App Store
               </Link>
@@ -25,18 +25,13 @@ export default function WaitlistPage() {
               </Link>
             </div>
           </div>
-        </div>
-      </div>
-
-      <div className="section py-12 sm:py-16">
-        <div className="mx-auto max-w-2xl">
-          <p className="mt-4 text-xs text-huntly-slate">
+          <p className="mt-6 text-xs text-huntly-slate">
             We&apos;ll only use your email to keep you updated about Huntly World and
             won&apos;t share it with anyone else.
           </p>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 

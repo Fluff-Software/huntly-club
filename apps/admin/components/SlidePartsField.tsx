@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/Button";
 import { uploadSlideImage } from "@/lib/upload-actions";
@@ -31,6 +31,10 @@ export function SlidePartsField({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+
+  useEffect(() => {
+    setSlides(initialSlides.length > 0 ? initialSlides : [{ type: "text", value: "" }]);
+  }, [initialSlides]);
 
   const addSlide = () => setSlides((prev) => [...prev, { type: "text", value: "" }]);
   const removeSlide = (index: number) =>
@@ -174,9 +178,19 @@ export function SlidePartsField({
                 {slide.type === "text-image" && (
                   <input
                     type="text"
-                    value={slide.text}
+                    value={
+                      typeof (slide as any).text === "string"
+                        ? (slide as any).text
+                        : typeof (slide as any).value === "string"
+                        ? (slide as any).value
+                        : ""
+                    }
                     onChange={(e) =>
-                      setSlide(index, { type: "text-image", text: e.target.value, image: slide.image })
+                      setSlide(index, {
+                        type: "text-image",
+                        text: e.target.value,
+                        image: (slide as any).image ?? "",
+                      })
                     }
                     placeholder="Caption or text for this slide"
                     className="w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"

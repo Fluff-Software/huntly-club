@@ -35,6 +35,7 @@ export function useAllChapters(seasonId?: number | null): {
     let query = supabase
       .from("chapters")
       .select("id, week_number, title, body, body_parts, body_slides, unlock_date")
+      .eq("content_status", "published")
       .lte("unlock_date", today)
       .order("unlock_date", { ascending: false });
 

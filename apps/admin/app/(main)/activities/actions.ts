@@ -137,6 +137,8 @@ export async function updateActivity(
   const debriefPhotoLabel = (formData.get("debrief_photo_label") as string)?.trim() || null;
   const debriefQuestion1 = (formData.get("debrief_question_1") as string)?.trim() || null;
   const debriefQuestion2 = (formData.get("debrief_question_2") as string)?.trim() || null;
+  const missionType = (formData.get("mission_type") as string)?.trim() || null;
+  const safetyNotes = (formData.get("safety_notes") as string)?.trim() || null;
 
   const prepTitles = (formData.getAll("prep_title") as string[]).map((s) => s?.trim() ?? "");
   const prepDescriptions = (formData.getAll("prep_description") as string[]).map((s) => s?.trim() ?? "");
@@ -185,6 +187,8 @@ export async function updateActivity(
         debrief_photo_label: debriefPhotoLabel,
         debrief_question_1: debriefQuestion1,
         debrief_question_2: debriefQuestion2,
+        mission_type: missionType,
+        safety_notes: safetyNotes,
       })
       .eq("id", id);
 

@@ -1005,6 +1005,28 @@ export async function createChapterFromSeasonChapterArcDraftItem(opts: {
   return { chapterId: inserted.id };
 }
 
+export async function deleteChapter(opts: {
+  seasonId: number;
+  chapterId: number;
+}): Promise<{ error?: string }> {
+  const supabase = createServerSupabaseClient();
+
+  await supabase
+    .from("chapter_activities")
+    .delete()
+    .eq("chapter_id", opts.chapterId);
+
+  const { error } = await supabase
+    .from("chapters")
+    .delete()
+    .eq("id", opts.chapterId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/season-builder/${opts.seasonId}`);
+  return {};
+}
+
 export async function publishSeason(
   seasonId: number
 ): Promise<{ error?: string }> {

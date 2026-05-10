@@ -4,7 +4,7 @@ import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { Button } from "@/components/Button";
 import { StatusPill, type ContentStatus } from "@/components/StatusPill";
 import { CompassPanel } from "@/components/compass/CompassPanel";
-import { discardSeasonChapterArcDraftItem, createChapterFromSeasonChapterArcDraftItem } from "../actions";
+import { discardSeasonChapterArcDraftItem, createChapterFromSeasonChapterArcDraftItem, deleteChapter } from "../actions";
 
 const ARC_ICONS: Record<string, string> = {
   setup: "🌱",
@@ -275,40 +275,61 @@ export default async function SeasonWorkspacePage({
                     </div>
                   );
                 })}
-              {chapters.map((chapter) => (
-                <Link
-                  key={chapter.id}
-                  href={`/season-builder/${id}/chapters/${chapter.id}`}
-                  className="flex flex-col gap-2 rounded-xl border border-stone-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-medium text-stone-400">
-                      Week {chapter.week_number}
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      {chapter.arc_position && (
-                        <span title={chapter.arc_position}>
-                          {ARC_ICONS[chapter.arc_position] ?? ""}
-                        </span>
+              {chapters.map((chapter) => {
+                return (
+                  <div
+                    key={chapter.id}
+                    className="flex flex-col gap-2 rounded-xl border border-stone-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-medium text-stone-400">
+                        Week {chapter.week_number}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {chapter.arc_position && (
+                          <span title={chapter.arc_position}>
+                            {ARC_ICONS[chapter.arc_position] ?? ""}
+                          </span>
+                        )}
+                        <StatusPill
+                          status={
+                            (chapter.content_status as ContentStatus) ?? "concept"
+                          }
+                          size="sm"
+                        />
+                      </div>
+                    </div>
+                    <Link
+                      href={`/season-builder/${id}/chapters/${chapter.id}`}
+                      className="flex-1"
+                    >
+                      <p className="text-sm font-medium text-stone-900 line-clamp-2 hover:underline">
+                        {chapter.title ?? `Chapter ${chapter.week_number}`}
+                      </p>
+                      {chapter.summary && (
+                        <p className="text-xs text-stone-500 line-clamp-2 mt-1">
+                          {chapter.summary}
+                        </p>
                       )}
-                      <StatusPill
-                        status={
-                          (chapter.content_status as ContentStatus) ?? "concept"
-                        }
-                        size="sm"
-                      />
+                    </Link>
+                    <div className="flex justify-end pt-1">
+                        <form
+                          action={async () => {
+                            "use server";
+                            await deleteChapter({ seasonId: id, chapterId: chapter.id });
+                          }}
+                        >
+                          <button
+                            type="submit"
+                            className="text-[11px] text-stone-400 hover:text-red-500 transition-colors"
+                          >
+                            Remove
+                          </button>
+                        </form>
                     </div>
                   </div>
-                  <p className="text-sm font-medium text-stone-900 line-clamp-2">
-                    {chapter.title ?? `Chapter ${chapter.week_number}`}
-                  </p>
-                  {chapter.summary && (
-                    <p className="text-xs text-stone-500 line-clamp-2">
-                      {chapter.summary}
-                    </p>
-                  )}
-                </Link>
-              ))}
+                );
+              })}
             </div>
           )}
         </main>

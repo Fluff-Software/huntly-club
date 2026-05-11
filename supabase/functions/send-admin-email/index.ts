@@ -77,14 +77,14 @@ deno.serve(async (req) => {
       if (userError || !to) continue;
 
       try {
-        await sendEmail({
+        const result = await sendEmail({
           to,
           subject,
           htmlPart,
           textPart,
           ...(replyTo && { replyTo }),
         });
-        sent += 1;
+        if (result.sent) sent += 1;
       } catch (e) {
         console.error("send-admin-email: failed for user", userId, e);
       }

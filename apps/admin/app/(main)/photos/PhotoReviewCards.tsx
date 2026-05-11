@@ -3,11 +3,14 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, useTransition } from "react";
-import { approvePhoto, denyPhoto } from "./actions";
+import { approvePhoto, denyPhoto, replaceReviewPhotoImage } from "./actions";
 import { Button } from "@/components/Button";
 import { FullPhotoModal } from "./FullPhotoModal";
 import { DenyReasonModal } from "./DenyReasonModal";
+import { ApprovePhotoModal } from "./ApprovePhotoModal";
 import { useSwipe } from "@/hooks/useSwipe";
+import { ImageCropModal, type ImageCropState } from "@/components/ImageCropModal";
+import { EditedPhotoPreviewModal } from "./EditedPhotoPreviewModal";
 
 export type ReviewPhoto = {
   photo_id: number;
@@ -42,7 +45,16 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
   const [photos, setPhotos] = useState(initialPhotos);
   const [fullPhotoOpen, setFullPhotoOpen] = useState(false);
   const [denyReasonOpen, setDenyReasonOpen] = useState(false);
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<"approve" | "deny" | null>(null);
+  const [editCropOpen, setEditCropOpen] = useState(false);
+  const [editPendingFile, setEditPendingFile] = useState<File | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editPreviewOpen, setEditPreviewOpen] = useState(false);
+  const [editDraftFile, setEditDraftFile] = useState<File | null>(null);
+  const [editDraftState, setEditDraftState] = useState<ImageCropState | null>(null);
+  const [editOriginalFile, setEditOriginalFile] = useState<File | null>(null);
+  const [editApproveError, setEditApproveError] = useState<string | null>(null);
 
   const current = photos[0];
   const remaining = photos.length;
@@ -50,13 +62,41 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
   // Defined before useSwipe so the hook can reference them as stable callbacks
   const handleApprove = useCallback(() => {
     if (!current || isPending) return;
+    setApproveModalOpen(true);
+  }, [current, isPending]);
+
+  const handleApproveConfirm = useCallback(() => {
+    if (!current || isPending) return;
     setPendingAction("approve");
+    setApproveModalOpen(false);
     startTransition(async () => {
       await approvePhoto({}, current.photo_id);
       setPhotos((prev) => prev.slice(1));
       if (photos.length <= 1) router.refresh();
     });
   }, [current, isPending, photos.length, router, startTransition]);
+
+  const handleApproveEdit = useCallback(async () => {
+    if (!current || isPending) return;
+    setEditLoading(true);
+    try {
+      const res = await fetch(current.photo_url);
+      if (!res.ok) throw new Error("Failed to load photo");
+      const blob = await res.blob();
+      const type = blob.type || "image/jpeg";
+      const ext =
+        type === "image/webp" ? "webp" : type === "image/png" ? "png" : "jpg";
+      const file = new File([blob], `photo-${current.photo_id}.${ext}`, { type });
+      setEditOriginalFile(file);
+      setEditPendingFile(file);
+      setEditCropOpen(true);
+      setApproveModalOpen(false);
+    } catch {
+      // If we can't fetch the image, just keep the approve modal open.
+    } finally {
+      setEditLoading(false);
+    }
+  }, [current, isPending]);
 
   const handleDeny = useCallback(() => {
     if (!current || isPending) return;
@@ -70,11 +110,11 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
       disabled: isPending || !current,
     });
 
-  const handleDenyConfirm = (reason: string) => {
+  const handleDenyConfirm = (reason: string, sendEmail: boolean) => {
     if (!current) return;
     setPendingAction("deny");
     startTransition(async () => {
-      await denyPhoto({}, current.photo_id, reason || undefined);
+      await denyPhoto({}, current.photo_id, reason || undefined, sendEmail);
       setDenyReasonOpen(false);
       setPhotos((prev) => prev.slice(1));
       if (photos.length <= 1) router.refresh();
@@ -96,6 +136,65 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [current, isPending, handleApprove]);
+
+  function handleCancelEditCrop() {
+    if (isPending) return;
+    setEditCropOpen(false);
+    setEditPendingFile(null);
+    setApproveModalOpen(true);
+  }
+
+  function handleConfirmEditCrop(croppedFile: File, state?: ImageCropState) {
+    if (!current) return;
+    setEditCropOpen(false);
+    setEditPendingFile(null);
+    setEditDraftFile(croppedFile);
+    setEditDraftState(state ?? null);
+    setEditApproveError(null);
+    setEditPreviewOpen(true);
+  }
+
+  function handleKeepEditingDraft() {
+    if (isPending) return;
+    if (!editOriginalFile) {
+      setEditPreviewOpen(false);
+      setApproveModalOpen(true);
+      return;
+    }
+    setEditPreviewOpen(false);
+    // Re-open editor on the original image, but restore the prior crop/blur state.
+    setEditPendingFile(editOriginalFile);
+    setEditCropOpen(true);
+  }
+
+  function handleApproveDraft() {
+    if (!current || !editDraftFile || isPending) return;
+    setPendingAction("approve");
+    setEditApproveError(null);
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("file", editDraftFile);
+      const result = await replaceReviewPhotoImage({}, current.photo_id, fd);
+      if (result.error) {
+        setEditApproveError(result.error);
+        return;
+      }
+
+      if (result.url) {
+        setPhotos((prev) =>
+          prev.map((p, i) => (i === 0 ? { ...p, photo_url: result.url! } : p))
+        );
+      }
+
+      await approvePhoto({}, current.photo_id);
+      setEditPreviewOpen(false);
+      setEditDraftFile(null);
+      setEditDraftState(null);
+      setEditOriginalFile(null);
+      setPhotos((prev) => prev.slice(1));
+      if (photos.length <= 1) router.refresh();
+    });
+  }
 
   if (remaining === 0) {
     return (
@@ -121,6 +220,32 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
         onClose={() => setDenyReasonOpen(false)}
         onConfirm={handleDenyConfirm}
         pending={isPending}
+      />
+      <ApprovePhotoModal
+        open={approveModalOpen}
+        onCancel={() => setApproveModalOpen(false)}
+        onEdit={handleApproveEdit}
+        onApprove={handleApproveConfirm}
+        pending={isPending || editLoading}
+      />
+      <ImageCropModal
+        open={editCropOpen}
+        file={editPendingFile}
+        title="Edit photo"
+        aspect={16 / 9}
+        enableBlur
+        confirmLabel="Use edit"
+        initialState={editDraftState ?? undefined}
+        onCancel={handleCancelEditCrop}
+        onConfirm={handleConfirmEditCrop}
+      />
+      <EditedPhotoPreviewModal
+        open={editPreviewOpen}
+        file={editDraftFile}
+        onKeepEditing={handleKeepEditingDraft}
+        onApprove={handleApproveDraft}
+        pending={isPending}
+        error={editApproveError}
       />
       <div className="mx-auto max-w-lg">
         <p className="mb-4 text-center text-sm text-stone-500">

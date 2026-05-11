@@ -3,11 +3,11 @@
 @tailwind utilities;
 
 :root {
-  --color-background: #F6F5F1;
+  --color-background: #EFEBE3;
   --color-surface: #FFFFFF;
-  --color-border-subtle: #D9D8D4;
-  --color-text-main: #2F3336;
-  --color-text-muted: #5F6468;
+  --color-border-subtle: #CFC8BC;
+  --color-text-main: #22282D;
+  --color-text-muted: #495057;
 }
 
 body {
@@ -27,11 +27,11 @@ body {
 }
 
 .btn-primary {
-  @apply inline-flex cursor-pointer items-center justify-center rounded-full bg-huntly-moss px-5 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:bg-[#435f46] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-huntly-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-background)];
+  @apply inline-flex cursor-pointer items-center justify-center rounded-full bg-huntly-moss px-5 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:bg-[#2f4336] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-huntly-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-background)];
 }
 
 .btn-ghost {
-  @apply inline-flex cursor-pointer items-center justify-center rounded-full border border-[var(--color-border-subtle)] bg-white px-5 py-2.5 text-sm font-semibold text-[var(--color-text-main)] shadow-sm transition hover:border-huntly-moss/40 hover:bg-huntly-parchment focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-huntly-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-background)];
+  @apply inline-flex cursor-pointer items-center justify-center rounded-full border border-[var(--color-border-subtle)] bg-white px-5 py-2.5 text-sm font-semibold text-[var(--color-text-main)] shadow-sm transition hover:border-huntly-moss/50 hover:bg-[#ebe7dd] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-huntly-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-background)];
 }
 
 .card {

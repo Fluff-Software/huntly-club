@@ -1,37 +1,66 @@
 import Image from "next/image";
 import Link from "next/link";
+import ShowcaseSlider from "./components/ShowcaseSlider";
 
-const characters = [
+const captains = [
   {
     name: "Bears",
     captain: "Bella",
-    tagline: "Brave and curious",
-    image: "/characters/bear-wave.png",
-    colour: "bg-huntly-clay/20",
-    ring: "ring-huntly-clay/40",
+    tagline: "Confident leadership and outdoor challenge",
+    image: "/characters/bella.png",
+    colour: "bg-huntly-clay/15",
+    ring: "ring-huntly-clay/45",
   },
   {
     name: "Foxes",
     captain: "Felix",
-    tagline: "Quick and creative",
-    image: "/characters/fox-wave.png",
-    colour: "bg-huntly-sky/25",
-    ring: "ring-huntly-sky/50",
+    tagline: "Creative strategy and mission focus",
+    image: "/characters/felix.png",
+    colour: "bg-huntly-sky/15",
+    ring: "ring-huntly-sky/45",
   },
   {
     name: "Otters",
     captain: "Oli",
-    tagline: "Clever and playful",
-    image: "/characters/otter-wave.png",
-    colour: "bg-huntly-leaf/25",
-    ring: "ring-huntly-leaf/50",
+    tagline: "Teamwork, resilience and momentum",
+    image: "/characters/oli.png",
+    colour: "bg-huntly-leaf/15",
+    ring: "ring-huntly-leaf/45",
   },
 ];
 
 const steps = [
-  { num: "1", label: "Follow the story", short: "Read each season and unlock chapters", image: "/how-it-works-2.png" },
-  { num: "2", label: "Head outside", short: "Do missions together", image: "/how-it-works-3.png" },
-  { num: "3", label: "Celebrate!", short: "Earn achievements and see your progress", image: "/how-it-works-1.png" },
+  { num: "1", label: "Follow the story", short: "Read each season and unlock chapters", image: "/assets/follow-the-story.png" },
+  { num: "2", label: "Head outside", short: "Do missions together", image: "/assets/head-outside.png" },
+  { num: "3", label: "Celebrate!", short: "Earn achievements and see your progress", image: "/assets/celebrate.png" },
+];
+
+const showcaseScreens = [
+  {
+    title: "Join a world of adventures",
+    image: "/assets/showcase-join-adventures.png",
+    alt: "Huntly World clubhouse screen inviting children to join outdoor adventures",
+  },
+  {
+    title: "Earn badges and build real-world skills",
+    image: "/assets/showcase-skills-badges.png",
+    alt: "Huntly World mission step screen focused on badges and skill-building",
+  },
+  {
+    title: "Gain points and help your team",
+    image: "/assets/showcase-team-points.png",
+    alt: "Huntly World team selection screen showing points and team challenges",
+  },
+  {
+    title: "Explore, learn, and have fun",
+    image: "/assets/showcase-explore-learn.png",
+    alt: "Huntly World adventure tracking screen for exploring and learning",
+  },
+  {
+    title: "Parents stay in the loop",
+    image: "/assets/showcase-parents-loop.png",
+    alt: "Huntly World parent progress screen showing family updates and achievements",
+  },
 ];
 
 export default function HomePage() {
@@ -56,7 +85,7 @@ export default function HomePage() {
               Your club. Your missions. Outdoors.
             </h1>
             <p className="mt-3 text-lg text-white/95 drop-shadow sm:text-xl">
-              Huntly World gets young explorers exploring with stories, missions and friendly characters - all in one app.
+              Huntly World brings stories, missions and outdoor progress tracking together in one app for families, schools and clubs.
             </p>
             <div className="mt-6">
               <Link
@@ -70,36 +99,34 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Meet the club: three characters, colourful cards */}
+      {/* Meet the captains: mature team leadership */}
       <section className="section py-14 sm:py-16">
         <h2 className="mb-2 text-center font-display text-2xl font-bold text-huntly-forest sm:text-3xl">
-          Meet the club
+          Meet the team captains
         </h2>
         <p className="mb-8 text-center text-huntly-slate">
-          Join a team and take on adventures with other explorers.
+          Each team is guided by a captain to help members build confidence outdoors.
         </p>
-        <div className="flex flex-wrap items-stretch justify-center gap-6">
-          {characters.map((c) => (
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {captains.map((c) => (
             <div
               key={c.name}
-              className={`flex w-full max-w-[240px] flex-col items-center rounded-3xl p-6 ring-2 ${c.colour} ${c.ring}`}
+              className={`flex flex-col rounded-3xl p-6 ring-2 ${c.colour} ${c.ring}`}
             >
-              <div className="relative h-32 w-28">
+              <div className="relative mb-4 h-56 w-full overflow-hidden rounded-2xl bg-huntly-parchment">
                 <Image
                   src={c.image}
-                  alt={`${c.captain} from ${c.name}, Huntly World`}
+                  alt={`${c.captain}, captain of the ${c.name} team`}
                   fill
-                  sizes="112px"
-                  className="object-contain"
+                  sizes="(max-width: 768px) 100vw, 30vw"
+                  className="object-cover object-top"
                 />
               </div>
-              <p className="mt-2 font-display text-lg font-bold text-huntly-forest">
-                {c.name}
+              <p className="font-display text-2xl font-bold text-huntly-forest">
+                {c.captain}
               </p>
-              <p className="mt-0.5 text-sm font-medium text-huntly-moss">
-                Team Captain: {c.captain}
-              </p>
-              <p className="mt-1 text-center text-xs text-huntly-slate">
+              <p className="mt-1 text-sm font-medium text-huntly-moss">{c.name} Team</p>
+              <p className="mt-3 text-sm text-huntly-slate">
                 {c.tagline}
               </p>
             </div>
@@ -108,44 +135,15 @@ export default function HomePage() {
       </section>
 
       {/* App screenshot: phone mockup with real app */}
-      <section className="bg-huntly-sky/20 py-14 sm:py-16">
+      <section className="bg-gradient-to-b from-huntly-sky/20 to-huntly-sky/10 py-14 sm:py-16">
         <div className="section">
           <h2 className="mb-2 text-center font-display text-2xl font-bold text-huntly-forest sm:text-3xl">
             See Huntly World in action
           </h2>
           <p className="mb-10 text-center text-huntly-slate">
-            Missions, stories and achievements - all in one place for your explorers.
+            A quick look at the app experience across missions, teamwork and parent updates.
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-8 lg:gap-14">
-            <div className="relative">
-              <div className="relative h-[520px] w-[260px] rounded-[2.5rem] border-8 border-huntly-forest bg-huntly-forest p-2 shadow-2xl">
-                <div className="absolute left-1/2 top-5 h-6 w-24 -translate-x-1/2 rounded-full bg-huntly-forest" />
-                <div className="relative h-full w-full overflow-hidden rounded-[1.75rem] bg-huntly-parchment">
-                  <Image
-                    src="/app-clubhouse.png"
-                    alt="Huntly World app – Clubhouse screen"
-                    fill
-                    sizes="260px"
-                    className="object-cover object-top"
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="relative">
-              <div className="relative h-[520px] w-[260px] rounded-[2.5rem] border-8 border-huntly-forest bg-huntly-forest p-2 shadow-2xl">
-                <div className="absolute left-1/2 top-5 h-6 w-24 -translate-x-1/2 rounded-full bg-huntly-forest" />
-                <div className="relative h-full w-full overflow-hidden rounded-[1.75rem] bg-huntly-parchment">
-                  <Image
-                    src="/app-progress.png"
-                    alt="Huntly World app – progress and achievements"
-                    fill
-                    sizes="260px"
-                    className="object-cover object-top"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
+          <ShowcaseSlider slides={showcaseScreens} />
         </div>
       </section>
 
@@ -162,9 +160,9 @@ export default function HomePage() {
           {steps.map((step) => (
             <div
               key={step.num}
-              className="flex flex-col items-center rounded-3xl bg-huntly-stone/40 p-6 text-center"
+              className="flex flex-col items-center rounded-3xl border border-huntly-stone/70 bg-white/95 p-6 text-center shadow-soft"
             >
-              <div className="relative mb-4 h-32 w-full max-w-[200px]">
+              <div className="relative mb-4 aspect-square w-full max-w-[200px] overflow-hidden rounded-2xl bg-white p-2">
                 <Image
                   src={step.image}
                   alt={step.label}
@@ -202,7 +200,7 @@ export default function HomePage() {
               How do schools or clubs use it?
             </summary>
             <p className="border-t border-[var(--color-border-subtle)] px-5 py-4 text-sm text-huntly-slate">
-              Schools and clubs can use Huntly World to run seasonal story and mission programmes. Explorers join a team (Bears, Foxes or Otters), follow the story, complete missions together and see their progress. Get in touch to discuss partnerships.
+              Schools and clubs can use Huntly World to run seasonal story and mission programmes. Members join a team, follow the story, complete missions together and track progress over time. Get in touch to discuss partnerships.
             </p>
           </details>
           <details className="group rounded-2xl border border-[var(--color-border-subtle)] bg-white/90 shadow-soft">
@@ -217,13 +215,13 @@ export default function HomePage() {
       </section>
 
       {/* Final CTA */}
-      <section className="bg-huntly-leaf/25 py-14 sm:py-16">
+      <section className="border-t border-huntly-leaf/40 bg-huntly-leaf/20 py-14 sm:py-16">
         <div className="section text-center">
           <h2 className="font-display text-2xl font-bold text-huntly-forest sm:text-3xl">
             Get in touch
           </h2>
           <p className="mt-3 text-huntly-slate">
-            We’d love to hear from families, schools, clubs and young explorers.
+            We’d love to hear from families, schools, clubs and community leaders.
           </p>
           <Link
             href="/contact"

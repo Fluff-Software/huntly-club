@@ -9,18 +9,18 @@ const config: Config = {
     extend: {
       colors: {
         huntly: {
-          moss: "#4F6F52",
-          leaf: "#7FAF8A",
-          sky: "#8FB8C9",
-          clay: "#C58B68",
-          ochre: "#E6C36A",
-          parchment: "#F6F5F1",
-          stone: "#D9D8D4",
-          slate: "#5F6468",
-          forest: "#2F3336",
-          success: "#6FAE8F",
-          info: "#7FAAC2",
-          alert: "#C97A6A"
+          moss: "#3F5644",
+          leaf: "#5F8768",
+          sky: "#5D7C91",
+          clay: "#9A6B50",
+          ochre: "#B88E3E",
+          parchment: "#F1EEE7",
+          stone: "#C9C3B8",
+          slate: "#495057",
+          forest: "#22282D",
+          success: "#4F7F62",
+          info: "#557A92",
+          alert: "#A85C4D"
         },
       },
       fontFamily: {

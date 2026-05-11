@@ -16,10 +16,12 @@ import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { getActivityById } from "@/services/packService";
 import { useUser } from "@/contexts/UserContext";
+import { usePlayer } from "@/contexts/PlayerContext";
 import { isStartMissionOnboardingActive } from "@/constants/startMissionOnboarding";
 import type { Activity } from "@/types/activity";
 import { ACTIVITY_CATEGORIES } from "@/types/activity";
 import { getCategoryColor, getCategoryLabel } from "@/utils/categoryUtils";
+import { hasOtherApprovedMissionPhotos } from "@/services/activityProgressService";
 
 // Legacy animal fallbacks (for missions that pre-date captain system)
 const BEAR_FACE = require("@/assets/images/bear-face.png");
@@ -68,10 +70,12 @@ export default function IntroScreen() {
   const { scaleW, width, isTablet } = useLayoutScale();
   const insets = useSafeAreaInsets();
   const { userData } = useUser();
+  const { profiles } = usePlayer();
   const onboardingActive = isStartMissionOnboardingActive(userData?.start_mission_step);
   const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showInspirationGallery, setShowInspirationGallery] = useState(false);
 
   const loadActivity = useCallback(async () => {
     if (!id) { setError("No activity selected"); setLoading(false); return; }
@@ -90,12 +94,46 @@ export default function IntroScreen() {
 
   useEffect(() => { loadActivity(); }, [loadActivity]);
 
+  useEffect(() => {
+    const activityId = activity?.id ?? null;
+    if (!activityId) {
+      setShowInspirationGallery(false);
+      return;
+    }
+    if (profiles.length === 0) {
+      setShowInspirationGallery(false);
+      return;
+    }
+    let cancelled = false;
+    const excludeProfileIds = profiles.map((p) => p.id);
+    hasOtherApprovedMissionPhotos(activityId, excludeProfileIds)
+      .then((hasAny) => {
+        if (cancelled) return;
+        setShowInspirationGallery(Boolean(hasAny));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setShowInspirationGallery(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activity?.id, profiles]);
+
   const buttonScale = useSharedValue(1);
   const buttonStyle = useAnimatedStyle(() => ({ transform: [{ scale: buttonScale.value }] }));
 
   const handleAccept = () => {
     if (!activity?.id) return;
     router.push({ pathname: "/(tabs)/activity/mission/prep", params: { id: String(activity.id) } });
+  };
+
+  const handleOpenInspirationGallery = () => {
+    if (!activity?.id) return;
+    router.push({
+      pathname: "/(tabs)/activity/mission/gallery",
+      params: { activityId: String(activity.id) },
+    });
   };
 
 
@@ -149,19 +187,24 @@ export default function IntroScreen() {
   const hasDialogue = !!activity.intro_dialogue?.trim();
   const items: string[] = Array.isArray(activity.optional_items) ? activity.optional_items : [];
   const categories = (activity.categories ?? [])
-    .map((cat) => {
+    .map((cat: unknown) => {
       if (typeof cat === "number") return ACTIVITY_CATEGORIES[cat]?.category;
       if (typeof cat === "string") return cat;
       return undefined;
     })
-    .filter((cat): cat is string => typeof cat === "string" && cat.trim() !== "");
+    .filter((cat: unknown): cat is string => typeof cat === "string" && cat.trim() !== "");
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: FOREST_DARK }} edges={["top", "left", "right"]}>
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: scaleW(20), paddingBottom: scaleW(120), paddingTop: scaleW(8) }}
+        contentContainerStyle={{
+          paddingHorizontal: scaleW(20),
+          paddingTop: scaleW(8),
+          // Extra space so content can scroll above the fixed footer buttons.
+          paddingBottom: footerPaddingBottom + scaleW(140),
+        }}
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
@@ -305,7 +348,7 @@ export default function IntroScreen() {
                 flexWrap: "wrap",
                 gap: scaleW(8),
                 marginBottom: scaleW(12) }}>
-                {categories.map((category) => (
+                {categories.map((category: string) => (
                   <View
                     key={category}
                     style={{
@@ -393,6 +436,35 @@ export default function IntroScreen() {
         paddingBottom: footerPaddingBottom }}
         pointerEvents="box-none"
       >
+        {showInspirationGallery && (
+          <View style={{ marginBottom: scaleW(10) }}>
+            <Pressable
+              onPress={handleOpenInspirationGallery}
+              style={{
+                backgroundColor: "rgba(255,255,255,0.10)",
+                borderRadius: scaleW(22),
+                paddingVertical: scaleW(12),
+                paddingHorizontal: scaleW(16),
+                alignItems: "center",
+                justifyContent: "center",
+                flexDirection: "row",
+                gap: scaleW(8),
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.20)",
+              }}
+            >
+              <MaterialIcons name="auto-awesome" size={scaleW(18)} color="#FFF" />
+              <ThemedText
+                type="heading"
+                lightColor="#FFF"
+                darkColor="#FFF"
+                style={{ fontSize: scaleW(14), fontWeight: "800" }}
+              >
+                Inspiration gallery
+              </ThemedText>
+            </Pressable>
+          </View>
+        )}
         <Animated.View style={buttonStyle}>
           <Pressable
             onPress={handleAccept}

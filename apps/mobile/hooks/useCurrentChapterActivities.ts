@@ -90,8 +90,9 @@ export function useCurrentChapterActivities(profileId: number | null): {
 
     const { data: rows, error: activitiesError } = await supabase
       .from("chapter_activities")
-      .select("order, activities(id, image, title, description, xp, categories)")
+      .select("order, activities!inner(id, image, title, description, xp, categories, content_status)")
       .eq("chapter_id", chapterId)
+      .eq("activities.content_status", "published")
       .order("order", { ascending: true });
 
     if (activitiesError) {

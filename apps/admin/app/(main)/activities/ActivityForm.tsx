@@ -5,6 +5,7 @@ import { useActionState, useState, useRef, useEffect } from "react";
 import { useFormStatus } from "react-dom";
 import { Button } from "@/components/Button";
 import { ImageUploadField } from "@/components/ImageUploadField";
+import { ImageCropModal } from "@/components/ImageCropModal";
 import { uploadActivityImage } from "@/lib/upload-actions";
 import { resizeImageFileForUpload } from "@/lib/client-image-resize";
 
@@ -48,6 +49,9 @@ type ActivityFormProps = {
     debrief_photo_label?: string | null;
     debrief_question_1?: string | null;
     debrief_question_2?: string | null;
+    mission_type?: string | null;
+    safety_notes?: string | null;
+    content_status?: string | null;
   };
 };
 
@@ -115,6 +119,9 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
   );
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const categoriesDropdownRef = useRef<HTMLDivElement>(null);
+  const [stepCropOpen, setStepCropOpen] = useState(false);
+  const [stepCropIndex, setStepCropIndex] = useState<number | null>(null);
+  const [stepPendingFile, setStepPendingFile] = useState<File | null>(null);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -128,7 +135,7 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
     }
   }, [categoriesOpen]);
 
-  async function handleStepImageUpload(index: number, file: File) {
+  async function uploadStepImage(index: number, file: File) {
     setStepsList((prev) =>
       prev.map((s, i) => (i === index ? { ...s, _uploading: true, _uploadError: null } : s))
     );
@@ -170,6 +177,27 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
           : s
       )
     );
+  }
+
+  function handleOpenStepCrop(index: number, file: File) {
+    setStepCropIndex(index);
+    setStepPendingFile(file);
+    setStepCropOpen(true);
+  }
+
+  function handleCancelStepCrop() {
+    setStepCropOpen(false);
+    setStepCropIndex(null);
+    setStepPendingFile(null);
+  }
+
+  function handleConfirmStepCrop(croppedFile: File) {
+    const idx = stepCropIndex;
+    setStepCropOpen(false);
+    setStepCropIndex(null);
+    setStepPendingFile(null);
+    if (idx == null) return;
+    void uploadStepImage(idx, croppedFile);
   }
 
   return (
@@ -489,7 +517,9 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
                             className="sr-only"
                             onChange={(e) => {
                               const f = e.target.files?.[0];
-                              if (f) handleStepImageUpload(index, f);
+                              if (!f) return;
+                              e.currentTarget.value = "";
+                              handleOpenStepCrop(index, f);
                             }}
                           />
                         </label>
@@ -515,7 +545,9 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
                         className="sr-only"
                         onChange={(e) => {
                           const f = e.target.files?.[0];
-                          if (f) handleStepImageUpload(index, f);
+                          if (!f) return;
+                          e.currentTarget.value = "";
+                          handleOpenStepCrop(index, f);
                         }}
                       />
                     </label>
@@ -606,6 +638,43 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
         defaultValue={initial?.image}
         help="Upload to Supabase Storage."
       />
+
+      {/* Mission type (Season Builder field) */}
+      <div>
+        <label className="mb-1 block text-sm font-medium text-stone-700">Mission type</label>
+        <div className="flex gap-3">
+          {(["outdoor", "indoor", "hybrid"] as const).map((type) => (
+            <label
+              key={type}
+              className="flex cursor-pointer items-center gap-2 rounded-lg border border-stone-200 px-3 py-2 text-sm has-[:checked]:border-huntly-forest/40 has-[:checked]:bg-huntly-forest/5"
+            >
+              <input
+                type="radio"
+                name="mission_type"
+                value={type}
+                defaultChecked={initial?.mission_type === type}
+                className="text-huntly-forest focus:ring-huntly-sage"
+              />
+              <span className="capitalize text-stone-700">{type}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Safety notes (Season Builder field) */}
+      <div>
+        <label htmlFor="safety_notes" className="mb-1 block text-sm font-medium text-stone-700">
+          Safety notes
+        </label>
+        <textarea
+          id="safety_notes"
+          name="safety_notes"
+          rows={2}
+          defaultValue={initial?.safety_notes ?? ""}
+          placeholder="e.g. Always stay with a grown-up. Watch your step on uneven ground."
+          className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 placeholder-stone-400 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+        />
+      </div>
 
       <div>
         <label htmlFor="xp" className="mb-1 block text-sm font-medium text-stone-700">
@@ -736,6 +805,15 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
           </div>
         )}
       </div>
+
+      <ImageCropModal
+        open={stepCropOpen}
+        file={stepPendingFile}
+        title="Crop step image"
+        aspect={16 / 9}
+        onCancel={handleCancelStepCrop}
+        onConfirm={handleConfirmStepCrop}
+      />
     </form>
   );
 }

@@ -45,7 +45,8 @@ export async function approvePhoto(
 export async function denyPhoto(
   _prev: ReviewActionResult,
   photoId: number,
-  reason?: string | null
+  reason?: string | null,
+  sendEmail: boolean = true
 ): Promise<ReviewActionResult> {
   const reasonTrimmed = (reason ?? "").trim();
   if (!reasonTrimmed) {
@@ -62,14 +63,16 @@ export async function denyPhoto(
       .eq("photo_id", photoId);
 
     if (error) return { error: error.message };
-    // Best-effort: notify the user via email that their photo was denied.
-    // This should not block the admin action or surface errors to the UI.
-    try {
-      await supabase.functions.invoke("photo-denied-email", {
-        body: { photoIds: [photoId] },
-      });
-    } catch (e) {
-      console.error("Failed to invoke photo-denied-email function:", e);
+    if (sendEmail) {
+      // Best-effort: notify the user via email that their photo was denied.
+      // This should not block the admin action or surface errors to the UI.
+      try {
+        await supabase.functions.invoke("photo-denied-email", {
+          body: { photoIds: [photoId] },
+        });
+      } catch (e) {
+        console.error("Failed to invoke photo-denied-email function:", e);
+      }
     }
     revalidatePath("/photos");
     revalidatePath("/photos/review");
@@ -79,6 +82,74 @@ export async function denyPhoto(
     };
   }
   return {};
+}
+
+export async function replaceReviewPhotoImage(
+  _prev: ReviewActionResult,
+  photoId: number,
+  formData: FormData
+): Promise<ReviewActionResult & { url?: string }> {
+  try {
+    const file = formData.get("file");
+    if (!(file instanceof File)) {
+      return { error: "No file provided" };
+    }
+
+    const supabase = createServerSupabaseClient();
+
+    const { data: row, error: rowError } = await supabase
+      .from("user_activity_photos")
+      .select("photo_url, profile_id")
+      .eq("photo_id", photoId)
+      .single();
+
+    if (rowError || !row) return { error: rowError?.message ?? "Photo not found" };
+
+    // Put admin edits under a predictable prefix; avoids needing user_id.
+    const ext =
+      file.type === "image/webp" ? "webp" : file.type === "image/png" ? "png" : "jpg";
+    const objectPath = `admin-edits/${photoId}/${Date.now()}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(USER_PHOTOS_BUCKET)
+      .upload(objectPath, file, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: file.type || "image/jpeg",
+      });
+
+    if (uploadError) return { error: uploadError.message };
+
+    const { data: urlData } = supabase.storage
+      .from(USER_PHOTOS_BUCKET)
+      .getPublicUrl(objectPath);
+    const publicUrl = urlData.publicUrl;
+
+    const { error: updateError } = await supabase
+      .from("user_activity_photos")
+      .update({ photo_url: publicUrl })
+      .eq("photo_id", photoId);
+
+    if (updateError) return { error: updateError.message };
+
+    // Best-effort: remove old file from storage to avoid orphaned objects.
+    if (row.photo_url) {
+      const path = getStoragePathFromPublicUrl(row.photo_url, USER_PHOTOS_BUCKET);
+      if (path) {
+        try {
+          await supabase.storage.from(USER_PHOTOS_BUCKET).remove([path]);
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    revalidatePath("/photos");
+    revalidatePath("/photos/review");
+    return { url: publicUrl };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Failed to replace photo image" };
+  }
 }
 
 export async function moveToForReview(
@@ -145,7 +216,8 @@ export async function deletePhoto(
 export async function bulkDenyPhotos(
   _prev: ReviewActionResult,
   photoIds: number[],
-  reason?: string | null
+  reason?: string | null,
+  sendEmail: boolean = true
 ): Promise<ReviewActionResult> {
   if (photoIds.length === 0) return {};
   const reasonTrimmed = (reason ?? "").trim();
@@ -163,13 +235,15 @@ export async function bulkDenyPhotos(
       .in("photo_id", photoIds);
 
     if (error) return { error: error.message };
-    // Best-effort: notify each user whose photo was denied.
-    try {
-      await supabase.functions.invoke("photo-denied-email", {
-        body: { photoIds },
-      });
-    } catch (e) {
-      console.error("Failed to invoke photo-denied-email function (bulk):", e);
+    if (sendEmail) {
+      // Best-effort: notify each user whose photo was denied.
+      try {
+        await supabase.functions.invoke("photo-denied-email", {
+          body: { photoIds },
+        });
+      } catch (e) {
+        console.error("Failed to invoke photo-denied-email function (bulk):", e);
+      }
     }
     revalidatePath("/photos");
     revalidatePath("/photos/review");

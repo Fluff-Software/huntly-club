@@ -60,7 +60,7 @@ export type CompassPanelProps =
 type GenerationResult =
   | { type: "chapter_arc"; generationId: number; output: ChapterArcItem[]; costUsd: number }
   | { type: "story_pages"; generationId: number; output: StorySlide[]; costUsd: number }
-  | { type: "missions"; generationId: number; output: GeneratedMission[]; costUsd: number };
+  | { type: "missions"; generationId: number; output: GeneratedMission[]; costUsd: number; input: any };
 
 export function CompassPanel(props: CompassPanelProps) {
   const router = useRouter();
@@ -248,6 +248,7 @@ export function CompassPanel(props: CompassPanelProps) {
             setGeneration(null);
             router.refresh();
           }}
+          onUpdateGeneration={(newGen: any) => setGeneration(newGen)}
         />
       )}
     </>

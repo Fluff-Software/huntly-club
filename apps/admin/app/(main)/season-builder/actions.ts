@@ -266,9 +266,10 @@ export async function acceptCompassStoryPages(opts: {
 
   const normalizedSlides = opts.slides.map((s) => {
     const text = (s.value ?? "").trim();
+    const prompt = s.image_prompt?.trim() || undefined;
     if (s.type === "text") return { type: "text", value: text };
-    if (s.type === "image") return { type: "image", value: "" };
-    return { type: "text-image", text, image: "" };
+    if (s.type === "image") return { type: "image", value: "", image_prompt: prompt };
+    return { type: "text-image", text, image: "", image_prompt: prompt };
   });
 
   const { error: updateError } = await supabase

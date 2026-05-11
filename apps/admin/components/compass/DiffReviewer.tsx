@@ -487,12 +487,8 @@ function MissionsReviewer({
           prompt: refinePrompt,
         },
       });
-      if (result.error) {
-        setError(result.error);
-      } else {
-        setRefinePrompt("");
-        onUpdateGeneration({ type: "missions", ...result });
-      }
+      setRefinePrompt("");
+      onUpdateGeneration({ type: "missions", ...result });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to refine missions");
     } finally {

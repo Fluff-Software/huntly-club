@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { BackHandler, Image, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -10,7 +10,8 @@ import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUser } from "@/contexts/UserContext";
-import { clearCycleDraft, getCurrentCycleSession, updateCurrentCycleSession } from "../../../services/cycleSessionService";
+import { useActiveTrackingSession } from "@/hooks/useActiveTrackingSession";
+import { updateActiveTrackingSession } from "@/services/trackingSessionService";
 import { createCycleJournalEntry } from "@/services/journalService";
 
 const FOREST_DARK = "#2D4A35";
@@ -28,12 +29,19 @@ export default function CycleFinishScreen() {
   const { user } = useAuth();
   const { teamId } = useUser();
 
-  const session = getCurrentCycleSession();
+  const { session: activeSession, loading: sessionLoading } = useActiveTrackingSession();
+  const session = activeSession?.type === "cycle" ? activeSession : null;
   const [selectedProfileIds, setSelectedProfileIds] = useState<number[]>(
     session?.selectedProfileIds ?? (profiles.length === 1 ? [profiles[0]!.id] : [])
   );
   const [photoUris, setPhotoUris] = useState<string[]>(session?.photoUris ?? []);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!session) return;
+    setSelectedProfileIds(session.selectedProfileIds?.length ? session.selectedProfileIds : profiles.length === 1 ? [profiles[0]!.id] : []);
+    setPhotoUris(session.photoUris ?? []);
+  }, [session, profiles]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -67,7 +75,7 @@ export default function CycleFinishScreen() {
 
   const removePhoto = (uri: string) => setPhotoUris((prev) => prev.filter((u) => u !== uri));
 
-  const canContinue = selectedProfileIds.length > 0 && !saving;
+  const canContinue = selectedProfileIds.length > 0 && !saving && !sessionLoading;
 
   const entryDate = useMemo(() => {
     const d = session?.endedAt ? new Date(session.endedAt) : new Date();
@@ -250,28 +258,27 @@ export default function CycleFinishScreen() {
 
         <View style={styles.footer} pointerEvents="box-none">
           <ThemedText style={styles.footerHint}>
-            {canContinue ? "Nice — let’s save your summary." : "Pick at least one explorer to continue."}
+            {sessionLoading ? "Restoring your cycle..." : canContinue ? "Nice — let’s save your summary." : "Pick at least one explorer to continue."}
           </ThemedText>
           <Pressable
             style={styles.primaryButton}
             disabled={!canContinue}
             onPress={async () => {
               if (!session || !user?.id || teamId == null) {
-                updateCurrentCycleSession({ selectedProfileIds, photoUris });
-                clearCycleDraft();
+                await updateActiveTrackingSession({ selectedProfileIds, photoUris });
                 router.replace("/(tabs)/activity/cycle-summary");
                 return;
               }
               setSaving(true);
               try {
-                updateCurrentCycleSession({ selectedProfileIds, photoUris });
+                await updateActiveTrackingSession({ selectedProfileIds, photoUris });
                 await createCycleJournalEntry({
                   userId: user.id,
                   teamId,
                   profileId: selectedProfileIds[0]!,
                   entryDate,
                   startedAt: session.startedAt,
-                  endedAt: session.endedAt,
+                  endedAt: session.endedAt ?? new Date().toISOString(),
                   distanceMeters: session.distanceMeters,
                   route: session.route,
                   selectedProfiles: selectedProfileIds.map((id) => {
@@ -280,7 +287,6 @@ export default function CycleFinishScreen() {
                   }),
                   photoLocalUris: photoUris });
               } finally {
-                clearCycleDraft();
                 setSaving(false);
                 router.replace("/(tabs)/activity/cycle-summary");
               }

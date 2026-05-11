@@ -15,6 +15,7 @@ import { usePlayer } from "@/contexts/PlayerContext";
 import { useUser } from "@/contexts/UserContext";
 import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { useActiveTrackingSession } from "@/hooks/useActiveTrackingSession";
 import { useFirstSeason } from "@/hooks/useFirstSeason";
 import { NewPlayerTutorial } from "@/components/NewPlayerTutorial";
 import { SlideUpTabBar } from "@/components/SlideUpTabBar";
@@ -110,6 +111,7 @@ export default function TabLayout() {
     loading: seasonLoading } = useFirstSeason();
   const { scaleW, isTablet } = useLayoutScale();
   const insets = useSafeAreaInsets();
+  const { session: activeTrackingSession } = useActiveTrackingSession();
   const signUpContext = useSignUpOptional();
   const showPostSignUpWelcome = signUpContext?.showPostSignUpWelcome ?? false;
   const setShowPostSignUpWelcome = signUpContext?.setShowPostSignUpWelcome;
@@ -292,6 +294,13 @@ export default function TabLayout() {
     !showSeasonAnnouncementModal &&
     showPostSignUpWelcome &&
     hasCompletedTutorial === false;
+
+  const activeTrackingTitle =
+    activeTrackingSession?.status === "active"
+      ? activeTrackingSession.type === "cycle"
+        ? "Cycle in progress"
+        : "Walk in progress"
+      : null;
 
   const isTabDisabled = (routeName: string) => {
     if (!tutorialVisible) return false;
@@ -499,6 +508,40 @@ export default function TabLayout() {
           href: null }}
       />
       </Tabs>
+      {activeTrackingSession?.status === "active" && activeTrackingTitle ? (
+        <Pressable
+          style={[
+            styles.activeSessionBanner,
+            {
+              left: scaleW(16),
+              right: scaleW(16),
+              bottom: tabBarHeight + scaleW(10),
+              borderRadius: scaleW(18),
+              padding: scaleW(14),
+            },
+          ]}
+          onPress={() => {
+            router.push(activeTrackingSession.type === "cycle" ? "/(tabs)/activity/cycle-map" : "/(tabs)/activity/walk-map");
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Return to active adventure"
+        >
+          <MaterialIcons
+            name={activeTrackingSession.type === "cycle" ? "directions-bike" : "directions-walk"}
+            size={scaleW(20)}
+            color="#FFFFFF"
+          />
+          <View style={{ flex: 1 }}>
+            <ThemedText type="heading" style={styles.activeSessionTitle}>
+              {activeTrackingTitle}
+            </ThemedText>
+            <ThemedText style={styles.activeSessionSubtitle}>
+              Tap to return to your adventure
+            </ThemedText>
+          </View>
+          <MaterialIcons name="chevron-right" size={scaleW(24)} color="#FFFFFF" />
+        </Pressable>
+      ) : null}
       <NewPlayerTutorial
         visible={tutorialVisible}
         onDismiss={handleTutorialDismiss}
@@ -603,6 +646,26 @@ const styles = StyleSheet.create({
   tutorialPulseRing: {
     position: "absolute",
     borderColor: "rgba(255,255,255,0.9)" },
+  activeSessionBanner: {
+    position: "absolute",
+    zIndex: 20,
+    elevation: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: HUNTLY_GREEN,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8 },
+  activeSessionTitle: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "900" },
+  activeSessionSubtitle: {
+    color: "rgba(255,255,255,0.78)",
+    fontSize: 12,
+    marginTop: 2 },
   notificationPromptOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",

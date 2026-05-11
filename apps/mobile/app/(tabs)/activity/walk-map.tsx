@@ -10,7 +10,14 @@ import * as ImagePicker from "expo-image-picker";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { addWalkPhotoUri, getWalkPhotoUris, setCurrentWalkSession } from "../../../services/walkSessionService";
+import { useActiveTrackingSession } from "@/hooks/useActiveTrackingSession";
+import {
+  addTrackingPhotoUri,
+  appendTrackingLocation,
+  completeTrackingSession,
+  startTrackingSession,
+  updateActiveTrackingSession,
+} from "@/services/trackingSessionService";
 
 const FOREST_DARK = "#2D4A35";
 const LIGHT_GREEN_BG = "#EEF5EE";
@@ -81,41 +88,65 @@ export default function WalkMapScreen() {
   const confirmBackdropOpacity = useRef(new Animated.Value(0)).current;
   const confirmSheetY = useRef(new Animated.Value(32)).current;
   const [nowMs, setNowMs] = useState(() => Date.now());
-  const [photoCount, setPhotoCount] = useState(() => getWalkPhotoUris().length);
+  const [photoCount, setPhotoCount] = useState(0);
+  const { session: activeSession } = useActiveTrackingSession();
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const perm = await Location.requestForegroundPermissionsAsync();
-        if (cancelled) return;
-        if (perm.status !== "granted") {
-          setStatus("denied");
+        const trackingSession = await startTrackingSession("walk");
+        if (trackingSession.type !== "walk") {
+          router.replace("/(tabs)/activity/cycle-map");
           return;
         }
+        if (cancelled) return;
         const pos = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced });
         if (cancelled) return;
-        setCoords({
+        const next = {
           latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude });
+          longitude: pos.coords.longitude,
+          timestamp: pos.timestamp };
+        setCoords(next);
+        void appendTrackingLocation(next);
         setStatus("ready");
       } catch (e) {
         if (cancelled) return;
-        setErrorMessage(e instanceof Error ? e.message : "Failed to get your location");
-        setStatus("error");
+        const message = e instanceof Error ? e.message : "Failed to get your location";
+        setErrorMessage(message);
+        setStatus(message.includes("permission") ? "denied" : "error");
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     if (status !== "ready") return;
     const id = setInterval(() => setNowMs(Date.now()), 1000);
     return () => clearInterval(id);
   }, [status]);
+
+  useEffect(() => {
+    if (!activeSession || activeSession.type !== "walk") return;
+    setTrail(activeSession.route);
+    setPhotoCount(activeSession.photoUris?.length ?? 0);
+    const latest = activeSession.endedAtCoords ?? activeSession.route[activeSession.route.length - 1] ?? null;
+    if (latest) {
+      setCoords({
+        latitude: latest.latitude,
+        longitude: latest.longitude });
+    }
+    if (activeSession.steps != null) setSteps(activeSession.steps);
+  }, [activeSession]);
+
+  useEffect(() => {
+    if (activeSession?.status === "active" && activeSession.type === "cycle") {
+      router.replace("/(tabs)/activity/cycle-map");
+    }
+  }, [activeSession, router]);
 
   useEffect(() => {
     if (status !== "ready") return;
@@ -135,12 +166,7 @@ export default function WalkMapScreen() {
               latitude: pos.coords.latitude,
               longitude: pos.coords.longitude };
             setCoords(next);
-            setTrail((prev) => {
-              if (prev.length === 0) return [next];
-              const last = prev[prev.length - 1]!;
-              if (metersBetween(last, next) < 2) return prev;
-              return prev.concat(next);
-            });
+            void appendTrackingLocation({ ...next, timestamp: pos.timestamp });
           }
         );
       } catch (e) {
@@ -397,7 +423,7 @@ export default function WalkMapScreen() {
     return sum;
   }, [trail]);
 
-  const durationMs = nowMs - startedAt.getTime();
+  const durationMs = nowMs - new Date(activeSession?.startedAt ?? startedAt).getTime();
 
   const openConfirm = () => {
     setConfirmVisible(true);
@@ -435,16 +461,13 @@ export default function WalkMapScreen() {
     });
   };
 
-  const confirmComplete = () => {
-    const endedAt = new Date();
-    setCurrentWalkSession({
-      startedAt: startedAt.toISOString(),
-      endedAt: endedAt.toISOString(),
+  const confirmComplete = async () => {
+    await updateActiveTrackingSession({
       steps: stepsStatus === "ready" ? steps : null,
       distanceMeters,
       route: trail,
-      endedAtCoords: coords,
-      photoUris: getWalkPhotoUris() });
+      endedAtCoords: coords });
+    await completeTrackingSession();
     closeConfirm();
     router.replace("/(tabs)/activity/walk-finish");
   };
@@ -457,8 +480,8 @@ export default function WalkMapScreen() {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.8 });
       if (!result.canceled && result.assets[0]?.uri) {
-        addWalkPhotoUri(result.assets[0]!.uri);
-        setPhotoCount(getWalkPhotoUris().length);
+        const nextSession = await addTrackingPhotoUri(result.assets[0]!.uri);
+        setPhotoCount(nextSession?.photoUris?.length ?? 0);
       }
     } catch {
       // ignore
@@ -577,10 +600,10 @@ export default function WalkMapScreen() {
                   setStatus("loading");
                   setCoords(null);
                   setErrorMessage(null);
-                  Location.requestForegroundPermissionsAsync()
-                    .then((perm) => {
-                      if (perm.status !== "granted") {
-                        setStatus("denied");
+                  startTrackingSession("walk")
+                    .then((trackingSession) => {
+                      if (trackingSession.type !== "walk") {
+                        router.replace("/(tabs)/activity/cycle-map");
                         return null;
                       }
                       return Location.getCurrentPositionAsync({
@@ -588,14 +611,18 @@ export default function WalkMapScreen() {
                     })
                     .then((pos) => {
                       if (!pos) return;
-                      setCoords({
+                      const next = {
                         latitude: pos.coords.latitude,
-                        longitude: pos.coords.longitude });
+                        longitude: pos.coords.longitude,
+                        timestamp: pos.timestamp };
+                      setCoords(next);
+                      void appendTrackingLocation(next);
                       setStatus("ready");
                     })
                     .catch((e) => {
-                      setErrorMessage(e instanceof Error ? e.message : "Failed to get your location");
-                      setStatus("error");
+                      const message = e instanceof Error ? e.message : "Failed to get your location";
+                      setErrorMessage(message);
+                      setStatus(message.includes("permission") ? "denied" : "error");
                     });
                 }}
               >

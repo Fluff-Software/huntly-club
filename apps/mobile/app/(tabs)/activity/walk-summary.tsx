@@ -7,7 +7,8 @@ import MapView, { Polyline } from "react-native-maps";
 import ConfettiCannon from "react-native-confetti-cannon";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
-import { clearCurrentWalkSession, getCurrentWalkSession } from "../../../services/walkSessionService";
+import { useActiveTrackingSession } from "@/hooks/useActiveTrackingSession";
+import { clearActiveTrackingSession } from "@/services/trackingSessionService";
 import { useFocusEffect } from "@react-navigation/native";
 import { usePlayer } from "@/contexts/PlayerContext";
 
@@ -50,7 +51,8 @@ export default function WalkSummaryScreen() {
     longitudeDelta: number;
   } | null>(null);
 
-  const session = getCurrentWalkSession();
+  const { session: activeSession, loading: sessionLoading } = useActiveTrackingSession();
+  const session = activeSession?.type === "walk" ? activeSession : null;
   const { profiles } = usePlayer();
 
   useFocusEffect(
@@ -64,7 +66,7 @@ export default function WalkSummaryScreen() {
   const computed = useMemo(() => {
     if (!session) return null;
     const started = new Date(session.startedAt).getTime();
-    const ended = new Date(session.endedAt).getTime();
+    const ended = new Date(session.endedAt ?? new Date().toISOString()).getTime();
     const durationMs = Math.max(0, ended - started);
     const durationSec = durationMs / 1000;
     const avgSpeedMps = durationSec > 0 ? session.distanceMeters / durationSec : 0;
@@ -225,7 +227,9 @@ export default function WalkSummaryScreen() {
             <ThemedText type="heading" style={styles.headerTitle}>
               Walk summary
             </ThemedText>
-            <ThemedText style={styles.headerSubtext}>No walk data found.</ThemedText>
+            <ThemedText style={styles.headerSubtext}>
+              {sessionLoading ? "Loading walk data..." : "No walk data found."}
+            </ThemedText>
           </View>
           <View style={styles.headerRightSpacer} />
         </View>
@@ -233,7 +237,7 @@ export default function WalkSummaryScreen() {
           <View style={styles.emptyWrap}>
             <MaterialIcons name="map" size={scaleW(34)} color={HUNTLY_GREEN} />
             <ThemedText style={styles.emptyText}>
-              Head back to the map screen and complete a walk to see your stats.
+              {sessionLoading ? "Restoring your walk summary." : "Head back to the map screen and complete a walk to see your stats."}
             </ThemedText>
           </View>
         </View>
@@ -377,8 +381,8 @@ export default function WalkSummaryScreen() {
         <View style={styles.footer} pointerEvents="box-none">
           <Pressable
             style={styles.doneButton}
-            onPress={() => {
-              clearCurrentWalkSession();
+            onPress={async () => {
+              await clearActiveTrackingSession();
               router.replace("/(tabs)");
             }}
             accessibilityRole="button"

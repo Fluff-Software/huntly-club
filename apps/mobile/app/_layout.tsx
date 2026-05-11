@@ -25,6 +25,8 @@ import { UserProvider } from "@/contexts/UserContext";
 import { AuthGuard } from "@/components/authentication/AuthGuard";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { supabase } from "@/services/supabase";
+import { getActiveTrackingSession } from "@/services/trackingSessionService";
+import "@/services/activityTrackingTask";
 
 import "../global.css";
 
@@ -91,10 +93,17 @@ export default function RootLayout() {
     return () => sub.remove();
   }, []);
 
-  // Handle deep links (e.g. email verification: huntlyclub://auth/confirm#access_token=...)
+  // Handle deep links (e.g. email verification and active activity return links).
   useEffect(() => {
     const handleAuthConfirmUrl = async (url: string) => {
       const parsed = Linking.parse(url);
+      if (parsed.path?.includes("activity/live")) {
+        const session = await getActiveTrackingSession();
+        if (session?.status === "active") {
+          router.replace(session.type === "cycle" ? "/(tabs)/activity/cycle-map" : "/(tabs)/activity/walk-map");
+        }
+        return;
+      }
       if (!parsed.path?.includes("auth/confirm")) return;
       await setSessionFromAuthConfirmUrl(url);
       router.replace("/auth/confirm");

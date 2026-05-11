@@ -7,7 +7,8 @@ import MapView, { Polyline } from "react-native-maps";
 import ConfettiCannon from "react-native-confetti-cannon";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
-import { clearCurrentCycleSession, getCurrentCycleSession } from "../../../services/cycleSessionService";
+import { useActiveTrackingSession } from "@/hooks/useActiveTrackingSession";
+import { clearActiveTrackingSession } from "@/services/trackingSessionService";
 import { useFocusEffect } from "@react-navigation/native";
 import { usePlayer } from "@/contexts/PlayerContext";
 
@@ -52,7 +53,8 @@ export default function CycleSummaryScreen() {
     longitudeDelta: number;
   } | null>(null);
 
-  const session = getCurrentCycleSession();
+  const { session: activeSession, loading: sessionLoading } = useActiveTrackingSession();
+  const session = activeSession?.type === "cycle" ? activeSession : null;
   const { profiles } = usePlayer();
 
   useFocusEffect(
@@ -66,7 +68,7 @@ export default function CycleSummaryScreen() {
   const computed = useMemo(() => {
     if (!session) return null;
     const started = new Date(session.startedAt).getTime();
-    const ended = new Date(session.endedAt).getTime();
+    const ended = new Date(session.endedAt ?? new Date().toISOString()).getTime();
     const durationMs = Math.max(0, ended - started);
     return {
       durationMs,
@@ -190,14 +192,18 @@ export default function CycleSummaryScreen() {
             <ThemedText type="heading" style={styles.headerTitle}>
               Cycle summary
             </ThemedText>
-            <ThemedText style={styles.headerSubtext}>No cycle data found.</ThemedText>
+            <ThemedText style={styles.headerSubtext}>
+              {sessionLoading ? "Loading cycle data..." : "No cycle data found."}
+            </ThemedText>
           </View>
           <View style={styles.headerRightSpacer} />
         </View>
         <View style={styles.body}>
           <View style={styles.emptyWrap}>
             <MaterialIcons name="map" size={scaleW(34)} color={HUNTLY_GREEN} />
-            <ThemedText style={styles.emptyText}>Head back and complete a cycle to see your stats.</ThemedText>
+            <ThemedText style={styles.emptyText}>
+              {sessionLoading ? "Restoring your cycle summary." : "Head back and complete a cycle to see your stats."}
+            </ThemedText>
           </View>
         </View>
       </SafeAreaView>
@@ -328,8 +334,8 @@ export default function CycleSummaryScreen() {
         <View style={styles.footer} pointerEvents="box-none">
           <Pressable
             style={styles.doneButton}
-            onPress={() => {
-              clearCurrentCycleSession();
+            onPress={async () => {
+              await clearActiveTrackingSession();
               router.replace("/(tabs)");
             }}
             accessibilityRole="button"

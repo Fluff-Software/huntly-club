@@ -25,6 +25,7 @@ type MissionsGeneration = {
   generationId: number;
   output: GeneratedMission[];
   costUsd: number;
+  input?: any;
 };
 
 type Generation = ChapterArcGeneration | StoryPagesGeneration | MissionsGeneration;
@@ -36,9 +37,10 @@ type Props = {
   entityType: "season" | "chapter" | "activity";
   onClose: () => void;
   onAccepted: () => void;
+  onUpdateGeneration?: (newGen: any) => void;
 };
 
-export function DiffReviewer({ generation, seasonId, entityId, entityType, onClose, onAccepted }: Props) {
+export function DiffReviewer({ generation, seasonId, entityId, entityType, onClose, onAccepted, onUpdateGeneration }: Props) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -86,6 +88,7 @@ export function DiffReviewer({ generation, seasonId, entityId, entityType, onClo
         setError={setError}
         onClose={onClose}
         onAccepted={onAccepted}
+        onUpdateGeneration={onUpdateGeneration}
       />
     );
   }
@@ -151,6 +154,7 @@ type ReviewerCommonProps = {
   setError: (e: string | null) => void;
   onClose: () => void;
   onAccepted: () => void;
+  onUpdateGeneration?: (newGen: any) => void;
 };
 
 function ChapterArcReviewer({
@@ -311,6 +315,7 @@ function ChapterArcReviewer({
             </div>
           </div>
         ))}
+
       </div>
     </Modal>
   );
@@ -422,12 +427,15 @@ function StoryPagesReviewer({
             </div>
           </div>
         ))}
+
       </div>
     </Modal>
   );
 }
 
 // ── Missions Reviewer ─────────────────────────────────────────────────────────
+
+import { generateMissions } from "@/lib/compass/actions/generate-missions";
 
 function MissionsReviewer({
   generation,
@@ -437,12 +445,15 @@ function MissionsReviewer({
   setError,
   onClose,
   onAccepted,
+  onUpdateGeneration,
   seasonId,
   entityId,
 }: { generation: MissionsGeneration } & ReviewerCommonProps) {
   const [accepted, setAccepted] = useState<Record<number, boolean>>(
     Object.fromEntries(generation.output.map((_, i) => [i, true]))
   );
+  const [refinePrompt, setRefinePrompt] = useState("");
+  const [isRefining, setIsRefining] = useState(false);
 
   const acceptedMissions = Object.entries(accepted)
     .filter(([, v]) => v)
@@ -462,6 +473,31 @@ function MissionsReviewer({
       if (result.error) setError(result.error);
       else onAccepted();
     });
+  }
+
+  async function handleRefine() {
+    if (!refinePrompt.trim() || !generation.input || !onUpdateGeneration) return;
+    setError(null);
+    setIsRefining(true);
+    try {
+      const result = await generateMissions({
+        ...generation.input,
+        refinement: {
+          previousMissions: generation.output,
+          prompt: refinePrompt,
+        },
+      });
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setRefinePrompt("");
+        onUpdateGeneration({ type: "missions", ...result });
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to refine missions");
+    } finally {
+      setIsRefining(false);
+    }
   }
 
   return (
@@ -543,6 +579,40 @@ function MissionsReviewer({
             </div>
           </div>
         ))}
+
+        {/* Refinement Area */}
+        {generation.input && onUpdateGeneration && (
+          <div className="mt-4 flex flex-col gap-2 rounded-xl border border-stone-200 bg-stone-50 p-4">
+            <label className="text-xs font-semibold text-stone-700">Refine with AI</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="e.g. Make the outdoor missions focus more on finding bugs..."
+                value={refinePrompt}
+                onChange={(e) => setRefinePrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleRefine();
+                  }
+                }}
+                disabled={isPending || isRefining}
+                className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage disabled:bg-stone-100"
+              />
+              <button
+                type="button"
+                onClick={handleRefine}
+                disabled={isPending || isRefining || !refinePrompt.trim()}
+                className="shrink-0 rounded-lg bg-stone-800 px-4 py-2 text-sm font-medium text-white hover:bg-stone-700 disabled:opacity-50"
+              >
+                {isRefining ? "Refining…" : "Refine"}
+              </button>
+            </div>
+            <p className="text-xs text-stone-500">
+              Compass will read these generated missions and adjust them based on your feedback.
+            </p>
+          </div>
+        )}
       </div>
     </Modal>
   );

@@ -10,7 +10,7 @@ import {
 export type ImageQuality = "fast" | "quality";
 
 type GenerateImageOpts = {
-  imageAssetId: number;
+  imageAssetId?: number;
   prompt: string;
   quality?: ImageQuality;
   size?: "1024x1024" | "1792x1024" | "1024x1792";
@@ -27,57 +27,62 @@ export type GenerateImageResult = {
 
 function buildEnhancedPrompt(
   prompt: string,
-  opts?: { disableReferenceImages?: boolean }
+  opts?: { disableReferenceImages?: boolean; styleReferenceUrls?: string[] }
 ): {
   enhancedPrompt: string;
   referenceImageUrls: string[];
 } {
+  const styleUrls = opts?.styleReferenceUrls || [];
   if (opts?.disableReferenceImages) {
     const enhancedPrompt = [
-      `STYLE CONSISTENCY REQUIRED. Photoreal / high-quality illustration in the Huntly adventure brand world.`,
+      `STYLE CONSISTENCY REQUIRED. Match the artistic style, rendering technique, and overall vibe of the provided style reference images. High-quality illustration in the Huntly adventure brand world.`,
       `No text, no logos, no watermarks.`,
       ``,
       prompt,
     ].join("\n");
-    return { enhancedPrompt, referenceImageUrls: [] };
+    return { enhancedPrompt, referenceImageUrls: [...styleUrls] };
   }
 
   const captainsInPrompt = detectCaptainsInPrompt(prompt);
 
+  const styleInstruction = styleUrls.length > 0
+    ? `STYLE CONSISTENCY REQUIRED. Match the artistic style, rendering technique, and overall vibe of the provided style reference images.`
+    : `STYLE CONSISTENCY REQUIRED. High-quality illustration in the Huntly adventure brand world. Match the stylization and overall look.`;
+
   if (captainsInPrompt.length === 0) {
     const fallback = getCaptainReferenceImageUrl("bella");
     const enhancedPrompt = [
-      `STYLE CONSISTENCY REQUIRED. Match the stylization, rendering style, and overall look of the provided reference images.`,
+      styleInstruction,
       ``,
       prompt,
     ].join("\n");
     return {
       enhancedPrompt,
-      referenceImageUrls: fallback ? [fallback] : [],
+      referenceImageUrls: [...styleUrls, ...(fallback ? [fallback] : [])],
     };
   }
 
   // Inject visual anchors for each captain detected
   const anchorLines = captainsInPrompt.map(
     (c) =>
-      `${c.name} (${c.team} captain, age 14): ${c.imageAnchors}. Always depicted as a real 14-year-old in an outdoor adventure brand world — not a cartoon, toddler, or fantasy hero.`
+      `${c.name} (${c.team} captain, age 14): ${c.imageAnchors}. Always depicted as a 14-year-old in an outdoor adventure brand world.`
   );
 
   const enhancedPrompt = [
     `CHARACTER CONSISTENCY REQUIRED. The following characters must match their established appearance exactly:`,
     ...anchorLines,
     ``,
-    `STYLE CONSISTENCY REQUIRED. Match the stylization, rendering style, and overall look of the provided reference images.`,
+    styleInstruction,
     ``,
     prompt,
   ].join("\n");
 
   // Use all detected captains' reference images for conditioning
-  const referenceImageUrls = captainsInPrompt
+  const captainReferenceUrls = captainsInPrompt
     .map((c) => getCaptainReferenceImageUrl(c.slug))
     .filter((u): u is string => typeof u === "string" && u.length > 0);
 
-  return { enhancedPrompt, referenceImageUrls };
+  return { enhancedPrompt, referenceImageUrls: [...styleUrls, ...captainReferenceUrls] };
 }
 
 export async function generateImage(
@@ -119,9 +124,26 @@ export async function generateImage(
     };
   }
 
+  // Fetch style references
+  const { data: styleFiles } = await supabase.storage.from("season-images").list("style-references");
+  const styleReferenceUrls: string[] = [];
+  if (styleFiles && styleFiles.length > 0) {
+    const validFiles = styleFiles.filter(f => f.name && f.name !== ".emptyFolderPlaceholder" && !f.name.startsWith("."));
+    const filesToUse = validFiles.slice(0, 10);
+    for (const f of filesToUse) {
+      const { data: urlData } = supabase.storage.from("season-images").getPublicUrl(`style-references/${f.name}`);
+      styleReferenceUrls.push(urlData.publicUrl);
+    }
+  }
+
+  console.log("generateImage: Found style reference URLs", styleReferenceUrls);
+
   const { enhancedPrompt, referenceImageUrls } = buildEnhancedPrompt(prompt, {
     disableReferenceImages,
+    styleReferenceUrls,
   });
+
+  console.log("generateImage: Final referenceImageUrls array length:", referenceImageUrls.length);
 
   const client = createCompassClient();
 
@@ -242,15 +264,16 @@ export async function generateImage(
       contentType === "image/webp"
         ? "webp"
         : contentType === "image/jpeg"
-        ? "jpg"
-        : "png";
+          ? "jpg"
+          : "png";
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Failed to decode generated image";
     return { error: msg };
   }
 
   // Upload to Supabase Storage
-  const fileName = `compass-generated/${imageAssetId}-${Date.now()}.${extension}`;
+  const fileNameId = imageAssetId ?? "adhoc";
+  const fileName = `compass-generated/${fileNameId}-${Date.now()}.${extension}`;
   const { error: uploadError } = await supabase.storage
     .from("season-images")
     .upload(fileName, bytes, {
@@ -266,21 +289,23 @@ export async function generateImage(
     data: { publicUrl },
   } = supabase.storage.from("season-images").getPublicUrl(fileName);
 
-  await supabase
-    .from("image_assets")
-    .update({
-      storage_path: publicUrl,
-      status: "image_uploaded",
-      prompt_status: "approved",
-    })
-    .eq("id", imageAssetId);
+  if (imageAssetId) {
+    await supabase
+      .from("image_assets")
+      .update({
+        storage_path: publicUrl,
+        status: "image_uploaded",
+        prompt_status: "approved",
+      })
+      .eq("id", imageAssetId);
+  }
 
   const { data: genRow } = await supabase
     .from("compass_generations")
     .insert({
       action: "generate_image",
       entity_type: "image_asset",
-      entity_id: imageAssetId,
+      entity_id: imageAssetId ?? 0,
       model,
       input: {
         prompt,

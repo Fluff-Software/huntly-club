@@ -3,12 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/Button";
-import { uploadSlideImage } from "@/lib/upload-actions";
+import { uploadSlideImage, generateAdhocSlideImage } from "@/lib/upload-actions";
 
 export type SlidePart =
-  | { type: "text"; value: string }
-  | { type: "image"; value: string }
-  | { type: "text-image"; text: string; image: string };
+  | { type: "text"; value: string; image_prompt?: string }
+  | { type: "image"; value: string; image_prompt?: string }
+  | { type: "text-image"; text: string; image: string; image_prompt?: string };
 
 type SlidePartsFieldProps = {
   name: string;
@@ -30,6 +30,7 @@ export function SlidePartsField({
   );
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
+  const [generatingIndex, setGeneratingIndex] = useState<number | null>(null);
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   useEffect(() => {
@@ -57,14 +58,15 @@ export function SlidePartsField({
   function changeSlideType(index: number, newType: SlidePart["type"]) {
     const slide = slides[index];
     if (newType === "text") {
-      setSlide(index, { type: "text", value: slide.type === "text" ? slide.value : "" });
+      setSlide(index, { type: "text", value: slide.type === "text" ? slide.value : "", image_prompt: slide.image_prompt });
     } else if (newType === "image") {
-      setSlide(index, { type: "image", value: slide.type === "image" ? slide.value : "" });
+      setSlide(index, { type: "image", value: slide.type === "image" ? slide.value : "", image_prompt: slide.image_prompt });
     } else {
       setSlide(index, {
         type: "text-image",
         text: slide.type === "text" ? slide.value : slide.type === "text-image" ? slide.text : "",
         image: slide.type === "image" ? slide.value : slide.type === "text-image" ? slide.image : "",
+        image_prompt: slide.image_prompt,
       });
     }
   }
@@ -86,12 +88,37 @@ export function SlidePartsField({
     if (result.url) {
       const slide = slides[index];
       if (slide.type === "text-image") {
-        setSlide(index, { type: "text-image", text: slide.text, image: result.url });
-      } else {
-        setSlide(index, { type: "image", value: result.url });
+        setSlide(index, { ...slide, image: result.url });
+      } else if (slide.type === "image") {
+        setSlide(index, { ...slide, value: result.url });
       }
     }
     if (fileInputRefs.current[index]) fileInputRefs.current[index]!.value = "";
+  }
+
+  async function handleGenerateImage(index: number) {
+    const slide = slides[index];
+    if (!slide.image_prompt) return;
+    setUploadError(null);
+    setGeneratingIndex(index);
+    const result = await generateAdhocSlideImage({ prompt: slide.image_prompt });
+    setGeneratingIndex(null);
+    if (result.error) {
+      setUploadError(`Slide ${index + 1}: ${result.error}`);
+      return;
+    }
+    if (result.url) {
+      setSlides((prev) => {
+        const next = [...prev];
+        const current = next[index];
+        if (current.type === "text-image") {
+          next[index] = { ...current, image: result.url! };
+        } else if (current.type === "image") {
+          next[index] = { ...current, value: result.url! };
+        }
+        return next;
+      });
+    }
   }
 
   const canAddImage = Boolean(uploadPrefix);
@@ -190,6 +217,7 @@ export function SlidePartsField({
                         type: "text-image",
                         text: e.target.value,
                         image: (slide as any).image ?? "",
+                        image_prompt: slide.image_prompt,
                       })
                     }
                     placeholder="Caption or text for this slide"
@@ -223,6 +251,30 @@ export function SlidePartsField({
                     />
                   </div>
                 )}
+                <div className="space-y-2 mt-2 pt-2 border-t border-stone-200">
+                  <label className="block text-xs font-medium text-stone-500">Image Prompt</label>
+                  <textarea
+                    rows={2}
+                    value={slide.image_prompt ?? ""}
+                    onChange={(e) => setSlide(index, { ...slide, image_prompt: e.target.value })}
+                    placeholder="Describe the image to generate..."
+                    className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+                  />
+                  <div className="flex items-center gap-3">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleGenerateImage(index)}
+                      disabled={!slide.image_prompt || generatingIndex !== null || uploadingIndex !== null}
+                    >
+                      {generatingIndex === index ? "Generating…" : "Generate Image"}
+                    </Button>
+                    {uploadError && uploadError.startsWith(`Slide ${index + 1}:`) && (
+                      <span className="text-xs text-red-600">{uploadError.replace(`Slide ${index + 1}: `, "")}</span>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </div>

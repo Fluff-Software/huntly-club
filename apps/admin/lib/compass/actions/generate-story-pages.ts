@@ -22,13 +22,13 @@ type Input = {
   slideCount?: number;
 };
 
-const SYSTEM_PROMPT_VERSION = "generate-story-pages-v2";
+const SYSTEM_PROMPT_VERSION = "generate-story-pages-v4";
 
 export async function generateStoryPages(
   input: Input,
   createdBy?: string
 ): Promise<CompassActionResult<StorySlide[]>> {
-  const slideCount = input.slideCount ?? 5;
+  const slideCount = input.slideCount ?? 8;
 
   const captainNote = input.captainSlug
     ? `The featured captain for this chapter is ${input.captainSlug}. Write their dialogue and lines in their distinct voice as described in the world guide above.`
@@ -46,23 +46,21 @@ ${input.seasonBrief}`;
   const messages = [
     {
       role: "user" as const,
-      content: `Write ${slideCount} story slides for the chapter "${input.chapterTitle}".
+      content: `Write up to ${slideCount} story slides for the chapter "${input.chapterTitle}".
 
 Chapter summary: ${input.chapterSummary}
 Arc position: ${input.arcPosition}
 
-Return a JSON array of exactly ${slideCount} slide objects. Each must have:
-- type: one of "text", "image", or "text-image"
-- value: the story text (2–4 short sentences, age-appropriate, active voice, no over-explanation)
-- image_prompt: REQUIRED only when type is "image" or "text-image". Omit image_prompt entirely for "text" slides.
+Return a JSON array of up to ${slideCount} slide objects. Each must have:
+- type: must ALWAYS be "text-image"
+- value: the story text (exactly ONE short, simple, compelling sentence per slide; very easy to read for 4-year-olds, active voice, no over-explanation)
+- image_prompt: REQUIRED for every slide.
 
 Image prompt rules:
 - If a captain appears in the scene, refer to them ONLY by name: "Bella", "Felix", or "Oli".
 - If multiple captains appear, explicitly list their names (e.g. "Bella and Felix", "Felix and Oli", "Bella, Oli, and Felix"). Do NOT use generic phrases like "a group of explorers" or "three young people".
 - Do NOT describe the captain's physical appearance (hair, clothes, facial features, etc). Character consistency is handled later.
 - Focus the image_prompt on the setting, action, mood, lighting, and key objects.
-
-Use a mix of types. Start with "text", use "text-image" for dramatic moments, "image" sparingly.
 
 Respond with the JSON array only.`,
     },

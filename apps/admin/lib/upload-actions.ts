@@ -1,9 +1,10 @@
 "use server";
 
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { generateImage } from "@/lib/compass/actions/generate-image";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-const MAX_SIZE = 5 * 1024 * 1024;
+const MAX_SIZE = 15 * 1024 * 1024;
 
 async function uploadImage(
   formData: FormData,
@@ -18,7 +19,7 @@ async function uploadImage(
     return { error: "Invalid file type. Use JPEG, PNG, WebP or GIF." };
   }
   if (file.size > MAX_SIZE) {
-    return { error: "File too large. Maximum size is 5MB." };
+    return { error: "File too large. Maximum size is 15MB." };
   }
 
   try {
@@ -125,4 +126,23 @@ export async function uploadResourceFileAction(
 ): Promise<{ url?: string; error?: string }> {
   const prefix = (formData.get("prefix") as string) || "resources";
   return uploadResourceFile(formData, prefix);
+}
+
+export async function generateAdhocSlideImage(opts: {
+  prompt: string;
+}): Promise<{ url?: string; error?: string }> {
+  try {
+    const { result, error } = await generateImage({
+      prompt: opts.prompt,
+      quality: "fast",
+      size: "1024x1024",
+    });
+
+    if (error) return { error };
+    if (!result?.publicUrl) return { error: "Failed to generate image" };
+
+    return { url: result.publicUrl };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Failed to generate image" };
+  }
 }

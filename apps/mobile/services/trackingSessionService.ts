@@ -13,6 +13,7 @@ export type TrackingRoutePoint = {
   latitude: number;
   longitude: number;
   timestamp?: number;
+  accuracy?: number | null;
 };
 
 export type ActiveTrackingSession = {
@@ -30,7 +31,15 @@ export type ActiveTrackingSession = {
 };
 
 const ACTIVE_SESSION_KEY = "huntly.activeTrackingSession.v1";
-const MIN_ROUTE_POINT_DISTANCE_METERS = 2;
+const MIN_ROUTE_POINT_DISTANCE_METERS: Record<TrackingActivityType, number> = {
+  walk: 5,
+  cycle: 8,
+};
+const MAX_ROUTE_POINT_ACCURACY_METERS = 50;
+const MAX_REASONABLE_SPEED_METERS_PER_SECOND: Record<TrackingActivityType, number> = {
+  walk: 5.5,
+  cycle: 18,
+};
 
 let cachedSession: ActiveTrackingSession | null | undefined;
 const listeners = new Set<(session: ActiveTrackingSession | null) => void>();
@@ -55,6 +64,28 @@ export function metersBetween(a: TrackingRoutePoint, b: TrackingRoutePoint): num
   const sinDLon = Math.sin(dLon / 2);
   const h = sinDLat * sinDLat + Math.cos(lat1) * Math.cos(lat2) * (sinDLon * sinDLon);
   return 2 * earthRadius * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+function isReliableRoutePoint(
+  type: TrackingActivityType,
+  last: TrackingRoutePoint | undefined,
+  point: TrackingRoutePoint
+) {
+  if (point.accuracy != null && point.accuracy > MAX_ROUTE_POINT_ACCURACY_METERS) return false;
+  if (!last) return true;
+
+  if (last.timestamp != null && point.timestamp != null && point.timestamp <= last.timestamp) return false;
+
+  const distance = metersBetween(last, point);
+  if (last.timestamp != null && point.timestamp != null) {
+    const elapsedSeconds = Math.max((point.timestamp - last.timestamp) / 1000, 0);
+    if (elapsedSeconds > 0) {
+      const speed = distance / elapsedSeconds;
+      if (speed > MAX_REASONABLE_SPEED_METERS_PER_SECOND[type]) return false;
+    }
+  }
+
+  return true;
 }
 
 function notify(session: ActiveTrackingSession | null) {
@@ -144,7 +175,7 @@ export async function refreshWalkStepsFromPedometer(): Promise<ActiveTrackingSes
   if (!current || current.type !== "walk") return current;
   const steps = await getWalkStepsBetween(current.startedAt, current.endedAt ?? new Date().toISOString());
   if (steps == null) return current;
-  return saveActiveTrackingSession({ ...current, steps });
+  return saveActiveTrackingSession({ ...current, steps: Math.max(current.steps ?? 0, steps) });
 }
 
 export async function startTrackingLocationUpdates(type: TrackingActivityType): Promise<void> {
@@ -153,10 +184,10 @@ export async function startTrackingLocationUpdates(type: TrackingActivityType): 
   const title = type === "cycle" ? "Cycle in progress" : "Walk in progress";
 
   await Location.startLocationUpdatesAsync(TRACKING_LOCATION_TASK, {
-    accuracy: Location.Accuracy.Balanced,
+    accuracy: Location.Accuracy.High,
     activityType: Location.ActivityType.Fitness,
     timeInterval: 2000,
-    distanceInterval: 3,
+    distanceInterval: MIN_ROUTE_POINT_DISTANCE_METERS[type],
     pausesUpdatesAutomatically: false,
     showsBackgroundLocationIndicator: true,
     foregroundService: {
@@ -202,12 +233,18 @@ export async function appendTrackingLocation(point: TrackingRoutePoint): Promise
   const current = await getActiveTrackingSession();
   if (!current || current.status !== "active") return current;
 
-  const last = current.route[current.route.length - 1];
-  if (last && metersBetween(last, point) < MIN_ROUTE_POINT_DISTANCE_METERS) {
+  const lastRoutePoint = current.route[current.route.length - 1];
+  const lastKnownPoint = current.endedAtCoords ?? lastRoutePoint;
+  if (!isReliableRoutePoint(current.type, lastKnownPoint, point)) {
+    return current;
+  }
+
+  const distanceFromLast = lastRoutePoint ? metersBetween(lastRoutePoint, point) : 0;
+  if (lastRoutePoint && distanceFromLast < MIN_ROUTE_POINT_DISTANCE_METERS[current.type]) {
     return saveActiveTrackingSession({ ...current, endedAtCoords: point });
   }
 
-  const nextDistance = last ? current.distanceMeters + metersBetween(last, point) : current.distanceMeters;
+  const nextDistance = lastRoutePoint ? current.distanceMeters + distanceFromLast : current.distanceMeters;
   return saveActiveTrackingSession({
     ...current,
     route: current.route.concat(point),
@@ -222,11 +259,13 @@ export async function completeTrackingSession(): Promise<ActiveTrackingSession |
   const endedAt = new Date().toISOString();
   const recoveredSteps =
     current.type === "walk" ? await getWalkStepsBetween(current.startedAt, endedAt) : current.steps;
+  const completedSteps =
+    current.type === "walk" && recoveredSteps != null ? Math.max(current.steps ?? 0, recoveredSteps) : current.steps;
   const completed = await saveActiveTrackingSession({
     ...current,
     status: "completed",
     endedAt,
-    steps: recoveredSteps ?? current.steps,
+    steps: completedSteps,
   });
   await stopTrackingLocationUpdates();
   void endActivityLiveSurface(completed);

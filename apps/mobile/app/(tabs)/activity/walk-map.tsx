@@ -27,11 +27,15 @@ const CHECK_GREEN = "#2D5A27";
 type Coords = {
   latitude: number;
   longitude: number;
+  timestamp?: number;
+  accuracy?: number | null;
 };
 
 type LatLng = {
   latitude: number;
   longitude: number;
+  timestamp?: number;
+  accuracy?: number | null;
 };
 
 type MapRegion = {
@@ -80,6 +84,7 @@ export default function WalkMapScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [stepsStatus, setStepsStatus] = useState<"loading" | "denied" | "unavailable" | "ready">("loading");
   const [steps, setSteps] = useState<number>(0);
+  const lastLiveStepsRef = useRef(0);
   const [trail, setTrail] = useState<LatLng[]>([]);
   const mapRef = useRef<MapView | null>(null);
   const [currentRegion, setCurrentRegion] = useState<MapRegion | null>(null);
@@ -90,6 +95,7 @@ export default function WalkMapScreen() {
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [photoCount, setPhotoCount] = useState(0);
   const { session: activeSession } = useActiveTrackingSession();
+  const activeWalkStartedAt = activeSession?.type === "walk" ? activeSession.startedAt : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -102,12 +108,13 @@ export default function WalkMapScreen() {
         }
         if (cancelled) return;
         const pos = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced });
+          accuracy: Location.Accuracy.High });
         if (cancelled) return;
         const next = {
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
-          timestamp: pos.timestamp };
+          timestamp: pos.timestamp,
+          accuracy: pos.coords.accuracy };
         setCoords(next);
         void appendTrackingLocation(next);
         setStatus("ready");
@@ -139,8 +146,11 @@ export default function WalkMapScreen() {
         latitude: latest.latitude,
         longitude: latest.longitude });
     }
-    if (activeSession.steps != null) setSteps(activeSession.steps);
-  }, [activeSession]);
+    if (activeSession.steps != null && stepsStatus !== "ready" && activeSession.steps >= lastLiveStepsRef.current) {
+      lastLiveStepsRef.current = activeSession.steps;
+      setSteps(activeSession.steps);
+    }
+  }, [activeSession, stepsStatus]);
 
   useEffect(() => {
     if (activeSession?.status === "active" && activeSession.type === "cycle") {
@@ -157,16 +167,18 @@ export default function WalkMapScreen() {
       try {
         subscription = await Location.watchPositionAsync(
           {
-            accuracy: Location.Accuracy.Balanced,
+            accuracy: Location.Accuracy.High,
             timeInterval: 2000,
-            distanceInterval: 3 },
+            distanceInterval: 5 },
           (pos) => {
             if (cancelled) return;
             const next: LatLng = {
               latitude: pos.coords.latitude,
-              longitude: pos.coords.longitude };
+              longitude: pos.coords.longitude,
+              timestamp: pos.timestamp,
+              accuracy: pos.coords.accuracy };
             setCoords(next);
-            void appendTrackingLocation({ ...next, timestamp: pos.timestamp });
+            void appendTrackingLocation(next);
           }
         );
       } catch (e) {
@@ -183,9 +195,10 @@ export default function WalkMapScreen() {
   }, [status]);
 
   useEffect(() => {
+    if (!activeWalkStartedAt) return;
     let cancelled = false;
     let subscription: { remove: () => void } | null = null;
-    const startedAt = new Date();
+    const activityStartedAt = new Date(activeWalkStartedAt);
 
     (async () => {
       try {
@@ -205,18 +218,23 @@ export default function WalkMapScreen() {
 
         setStepsStatus("ready");
 
-        // Start with a baseline count since this screen opened.
+        let baselineSteps = lastLiveStepsRef.current;
         try {
-          const initial = await Pedometer.getStepCountAsync(startedAt, new Date());
-          if (!cancelled) setSteps(initial.steps ?? 0);
+          const initial = await Pedometer.getStepCountAsync(activityStartedAt, new Date());
+          baselineSteps = Math.max(baselineSteps, initial.steps ?? 0);
+          if (!cancelled) {
+            lastLiveStepsRef.current = baselineSteps;
+            setSteps(baselineSteps);
+          }
         } catch {
           // ignore; live watch below will still update on supported devices
         }
 
         subscription = Pedometer.watchStepCount((result) => {
           if (cancelled) return;
-          // Some platforms report steps since subscription start.
-          setSteps(result.steps ?? 0);
+          const nextSteps = Math.max(lastLiveStepsRef.current, baselineSteps + (result.steps ?? 0));
+          lastLiveStepsRef.current = nextSteps;
+          setSteps(nextSteps);
         });
       } catch {
         if (cancelled) return;
@@ -228,7 +246,7 @@ export default function WalkMapScreen() {
       cancelled = true;
       subscription?.remove();
     };
-  }, []);
+  }, [activeWalkStartedAt]);
 
   const styles = useMemo(
     () =>
@@ -607,14 +625,15 @@ export default function WalkMapScreen() {
                         return null;
                       }
                       return Location.getCurrentPositionAsync({
-                        accuracy: Location.Accuracy.Balanced });
+                        accuracy: Location.Accuracy.High });
                     })
                     .then((pos) => {
                       if (!pos) return;
                       const next = {
                         latitude: pos.coords.latitude,
                         longitude: pos.coords.longitude,
-                        timestamp: pos.timestamp };
+                        timestamp: pos.timestamp,
+                        accuracy: pos.coords.accuracy };
                       setCoords(next);
                       void appendTrackingLocation(next);
                       setStatus("ready");

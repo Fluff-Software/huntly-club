@@ -23,8 +23,8 @@ const LIGHT_GREEN_BG = "#EEF5EE";
 const HUNTLY_GREEN = "#4F6F52";
 const CHECK_GREEN = "#2D5A27";
 
-type Coords = { latitude: number; longitude: number };
-type LatLng = { latitude: number; longitude: number };
+type Coords = { latitude: number; longitude: number; timestamp?: number; accuracy?: number | null };
+type LatLng = { latitude: number; longitude: number; timestamp?: number; accuracy?: number | null };
 type MapRegion = { latitude: number; longitude: number; latitudeDelta: number; longitudeDelta: number };
 
 function formatDurationMs(ms: number) {
@@ -83,9 +83,13 @@ export default function CycleMapScreen() {
           return;
         }
         if (cancelled) return;
-        const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
         if (cancelled) return;
-        const next = { latitude: pos.coords.latitude, longitude: pos.coords.longitude, timestamp: pos.timestamp };
+        const next = {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          timestamp: pos.timestamp,
+          accuracy: pos.coords.accuracy };
         setCoords(next);
         void appendTrackingLocation(next);
         setStatus("ready");
@@ -130,12 +134,16 @@ export default function CycleMapScreen() {
     (async () => {
       try {
         subscription = await Location.watchPositionAsync(
-          { accuracy: Location.Accuracy.Balanced, timeInterval: 2000, distanceInterval: 3 },
+          { accuracy: Location.Accuracy.High, timeInterval: 2000, distanceInterval: 8 },
           (pos) => {
             if (cancelled) return;
-            const next: LatLng = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+            const next: LatLng = {
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              timestamp: pos.timestamp,
+              accuracy: pos.coords.accuracy };
             setCoords(next);
-            void appendTrackingLocation({ ...next, timestamp: pos.timestamp });
+            void appendTrackingLocation(next);
           }
         );
       } catch (e) {
@@ -442,11 +450,15 @@ export default function CycleMapScreen() {
                         router.replace("/(tabs)/activity/walk-map");
                         return null;
                       }
-                      return Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                      return Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
                     })
                     .then((pos) => {
                       if (!pos) return;
-                      const next = { latitude: pos.coords.latitude, longitude: pos.coords.longitude, timestamp: pos.timestamp };
+                      const next = {
+                        latitude: pos.coords.latitude,
+                        longitude: pos.coords.longitude,
+                        timestamp: pos.timestamp,
+                        accuracy: pos.coords.accuracy };
                       setCoords(next);
                       void appendTrackingLocation(next);
                       setStatus("ready");

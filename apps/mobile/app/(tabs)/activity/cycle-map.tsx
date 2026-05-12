@@ -15,6 +15,7 @@ import {
   appendTrackingLocation,
   clearActiveTrackingSession,
   completeTrackingSession,
+  refreshActiveTrackingLiveSurface,
   startTrackingSession,
   updateActiveTrackingSession,
 } from "@/services/trackingSessionService";
@@ -73,6 +74,7 @@ export default function CycleMapScreen() {
   const confirmBackdropOpacity = useRef(new Animated.Value(0)).current;
   const confirmSheetY = useRef(new Animated.Value(32)).current;
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const lastLiveSurfaceRefreshMsRef = useRef(0);
   const [photoCount, setPhotoCount] = useState(0);
   const { session: activeSession } = useActiveTrackingSession();
 
@@ -109,7 +111,14 @@ export default function CycleMapScreen() {
 
   useEffect(() => {
     if (status !== "ready") return;
-    const id = setInterval(() => setNowMs(Date.now()), 1000);
+    const id = setInterval(() => {
+      const nextNowMs = Date.now();
+      setNowMs(nextNowMs);
+      if (nextNowMs - lastLiveSurfaceRefreshMsRef.current >= 5000) {
+        lastLiveSurfaceRefreshMsRef.current = nextNowMs;
+        void refreshActiveTrackingLiveSurface();
+      }
+    }, 1000);
     return () => clearInterval(id);
   }, [status]);
 

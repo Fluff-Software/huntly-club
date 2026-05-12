@@ -132,6 +132,13 @@ export async function updateActiveTrackingSession(
   return saveActiveTrackingSession({ ...current, ...patch });
 }
 
+export async function refreshActiveTrackingLiveSurface(): Promise<ActiveTrackingSession | null> {
+  const current = await getActiveTrackingSession();
+  if (!current || current.status !== "active") return current;
+  void syncActivityLiveSurface(current);
+  return current;
+}
+
 export async function clearActiveTrackingSession(): Promise<void> {
   const current = await getActiveTrackingSession();
   await stopTrackingLocationUpdates();

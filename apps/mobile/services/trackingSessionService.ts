@@ -134,6 +134,7 @@ export async function updateActiveTrackingSession(
 
 export async function clearActiveTrackingSession(): Promise<void> {
   const current = await getActiveTrackingSession();
+  await stopTrackingLocationUpdates();
   cachedSession = null;
   await AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
   notify(null);

@@ -13,6 +13,7 @@ import { useActiveTrackingSession } from "@/hooks/useActiveTrackingSession";
 import {
   addTrackingPhotoUri,
   appendTrackingLocation,
+  clearActiveTrackingSession,
   completeTrackingSession,
   startTrackingSession,
   updateActiveTrackingSession,
@@ -22,6 +23,7 @@ const FOREST_DARK = "#2D4A35";
 const LIGHT_GREEN_BG = "#EEF5EE";
 const HUNTLY_GREEN = "#4F6F52";
 const CHECK_GREEN = "#2D5A27";
+const STOP_RED = "#B3261E";
 
 type Coords = { latitude: number; longitude: number; timestamp?: number; accuracy?: number | null };
 type LatLng = { latitude: number; longitude: number; timestamp?: number; accuracy?: number | null };
@@ -67,6 +69,7 @@ export default function CycleMapScreen() {
   const [currentRegion, setCurrentRegion] = useState<MapRegion | null>(null);
   const [startedAt] = useState<Date>(() => new Date());
   const [confirmVisible, setConfirmVisible] = useState(false);
+  const [stopConfirmVisible, setStopConfirmVisible] = useState(false);
   const confirmBackdropOpacity = useRef(new Animated.Value(0)).current;
   const confirmSheetY = useRef(new Animated.Value(32)).current;
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -273,12 +276,20 @@ export default function CycleMapScreen() {
           color: "#5a5a5a",
           textAlign: "center",
           marginBottom: scaleW(12) },
+        footerActions: { flexDirection: "row", alignItems: "center", gap: scaleW(10) },
+        stopButton: {
+          width: scaleW(54),
+          height: scaleW(54),
+          borderRadius: scaleW(27),
+          backgroundColor: STOP_RED,
+          alignItems: "center",
+          justifyContent: "center" },
         completeButton: {
+          flex: 1,
           backgroundColor: HUNTLY_GREEN,
           borderRadius: scaleW(28),
           paddingVertical: scaleW(16),
           paddingHorizontal: scaleW(32),
-          alignSelf: "stretch",
           alignItems: "center" },
         completeButtonText: { fontSize: scaleW(18), fontWeight: "800", color: "#FFF" },
         retryButton: {
@@ -301,6 +312,7 @@ export default function CycleMapScreen() {
         modalBody: { marginTop: scaleW(8), fontSize: scaleW(14), color: "#3a3a3a", textAlign: "center" },
         modalButtons: { marginTop: scaleW(16), gap: scaleW(10) },
         modalPrimary: { backgroundColor: CHECK_GREEN, borderRadius: scaleW(28), paddingVertical: scaleW(14), alignItems: "center" },
+        modalDanger: { backgroundColor: STOP_RED, borderRadius: scaleW(28), paddingVertical: scaleW(14), alignItems: "center" },
         modalPrimaryText: { fontSize: scaleW(16), fontWeight: "900", color: "#FFF" },
         modalSecondary: { backgroundColor: "rgba(79,111,82,0.10)", borderRadius: scaleW(28), paddingVertical: scaleW(14), alignItems: "center" },
         modalSecondaryText: { fontSize: scaleW(16), fontWeight: "900", color: HUNTLY_GREEN } }),
@@ -355,6 +367,12 @@ export default function CycleMapScreen() {
     await completeTrackingSession();
     closeConfirm();
     router.replace("/(tabs)/activity/cycle-finish");
+  };
+
+  const confirmStop = async () => {
+    await clearActiveTrackingSession();
+    setStopConfirmVisible(false);
+    router.replace("/(tabs)/activity/pick-activity");
   };
 
   return (
@@ -419,11 +437,21 @@ export default function CycleMapScreen() {
               <ThemedText style={styles.footerHint}>
                 {trail.length >= 2 ? "Ready when you are!" : "Start cycling to record your route."}
               </ThemedText>
-              <Pressable style={styles.completeButton} onPress={openConfirm} accessibilityRole="button" accessibilityLabel="Complete cycle">
-                <ThemedText type="heading" style={styles.completeButtonText}>
-                  Complete
-                </ThemedText>
-              </Pressable>
+              <View style={styles.footerActions}>
+                <Pressable
+                  style={styles.stopButton}
+                  onPress={() => setStopConfirmVisible(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Stop cycle"
+                >
+                  <MaterialIcons name="stop" size={scaleW(24)} color="#FFF" />
+                </Pressable>
+                <Pressable style={styles.completeButton} onPress={openConfirm} accessibilityRole="button" accessibilityLabel="Complete cycle">
+                  <ThemedText type="heading" style={styles.completeButtonText}>
+                    Complete
+                  </ThemedText>
+                </Pressable>
+              </View>
             </View>
           </View>
         ) : (
@@ -502,6 +530,29 @@ export default function CycleMapScreen() {
               </Pressable>
             </View>
           </Animated.View>
+        </View>
+      </Modal>
+      <Modal visible={stopConfirmVisible} transparent animationType="fade" onRequestClose={() => setStopConfirmVisible(false)}>
+        <View style={[styles.modalBackdrop, { backgroundColor: "rgba(0,0,0,0.45)" }]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setStopConfirmVisible(false)} />
+          <View style={styles.modalSheet}>
+            <ThemedText type="heading" style={styles.modalTitle}>
+              Stop this cycle?
+            </ThemedText>
+            <ThemedText style={styles.modalBody}>Your progress will be lost if you stop now.</ThemedText>
+            <View style={styles.modalButtons}>
+              <Pressable style={styles.modalDanger} onPress={confirmStop} accessibilityRole="button" accessibilityLabel="Yes, stop cycle">
+                <ThemedText type="heading" style={styles.modalPrimaryText}>
+                  Yes, stop
+                </ThemedText>
+              </Pressable>
+              <Pressable style={styles.modalSecondary} onPress={() => setStopConfirmVisible(false)} accessibilityRole="button" accessibilityLabel="Keep cycling">
+                <ThemedText type="heading" style={styles.modalSecondaryText}>
+                  Keep cycling
+                </ThemedText>
+              </Pressable>
+            </View>
+          </View>
         </View>
       </Modal>
     </SafeAreaView>

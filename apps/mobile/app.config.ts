@@ -151,6 +151,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
             name: "ActivityLiveActivity",
             displayName: "Active Adventure",
             description: "Shows the current walk or cycle while tracking is active",
+            supportedFamilies: ["systemSmall", "systemMedium"],
+            contentMarginsDisabled: false,
           },
         ],
       },

@@ -40,6 +40,8 @@ const MAX_REASONABLE_SPEED_METERS_PER_SECOND: Record<TrackingActivityType, numbe
   walk: 5.5,
   cycle: 18,
 };
+const ROUTE_START_SETTLE_MS = 15000;
+const ROUTE_START_ANCHOR_REPLACE_METERS = 30;
 
 let cachedSession: ActiveTrackingSession | null | undefined;
 const listeners = new Set<(session: ActiveTrackingSession | null) => void>();
@@ -240,6 +242,21 @@ export async function appendTrackingLocation(point: TrackingRoutePoint): Promise
   }
 
   const distanceFromLast = lastRoutePoint ? metersBetween(lastRoutePoint, point) : 0;
+  const sessionAgeMs = Date.now() - new Date(current.startedAt).getTime();
+  if (
+    lastRoutePoint &&
+    current.route.length === 1 &&
+    sessionAgeMs < ROUTE_START_SETTLE_MS &&
+    distanceFromLast < ROUTE_START_ANCHOR_REPLACE_METERS
+  ) {
+    return saveActiveTrackingSession({
+      ...current,
+      route: [point],
+      distanceMeters: 0,
+      endedAtCoords: point,
+    });
+  }
+
   if (lastRoutePoint && distanceFromLast < MIN_ROUTE_POINT_DISTANCE_METERS[current.type]) {
     return saveActiveTrackingSession({ ...current, endedAtCoords: point });
   }

@@ -116,7 +116,6 @@ export default function WalkMapScreen() {
           timestamp: pos.timestamp,
           accuracy: pos.coords.accuracy };
         setCoords(next);
-        void appendTrackingLocation(next);
         setStatus("ready");
       } catch (e) {
         if (cancelled) return;
@@ -635,7 +634,6 @@ export default function WalkMapScreen() {
                         timestamp: pos.timestamp,
                         accuracy: pos.coords.accuracy };
                       setCoords(next);
-                      void appendTrackingLocation(next);
                       setStatus("ready");
                     })
                     .catch((e) => {

@@ -1,4 +1,4 @@
-import { Tabs, router } from "expo-router";
+import { Tabs, router, usePathname } from "expo-router";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Image, Modal, Platform, Pressable, StyleSheet, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -102,6 +102,7 @@ function StoryTabPulse({ size }: { size: number }) {
 }
 
 export default function TabLayout() {
+  const pathname = usePathname();
   const { user } = useAuth();
   const { profiles, loading: profilesLoading } = usePlayer();
   const { userData, loading: userLoading, updateLastSeenSeasonId } = useUser();
@@ -301,6 +302,12 @@ export default function TabLayout() {
         ? "Cycle in progress"
         : "Walk in progress"
       : null;
+  const activeTrackingRoute =
+    activeTrackingSession?.type === "cycle" ? "/activity/cycle-map" : "/activity/walk-map";
+  const showActiveTrackingBanner =
+    activeTrackingSession?.status === "active" &&
+    activeTrackingTitle != null &&
+    !pathname.endsWith(activeTrackingRoute);
 
   const isTabDisabled = (routeName: string) => {
     if (!tutorialVisible) return false;
@@ -508,16 +515,16 @@ export default function TabLayout() {
           href: null }}
       />
       </Tabs>
-      {activeTrackingSession?.status === "active" && activeTrackingTitle ? (
+      {showActiveTrackingBanner ? (
         <Pressable
           style={[
             styles.activeSessionBanner,
             {
-              left: scaleW(16),
               right: scaleW(16),
               bottom: tabBarHeight + scaleW(10),
-              borderRadius: scaleW(18),
-              padding: scaleW(14),
+              width: scaleW(56),
+              height: scaleW(56),
+              borderRadius: scaleW(28),
             },
           ]}
           onPress={() => {
@@ -528,18 +535,9 @@ export default function TabLayout() {
         >
           <MaterialIcons
             name={activeTrackingSession.type === "cycle" ? "directions-bike" : "directions-walk"}
-            size={scaleW(20)}
+            size={scaleW(26)}
             color="#FFFFFF"
           />
-          <View style={{ flex: 1 }}>
-            <ThemedText type="heading" style={styles.activeSessionTitle}>
-              {activeTrackingTitle}
-            </ThemedText>
-            <ThemedText style={styles.activeSessionSubtitle}>
-              Tap to return to your adventure
-            </ThemedText>
-          </View>
-          <MaterialIcons name="chevron-right" size={scaleW(24)} color="#FFFFFF" />
         </Pressable>
       ) : null}
       <NewPlayerTutorial
@@ -650,22 +648,13 @@ const styles = StyleSheet.create({
     position: "absolute",
     zIndex: 20,
     elevation: 20,
-    flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    backgroundColor: HUNTLY_GREEN,
+    justifyContent: "center",
+    backgroundColor: "rgba(79,111,82,0.82)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.18,
     shadowRadius: 8 },
-  activeSessionTitle: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "900" },
-  activeSessionSubtitle: {
-    color: "rgba(255,255,255,0.78)",
-    fontSize: 12,
-    marginTop: 2 },
   notificationPromptOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",

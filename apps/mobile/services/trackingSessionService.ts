@@ -188,10 +188,25 @@ export async function refreshWalkStepsFromPedometer(): Promise<ActiveTrackingSes
   return saveActiveTrackingSession({ ...current, steps: Math.max(current.steps ?? 0, steps) });
 }
 
+function trackingForegroundServiceCopy(type: TrackingActivityType): {
+  notificationTitle: string;
+  notificationBody: string;
+  notificationColor: string;
+} {
+  const label = type === "cycle" ? "Cycle" : "Walk";
+  return {
+    notificationTitle: `Huntly World · ${label}`,
+    // Expo Location only sets title/body when the foreground service starts (not on each GPS fix).
+    // Live distance/time stay in the app and the iOS Live Activity when available.
+    notificationBody: "Recording your GPS route. Open the app for live distance, time, and steps.",
+    notificationColor: "#2D4A35",
+  };
+}
+
 export async function startTrackingLocationUpdates(type: TrackingActivityType): Promise<void> {
   const alreadyStarted = await Location.hasStartedLocationUpdatesAsync(TRACKING_LOCATION_TASK);
   if (alreadyStarted) return;
-  const title = type === "cycle" ? "Cycle in progress" : "Walk in progress";
+  const fg = trackingForegroundServiceCopy(type);
 
   await Location.startLocationUpdatesAsync(TRACKING_LOCATION_TASK, {
     accuracy: Location.Accuracy.High,
@@ -201,9 +216,7 @@ export async function startTrackingLocationUpdates(type: TrackingActivityType): 
     pausesUpdatesAutomatically: false,
     showsBackgroundLocationIndicator: true,
     foregroundService: {
-      notificationTitle: title,
-      notificationBody: "Huntly World is recording your route.",
-      notificationColor: "#4F6F52",
+      ...fg,
       killServiceOnDestroy: false,
     },
   });

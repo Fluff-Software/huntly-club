@@ -114,7 +114,7 @@ export default function CycleMapScreen() {
     const id = setInterval(() => {
       const nextNowMs = Date.now();
       setNowMs(nextNowMs);
-      if (nextNowMs - lastLiveSurfaceRefreshMsRef.current >= 5000) {
+      if (nextNowMs - lastLiveSurfaceRefreshMsRef.current >= 1000) {
         lastLiveSurfaceRefreshMsRef.current = nextNowMs;
         void refreshActiveTrackingLiveSurface();
       }

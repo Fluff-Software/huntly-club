@@ -1,4 +1,4 @@
-import { Platform } from "react-native";
+import { Appearance, Platform } from "react-native";
 import ActivityLiveActivity, { type ActivityLiveActivityProps } from "@/live-activities/ActivityLiveActivity";
 import type { ActiveTrackingSession } from "./trackingSessionService";
 
@@ -20,13 +20,16 @@ function formatElapsed(startedAt: string, endedAt: string | null) {
 
 function toLiveActivityProps(session: ActiveTrackingSession): ActivityLiveActivityProps {
   const title = session.type === "cycle" ? "Cycle in progress" : "Walk in progress";
+  const isComplete = session.status === "completed";
   return {
     sessionId: session.sessionId,
     activityType: session.type,
-    title: session.status === "completed" ? "Adventure complete" : title,
+    title: isComplete ? "Adventure complete" : title,
     distance: formatDistance(session.distanceMeters),
     elapsed: formatElapsed(session.startedAt, session.endedAt),
     steps: session.type === "walk" && session.steps != null ? `${session.steps} steps` : null,
+    isComplete,
+    colorScheme: Appearance.getColorScheme() === "dark" ? "dark" : "light",
   };
 }
 

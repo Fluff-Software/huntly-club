@@ -22,51 +22,19 @@ export type ActivityLiveActivityProps = {
   colorScheme: "light" | "dark";
 };
 
-const HUNTLY_GREEN = "#4F6F52";
-const FOREST_DARK = "#2D4A35";
-const CREAM = "#F4F0EB";
-const MINT_LIGHT = "#A8D5BA";
-
-type ActivityPalette = {
-  accent: string;
-  headline: string;
-  secondary: string;
-  tertiary: string;
-  iconWell: string;
-  bannerTint: string;
-  compactDistanceSize: number;
-};
-
-function activityPalette(colorScheme: "light" | "dark"): ActivityPalette {
-  const dark = colorScheme === "dark";
-
-  const accent = dark ? MINT_LIGHT : HUNTLY_GREEN;
-
-  const headline = dark ? CREAM : FOREST_DARK;
-  const secondary = dark ? "rgba(244,240,235,0.78)" : "rgba(45,74,53,0.72)";
-  const tertiary = dark ? "rgba(244,240,235,0.55)" : "rgba(61,61,61,0.62)";
-
-  const iconWell = dark ? "rgba(79,111,82,0.42)" : "rgba(79,111,82,0.18)";
-  const bannerTint = dark ? "rgba(45,74,53,0.55)" : "rgba(244,240,235,0.92)";
-
-  return {
-    accent,
-    headline,
-    secondary,
-    tertiary,
-    iconWell,
-    bannerTint,
-    compactDistanceSize: 15,
-  };
-}
-
-function activityIconName(props: ActivityLiveActivityProps) {
-  if (props.isComplete) return "checkmark.circle.fill";
-  return props.activityType === "cycle" ? "bicycle" : "figure.walk";
-}
-
 function ActivityLiveActivity(props?: ActivityLiveActivityProps) {
   "widget";
+
+  // NOTE: The babel `expo-widgets` plugin serializes ONLY this function's params + body
+  // into a template-literal string that is later `eval`'d inside the WidgetKit JSContext.
+  // The function's lexical/closure scope is NOT captured. Anything the widget body
+  // references (helpers, constants) MUST be declared inside this body — otherwise the
+  // JSContext throws `ReferenceError` and iOS falls back to an empty banner.
+
+  const HUNTLY_GREEN = "#4F6F52";
+  const FOREST_DARK = "#2D4A35";
+  const CREAM = "#F4F0EB";
+  const MINT_LIGHT = "#A8D5BA";
 
   const safe = props ?? {
     sessionId: "",
@@ -79,8 +47,22 @@ function ActivityLiveActivity(props?: ActivityLiveActivityProps) {
     colorScheme: "light" as const,
   };
 
-  const p = activityPalette(safe.colorScheme);
-  const iconName = activityIconName(safe);
+  const dark = safe.colorScheme === "dark";
+  const p = {
+    accent: dark ? MINT_LIGHT : HUNTLY_GREEN,
+    headline: dark ? CREAM : FOREST_DARK,
+    secondary: dark ? "rgba(244,240,235,0.78)" : "rgba(45,74,53,0.72)",
+    tertiary: dark ? "rgba(244,240,235,0.55)" : "rgba(61,61,61,0.62)",
+    iconWell: dark ? "rgba(79,111,82,0.42)" : "rgba(79,111,82,0.18)",
+    bannerTint: dark ? "rgba(45,74,53,0.55)" : "rgba(244,240,235,0.92)",
+    compactDistanceSize: 15,
+  };
+
+  const iconName = safe.isComplete
+    ? "checkmark.circle.fill"
+    : safe.activityType === "cycle"
+      ? "bicycle"
+      : "figure.walk";
   const activityWord = safe.activityType === "cycle" ? "Cycle" : "Walk";
   const compactTrailingText = safe.distance;
 
@@ -213,5 +195,32 @@ function ActivityLiveActivity(props?: ActivityLiveActivityProps) {
     ),
   };
 }
+
+// #region agent log
+import { agentLog as agentLog__ActivityLiveActivity } from "@/services/debugLog";
+try {
+  const widgetStr = String(ActivityLiveActivity);
+  agentLog__ActivityLiveActivity({
+    hypothesisId: "H1",
+    runId: "post-fix",
+    location: "ActivityLiveActivity.tsx:after-widget-decl",
+    message: "Babel-transformed widget body inspection (post-fix)",
+    data: {
+      typeofValue: typeof ActivityLiveActivity,
+      length: widgetStr.length,
+      // These should all be FALSE after the fix because helpers/constants are inlined.
+      hasActivityPaletteRef: /activityPalette\s*\(/.test(widgetStr),
+      hasActivityIconNameRef: /activityIconName\s*\(/.test(widgetStr),
+      // These should now be TRUE because the constants are declared inside the body.
+      hasHuntlyGreenInline: /HUNTLY_GREEN\s*=/.test(widgetStr),
+      hasForestDarkInline: /FOREST_DARK\s*=/.test(widgetStr),
+      head: widgetStr.slice(0, 1500),
+      tail: widgetStr.slice(-800),
+    },
+  });
+} catch {
+  // noop
+}
+// #endregion
 
 export default createLiveActivity("ActivityLiveActivity", ActivityLiveActivity);

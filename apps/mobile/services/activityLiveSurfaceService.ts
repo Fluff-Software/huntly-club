@@ -1,9 +1,6 @@
 import { Appearance, Platform } from "react-native";
 import ActivityLiveActivity, { type ActivityLiveActivityProps } from "@/live-activities/ActivityLiveActivity";
 import type { ActiveTrackingSession } from "./trackingSessionService";
-// #region agent log
-import { agentLog } from "@/services/debugLog";
-// #endregion
 
 function formatDistance(meters: number) {
   if (meters < 1000) return `${Math.round(meters)} m`;
@@ -42,15 +39,6 @@ export async function syncActivityLiveSurface(session: ActiveTrackingSession): P
   try {
     const props = toLiveActivityProps(session);
     const instances = ActivityLiveActivity.getInstances();
-    const action = session.status === "completed" ? "end" : instances.length > 0 ? "update" : "start";
-    // #region agent log
-    agentLog({
-      hypothesisId: "H1",
-      location: "activityLiveSurfaceService.ts:syncActivityLiveSurface",
-      message: "syncActivityLiveSurface called",
-      data: { action, instanceCount: instances.length, props, status: session.status, sessionId: session.sessionId },
-    });
-    // #endregion
     if (session.status === "completed") {
       await Promise.all(instances.map((instance) => instance.end("immediate", props, new Date())));
       return;
@@ -62,15 +50,8 @@ export async function syncActivityLiveSurface(session: ActiveTrackingSession): P
     }
 
     ActivityLiveActivity.start(props, `huntlyclub://activity/live?sessionId=${session.sessionId}`);
-  } catch (err) {
-    // #region agent log
-    agentLog({
-      hypothesisId: "H1",
-      location: "activityLiveSurfaceService.ts:syncActivityLiveSurface-catch",
-      message: "syncActivityLiveSurface threw",
-      data: { error: String(err) },
-    });
-    // #endregion
+  } catch {
+    // Live Activities are best-effort and unsupported on some iOS devices.
   }
 }
 

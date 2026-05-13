@@ -61,13 +61,14 @@ function ActivityLiveActivity(props?: ActivityLiveActivityProps) {
   const iconName = safe.isComplete
     ? "checkmark.circle.fill"
     : safe.activityType === "cycle"
-      ? "bicycle"
+      ? "figure.outdoor.cycle"
       : "figure.walk";
   const activityWord = safe.activityType === "cycle" ? "Cycle" : "Walk";
   const compactTrailingText = safe.distance;
 
   const iconBadge = (
     <Image
+      size={22}
       modifiers={[
         frame({ width: 40, height: 40 }),
         background(p.iconWell, shapes.roundedRectangle({ cornerRadius: 10, roundedCornerStyle: "continuous" })),
@@ -107,12 +108,8 @@ function ActivityLiveActivity(props?: ActivityLiveActivityProps) {
     <VStack spacing={10} modifiers={[padding({ horizontal: 4, vertical: 2 })]}>
       <HStack spacing={12} alignment="center">
         {iconBadge}
-        <VStack spacing={2}>
-          <Text modifiers={[font({ size: 11, weight: "semibold" }), foregroundStyle(p.accent)]}>{activityWord}</Text>
-          <Text modifiers={[font({ size: 17, weight: "bold" }), foregroundStyle(p.headline)]}>{safe.title}</Text>
-        </VStack>
+        <Text modifiers={[font({ size: 17, weight: "bold" }), foregroundStyle(p.headline)]}>{safe.title}</Text>
         <Spacer />
-        <Text modifiers={[font({ size: 22, weight: "bold" }), foregroundStyle(p.accent)]}>{safe.distance}</Text>
       </HStack>
       <Divider />
       {statsRow}
@@ -196,31 +193,4 @@ function ActivityLiveActivity(props?: ActivityLiveActivityProps) {
   };
 }
 
-// #region agent log
-import { agentLog as agentLog__ActivityLiveActivity } from "@/services/debugLog";
-try {
-  const widgetStr = String(ActivityLiveActivity);
-  agentLog__ActivityLiveActivity({
-    hypothesisId: "H1",
-    runId: "post-fix",
-    location: "ActivityLiveActivity.tsx:after-widget-decl",
-    message: "Babel-transformed widget body inspection (post-fix)",
-    data: {
-      typeofValue: typeof ActivityLiveActivity,
-      length: widgetStr.length,
-      // These should all be FALSE after the fix because helpers/constants are inlined.
-      hasActivityPaletteRef: /activityPalette\s*\(/.test(widgetStr),
-      hasActivityIconNameRef: /activityIconName\s*\(/.test(widgetStr),
-      // These should now be TRUE because the constants are declared inside the body.
-      hasHuntlyGreenInline: /HUNTLY_GREEN\s*=/.test(widgetStr),
-      hasForestDarkInline: /FOREST_DARK\s*=/.test(widgetStr),
-      head: widgetStr.slice(0, 1500),
-      tail: widgetStr.slice(-800),
-    },
-  });
-} catch {
-  // noop
-}
-// #endregion
-
-export default createLiveActivity("ActivityLiveActivity", ActivityLiveActivity);
+export default createLiveActivity<ActivityLiveActivityProps>("ActivityLiveActivity", ActivityLiveActivity);

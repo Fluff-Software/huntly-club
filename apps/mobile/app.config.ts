@@ -28,6 +28,14 @@ const ANDROID_APPLICATION_ID = 'software.fluff.huntlyclub';
 /** Injected into AndroidManifest for react-native-maps (Google Maps). Not the same as Firebase — see .env.example. */
 const androidGoogleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY;
 
+const isEasBuild = process.env.EAS_BUILD === "true" || process.env.EAS_BUILD === "1";
+if (isEasBuild && process.env.EAS_BUILD_PLATFORM === "android" && !androidGoogleMapsApiKey) {
+  throw new Error(
+    "EAS Android build: EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY is unset. " +
+      "google-services.json does not add the Maps SDK key. In Expo (expo.dev) open this project → Environment variables → add EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY for the environment used by this profile, then rebuild."
+  );
+}
+
 const androidPackage: Record<AppVariant, string> = {
   production: ANDROID_APPLICATION_ID,
   preview: ANDROID_APPLICATION_ID,
@@ -122,6 +130,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         category: ["BROWSABLE", "DEFAULT"],
       },
     ],
+    ...(androidGoogleMapsApiKey
+      ? {
+          config: {
+            googleMaps: {
+              apiKey: androidGoogleMapsApiKey,
+            },
+          },
+        }
+      : {}),
   },
   web: {
     bundler: "metro",

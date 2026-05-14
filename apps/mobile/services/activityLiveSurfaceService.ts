@@ -1,5 +1,6 @@
 import { Appearance, Platform } from "react-native";
-import ActivityLiveActivity, { type ActivityLiveActivityProps } from "@/live-activities/ActivityLiveActivity";
+
+import type { ActivityLiveActivityProps } from "@/live-activities/ActivityLiveActivity.types";
 import type { ActiveTrackingSession } from "./trackingSessionService";
 
 function formatDistance(meters: number) {
@@ -37,6 +38,7 @@ export async function syncActivityLiveSurface(session: ActiveTrackingSession): P
   if (Platform.OS !== "ios") return;
 
   try {
+    const { default: ActivityLiveActivity } = await import("@/live-activities/ActivityLiveActivity");
     const props = toLiveActivityProps(session);
     const instances = ActivityLiveActivity.getInstances();
     if (session.status === "completed") {
@@ -59,6 +61,7 @@ export async function endActivityLiveSurface(session: ActiveTrackingSession): Pr
   if (Platform.OS !== "ios") return;
 
   try {
+    const { default: ActivityLiveActivity } = await import("@/live-activities/ActivityLiveActivity");
     const props = toLiveActivityProps({ ...session, status: "completed" });
     await Promise.all(ActivityLiveActivity.getInstances().map((instance) => instance.end("immediate", props, new Date())));
   } catch {

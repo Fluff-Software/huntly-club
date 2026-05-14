@@ -24,6 +24,10 @@ const bundleId: Record<AppVariant, string> = {
 // and google-services.json lists every client. Tradeoff: only one build can be installed at a
 // time per device—dev or internal APKs replace the Play build with the same package name.
 const ANDROID_APPLICATION_ID = 'software.fluff.huntlyclub';
+
+/** Injected into AndroidManifest for react-native-maps (Google Maps). Not the same as Firebase — see .env.example. */
+const androidGoogleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY;
+
 const androidPackage: Record<AppVariant, string> = {
   production: ANDROID_APPLICATION_ID,
   preview: ANDROID_APPLICATION_ID,
@@ -147,6 +151,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         androidForegroundServiceIcon: "./assets/images/notification-icon.png",
       },
     ],
+    ...(androidGoogleMapsApiKey
+      ? ([["react-native-maps", { androidGoogleMapsApiKey }]] satisfies NonNullable<ExpoConfig["plugins"]>)
+      : []),
     [
       "expo-widgets",
       {

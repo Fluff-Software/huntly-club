@@ -33,6 +33,10 @@ const LOAD_MORE_THRESHOLD = 40;
 
 const TEAM_ORDER = ["bears", "foxes", "otters"] as const;
 
+/** Bar height = min + pct × extra, where pct is each team’s share of all monthly points (three teams). Sum of shares is always 100%. When everyone is on 0, show equal ⅓ each so bars stay tall and tied. */
+const LEADERBOARD_BAR_MIN = 60;
+const LEADERBOARD_BAR_EXTRA = 160;
+
 const ACHIEVEMENT_CARD_COLORS = ["#FFF5E8", "#E8F5F0", "#F0E8FF", "#E8F0FF", "#FFF0F0"];
 const ACHIEVEMENT_ICON_BG = ["#F7A676", "#7FAF8A", "#A8D5E5", "#D4A05A", "#C97B6C"];
 
@@ -77,20 +81,28 @@ export default function SocialScreen() {
   }, [allTeams, teamAchievementTotals]);
 
   const barHeights = useMemo(() => {
-    const maxTotal = Math.max(1, ...sortedTeamsForChart.map((t) => t.total));
-    return sortedTeamsForChart.map((t) => {
-      const pct = t.total / maxTotal;
-      return scaleW(60 + pct * 160);
+    const totals = sortedTeamsForChart.map((t) => Math.max(0, t.total));
+    const sum = totals.reduce((a, b) => a + b, 0);
+    if (sum <= 0) {
+      const h = LEADERBOARD_BAR_MIN + (1 / 3) * LEADERBOARD_BAR_EXTRA;
+      return sortedTeamsForChart.map(() => scaleW(h));
+    }
+    return sortedTeamsForChart.map((_, i) => {
+      const pct = totals[i] / sum;
+      return scaleW(LEADERBOARD_BAR_MIN + pct * LEADERBOARD_BAR_EXTRA);
     });
   }, [scaleW, sortedTeamsForChart]);
+
+  const leaderboardTotalsKey = sortedTeamsForChart.map((t) => t.total).join(",");
 
   const bar1Style = useAnimatedStyle(() => ({ height: chartProgress.value * barHeights[0] }));
   const bar2Style = useAnimatedStyle(() => ({ height: chartProgress.value * barHeights[1] }));
   const bar3Style = useAnimatedStyle(() => ({ height: chartProgress.value * barHeights[2] }));
 
   useEffect(() => {
+    chartProgress.value = 0;
     chartProgress.value = withSpring(1, { damping: 18, stiffness: 80 });
-  }, [chartProgress]);
+  }, [chartProgress, leaderboardTotalsKey]);
 
   const fetchTeamActivities = useCallback(async () => {
     if (!teamId) { setLoading(false); return; }

@@ -18,10 +18,16 @@ const bundleId: Record<AppVariant, string> = {
   development: 'software.fluff.huntly-club.dev',
 };
 
+// TEMPORARY: One Android applicationId for every variant so the committed google-services.json
+// (single Firebase Android app) matches dev/preview EAS builds without registering extra packages.
+// Restore distinct ids (e.g. huntlyclubdev / huntlyclubpreview) once those apps exist in Firebase
+// and google-services.json lists every client. Tradeoff: only one build can be installed at a
+// time per device—dev or internal APKs replace the Play build with the same package name.
+const ANDROID_APPLICATION_ID = 'software.fluff.huntlyclub';
 const androidPackage: Record<AppVariant, string> = {
-  production: 'software.fluff.huntlyclub',
-  preview: 'software.fluff.huntlyclubpreview',
-  development: 'software.fluff.huntlyclubdev',
+  production: ANDROID_APPLICATION_ID,
+  preview: ANDROID_APPLICATION_ID,
+  development: ANDROID_APPLICATION_ID,
 };
 
 const icon: Record<AppVariant, string> = {

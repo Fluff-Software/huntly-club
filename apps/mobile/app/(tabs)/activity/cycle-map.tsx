@@ -229,33 +229,29 @@ export default function CycleMapScreen() {
           paddingHorizontal: scaleW(10),
           gap: scaleW(6),
           zIndex: 5,
-          elevation: 5 },
+          overflow: "hidden" },
         statRow: { flexDirection: "row", alignItems: "center", gap: scaleW(6) },
         statsText: { color: "rgba(255,255,255,0.9)", fontWeight: "900" as const, fontSize: scaleW(12) },
+        mapOverlayButton: {
+          backgroundColor: "rgba(0,0,0,0.35)",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 6,
+          overflow: "hidden" },
         recenterButton: {
           position: "absolute" as const,
           right: scaleW(12),
           bottom: scaleW(12) + scaleW(104) + insets.bottom + (isTablet ? scaleW(20) : 0),
           width: scaleW(44),
           height: scaleW(44),
-          borderRadius: scaleW(22),
-          backgroundColor: "rgba(0,0,0,0.35)",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 6,
-          elevation: 6 },
+          borderRadius: scaleW(22) },
         cameraButton: {
           position: "absolute" as const,
           left: scaleW(12),
           bottom: scaleW(12) + scaleW(104) + insets.bottom + (isTablet ? scaleW(20) : 0),
           width: scaleW(44),
           height: scaleW(44),
-          borderRadius: scaleW(22),
-          backgroundColor: "rgba(0,0,0,0.35)",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 6,
-          elevation: 6 },
+          borderRadius: scaleW(22) },
         cameraBadge: {
           position: "absolute" as const,
           top: -scaleW(6),
@@ -268,7 +264,6 @@ export default function CycleMapScreen() {
           alignItems: "center",
           justifyContent: "center",
           zIndex: 7,
-          elevation: 7,
           borderWidth: 2,
           borderColor: "rgba(255,255,255,0.9)" },
         cameraBadgeText: { color: "#FFF", fontWeight: "900" as const, fontSize: scaleW(10) },
@@ -430,7 +425,7 @@ export default function CycleMapScreen() {
             {Platform.OS !== "android" && (
               <Pressable
                 onPress={handleRecenter}
-                style={styles.recenterButton}
+                style={[styles.mapOverlayButton, styles.recenterButton]}
                 accessibilityRole="button"
                 accessibilityLabel="Recenter map"
               >
@@ -438,7 +433,12 @@ export default function CycleMapScreen() {
               </Pressable>
             )}
 
-            <Pressable onPress={takeCyclePhoto} style={styles.cameraButton} accessibilityRole="button" accessibilityLabel="Take a photo">
+            <Pressable
+              onPress={takeCyclePhoto}
+              style={[styles.mapOverlayButton, styles.cameraButton]}
+              accessibilityRole="button"
+              accessibilityLabel="Take a photo"
+            >
               <MaterialIcons name="photo-camera" size={scaleW(20)} color="#FFF" />
               {photoCount > 0 && (
                 <View pointerEvents="none" style={styles.cameraBadge}>

@@ -277,12 +277,14 @@ export default function TabLayout() {
   const activeColor = "#FFFFFF";
   const inactiveColor = "rgba(255,255,255,0.6)";
 
+  const tabBarExtraBottomPadding =
+    Platform.OS === "android" ? scaleW(8) : scaleW(4);
   const bottomInset =
-    Platform.OS === "android" && insets.bottom === 0
-      ? scaleW(24)
+    Platform.OS === "android"
+      ? Math.max(insets.bottom, scaleW(32))
       : insets.bottom;
-  const tabBarPaddingBottom = scaleW(16) + bottomInset;
-  const tabBarHeight = scaleW(72) + bottomInset;
+  const tabBarPaddingBottom = tabBarExtraBottomPadding + bottomInset;
+  const tabBarHeight = scaleW(56) + tabBarExtraBottomPadding + bottomInset;
   const seasonCardMaxWidth = isTablet ? scaleW(460) : 360;
   const seasonTitleFontSize = isTablet ? scaleW(30) : undefined;
   const seasonNameFontSize = isTablet ? scaleW(24) : undefined;

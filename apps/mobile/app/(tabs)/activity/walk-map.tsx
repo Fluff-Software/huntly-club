@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { View, StyleSheet, Pressable, ActivityIndicator, Modal, Animated, Easing, Linking } from "react-native";
+import { View, StyleSheet, Pressable, Modal, Animated, Easing } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -8,6 +8,11 @@ import * as Location from "expo-location";
 import { Pedometer } from "expo-sensors";
 import * as ImagePicker from "expo-image-picker";
 import { ThemedText } from "@/components/ThemedText";
+import { TrackingLocationAccessPrompt } from "@/components/TrackingLocationAccessPrompt";
+import {
+  describeTrackingLocationFailure,
+  type TrackingLocationIssue,
+} from "@/utils/trackingLocationPermission";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useActiveTrackingSession } from "@/hooks/useActiveTrackingSession";
@@ -85,6 +90,7 @@ export default function WalkMapScreen() {
   const [status, setStatus] = useState<"loading" | "denied" | "ready" | "error">("loading");
   const [coords, setCoords] = useState<Coords | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [accessIssue, setAccessIssue] = useState<TrackingLocationIssue | null>(null);
   const [stepsStatus, setStepsStatus] = useState<"loading" | "denied" | "unavailable" | "ready">("loading");
   const [steps, setSteps] = useState<number>(0);
   const lastLiveStepsRef = useRef(0);
@@ -125,9 +131,10 @@ export default function WalkMapScreen() {
         setStatus("ready");
       } catch (e) {
         if (cancelled) return;
-        const message = e instanceof Error ? e.message : "Failed to get your location";
-        setErrorMessage(message);
-        setStatus(message.includes("permission") ? "denied" : "error");
+        const failure = describeTrackingLocationFailure(e, "Failed to get your location");
+        setAccessIssue(failure.issue);
+        setErrorMessage(failure.errorMessage);
+        setStatus(failure.status);
       }
     })();
     return () => {
@@ -302,8 +309,6 @@ export default function WalkMapScreen() {
           textAlign: "center" },
         headerRightSpacer: { width: scaleW(42) },
         body: { flex: 1, backgroundColor: LIGHT_GREEN_BG },
-        loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center", padding: scaleW(24) },
-        message: { textAlign: "center", fontSize: scaleW(15), color: "#2F3336", marginTop: scaleW(12) },
         map: { flex: 1 },
         stepsOverlay: {
           position: "absolute" as const,
@@ -394,13 +399,6 @@ export default function WalkMapScreen() {
           paddingHorizontal: scaleW(32),
           alignItems: "center" },
         completeButtonText: { fontSize: scaleW(18), fontWeight: "800", color: "#FFF" },
-        retryButton: {
-          marginTop: scaleW(16),
-          backgroundColor: HUNTLY_GREEN,
-          borderRadius: scaleW(22),
-          paddingVertical: scaleW(12),
-          paddingHorizontal: scaleW(18) },
-        retryText: { color: "#FFF", fontWeight: "800", textAlign: "center" as const },
         modalBackdrop: {
           flex: 1,
           backgroundColor: "rgba(0,0,0,0.45)",
@@ -652,57 +650,42 @@ export default function WalkMapScreen() {
             </View>
           </View>
         ) : (
-          <View style={styles.loadingWrap}>
-            {status === "loading" ? <ActivityIndicator size="large" color={HUNTLY_GREEN} /> : null}
-            <ThemedText style={styles.message}>
-              {status === "loading"
-                ? "Getting your location…"
-                : status === "denied"
-                ? "Location permission is needed to show the map."
-                : errorMessage ?? "Something went wrong while getting your location."}
-            </ThemedText>
-            {(status === "denied" || status === "error") && (
-              <Pressable
-                style={styles.retryButton}
-                onPress={() => {
-                  setStatus("loading");
-                  setCoords(null);
-                  setErrorMessage(null);
-                  startTrackingSession("walk")
-                    .then((trackingSession) => {
-                      if (trackingSession.type !== "walk") {
-                        router.replace("/(tabs)/activity/cycle-map");
-                        return null;
-                      }
-                      return Location.getCurrentPositionAsync({
-                        accuracy: Location.Accuracy.High });
-                    })
-                    .then((pos) => {
-                      if (!pos) return;
-                      const next = {
-                        latitude: pos.coords.latitude,
-                        longitude: pos.coords.longitude,
-                        timestamp: pos.timestamp,
-                        accuracy: pos.coords.accuracy };
-                      setCoords(next);
-                      setStatus("ready");
-                    })
-                    .catch((e) => {
-                      const message = e instanceof Error ? e.message : "Failed to get your location";
-                      setErrorMessage(message);
-                      setStatus(message.includes("permission") ? "denied" : "error");
-                    });
-                }}
-              >
-                <ThemedText style={styles.retryText}>Try again</ThemedText>
-              </Pressable>
-            )}
-            {status === "denied" && (
-              <Pressable style={styles.retryButton} onPress={() => Linking.openSettings()}>
-                <ThemedText style={styles.retryText}>Open Settings</ThemedText>
-              </Pressable>
-            )}
-          </View>
+          <TrackingLocationAccessPrompt
+            status={status as "loading" | "denied" | "error"}
+            accessIssue={accessIssue}
+            errorMessage={errorMessage}
+            onRetry={() => {
+              setStatus("loading");
+              setCoords(null);
+              setErrorMessage(null);
+              setAccessIssue(null);
+              startTrackingSession("walk")
+                .then((trackingSession) => {
+                  if (trackingSession.type !== "walk") {
+                    router.replace("/(tabs)/activity/cycle-map");
+                    return null;
+                  }
+                  return Location.getCurrentPositionAsync({
+                    accuracy: Location.Accuracy.High });
+                })
+                .then((pos) => {
+                  if (!pos) return;
+                  const next = {
+                    latitude: pos.coords.latitude,
+                    longitude: pos.coords.longitude,
+                    timestamp: pos.timestamp,
+                    accuracy: pos.coords.accuracy };
+                  setCoords(next);
+                  setStatus("ready");
+                })
+                .catch((e) => {
+                  const failure = describeTrackingLocationFailure(e, "Failed to get your location");
+                  setAccessIssue(failure.issue);
+                  setErrorMessage(failure.errorMessage);
+                  setStatus(failure.status);
+                });
+            }}
+          />
         )}
       </View>
 

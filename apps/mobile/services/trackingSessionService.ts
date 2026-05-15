@@ -4,6 +4,7 @@ import * as Notifications from "expo-notifications";
 import { Pedometer } from "expo-sensors";
 import { Alert, Platform } from "react-native";
 import { syncActivityLiveSurface, endActivityLiveSurface } from "@/services/activityLiveSurfaceService";
+import { ACTIVITY_LIVE_HUNTLY_GREEN } from "@/constants/activityLiveSurfaceColors";
 import { TrackingPermissionError } from "@/utils/trackingLocationPermission";
 
 export const TRACKING_LOCATION_TASK = "huntly-active-adventure-location";
@@ -205,7 +206,8 @@ function trackingForegroundServiceCopy(type: TrackingActivityType): {
     // Expo Location only sets title/body when the foreground service starts (not on each GPS fix).
     // Live distance/time stay in the app and the iOS Live Activity when available.
     notificationBody: "Recording your GPS route. Open the app for live distance, time, and steps.",
-    notificationColor: "#2D4A35",
+    // Accent only on Android (see plugins/withAndroidLocationNotification.js); not a colorized background.
+    notificationColor: ACTIVITY_LIVE_HUNTLY_GREEN,
   };
 }
 

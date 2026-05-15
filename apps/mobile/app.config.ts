@@ -154,7 +154,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   plugins: [
     "expo-router",
-    "expo-notifications",
+    [
+      "expo-notifications",
+      {
+        icon: icon[variant],
+        color: "#4F6F52",
+      },
+    ],
     [
       "expo-location",
       {
@@ -165,9 +171,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         isIosBackgroundLocationEnabled: true,
         isAndroidBackgroundLocationEnabled: true,
         isAndroidForegroundServiceEnabled: true,
-        androidForegroundServiceIcon: "./assets/images/notification-icon.png",
       },
     ],
+    "./plugins/withAndroidLocationNotification.js",
     ...(androidGoogleMapsApiKey
       ? ([["react-native-maps", { androidGoogleMapsApiKey }]] satisfies NonNullable<ExpoConfig["plugins"]>)
       : []),

@@ -178,10 +178,10 @@ export default function IntroScreen() {
     activity.intro_character_name?.trim() ||
     (validCaptain ? validCaptain.charAt(0).toUpperCase() + validCaptain.slice(1) : null);
 
+  // Tab bar already includes the home-indicator inset; only add it when the bar is hidden.
   const footerPaddingBottom =
-    insets.bottom +
-    (onboardingActive ? scaleW(28) : scaleW(24)) +
-    (isTablet ? scaleW(40) : 0);
+    (onboardingActive ? insets.bottom + scaleW(16) : scaleW(10)) +
+    (isTablet && !onboardingActive ? scaleW(8) : 0);
 
   const hasUrgent = !!activity.intro_urgent_message?.trim();
   const hasDialogue = !!activity.intro_dialogue?.trim();
@@ -203,7 +203,7 @@ export default function IntroScreen() {
           paddingHorizontal: scaleW(20),
           paddingTop: scaleW(8),
           // Extra space so content can scroll above the fixed footer buttons.
-          paddingBottom: footerPaddingBottom + scaleW(140),
+          paddingBottom: footerPaddingBottom + scaleW(120),
         }}
         showsVerticalScrollIndicator={false}
         bounces={false}

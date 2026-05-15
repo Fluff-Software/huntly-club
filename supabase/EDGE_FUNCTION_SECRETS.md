@@ -98,3 +98,40 @@ The **send-chapter-push** Edge Function sends push notifications via the Expo Pu
 - **iOS**: EAS will prompt for your Apple Push Notifications key (or create one) during the first build. See [Expo: push notifications setup](https://docs.expo.dev/push-notifications/push-notifications-setup).
 
 **Testing:** Push notifications do **not** work on iOS Simulator or Android Emulator. Use a physical device to test receiving notifications.
+
+---
+
+## Monthly team winners (cron)
+
+The **finalize-monthly-team-winner** Edge Function records last month’s winning team in `team_monthly_winners` from `user_achievements` XP totals (UK calendar month boundaries). The mobile social tab reads that table for “Last month’s winners”.
+
+**Secret (required for cron / manual invoke):**
+
+```bash
+supabase secrets set CRON_SECRET=<random-secret>
+supabase functions deploy finalize-monthly-team-winner
+```
+
+**Supabase Dashboard cron job** (Integrations → Cron → new job):
+
+| Field | Value |
+|-------|--------|
+| Schedule | `0 2 1 * *` (02:00 UTC on the 1st of each month) |
+| Method | `POST` |
+| URL | `https://<project-ref>.supabase.co/functions/v1/finalize-monthly-team-winner` |
+| Headers | `Authorization: Bearer <SERVICE_ROLE_KEY>` |
+| | `x-cron-secret: <CRON_SECRET>` |
+
+Each run finalizes the **previous UK calendar month** only. Re-runs for the same month overwrite that row (`ON CONFLICT` update).
+
+**Manual test or backfill** (optional body to target a specific month):
+
+```bash
+curl -X POST "https://<project-ref>.supabase.co/functions/v1/finalize-monthly-team-winner" \
+  -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+  -H "x-cron-secret: $CRON_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"year": 2026, "month": 4}'
+```
+
+One-off SQL backfills remain in [supabase/scripts/seed-last-month-team-winner.sql](scripts/seed-last-month-team-winner.sql).

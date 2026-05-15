@@ -327,3 +327,6 @@ verify_jwt = false
 
 [functions.send-weekly-chapter-reminder]
 verify_jwt = false
+
+[functions.finalize-monthly-team-winner]
+verify_jwt = false

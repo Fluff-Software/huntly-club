@@ -20,7 +20,9 @@ import {
   getAllTeamsWithXp,
   getTeamAchievements,
   getTeamAchievementTotals,
-  TeamInfo } from "@/services/teamActivityService";
+  getLastMonthTeamWinner,
+  TeamInfo,
+  TeamMonthlyWinner } from "@/services/teamActivityService";
 import { useUser } from "@/contexts/UserContext";
 import { getTeamCardConfig } from "@/utils/teamUtils";
 
@@ -66,6 +68,7 @@ export default function SocialScreen() {
   const [teamInfo, setTeamInfo] = useState<TeamInfo | null>(null);
   const [allTeams, setAllTeams] = useState<TeamInfo[]>([]);
   const [visibleAchievementsCount, setVisibleAchievementsCount] = useState(ACHIEVEMENTS_INITIAL);
+  const [lastMonthWinner, setLastMonthWinner] = useState<TeamMonthlyWinner | null>(null);
 
   const chartProgress = useSharedValue(0);
   const scrollRef = useRef<ScrollView>(null);
@@ -108,16 +111,18 @@ export default function SocialScreen() {
     if (!teamId) { setLoading(false); return; }
     try {
       setError(null);
-      const [teamData, teamsData, achievements, totals] = await Promise.all([
+      const [teamData, teamsData, achievements, totals, winner] = await Promise.all([
         getTeamInfo(teamId),
         getAllTeamsWithXp(),
         getTeamAchievements(teamId),
         getTeamAchievementTotals(),
+        getLastMonthTeamWinner(),
       ]);
       setTeamInfo(teamData);
       setAllTeams(teamsData);
       setTeamAchievements(achievements);
       setTeamAchievementTotals(totals);
+      setLastMonthWinner(winner);
     } catch {
       setError("Failed to load team activities");
     } finally {
@@ -160,6 +165,11 @@ export default function SocialScreen() {
   );
 
   const teamCardConfig = useMemo(() => getTeamCardConfig(teamInfo?.name), [teamInfo?.name]);
+
+  const lastMonthWinnerConfig = useMemo(
+    () => (lastMonthWinner ? getTeamCardConfig(lastMonthWinner.team_name) : null),
+    [lastMonthWinner]
+  );
 
   if (!teamId) {
     return (
@@ -297,6 +307,44 @@ export default function SocialScreen() {
                 );
               })}
             </View>
+
+            {lastMonthWinner && lastMonthWinnerConfig && (
+              <View style={{
+                marginTop: scaleW(20),
+                paddingTop: scaleW(20),
+                borderTopWidth: 1,
+                borderTopColor: "rgba(0,0,0,0.06)",
+                alignItems: "center",
+                gap: scaleW(10) }}>
+                <ThemedText type="heading" style={{ fontSize: scaleW(18), fontWeight: "700", color: "#333", marginBottom: scaleW(10), textAlign: "center" }}>
+                  Last month's winners
+                </ThemedText>
+                <View style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: scaleW(12),
+                  alignSelf: "stretch",
+                  backgroundColor: lastMonthWinnerConfig.backgroundColor,
+                  borderRadius: scaleW(16),
+                  paddingVertical: scaleW(12),
+                  paddingHorizontal: scaleW(16),
+                  borderWidth: 2,
+                  borderColor: lastMonthWinnerConfig.accentColor,
+                }}>
+                  <Image
+                    source={lastMonthWinnerConfig.badgeImage}
+                    resizeMode="contain"
+                    style={{ width: scaleW(48), height: scaleW(48) }}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <ThemedText style={{ fontSize: scaleW(16), fontWeight: "800", color: lastMonthWinnerConfig.accentColor }}>
+                      {lastMonthWinnerConfig.title}
+                    </ThemedText>
+                  </View>
+                  <ThemedText style={{ fontSize: scaleW(28) }}>🏆</ThemedText>
+                </View>
+              </View>
+            )}
           </View>
 
           {/* Recent achievements */}

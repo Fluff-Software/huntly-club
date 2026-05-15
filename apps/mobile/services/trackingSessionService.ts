@@ -4,6 +4,8 @@ import * as Notifications from "expo-notifications";
 import { Pedometer } from "expo-sensors";
 import { Alert, Platform } from "react-native";
 import { syncActivityLiveSurface, endActivityLiveSurface } from "@/services/activityLiveSurfaceService";
+import { ACTIVITY_LIVE_HUNTLY_GREEN } from "@/constants/activityLiveSurfaceColors";
+import { TrackingPermissionError } from "@/utils/trackingLocationPermission";
 
 export const TRACKING_LOCATION_TASK = "huntly-active-adventure-location";
 
@@ -149,9 +151,14 @@ export async function clearActiveTrackingSession(): Promise<void> {
 }
 
 export async function ensureTrackingPermissions(): Promise<void> {
+  const servicesEnabled = await Location.hasServicesEnabledAsync();
+  if (!servicesEnabled) {
+    throw new TrackingPermissionError("location_services_disabled");
+  }
+
   const foreground = await Location.requestForegroundPermissionsAsync();
   if (foreground.status !== "granted") {
-    throw new Error("Location permission is needed to track your adventure.");
+    throw new TrackingPermissionError("foreground_denied");
   }
 
   if (Platform.OS === "android") {
@@ -165,7 +172,7 @@ export async function ensureTrackingPermissions(): Promise<void> {
 
   const background = await Location.requestBackgroundPermissionsAsync();
   if (background.status !== "granted") {
-    throw new Error("Background location permission is needed to keep tracking while the app is closed.");
+    throw new TrackingPermissionError("background_denied");
   }
 }
 
@@ -199,7 +206,8 @@ function trackingForegroundServiceCopy(type: TrackingActivityType): {
     // Expo Location only sets title/body when the foreground service starts (not on each GPS fix).
     // Live distance/time stay in the app and the iOS Live Activity when available.
     notificationBody: "Recording your GPS route. Open the app for live distance, time, and steps.",
-    notificationColor: "#2D4A35",
+    // Accent only on Android (see plugins/withAndroidLocationNotification.js); not a colorized background.
+    notificationColor: ACTIVITY_LIVE_HUNTLY_GREEN,
   };
 }
 

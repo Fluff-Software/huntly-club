@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { View, StyleSheet, Pressable, Modal, Animated, Easing } from "react-native";
+import { View, StyleSheet, Pressable, Modal, Animated, Easing, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -601,14 +601,16 @@ export default function WalkMapScreen() {
                 <ThemedText type="heading" style={styles.statsSubText}>{formatDurationMs(durationMs)}</ThemedText>
               </View>
             </View>
-            <Pressable
-              onPress={handleRecenter}
-              style={styles.recenterButton}
-              accessibilityRole="button"
-              accessibilityLabel="Recenter map"
-            >
-              <MaterialIcons name="my-location" size={scaleW(20)} color="#FFF" />
-            </Pressable>
+            {Platform.OS !== "android" && (
+              <Pressable
+                onPress={handleRecenter}
+                style={styles.recenterButton}
+                accessibilityRole="button"
+                accessibilityLabel="Recenter map"
+              >
+                <MaterialIcons name="my-location" size={scaleW(20)} color="#FFF" />
+              </Pressable>
+            )}
             <Pressable
               onPress={takeWalkPhoto}
               style={styles.cameraButton}

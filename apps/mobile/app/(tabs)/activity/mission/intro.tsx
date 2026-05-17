@@ -296,7 +296,7 @@ export default function IntroScreen() {
                 <View style={{
                   position: "absolute",
                   right: -scaleW(10),
-                  top: scaleW(20),
+                  bottom: scaleW(20),
                   width: 0,
                   height: 0,
                   borderTopWidth: scaleW(8),
@@ -315,13 +315,24 @@ export default function IntroScreen() {
         <View style={{
           backgroundColor: FOREST_MID,
           borderRadius: scaleW(20),
-          padding: scaleW(20),
+          overflow: "hidden",
           marginBottom: scaleW(24),
           shadowColor: "#000",
           shadowOpacity: 0.2,
           shadowRadius: 6,
           shadowOffset: { width: 0, height: 3 },
           elevation: 4 }}>
+
+          {/* Cover image */}
+          {!!activity.image && (
+            <Image
+              source={{ uri: activity.image }}
+              style={{ width: "100%", height: scaleW(160), borderRadius: scaleW(18), borderWidth: scaleW(4), borderColor: FOREST_MID }}
+              resizeMode="cover"
+            />
+          )}
+
+          <View style={{ padding: scaleW(20) }}>
 
           {/* Header row */}
           <View style={{ flexDirection: "row", alignItems: "center", gap: scaleW(8), marginBottom: scaleW(12) }}>
@@ -422,6 +433,7 @@ export default function IntroScreen() {
                 )}
               </View>
             )}
+          </View>
           </View>
         </View>
       </ScrollView>

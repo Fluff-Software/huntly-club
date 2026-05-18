@@ -6,7 +6,7 @@ import {
   uploadSeasonImage,
   uploadActivityImage,
 } from "@/lib/upload-actions";
-import { resizeImageFileForUpload } from "@/lib/client-image-resize";
+import { compressImageFileForUpload } from "@/lib/client-image-resize";
 import { ImageCropModal } from "@/components/ImageCropModal";
 
 type ImageUploadFieldProps = {
@@ -60,13 +60,7 @@ export function ImageUploadField({
     startTransition(async () => {
       let fileToUpload = croppedFile;
       try {
-        fileToUpload = await resizeImageFileForUpload(croppedFile, {
-          // Keep under Server Action and server-side MAX_SIZE.
-          maxBytes: 4_800_000,
-          maxWidth: 2560,
-          maxHeight: 2560,
-          outputType: "image/webp",
-        });
+        fileToUpload = await compressImageFileForUpload(croppedFile);
       } catch (err) {
         setUploadError(err instanceof Error ? err.message : "Failed to process image");
         return;
@@ -131,7 +125,7 @@ export function ImageUploadField({
       <ImageCropModal
         open={cropOpen}
         file={pendingFile}
-        title="Crop activity image"
+        title={uploadKind === "season" ? "Crop hero image" : "Crop activity image"}
         aspect={16 / 9}
         onCancel={handleCancelCrop}
         onConfirm={handleConfirmCrop}

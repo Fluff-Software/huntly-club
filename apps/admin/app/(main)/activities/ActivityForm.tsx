@@ -7,7 +7,7 @@ import { Button } from "@/components/Button";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { ImageCropModal } from "@/components/ImageCropModal";
 import { uploadActivityImage } from "@/lib/upload-actions";
-import { resizeImageFileForUpload } from "@/lib/client-image-resize";
+import { compressImageFileForUpload } from "@/lib/client-image-resize";
 
 export type CategoryOption = {
   id: number;
@@ -142,12 +142,7 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
     const formData = new FormData();
     let fileToUpload = file;
     try {
-      fileToUpload = await resizeImageFileForUpload(file, {
-        maxBytes: 4_800_000,
-        maxWidth: 2560,
-        maxHeight: 2560,
-        outputType: "image/webp",
-      });
+      fileToUpload = await compressImageFileForUpload(file);
     } catch (err) {
       setStepsList((prev) =>
         prev.map((s, i) =>

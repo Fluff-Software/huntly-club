@@ -18,6 +18,15 @@ export type ResizeForUploadOptions = {
   allowPngPassthrough?: boolean;
 };
 
+/** Shared defaults for admin image uploads (under Server Action body limits). */
+export const ADMIN_IMAGE_UPLOAD_OPTS: ResizeForUploadOptions = {
+  maxWidth: 2560,
+  maxHeight: 2560,
+  maxBytes: 4_800_000,
+  outputType: "image/webp",
+  allowPngPassthrough: false,
+};
+
 const DEFAULTS: Required<
   Pick<ResizeForUploadOptions, "maxWidth" | "maxHeight" | "maxBytes" | "outputType" | "allowPngPassthrough">
 > = {
@@ -86,6 +95,27 @@ async function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality?: n
  * - GIFs are returned as-is (we avoid breaking animation).
  * - If the file is already under maxBytes and within max dimensions, it is returned unchanged.
  */
+/** Resize + compress an image file before upload (admin default options). */
+export async function compressImageFileForUpload(
+  file: File,
+  opts: ResizeForUploadOptions = {}
+): Promise<File> {
+  return resizeImageFileForUpload(file, { ...ADMIN_IMAGE_UPLOAD_OPTS, ...opts });
+}
+
+/** Replace an image field on FormData with a compressed version (no-op for empty/non-images). */
+export async function compressFormDataImageFile(
+  formData: FormData,
+  fieldName: string,
+  opts: ResizeForUploadOptions = {}
+): Promise<void> {
+  const entry = formData.get(fieldName);
+  if (!(entry instanceof File) || entry.size === 0) return;
+  if (!entry.type.startsWith("image/")) return;
+  const compressed = await compressImageFileForUpload(entry, opts);
+  formData.set(fieldName, compressed);
+}
+
 export async function resizeImageFileForUpload(file: File, opts: ResizeForUploadOptions = {}): Promise<File> {
   const { maxWidth, maxHeight, maxBytes, outputType, allowPngPassthrough } = { ...DEFAULTS, ...opts };
 

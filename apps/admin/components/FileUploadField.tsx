@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useRef, useState, useTransition } from "react";
+import { compressImageFileForUpload } from "@/lib/client-image-resize";
 import { uploadResourceFileAction } from "@/lib/upload-actions";
 
 const RESOURCE_ACCEPT =
@@ -36,7 +37,15 @@ export function FileUploadField({
     setUploadError(null);
     startTransition(async () => {
       const formData = new FormData();
-      formData.set("file", file);
+      try {
+        const fileToUpload = file.type.startsWith("image/")
+          ? await compressImageFileForUpload(file)
+          : file;
+        formData.set("file", fileToUpload);
+      } catch (err) {
+        setUploadError(err instanceof Error ? err.message : "Failed to process image");
+        return;
+      }
       formData.set("prefix", "resources");
       const result = await uploadResourceFileAction(formData);
       if (result.error) {

@@ -1,7 +1,18 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
-export const metadata = {
-  title: "Join the waitlist · Huntly World",
+export const metadata: Metadata = {
+  title: "Download Huntly World — Adventure App for Children",
+  description:
+    "Download Huntly World on the App Store or Google Play. An outdoor adventure club app for children aged 5–10 — weekly missions, story-driven seasons, and team challenges.",
+  openGraph: {
+    title: "Download Huntly World — Adventure App for Children",
+    description:
+      "Download Huntly World on the App Store or Google Play. An outdoor adventure club app for children aged 5–10 — weekly missions, story-driven seasons, and team challenges.",
+  },
+  alternates: {
+    canonical: "https://huntly.world/download",
+  },
 };
 
 export default function WaitlistPage() {

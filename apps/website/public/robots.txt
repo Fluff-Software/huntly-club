@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://huntly.world/sitemap.xml

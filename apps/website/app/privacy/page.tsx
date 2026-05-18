@@ -1,9 +1,19 @@
 import type { ReactNode } from "react";
 
-export const metadata = {
-  title: "Privacy Policy · Huntly World",
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy",
   description:
     "How Fluff Software Limited collects, uses and protects your personal data in the Huntly World app.",
+  openGraph: {
+    title: "Privacy Policy — Huntly World",
+    description:
+      "How Fluff Software Limited collects, uses and protects your personal data in the Huntly World app.",
+  },
+  alternates: {
+    canonical: "https://huntly.world/privacy",
+  },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

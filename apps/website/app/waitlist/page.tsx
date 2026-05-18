@@ -1,7 +1,18 @@
+import type { Metadata } from "next";
 import WaitlistForm from "./waitlist-form";
 
-export const metadata = {
-  title: "Join the waitlist · Huntly World",
+export const metadata: Metadata = {
+  title: "Join the Waitlist",
+  description:
+    "Sign up to the Huntly World waitlist and be first to know when the outdoor adventure club opens in your area.",
+  openGraph: {
+    title: "Join the Waitlist — Huntly World",
+    description:
+      "Sign up to the Huntly World waitlist and be first to know when the outdoor adventure club opens in your area.",
+  },
+  alternates: {
+    canonical: "https://huntly.world/waitlist",
+  },
 };
 
 export default function WaitlistPage() {

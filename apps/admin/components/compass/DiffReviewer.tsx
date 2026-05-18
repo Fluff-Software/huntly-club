@@ -562,15 +562,6 @@ function MissionsReviewer({
                 {mission.steps && (
                   <p className="text-xs text-stone-400">{mission.steps.length} steps</p>
                 )}
-                {mission.supplies && mission.supplies.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {mission.supplies.map((s) => (
-                      <span key={s.name} className="rounded-full bg-white border border-stone-200 px-2 py-0.5 text-xs text-stone-500">
-                        {s.required ? "●" : "○"} {s.name}
-                      </span>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
           </div>

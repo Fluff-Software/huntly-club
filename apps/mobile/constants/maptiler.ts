@@ -1,6 +1,5 @@
 /**
- * MapTiler + MapLibre (Android walk/cycle maps).
- * @see https://docs.maptiler.com/react-native/
+ * MapTiler + MapLibre (Android walk/cycle maps). * @see https://docs.maptiler.com/react-native/
  * @see apps/mobile/.env.example — account setup and key restrictions
  */
 

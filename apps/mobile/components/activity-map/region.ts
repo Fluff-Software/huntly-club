@@ -40,29 +40,21 @@ export function regionFromCoordinate(
 }
 
 /** Approximate MapLibre zoom from react-native-maps latitude delta. */
-export function latitudeDeltaToZoom(latitudeDelta: number): number {
+export function latitudeDeltaToZoom(latitudeDelta: number, latitude?: number): number {
   const delta = Math.max(latitudeDelta, 0.0001);
-  return Math.log2(360 / delta);
+  const cosLat =
+    latitude === undefined ? 1 : Math.max(Math.cos((latitude * Math.PI) / 180), 0.01);
+  return Math.log2((360 * cosLat) / delta);
 }
 
-export function zoomToLatitudeDelta(zoom: number): number {
-  return 360 / Math.pow(2, zoom);
+export function zoomToLatitudeDelta(zoom: number, latitude?: number): number {
+  const cosLat =
+    latitude === undefined ? 1 : Math.max(Math.cos((latitude * Math.PI) / 180), 0.01);
+  return (360 * cosLat) / Math.pow(2, zoom);
 }
 
-export function regionToRouteBounds(
-  region: ActivityMapRegion
-): [[number, number], [number, number]] {
-  const halfLat = region.latitudeDelta / 2;
-  const halfLon = region.longitudeDelta / 2;
-  return [
-    [region.longitude - halfLon, region.latitude - halfLat],
-    [region.longitude + halfLon, region.latitude + halfLat],
-  ];
-}
-
-export function routeToBounds(
-  route: ActivityCoordinate[]
-): [[number, number], [number, number]] | null {
+/** Geographic bounds as [west, south, east, north] for MapLibre Camera.fitBounds. */
+export function routeToLngLatBounds(route: ActivityCoordinate[]): [number, number, number, number] | null {
   if (route.length === 0) return null;
   let minLat = route[0]!.latitude;
   let maxLat = route[0]!.latitude;
@@ -74,8 +66,5 @@ export function routeToBounds(
     if (p.longitude < minLon) minLon = p.longitude;
     if (p.longitude > maxLon) maxLon = p.longitude;
   }
-  return [
-    [minLon, minLat],
-    [maxLon, maxLat],
-  ];
+  return [minLon, minLat, maxLon, maxLat];
 }

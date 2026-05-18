@@ -1,4 +1,4 @@
-import React, { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
+import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import { StyleSheet, View } from "react-native";
 import {
   Camera,
@@ -7,31 +7,25 @@ import {
   Map,
   UserLocation,
   type CameraRef,
-  type ViewStateChangeEvent,
 } from "@maplibre/maplibre-react-native";
 import { getMapTilerMapStyleUrl } from "@/constants/maptiler";
-import { latitudeDeltaToZoom, zoomToLatitudeDelta } from "./region";
+import {
+  buildInitialViewState,
+  buildRecenterCameraStop,
+  viewStateToActivityRegion,
+} from "./mapCamera";
+import { latitudeDeltaToZoom, routeToLngLatBounds } from "./region";
 import {
   ACTIVITY_MAP_RECENTER_DURATION_MS,
+  ACTIVITY_MAP_ROUTE_FIT_PADDING,
   ACTIVITY_ROUTE_STROKE_COLOR,
   type ActivityMapProps,
   type ActivityMapRef,
-  type ActivityMapRegion,
 } from "./types";
 
 const ROUTE_SOURCE_ID = "activity-route-source";
 const ROUTE_LAYER_ID = "activity-route-layer";
 const DEV_MAP_STYLE = "https://demotiles.maplibre.org/style.json";
-
-function viewStateToRegion(event: ViewStateChangeEvent): ActivityMapRegion {
-  const latitudeDelta = zoomToLatitudeDelta(event.zoom);
-  return {
-    latitude: event.center[1],
-    longitude: event.center[0],
-    latitudeDelta,
-    longitudeDelta: latitudeDelta,
-  };
-}
 
 export const ActivityMap = forwardRef<ActivityMapRef, ActivityMapProps>(function ActivityMap(
   {
@@ -45,14 +39,18 @@ export const ActivityMap = forwardRef<ActivityMapRef, ActivityMapProps>(function
     rotateEnabled = true,
     pitchEnabled = true,
     pointerEvents,
+    fitRoute = false,
     onRegionChange,
   },
   ref
 ) {
   const cameraRef = useRef<CameraRef | null>(null);
-  const zoomRef = useRef(latitudeDeltaToZoom(initialRegion.latitudeDelta));
+  const zoomRef = useRef(
+    latitudeDeltaToZoom(initialRegion.latitudeDelta, initialRegion.latitude)
+  );
 
   const mapStyle = getMapTilerMapStyleUrl() ?? DEV_MAP_STYLE;
+  const shouldFitRoute = fitRoute && route.length >= 2;
 
   const routeGeoJson = useMemo((): GeoJSON.FeatureCollection => {
     if (route.length < 2) {
@@ -74,28 +72,35 @@ export const ActivityMap = forwardRef<ActivityMapRef, ActivityMapProps>(function
   }, [route]);
 
   const initialCamera = useMemo(
-    () => ({
-      center: [initialRegion.longitude, initialRegion.latitude] as [number, number],
-      zoom: latitudeDeltaToZoom(initialRegion.latitudeDelta),
+    () => buildInitialViewState(initialRegion, route, shouldFitRoute),
+    [initialRegion, route, shouldFitRoute]
+  );
+
+  useEffect(() => {
+    if (!shouldFitRoute) return;
+    const bounds = routeToLngLatBounds(route);
+    if (!bounds) return;
+    cameraRef.current?.fitBounds(bounds, {
+      padding: {
+        top: ACTIVITY_MAP_ROUTE_FIT_PADDING,
+        right: ACTIVITY_MAP_ROUTE_FIT_PADDING,
+        bottom: ACTIVITY_MAP_ROUTE_FIT_PADDING,
+        left: ACTIVITY_MAP_ROUTE_FIT_PADDING,
+      },
       bearing: 0,
       pitch: 0,
-    }),
-    [
-      initialRegion.latitude,
-      initialRegion.latitudeDelta,
-      initialRegion.longitude,
-    ]
-  );
+      duration: 0,
+    });
+  }, [route, shouldFitRoute]);
 
   useImperativeHandle(ref, () => ({
     recenter: ({ latitude, longitude, latitudeDelta, longitudeDelta }) => {
-      const delta = latitudeDelta ?? longitudeDelta ?? zoomToLatitudeDelta(zoomRef.current);
-      const zoom = latitudeDeltaToZoom(delta);
+      const stop = buildRecenterCameraStop(
+        { latitude, longitude, latitudeDelta, longitudeDelta },
+        zoomRef.current
+      );
       cameraRef.current?.easeTo({
-        center: [longitude, latitude],
-        zoom,
-        bearing: 0,
-        pitch: 0,
+        ...stop,
         duration: ACTIVITY_MAP_RECENTER_DURATION_MS,
       });
     },
@@ -115,12 +120,13 @@ export const ActivityMap = forwardRef<ActivityMapRef, ActivityMapProps>(function
         attribution
         logo={false}
         onRegionDidChange={(event) => {
-          zoomRef.current = event.nativeEvent.zoom;
-          onRegionChange?.(viewStateToRegion(event.nativeEvent));
+          const { center, zoom, bounds } = event.nativeEvent;
+          zoomRef.current = zoom;
+          onRegionChange?.(viewStateToActivityRegion(center, zoom, bounds));
         }}
       >
         <Camera ref={cameraRef} initialViewState={initialCamera} />
-        {showUserLocation ? <UserLocation /> : null}
+        {showUserLocation ? <UserLocation animated /> : null}
         {route.length >= 2 ? (
           <GeoJSONSource id={ROUTE_SOURCE_ID} data={routeGeoJson}>
             <Layer

@@ -3,6 +3,8 @@ import type { StyleProp, ViewStyle } from "react-native";
 export const ACTIVITY_ROUTE_STROKE_COLOR = "#2D5A27";
 export const ACTIVITY_MAP_DEFAULT_DELTA = 0.01;
 export const ACTIVITY_MAP_RECENTER_DURATION_MS = 350;
+/** Pixel inset when fitting the camera to a route (journal previews, etc.). */
+export const ACTIVITY_MAP_ROUTE_FIT_PADDING = 28;
 
 export type ActivityCoordinate = {
   latitude: number;
@@ -27,6 +29,8 @@ export type ActivityMapProps = {
   rotateEnabled?: boolean;
   pitchEnabled?: boolean;
   pointerEvents?: "box-none" | "none" | "box-only" | "auto";
+  /** When true and route has 2+ points, camera uses geographic bounds instead of center + delta. */
+  fitRoute?: boolean;
   onRegionChange?: (region: ActivityMapRegion) => void;
 };
 

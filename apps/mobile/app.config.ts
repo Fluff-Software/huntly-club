@@ -209,8 +209,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           "resizeMode": "contain",
           "backgroundColor": "#114094"
         }
-      ]
+      ],
+    [
+      "expo-navigation-bar",
+      {
+        visibility: "hidden",
+        enforceContrast: false,
+      },
     ],
+  ],
   experiments: {
     typedRoutes: true,
   },

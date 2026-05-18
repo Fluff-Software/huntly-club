@@ -5,7 +5,10 @@ import { Pedometer } from "expo-sensors";
 import { Alert, Platform } from "react-native";
 import { syncActivityLiveSurface, endActivityLiveSurface } from "@/services/activityLiveSurfaceService";
 import { ACTIVITY_LIVE_HUNTLY_GREEN } from "@/constants/activityLiveSurfaceColors";
-import { TrackingPermissionError } from "@/utils/trackingLocationPermission";
+import {
+  TrackingPermissionError,
+  getBackgroundTrackingPermissionAlertCopy,
+} from "@/utils/trackingLocationPermission";
 
 export const TRACKING_LOCATION_TASK = "huntly-active-adventure-location";
 
@@ -97,12 +100,9 @@ function notify(session: ActiveTrackingSession | null) {
 }
 
 function explainBackgroundTrackingPermission(): Promise<void> {
+  const { title, message } = getBackgroundTrackingPermissionAlertCopy();
   return new Promise((resolve) => {
-    Alert.alert(
-      "Keep tracking your adventure",
-      "Huntly World needs background location while a walk or cycle is active so your route keeps recording if you lock your phone or leave the app.",
-      [{ text: "Continue", onPress: () => resolve() }]
-    );
+    Alert.alert(title, message, [{ text: "Continue", onPress: () => resolve() }]);
   });
 }
 

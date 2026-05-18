@@ -80,6 +80,22 @@ export type TrackingLocationGuidance = {
   steps: string[];
 };
 
+/** Copy shown in-app immediately before the OS background-location permission dialog. */
+export function getBackgroundTrackingPermissionAlertCopy(): { title: string; message: string } {
+  if (Platform.OS === "ios") {
+    return {
+      title: 'Choose "Always"',
+      message:
+        'On the next screen, tap "Always" so your route keeps recording if you lock your phone or switch apps.',
+    };
+  }
+  return {
+    title: 'Select "Allow all the time"',
+    message:
+      'On the next screen, select "Allow all the time" so your route keeps recording if you lock your phone or switch apps.',
+  };
+}
+
 export function getTrackingLocationGuidance(issue: TrackingLocationIssue): TrackingLocationGuidance {
   if (Platform.OS === "ios") {
     return getIosTrackingLocationGuidance(issue);

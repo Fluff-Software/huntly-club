@@ -17,7 +17,9 @@
   "expo": {
     "autolinking": {
       "android": {
-        "exclude": ["react-native-maps"]
+        "exclude": [
+          "react-native-maps"
+        ]
       }
     },
     "doctor": {
@@ -61,6 +63,7 @@
     "expo-linear-gradient": "~55.0.14",
     "expo-linking": "~55.0.15",
     "expo-location": "~55.1.10",
+    "expo-navigation-bar": "~55.0.13",
     "expo-notifications": "~55.0.23",
     "expo-router": "~55.0.14",
     "expo-secure-store": "~55.0.14",
@@ -107,5 +110,9 @@
     "tailwindcss": "^3.4.19",
     "typescript": "~5.9.2"
   },
-  "private": true
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "npm@10.9.2"
 }

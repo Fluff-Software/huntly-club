@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { BackHandler, Image, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -10,7 +10,8 @@ import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUser } from "@/contexts/UserContext";
-import { clearWalkDraft, getCurrentWalkSession, updateCurrentWalkSession } from "../../../services/walkSessionService";
+import { useActiveTrackingSession } from "@/hooks/useActiveTrackingSession";
+import { updateActiveTrackingSession } from "@/services/trackingSessionService";
 import { createWalkJournalEntry } from "@/services/journalService";
 
 const FOREST_DARK = "#2D4A35";
@@ -28,12 +29,19 @@ export default function WalkFinishScreen() {
   const { user } = useAuth();
   const { teamId } = useUser();
 
-  const session = getCurrentWalkSession();
+  const { session: activeSession, loading: sessionLoading } = useActiveTrackingSession();
+  const session = activeSession?.type === "walk" ? activeSession : null;
   const [selectedProfileIds, setSelectedProfileIds] = useState<number[]>(
     session?.selectedProfileIds ?? (profiles.length === 1 ? [profiles[0]!.id] : [])
   );
   const [photoUris, setPhotoUris] = useState<string[]>(session?.photoUris ?? []);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!session) return;
+    setSelectedProfileIds(session.selectedProfileIds?.length ? session.selectedProfileIds : profiles.length === 1 ? [profiles[0]!.id] : []);
+    setPhotoUris(session.photoUris ?? []);
+  }, [session, profiles]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -73,7 +81,7 @@ export default function WalkFinishScreen() {
     setPhotoUris((prev) => prev.filter((u) => u !== uri));
   };
 
-  const canContinue = selectedProfileIds.length > 0 && !saving;
+  const canContinue = selectedProfileIds.length > 0 && !saving && !sessionLoading;
 
   const entryDate = useMemo(() => {
     const d = session?.endedAt ? new Date(session.endedAt) : new Date();
@@ -282,28 +290,27 @@ export default function WalkFinishScreen() {
 
         <View style={styles.footer} pointerEvents="box-none">
           <ThemedText style={styles.footerHint}>
-            {canContinue ? "Nice — let’s save your summary." : "Pick at least one explorer to continue."}
+            {sessionLoading ? "Restoring your walk..." : canContinue ? "Nice — let’s save your summary." : "Pick at least one explorer to continue."}
           </ThemedText>
           <Pressable
             style={styles.primaryButton}
             disabled={!canContinue}
             onPress={async () => {
               if (!session || !user?.id || teamId == null) {
-                updateCurrentWalkSession({ selectedProfileIds, photoUris });
-                clearWalkDraft();
+                await updateActiveTrackingSession({ selectedProfileIds, photoUris });
                 router.replace("/(tabs)/activity/walk-summary");
                 return;
               }
               setSaving(true);
               try {
-                updateCurrentWalkSession({ selectedProfileIds, photoUris });
+                await updateActiveTrackingSession({ selectedProfileIds, photoUris });
                 await createWalkJournalEntry({
                   userId: user.id,
                   teamId,
                   profileId: selectedProfileIds[0]!,
                   entryDate,
                   startedAt: session.startedAt,
-                  endedAt: session.endedAt,
+                  endedAt: session.endedAt ?? new Date().toISOString(),
                   steps: session.steps,
                   distanceMeters: session.distanceMeters,
                   route: session.route,
@@ -313,7 +320,6 @@ export default function WalkFinishScreen() {
                   }),
                   photoLocalUris: photoUris });
               } finally {
-                clearWalkDraft();
                 setSaving(false);
                 router.replace("/(tabs)/activity/walk-summary");
               }

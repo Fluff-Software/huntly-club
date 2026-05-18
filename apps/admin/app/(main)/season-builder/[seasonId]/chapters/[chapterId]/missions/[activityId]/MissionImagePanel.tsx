@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { uploadActivityImage } from "@/lib/upload-actions";
-import { resizeImageFileForUpload } from "@/lib/client-image-resize";
+import { compressImageFileForUpload } from "@/lib/client-image-resize";
 import { ImageCropModal } from "@/components/ImageCropModal";
 import { updateImagePrompt, generateImageForAsset, approveImageAsset } from "../../../../images/actions";
 import { attachUploadedImageToAsset, regenerateActivityCoverPrompt } from "./actions";
@@ -103,12 +103,7 @@ export function MissionImagePanel({ asset, seasonId, chapterId, activityId }: Pr
     setPendingFile(null);
     startTransition(async () => {
       try {
-        const resized = await resizeImageFileForUpload(croppedFile, {
-          maxBytes: 4_800_000,
-          maxWidth: 2560,
-          maxHeight: 2560,
-          outputType: "image/webp",
-        });
+        const resized = await compressImageFileForUpload(croppedFile);
         const uploadFd = new FormData();
         uploadFd.set("file", resized);
         const uploaded = await uploadActivityImage(uploadFd);

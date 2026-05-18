@@ -34,6 +34,9 @@ jobs:
           cache: 'npm'
           cache-dependency-path: 'apps/mobile/package-lock.json'
 
+      - name: Enable Corepack
+        run: corepack enable
+
       - name: Setup Expo and EAS
         uses: expo/expo-github-action@v8
         with:

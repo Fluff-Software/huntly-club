@@ -5,6 +5,7 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { CategoryIconModal } from "./CategoryIconModal";
 import { saveCategories, getCategories, type CategoryEditRow } from "./actions";
+import { compressImageFileForUpload } from "@/lib/client-image-resize";
 import { uploadCategoryIcon } from "@/lib/upload-actions";
 
 type RowWithPending = CategoryEditRow & {
@@ -71,7 +72,15 @@ export function CategoriesList({ initial }: { initial: CategoryEditRow[] }) {
     for (const row of toSave) {
       if (row.pendingIconFile) {
         const formData = new FormData();
-        formData.set("file", row.pendingIconFile);
+        try {
+          const compressed = await compressImageFileForUpload(row.pendingIconFile);
+          formData.set("file", compressed);
+        } catch (e) {
+          setError(e instanceof Error ? e.message : "Failed to process image");
+          setSaving(false);
+          toSave.forEach((r) => r.pendingIconPreviewUrl && URL.revokeObjectURL(r.pendingIconPreviewUrl));
+          return;
+        }
         const uploadResult = await uploadCategoryIcon(formData);
         if (uploadResult.error) {
           setError(uploadResult.error);

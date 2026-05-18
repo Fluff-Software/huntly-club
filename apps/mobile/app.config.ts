@@ -18,10 +18,28 @@ const bundleId: Record<AppVariant, string> = {
   development: 'software.fluff.huntly-club.dev',
 };
 
+// TEMPORARY: One Android applicationId for every variant so the committed google-services.json
+// (single Firebase Android app) matches dev/preview EAS builds without registering extra packages.
+// Restore distinct ids (e.g. huntlyclubdev / huntlyclubpreview) once those apps exist in Firebase
+// and google-services.json lists every client. Tradeoff: only one build can be installed at a
+// time per device—dev or internal APKs replace the Play build with the same package name.
+const ANDROID_APPLICATION_ID = 'software.fluff.huntlyclub';
+
+/** MapTiler tiles for Android walk/cycle maps (MapLibre). See .env.example. */
+const maptilerApiKey = process.env.EXPO_PUBLIC_MAPTILER_API_KEY?.trim();
+
+const isEasBuild = process.env.EAS_BUILD === "true" || process.env.EAS_BUILD === "1";
+if (isEasBuild && process.env.EAS_BUILD_PLATFORM === "android" && !maptilerApiKey) {
+  throw new Error(
+    "EAS Android build: EXPO_PUBLIC_MAPTILER_API_KEY is unset. " +
+      "In Expo (expo.dev) open this project → Environment variables → add EXPO_PUBLIC_MAPTILER_API_KEY for the environment used by this profile, then rebuild."
+  );
+}
+
 const androidPackage: Record<AppVariant, string> = {
-  production: 'software.fluff.huntlyclub',
-  preview: 'software.fluff.huntlyclubpreview',
-  development: 'software.fluff.huntlyclubdev',
+  production: ANDROID_APPLICATION_ID,
+  preview: ANDROID_APPLICATION_ID,
+  development: ANDROID_APPLICATION_ID,
 };
 
 const icon: Record<AppVariant, string> = {
@@ -51,7 +69,7 @@ const adaptiveIcon: Record<AppVariant, string> = {
 export default ({ config }: ConfigContext): ExpoConfig => ({
   name: appName[variant],
   slug: "huntly-club",
-  version: "1.0.2",
+  version: "1.0.3",
   orientation: "portrait",
   icon: icon[variant],
   scheme: "huntlyclub",
@@ -78,6 +96,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         "Huntly World uses motion data to count your steps during walks, so your family can track how active you've been on your adventures.",
       NSLocationWhenInUseUsageDescription:
         "Huntly World uses your location to track your walk and cycle routes during activities.",
+      NSLocationAlwaysAndWhenInUseUsageDescription:
+        "Huntly World uses your location while an adventure is active so your route can keep tracking when the app is in the background.",
       NSUserNotificationUsageDescription:
         "Huntly World sends notifications to let your family know about new missions, photo reviews, and club updates.",
     },
@@ -89,7 +109,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     package: androidPackage[variant],
     googleServicesFile: "./google-services.json",
-    permissions: ["ACTIVITY_RECOGNITION", "ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
+    permissions: [
+      "ACTIVITY_RECOGNITION",
+      "ACCESS_FINE_LOCATION",
+      "ACCESS_COARSE_LOCATION",
+      "ACCESS_BACKGROUND_LOCATION",
+      "FOREGROUND_SERVICE",
+      "FOREGROUND_SERVICE_LOCATION",
+    ],
     intentFilters: [
       {
         action: "VIEW",
@@ -118,12 +145,51 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   plugins: [
     "expo-router",
-    "expo-notifications",
+    [
+      "expo-notifications",
+      {
+        icon: icon[variant],
+        color: "#4F6F52",
+      },
+    ],
     [
       "expo-location",
       {
         locationWhenInUsePermission:
           "Huntly World uses your location to track your walk and cycle routes during activities.",
+        locationAlwaysAndWhenInUsePermission:
+          "Huntly World uses your location while an adventure is active so your route can keep tracking when the app is in the background.",
+        isIosBackgroundLocationEnabled: true,
+        isAndroidBackgroundLocationEnabled: true,
+        isAndroidForegroundServiceEnabled: true,
+      },
+    ],
+    "./plugins/withAndroidLocationNotification.js",
+    [
+      "@maplibre/maplibre-react-native",
+      {
+        android: {
+          // Matches existing Play Services usage (Firebase).
+          locationEngine: "google",
+        },
+      },
+    ],
+    // ActivityMap.ios (Apple Maps). Android uses MapLibre — react-native-maps excluded via autolinking.
+    "react-native-maps",
+    [
+      "expo-widgets",
+      {
+        bundleIdentifier: `${bundleId[variant]}.widgets`,
+        groupIdentifier: `group.${bundleId[variant]}`,
+        widgets: [
+          {
+            name: "ActivityLiveActivity",
+            displayName: "Active Adventure",
+            description: "Shows the current walk or cycle while tracking is active",
+            supportedFamilies: ["systemSmall", "systemMedium"],
+            contentMarginsDisabled: false,
+          },
+        ],
       },
     ],
     [
@@ -143,8 +209,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           "resizeMode": "contain",
           "backgroundColor": "#114094"
         }
-      ]
+      ],
+    [
+      "expo-navigation-bar",
+      {
+        visibility: "hidden",
+        enforceContrast: false,
+      },
     ],
+  ],
   experiments: {
     typedRoutes: true,
   },

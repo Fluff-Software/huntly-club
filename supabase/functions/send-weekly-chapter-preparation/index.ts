@@ -5,6 +5,8 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { sendEmail } from "../_shared/mailjet.ts";
 // @ts-ignore Deno-style relative imports are resolved by Edge runtime.
 import { wrapEmailBody } from "../_shared/emailTemplate.ts";
+// @ts-ignore Deno-style relative imports are resolved by Edge runtime.
+import { preparationUnlockDateForSend } from "../_shared/chapterNotificationSchedule.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,8 +16,6 @@ const corsHeaders = {
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const BATCH_SIZE = 100;
-const UK_TIME_ZONE = "Europe/London";
-
 type DenoLike = {
   env: { get: (key: string) => string | undefined };
   serve: (handler: (req: Request) => Response | Promise<Response>) => void;
@@ -27,34 +27,6 @@ function jsonResponse(body: object, status: number, headers?: HeadersInit) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json", ...headers },
   });
-}
-
-function ukDateForUnlockGate(now: Date = new Date()): string {
-  // Chapters unlock at 6am UK time. Before that, treat as "yesterday".
-  const fmt = new Intl.DateTimeFormat("en-GB", {
-    timeZone: UK_TIME_ZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    hour12: false,
-  });
-  const parts = fmt.formatToParts(now);
-  const get = (t: Intl.DateTimeFormatPartTypes) =>
-    parts.find((p) => p.type === t)?.value ?? "";
-  const year = parseInt(get("year"), 10);
-  const month = parseInt(get("month"), 10);
-  const day = parseInt(get("day"), 10);
-  const hour = parseInt(get("hour"), 10);
-
-  // Use UTC math just to roll calendar date safely.
-  const base = Date.UTC(year, month - 1, day, 12, 0, 0);
-  const effective = hour < 6 ? base - 86_400_000 : base;
-  const d = new Date(effective);
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const dd = String(d.getUTCDate()).padStart(2, "0");
-  return `${y}-${m}-${dd}`;
 }
 
 type ChapterRow = { id: number; title: string | null; season_id: number; week_number: number | null };
@@ -131,7 +103,13 @@ deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    const today = ukDateForUnlockGate();
+    const unlockDateForPreparation = preparationUnlockDateForSend();
+    if (!unlockDateForPreparation) {
+      return jsonResponse(
+        { success: true, count: 0, skipped: true, reason: "before_8am_uk" },
+        200
+      );
+    }
 
     // Latest season.
     const { data: latestSeason, error: seasonError } = await admin
@@ -145,18 +123,20 @@ deno.serve(async (req) => {
       return jsonResponse({ error: "Failed to load season." }, 500);
     }
 
-    // Latest unlocked chapter.
     const { data: chapter, error: chapterError } = await admin
       .from("chapters")
-      .select("id, title, season_id, week_number")
+      .select("id, title, season_id, week_number, unlock_date")
       .eq("season_id", (latestSeason as SeasonRow).id)
-      .lte("unlock_date", today)
-      .order("unlock_date", { ascending: false })
+      .eq("unlock_date", unlockDateForPreparation)
+      .order("week_number", { ascending: false })
       .limit(1)
       .maybeSingle();
 
     if (chapterError || !chapter) {
-      return jsonResponse({ success: true, count: 0 }, 200);
+      return jsonResponse(
+        { success: true, count: 0, skipped: true, reason: "no_chapter_unlocks_today" },
+        200
+      );
     }
 
     // Idempotency: only send once per chapter.

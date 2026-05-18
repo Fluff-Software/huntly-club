@@ -1,11 +1,53 @@
 import { supabase } from "./supabase";
 
+const UK_TIME_ZONE = "Europe/London";
+
+function parseUkCalendarParts(date: Date): { year: number; month: number } {
+  const fmt = new Intl.DateTimeFormat("en-GB", {
+    timeZone: UK_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+  });
+  const parts = fmt.formatToParts(date);
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+  return {
+    year: parseInt(get("year"), 10),
+    month: parseInt(get("month"), 10),
+  };
+}
+
 /** Start and end of current month in ISO format for Supabase filters. */
 function getCurrentMonthRange(): { from: string; to: string } {
   const now = new Date();
   const from = new Date(now.getFullYear(), now.getMonth(), 1);
   const to = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
   return { from: from.toISOString(), to: to.toISOString() };
+}
+
+/** Calendar year/month for the previous calendar month (Europe/London). */
+export function getLastMonthMeta(): { year: number; month: number } {
+  const uk = parseUkCalendarParts(new Date());
+  if (uk.month <= 1) return { year: uk.year - 1, month: 12 };
+  return { year: uk.year, month: uk.month - 1 };
+}
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+] as const;
+
+export function formatMonthYear(year: number, month: number): string {
+  const name = MONTH_NAMES[month - 1];
+  return name ? `${name} ${year}` : `${year}-${month}`;
+}
+
+export interface TeamMonthlyWinner {
+  year: number;
+  month: number;
+  team_id: number;
+  team_name: string;
+  total_xp: number;
 }
 
 export interface TeamActivityLogEntry {
@@ -248,6 +290,37 @@ export const getTeamAchievementTotals = async (): Promise<Record<number, number>
     byTeam[row.team_id] = (byTeam[row.team_id] ?? 0) + (row.xp ?? 0);
   }
   return byTeam;
+};
+
+/**
+ * Returns the recorded winner for the previous calendar month (from team_monthly_winners).
+ */
+export const getLastMonthTeamWinner = async (): Promise<TeamMonthlyWinner | null> => {
+  const { year, month } = getLastMonthMeta();
+  const { data, error } = await supabase
+    .from("team_monthly_winners")
+    .select("year, month, team_id, total_xp, teams(name)")
+    .eq("year", year)
+    .eq("month", month)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error fetching last month team winner:", error);
+    throw new Error(`Failed to fetch last month team winner: ${error.message}`);
+  }
+
+  if (!data) return null;
+
+  const teamRow = data.teams as { name: string } | { name: string }[] | null;
+  const teamName = Array.isArray(teamRow) ? teamRow[0]?.name : teamRow?.name;
+
+  return {
+    year: data.year,
+    month: data.month,
+    team_id: data.team_id,
+    team_name: teamName ?? "",
+    total_xp: data.total_xp ?? 0,
+  };
 };
 
 /**

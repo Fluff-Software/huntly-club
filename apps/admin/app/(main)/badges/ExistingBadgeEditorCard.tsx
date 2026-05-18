@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { compressFormDataImageFile } from "@/lib/client-image-resize";
 import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 
@@ -69,7 +70,14 @@ export function ExistingBadgeEditorCard({
       ? (newBadgeGroup.trim() || selectedBadgeGroup || "General")
       : (selectedBadgeGroup || "General");
   const [state, formAction] = useActionState(
-    async (_prev: { error?: string }, formData: FormData) => action(formData),
+    async (_prev: { error?: string }, formData: FormData) => {
+      try {
+        await compressFormDataImageFile(formData, "image_file");
+      } catch (e) {
+        return { error: e instanceof Error ? e.message : "Failed to process image" };
+      }
+      return action(formData);
+    },
     { error: undefined }
   );
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);

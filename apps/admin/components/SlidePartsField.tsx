@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/Button";
+import { ImageCropModal } from "@/components/ImageCropModal";
+import { compressImageFileForUpload } from "@/lib/client-image-resize";
 import { uploadSlideImage, generateAdhocSlideImage } from "@/lib/upload-actions";
 
 export type SlidePart =
@@ -31,6 +33,9 @@ export function SlidePartsField({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
   const [generatingIndex, setGeneratingIndex] = useState<number | null>(null);
+  const [cropOpen, setCropOpen] = useState(false);
+  const [cropIndex, setCropIndex] = useState<number | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   useEffect(() => {
@@ -71,29 +76,65 @@ export function SlidePartsField({
     }
   }
 
-  async function handleFileChange(index: number, e: React.ChangeEvent<HTMLInputElement>) {
+  function resetFileInput(index: number) {
+    if (fileInputRefs.current[index]) fileInputRefs.current[index]!.value = "";
+  }
+
+  async function uploadSlideImageAtIndex(index: number, file: File) {
+    if (!uploadPrefix) return;
+    setUploadError(null);
+    setUploadingIndex(index);
+    try {
+      const compressed = await compressImageFileForUpload(file);
+      const formData = new FormData();
+      formData.set("file", compressed);
+      formData.set("prefix", uploadPrefix);
+      const result = await uploadSlideImage(formData);
+      if (result.error) {
+        setUploadError(result.error);
+        return;
+      }
+      if (result.url) {
+        const slide = slides[index];
+        if (slide.type === "text-image") {
+          setSlide(index, { ...slide, image: result.url });
+        } else if (slide.type === "image") {
+          setSlide(index, { ...slide, value: result.url });
+        }
+      }
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Failed to process image");
+    } finally {
+      setUploadingIndex(null);
+      resetFileInput(index);
+    }
+  }
+
+  function handleFileChange(index: number, e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !uploadPrefix) return;
     setUploadError(null);
-    setUploadingIndex(index);
-    const formData = new FormData();
-    formData.set("file", file);
-    formData.set("prefix", uploadPrefix);
-    const result = await uploadSlideImage(formData);
-    setUploadingIndex(null);
-    if (result.error) {
-      setUploadError(result.error);
-      return;
-    }
-    if (result.url) {
-      const slide = slides[index];
-      if (slide.type === "text-image") {
-        setSlide(index, { ...slide, image: result.url });
-      } else if (slide.type === "image") {
-        setSlide(index, { ...slide, value: result.url });
-      }
-    }
-    if (fileInputRefs.current[index]) fileInputRefs.current[index]!.value = "";
+    setCropIndex(index);
+    setPendingFile(file);
+    setCropOpen(true);
+  }
+
+  function handleCancelCrop() {
+    if (uploadingIndex !== null) return;
+    const index = cropIndex;
+    setCropOpen(false);
+    setCropIndex(null);
+    setPendingFile(null);
+    if (index != null) resetFileInput(index);
+  }
+
+  function handleConfirmCrop(croppedFile: File) {
+    const index = cropIndex;
+    setCropOpen(false);
+    setCropIndex(null);
+    setPendingFile(null);
+    if (index == null) return;
+    void uploadSlideImageAtIndex(index, croppedFile);
   }
 
   async function handleGenerateImage(index: number) {
@@ -231,7 +272,7 @@ export function SlidePartsField({
                   type="file"
                   accept="image/jpeg,image/png,image/webp,image/gif"
                   onChange={(e) => handleFileChange(index, e)}
-                  disabled={uploadingIndex !== null}
+                  disabled={uploadingIndex !== null || cropOpen}
                   className="block w-full max-w-xs text-sm text-stone-600 file:mr-2 file:rounded-lg file:border-0 file:bg-huntly-forest file:px-4 file:py-2 file:text-sm file:font-medium file:text-white"
                   aria-label="Upload slide image"
                 />
@@ -285,6 +326,15 @@ export function SlidePartsField({
           {uploadError}
         </p>
       )}
+
+      <ImageCropModal
+        open={cropOpen}
+        file={pendingFile}
+        title="Crop slide image"
+        aspect={16 / 9}
+        onCancel={handleCancelCrop}
+        onConfirm={handleConfirmCrop}
+      />
     </div>
   );
 }

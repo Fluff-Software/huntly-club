@@ -3,11 +3,16 @@ import { BackHandler, Image, View, StyleSheet, Pressable, ScrollView } from "rea
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import MapView, { Polyline } from "react-native-maps";
 import ConfettiCannon from "react-native-confetti-cannon";
+import {
+  ActivityMap,
+  type ActivityMapRef,
+  type ActivityMapRegion,
+} from "@/components/activity-map";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
-import { clearCurrentWalkSession, getCurrentWalkSession } from "../../../services/walkSessionService";
+import { useActiveTrackingSession } from "@/hooks/useActiveTrackingSession";
+import { clearActiveTrackingSession } from "@/services/trackingSessionService";
 import { useFocusEffect } from "@react-navigation/native";
 import { usePlayer } from "@/contexts/PlayerContext";
 
@@ -42,15 +47,11 @@ export default function WalkSummaryScreen() {
   const { scaleW, isTablet } = useLayoutScale();
   const insets = useSafeAreaInsets();
   const [confettiKey, setConfettiKey] = useState(0);
-  const mapRef = useRef<MapView | null>(null);
-  const [currentRegion, setCurrentRegion] = useState<{
-    latitude: number;
-    longitude: number;
-    latitudeDelta: number;
-    longitudeDelta: number;
-  } | null>(null);
+  const mapRef = useRef<ActivityMapRef>(null);
+  const [currentRegion, setCurrentRegion] = useState<ActivityMapRegion | null>(null);
 
-  const session = getCurrentWalkSession();
+  const { session: activeSession, loading: sessionLoading } = useActiveTrackingSession();
+  const session = activeSession?.type === "walk" ? activeSession : null;
   const { profiles } = usePlayer();
 
   useFocusEffect(
@@ -64,7 +65,7 @@ export default function WalkSummaryScreen() {
   const computed = useMemo(() => {
     if (!session) return null;
     const started = new Date(session.startedAt).getTime();
-    const ended = new Date(session.endedAt).getTime();
+    const ended = new Date(session.endedAt ?? new Date().toISOString()).getTime();
     const durationMs = Math.max(0, ended - started);
     const durationSec = durationMs / 1000;
     const avgSpeedMps = durationSec > 0 ? session.distanceMeters / durationSec : 0;
@@ -86,14 +87,12 @@ export default function WalkSummaryScreen() {
   const handleRecenter = () => {
     if (!computed?.end) return;
     const r = currentRegion ?? computed.region;
-    mapRef.current?.animateToRegion(
-      {
-        latitude: computed.end.latitude,
-        longitude: computed.end.longitude,
-        latitudeDelta: r?.latitudeDelta ?? 0.01,
-        longitudeDelta: r?.longitudeDelta ?? 0.01 },
-      350
-    );
+    mapRef.current?.recenter({
+      latitude: computed.end.latitude,
+      longitude: computed.end.longitude,
+      latitudeDelta: r?.latitudeDelta ?? 0.01,
+      longitudeDelta: r?.longitudeDelta ?? 0.01,
+    });
   };
 
   const styles = useMemo(
@@ -225,7 +224,9 @@ export default function WalkSummaryScreen() {
             <ThemedText type="heading" style={styles.headerTitle}>
               Walk summary
             </ThemedText>
-            <ThemedText style={styles.headerSubtext}>No walk data found.</ThemedText>
+            <ThemedText style={styles.headerSubtext}>
+              {sessionLoading ? "Loading walk data..." : "No walk data found."}
+            </ThemedText>
           </View>
           <View style={styles.headerRightSpacer} />
         </View>
@@ -233,7 +234,7 @@ export default function WalkSummaryScreen() {
           <View style={styles.emptyWrap}>
             <MaterialIcons name="map" size={scaleW(34)} color={HUNTLY_GREEN} />
             <ThemedText style={styles.emptyText}>
-              Head back to the map screen and complete a walk to see your stats.
+              {sessionLoading ? "Restoring your walk summary." : "Head back to the map screen and complete a walk to see your stats."}
             </ThemedText>
           </View>
         </View>
@@ -283,28 +284,24 @@ export default function WalkSummaryScreen() {
           overScrollMode="never"
         >
           <View style={styles.mapCard}>
-            <MapView
-              ref={(r) => {
-                mapRef.current = r;
-              }}
+            <ActivityMap
+              ref={mapRef}
               style={styles.map}
               initialRegion={
                 computed.region ?? {
                   latitude: 0,
                   longitude: 0,
                   latitudeDelta: 0.01,
-                  longitudeDelta: 0.01 }
+                  longitudeDelta: 0.01,
+                }
               }
+              route={session.route}
               scrollEnabled
               rotateEnabled={false}
               pitchEnabled={false}
               zoomEnabled
-              onRegionChangeComplete={(r) => setCurrentRegion(r as any)}
-            >
-              {session.route.length >= 2 && (
-                <Polyline coordinates={session.route} strokeColor="#2D5A27" strokeWidth={6} />
-              )}
-            </MapView>
+              onRegionChange={setCurrentRegion}
+            />
             <Pressable
               onPress={handleRecenter}
               style={styles.recenterButton}
@@ -377,8 +374,8 @@ export default function WalkSummaryScreen() {
         <View style={styles.footer} pointerEvents="box-none">
           <Pressable
             style={styles.doneButton}
-            onPress={() => {
-              clearCurrentWalkSession();
+            onPress={async () => {
+              await clearActiveTrackingSession();
               router.replace("/(tabs)");
             }}
             accessibilityRole="button"

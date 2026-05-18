@@ -1,4 +1,4 @@
-import { Tabs, router } from "expo-router";
+import { Tabs, router, usePathname } from "expo-router";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Image, Modal, Platform, Pressable, StyleSheet, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -15,6 +15,7 @@ import { usePlayer } from "@/contexts/PlayerContext";
 import { useUser } from "@/contexts/UserContext";
 import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { useActiveTrackingSession } from "@/hooks/useActiveTrackingSession";
 import { useFirstSeason } from "@/hooks/useFirstSeason";
 import { NewPlayerTutorial } from "@/components/NewPlayerTutorial";
 import { SlideUpTabBar } from "@/components/SlideUpTabBar";
@@ -101,6 +102,7 @@ function StoryTabPulse({ size }: { size: number }) {
 }
 
 export default function TabLayout() {
+  const pathname = usePathname();
   const { user } = useAuth();
   const { profiles, loading: profilesLoading } = usePlayer();
   const { userData, loading: userLoading, updateLastSeenSeasonId } = useUser();
@@ -110,6 +112,7 @@ export default function TabLayout() {
     loading: seasonLoading } = useFirstSeason();
   const { scaleW, isTablet } = useLayoutScale();
   const insets = useSafeAreaInsets();
+  const { session: activeTrackingSession } = useActiveTrackingSession();
   const signUpContext = useSignUpOptional();
   const showPostSignUpWelcome = signUpContext?.showPostSignUpWelcome ?? false;
   const setShowPostSignUpWelcome = signUpContext?.setShowPostSignUpWelcome;
@@ -294,6 +297,19 @@ export default function TabLayout() {
     !showSeasonAnnouncementModal &&
     showPostSignUpWelcome &&
     hasCompletedTutorial === false;
+
+  const activeTrackingTitle =
+    activeTrackingSession?.status === "active"
+      ? activeTrackingSession.type === "cycle"
+        ? "Cycle in progress"
+        : "Walk in progress"
+      : null;
+  const activeTrackingRoute =
+    activeTrackingSession?.type === "cycle" ? "/activity/cycle-map" : "/activity/walk-map";
+  const showActiveTrackingBanner =
+    activeTrackingSession?.status === "active" &&
+    activeTrackingTitle != null &&
+    !pathname.endsWith(activeTrackingRoute);
 
   const isTabDisabled = (routeName: string) => {
     if (!tutorialVisible) return false;
@@ -501,6 +517,31 @@ export default function TabLayout() {
           href: null }}
       />
       </Tabs>
+      {showActiveTrackingBanner ? (
+        <Pressable
+          style={[
+            styles.activeSessionBanner,
+            {
+              right: scaleW(16),
+              bottom: tabBarHeight + scaleW(10),
+              width: scaleW(56),
+              height: scaleW(56),
+              borderRadius: scaleW(28),
+            },
+          ]}
+          onPress={() => {
+            router.push(activeTrackingSession.type === "cycle" ? "/(tabs)/activity/cycle-map" : "/(tabs)/activity/walk-map");
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Return to active adventure"
+        >
+          <MaterialIcons
+            name={activeTrackingSession.type === "cycle" ? "directions-bike" : "directions-walk"}
+            size={scaleW(26)}
+            color="#FFFFFF"
+          />
+        </Pressable>
+      ) : null}
       <NewPlayerTutorial
         visible={tutorialVisible}
         onDismiss={handleTutorialDismiss}
@@ -605,6 +646,17 @@ const styles = StyleSheet.create({
   tutorialPulseRing: {
     position: "absolute",
     borderColor: "rgba(255,255,255,0.9)" },
+  activeSessionBanner: {
+    position: "absolute",
+    zIndex: 20,
+    elevation: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(79,111,82,0.82)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8 },
   notificationPromptOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",

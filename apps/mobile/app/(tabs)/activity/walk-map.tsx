@@ -1,37 +1,53 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { View, StyleSheet, Pressable, ActivityIndicator, Modal, Animated, Easing, Linking } from "react-native";
+import { View, StyleSheet, Pressable, Modal, Animated, Easing } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import MapView, { Polyline } from "react-native-maps";
+import {
+  ActivityMap,
+  type ActivityMapRef,
+  type ActivityMapRegion,
+} from "@/components/activity-map";
 import * as Location from "expo-location";
 import { Pedometer } from "expo-sensors";
 import * as ImagePicker from "expo-image-picker";
 import { ThemedText } from "@/components/ThemedText";
+import { TrackingLocationAccessPrompt } from "@/components/TrackingLocationAccessPrompt";
+import {
+  describeTrackingLocationFailure,
+  type TrackingLocationIssue,
+} from "@/utils/trackingLocationPermission";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { addWalkPhotoUri, getWalkPhotoUris, setCurrentWalkSession } from "../../../services/walkSessionService";
+import { useActiveTrackingSession } from "@/hooks/useActiveTrackingSession";
+import {
+  addTrackingPhotoUri,
+  appendTrackingLocation,
+  clearActiveTrackingSession,
+  completeTrackingSession,
+  refreshActiveTrackingLiveSurface,
+  startTrackingSession,
+  updateActiveTrackingSession,
+} from "@/services/trackingSessionService";
 
 const FOREST_DARK = "#2D4A35";
 const LIGHT_GREEN_BG = "#EEF5EE";
 const HUNTLY_GREEN = "#4F6F52";
 const CHECK_GREEN = "#2D5A27";
+const STOP_RED = "#B3261E";
 
 type Coords = {
   latitude: number;
   longitude: number;
+  timestamp?: number;
+  accuracy?: number | null;
 };
 
 type LatLng = {
   latitude: number;
   longitude: number;
-};
-
-type MapRegion = {
-  latitude: number;
-  longitude: number;
-  latitudeDelta: number;
-  longitudeDelta: number;
+  timestamp?: number;
+  accuracy?: number | null;
 };
 
 function formatDurationMs(ms: number) {
@@ -71,51 +87,93 @@ export default function WalkMapScreen() {
   const [status, setStatus] = useState<"loading" | "denied" | "ready" | "error">("loading");
   const [coords, setCoords] = useState<Coords | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [accessIssue, setAccessIssue] = useState<TrackingLocationIssue | null>(null);
   const [stepsStatus, setStepsStatus] = useState<"loading" | "denied" | "unavailable" | "ready">("loading");
   const [steps, setSteps] = useState<number>(0);
+  const lastLiveStepsRef = useRef(0);
+  const lastPersistedStepsRef = useRef(0);
   const [trail, setTrail] = useState<LatLng[]>([]);
-  const mapRef = useRef<MapView | null>(null);
-  const [currentRegion, setCurrentRegion] = useState<MapRegion | null>(null);
+  const mapRef = useRef<ActivityMapRef>(null);
+  const [currentRegion, setCurrentRegion] = useState<ActivityMapRegion | null>(null);
   const [startedAt] = useState<Date>(() => new Date());
   const [confirmVisible, setConfirmVisible] = useState(false);
+  const [stopConfirmVisible, setStopConfirmVisible] = useState(false);
   const confirmBackdropOpacity = useRef(new Animated.Value(0)).current;
   const confirmSheetY = useRef(new Animated.Value(32)).current;
   const [nowMs, setNowMs] = useState(() => Date.now());
-  const [photoCount, setPhotoCount] = useState(() => getWalkPhotoUris().length);
+  const lastLiveSurfaceRefreshMsRef = useRef(0);
+  const [photoCount, setPhotoCount] = useState(0);
+  const { session: activeSession } = useActiveTrackingSession();
+  const activeWalkStartedAt = activeSession?.type === "walk" ? activeSession.startedAt : null;
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const perm = await Location.requestForegroundPermissionsAsync();
-        if (cancelled) return;
-        if (perm.status !== "granted") {
-          setStatus("denied");
+        const trackingSession = await startTrackingSession("walk");
+        if (trackingSession.type !== "walk") {
+          router.replace("/(tabs)/activity/cycle-map");
           return;
         }
-        const pos = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced });
         if (cancelled) return;
-        setCoords({
+        const pos = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High });
+        if (cancelled) return;
+        const next = {
           latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude });
+          longitude: pos.coords.longitude,
+          timestamp: pos.timestamp,
+          accuracy: pos.coords.accuracy };
+        setCoords(next);
         setStatus("ready");
       } catch (e) {
         if (cancelled) return;
-        setErrorMessage(e instanceof Error ? e.message : "Failed to get your location");
-        setStatus("error");
+        const failure = describeTrackingLocationFailure(e, "Failed to get your location");
+        setAccessIssue(failure.issue);
+        setErrorMessage(failure.errorMessage);
+        setStatus(failure.status);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     if (status !== "ready") return;
-    const id = setInterval(() => setNowMs(Date.now()), 1000);
+    const id = setInterval(() => {
+      const nextNowMs = Date.now();
+      setNowMs(nextNowMs);
+      if (nextNowMs - lastLiveSurfaceRefreshMsRef.current >= 1000) {
+        lastLiveSurfaceRefreshMsRef.current = nextNowMs;
+        void refreshActiveTrackingLiveSurface();
+      }
+    }, 1000);
     return () => clearInterval(id);
   }, [status]);
+
+  useEffect(() => {
+    if (!activeSession || activeSession.type !== "walk") return;
+    setTrail(activeSession.route);
+    setPhotoCount(activeSession.photoUris?.length ?? 0);
+    const latest = activeSession.endedAtCoords ?? activeSession.route[activeSession.route.length - 1] ?? null;
+    if (latest) {
+      setCoords({
+        latitude: latest.latitude,
+        longitude: latest.longitude });
+    }
+    if (activeSession.steps != null && stepsStatus !== "ready" && activeSession.steps >= lastLiveStepsRef.current) {
+      lastLiveStepsRef.current = activeSession.steps;
+      lastPersistedStepsRef.current = Math.max(lastPersistedStepsRef.current, activeSession.steps);
+      setSteps(activeSession.steps);
+    }
+  }, [activeSession, stepsStatus]);
+
+  useEffect(() => {
+    if (activeSession?.status === "active" && activeSession.type === "cycle") {
+      router.replace("/(tabs)/activity/cycle-map");
+    }
+  }, [activeSession, router]);
 
   useEffect(() => {
     if (status !== "ready") return;
@@ -126,21 +184,18 @@ export default function WalkMapScreen() {
       try {
         subscription = await Location.watchPositionAsync(
           {
-            accuracy: Location.Accuracy.Balanced,
+            accuracy: Location.Accuracy.High,
             timeInterval: 2000,
-            distanceInterval: 3 },
+            distanceInterval: 5 },
           (pos) => {
             if (cancelled) return;
             const next: LatLng = {
               latitude: pos.coords.latitude,
-              longitude: pos.coords.longitude };
+              longitude: pos.coords.longitude,
+              timestamp: pos.timestamp,
+              accuracy: pos.coords.accuracy };
             setCoords(next);
-            setTrail((prev) => {
-              if (prev.length === 0) return [next];
-              const last = prev[prev.length - 1]!;
-              if (metersBetween(last, next) < 2) return prev;
-              return prev.concat(next);
-            });
+            void appendTrackingLocation(next);
           }
         );
       } catch (e) {
@@ -157,9 +212,10 @@ export default function WalkMapScreen() {
   }, [status]);
 
   useEffect(() => {
+    if (!activeWalkStartedAt) return;
     let cancelled = false;
     let subscription: { remove: () => void } | null = null;
-    const startedAt = new Date();
+    const activityStartedAt = new Date(activeWalkStartedAt);
 
     (async () => {
       try {
@@ -179,18 +235,31 @@ export default function WalkMapScreen() {
 
         setStepsStatus("ready");
 
-        // Start with a baseline count since this screen opened.
+        let baselineSteps = lastLiveStepsRef.current;
         try {
-          const initial = await Pedometer.getStepCountAsync(startedAt, new Date());
-          if (!cancelled) setSteps(initial.steps ?? 0);
+          const initial = await Pedometer.getStepCountAsync(activityStartedAt, new Date());
+          baselineSteps = Math.max(baselineSteps, initial.steps ?? 0);
+          if (!cancelled) {
+            lastLiveStepsRef.current = baselineSteps;
+            setSteps(baselineSteps);
+            if (baselineSteps > lastPersistedStepsRef.current) {
+              lastPersistedStepsRef.current = baselineSteps;
+              void updateActiveTrackingSession({ steps: baselineSteps });
+            }
+          }
         } catch {
           // ignore; live watch below will still update on supported devices
         }
 
         subscription = Pedometer.watchStepCount((result) => {
           if (cancelled) return;
-          // Some platforms report steps since subscription start.
-          setSteps(result.steps ?? 0);
+          const nextSteps = Math.max(lastLiveStepsRef.current, baselineSteps + (result.steps ?? 0));
+          lastLiveStepsRef.current = nextSteps;
+          setSteps(nextSteps);
+          if (nextSteps > lastPersistedStepsRef.current) {
+            lastPersistedStepsRef.current = nextSteps;
+            void updateActiveTrackingSession({ steps: nextSteps });
+          }
         });
       } catch {
         if (cancelled) return;
@@ -202,7 +271,7 @@ export default function WalkMapScreen() {
       cancelled = true;
       subscription?.remove();
     };
-  }, []);
+  }, [activeWalkStartedAt]);
 
   const styles = useMemo(
     () =>
@@ -237,8 +306,6 @@ export default function WalkMapScreen() {
           textAlign: "center" },
         headerRightSpacer: { width: scaleW(42) },
         body: { flex: 1, backgroundColor: LIGHT_GREEN_BG },
-        loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center", padding: scaleW(24) },
-        message: { textAlign: "center", fontSize: scaleW(15), color: "#2F3336", marginTop: scaleW(12) },
         map: { flex: 1 },
         stepsOverlay: {
           position: "absolute" as const,
@@ -250,35 +317,31 @@ export default function WalkMapScreen() {
           paddingHorizontal: scaleW(10),
           gap: scaleW(6),
           zIndex: 5,
-          elevation: 5 },
+          overflow: "hidden" },
         stepsRow: { flexDirection: "row", alignItems: "center", gap: scaleW(6) },
         stepsOverlayText: { color: "#FFF", fontWeight: "800" as const, fontSize: scaleW(13) },
         statRow: { flexDirection: "row", alignItems: "center", gap: scaleW(6) },
         statsSubText: { color: "rgba(255,255,255,0.9)", fontWeight: "800" as const, fontSize: scaleW(12) },
+        mapOverlayButton: {
+          backgroundColor: "rgba(0,0,0,0.35)",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 6,
+          overflow: "hidden" },
         recenterButton: {
           position: "absolute" as const,
           right: scaleW(12),
           bottom: scaleW(12) + scaleW(104) + insets.bottom + (isTablet ? scaleW(20) : 0),
           width: scaleW(44),
           height: scaleW(44),
-          borderRadius: scaleW(22),
-          backgroundColor: "rgba(0,0,0,0.35)",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 6,
-          elevation: 6 },
+          borderRadius: scaleW(22) },
         cameraButton: {
           position: "absolute" as const,
           left: scaleW(12),
           bottom: scaleW(12) + scaleW(104) + insets.bottom + (isTablet ? scaleW(20) : 0),
           width: scaleW(44),
           height: scaleW(44),
-          borderRadius: scaleW(22),
-          backgroundColor: "rgba(0,0,0,0.35)",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 6,
-          elevation: 6 },
+          borderRadius: scaleW(22) },
         cameraBadge: {
           position: "absolute" as const,
           top: -scaleW(6),
@@ -291,7 +354,6 @@ export default function WalkMapScreen() {
           alignItems: "center",
           justifyContent: "center",
           zIndex: 7,
-          elevation: 7,
           borderWidth: 2,
           borderColor: "rgba(255,255,255,0.9)" },
         cameraBadgeText: { color: "#FFF", fontWeight: "900" as const, fontSize: scaleW(10) },
@@ -313,21 +375,22 @@ export default function WalkMapScreen() {
           color: "#5a5a5a",
           textAlign: "center",
           marginBottom: scaleW(12) },
+        footerActions: { flexDirection: "row", alignItems: "center", gap: scaleW(10) },
+        stopButton: {
+          width: scaleW(54),
+          height: scaleW(54),
+          borderRadius: scaleW(27),
+          backgroundColor: STOP_RED,
+          alignItems: "center",
+          justifyContent: "center" },
         completeButton: {
+          flex: 1,
           backgroundColor: HUNTLY_GREEN,
           borderRadius: scaleW(28),
           paddingVertical: scaleW(16),
           paddingHorizontal: scaleW(32),
-          alignSelf: "stretch",
           alignItems: "center" },
         completeButtonText: { fontSize: scaleW(18), fontWeight: "800", color: "#FFF" },
-        retryButton: {
-          marginTop: scaleW(16),
-          backgroundColor: HUNTLY_GREEN,
-          borderRadius: scaleW(22),
-          paddingVertical: scaleW(12),
-          paddingHorizontal: scaleW(18) },
-        retryText: { color: "#FFF", fontWeight: "800", textAlign: "center" as const },
         modalBackdrop: {
           flex: 1,
           backgroundColor: "rgba(0,0,0,0.45)",
@@ -356,6 +419,11 @@ export default function WalkMapScreen() {
           borderRadius: scaleW(28),
           paddingVertical: scaleW(14),
           alignItems: "center" },
+        modalDanger: {
+          backgroundColor: STOP_RED,
+          borderRadius: scaleW(28),
+          paddingVertical: scaleW(14),
+          alignItems: "center" },
         modalPrimaryText: { fontSize: scaleW(16), fontWeight: "900", color: "#FFF" },
         modalSecondary: {
           backgroundColor: "rgba(79,111,82,0.10)",
@@ -378,14 +446,12 @@ export default function WalkMapScreen() {
     if (!coords) return;
     const r = currentRegion ?? region;
     if (!r) return;
-    mapRef.current?.animateToRegion(
-      {
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-        latitudeDelta: r.latitudeDelta,
-        longitudeDelta: r.longitudeDelta },
-      350
-    );
+    mapRef.current?.recenter({
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      latitudeDelta: r.latitudeDelta,
+      longitudeDelta: r.longitudeDelta,
+    });
   };
 
   const distanceMeters = useMemo(() => {
@@ -397,7 +463,7 @@ export default function WalkMapScreen() {
     return sum;
   }, [trail]);
 
-  const durationMs = nowMs - startedAt.getTime();
+  const durationMs = nowMs - new Date(activeSession?.startedAt ?? startedAt).getTime();
 
   const openConfirm = () => {
     setConfirmVisible(true);
@@ -435,18 +501,21 @@ export default function WalkMapScreen() {
     });
   };
 
-  const confirmComplete = () => {
-    const endedAt = new Date();
-    setCurrentWalkSession({
-      startedAt: startedAt.toISOString(),
-      endedAt: endedAt.toISOString(),
+  const confirmComplete = async () => {
+    await updateActiveTrackingSession({
       steps: stepsStatus === "ready" ? steps : null,
       distanceMeters,
       route: trail,
-      endedAtCoords: coords,
-      photoUris: getWalkPhotoUris() });
+      endedAtCoords: coords });
+    await completeTrackingSession();
     closeConfirm();
     router.replace("/(tabs)/activity/walk-finish");
+  };
+
+  const confirmStop = async () => {
+    await clearActiveTrackingSession();
+    setStopConfirmVisible(false);
+    router.replace("/(tabs)/activity/pick-activity");
   };
 
   const takeWalkPhoto = async () => {
@@ -457,8 +526,8 @@ export default function WalkMapScreen() {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.8 });
       if (!result.canceled && result.assets[0]?.uri) {
-        addWalkPhotoUri(result.assets[0]!.uri);
-        setPhotoCount(getWalkPhotoUris().length);
+        const nextSession = await addTrackingPhotoUri(result.assets[0]!.uri);
+        setPhotoCount(nextSession?.photoUris?.length ?? 0);
       }
     } catch {
       // ignore
@@ -485,23 +554,14 @@ export default function WalkMapScreen() {
       <View style={styles.body}>
         {status === "ready" && region ? (
           <View style={styles.map}>
-            <MapView
-              ref={(r) => {
-                mapRef.current = r;
-              }}
+            <ActivityMap
+              ref={mapRef}
               style={StyleSheet.absoluteFill}
               initialRegion={region}
-              showsUserLocation
-              onRegionChangeComplete={(r) => setCurrentRegion(r as MapRegion)}
-            >
-              {trail.length >= 2 && (
-                <Polyline
-                  coordinates={trail}
-                  strokeColor="#2D5A27"
-                  strokeWidth={6}
-                />
-              )}
-            </MapView>
+              route={trail}
+              showUserLocation
+              onRegionChange={setCurrentRegion}
+            />
             <View pointerEvents="none" style={styles.stepsOverlay}>
               <View style={styles.stepsRow}>
                 <MaterialIcons name="directions-walk" size={scaleW(16)} color="#FFF" />
@@ -524,7 +584,7 @@ export default function WalkMapScreen() {
             </View>
             <Pressable
               onPress={handleRecenter}
-              style={styles.recenterButton}
+              style={[styles.mapOverlayButton, styles.recenterButton]}
               accessibilityRole="button"
               accessibilityLabel="Recenter map"
             >
@@ -532,7 +592,7 @@ export default function WalkMapScreen() {
             </Pressable>
             <Pressable
               onPress={takeWalkPhoto}
-              style={styles.cameraButton}
+              style={[styles.mapOverlayButton, styles.cameraButton]}
               accessibilityRole="button"
               accessibilityLabel="Take a photo"
             >
@@ -548,66 +608,65 @@ export default function WalkMapScreen() {
               <ThemedText style={styles.footerHint}>
                 {trail.length >= 2 ? "Ready when you are!" : "Start walking to record your route."}
               </ThemedText>
-              <Pressable
-                style={styles.completeButton}
-                onPress={openConfirm}
-                accessibilityRole="button"
-                accessibilityLabel="Complete walk"
-              >
-                <ThemedText type="heading" style={styles.completeButtonText}>
-                  Complete
-                </ThemedText>
-              </Pressable>
+              <View style={styles.footerActions}>
+                <Pressable
+                  style={styles.stopButton}
+                  onPress={() => setStopConfirmVisible(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Stop walk"
+                >
+                  <MaterialIcons name="stop" size={scaleW(24)} color="#FFF" />
+                </Pressable>
+                <Pressable
+                  style={styles.completeButton}
+                  onPress={openConfirm}
+                  accessibilityRole="button"
+                  accessibilityLabel="Complete walk"
+                >
+                  <ThemedText type="heading" style={styles.completeButtonText}>
+                    Complete
+                  </ThemedText>
+                </Pressable>
+              </View>
             </View>
           </View>
         ) : (
-          <View style={styles.loadingWrap}>
-            {status === "loading" ? <ActivityIndicator size="large" color={HUNTLY_GREEN} /> : null}
-            <ThemedText style={styles.message}>
-              {status === "loading"
-                ? "Getting your location…"
-                : status === "denied"
-                ? "Location permission is needed to show the map."
-                : errorMessage ?? "Something went wrong while getting your location."}
-            </ThemedText>
-            {(status === "denied" || status === "error") && (
-              <Pressable
-                style={styles.retryButton}
-                onPress={() => {
-                  setStatus("loading");
-                  setCoords(null);
-                  setErrorMessage(null);
-                  Location.requestForegroundPermissionsAsync()
-                    .then((perm) => {
-                      if (perm.status !== "granted") {
-                        setStatus("denied");
-                        return null;
-                      }
-                      return Location.getCurrentPositionAsync({
-                        accuracy: Location.Accuracy.Balanced });
-                    })
-                    .then((pos) => {
-                      if (!pos) return;
-                      setCoords({
-                        latitude: pos.coords.latitude,
-                        longitude: pos.coords.longitude });
-                      setStatus("ready");
-                    })
-                    .catch((e) => {
-                      setErrorMessage(e instanceof Error ? e.message : "Failed to get your location");
-                      setStatus("error");
-                    });
-                }}
-              >
-                <ThemedText style={styles.retryText}>Try again</ThemedText>
-              </Pressable>
-            )}
-            {status === "denied" && (
-              <Pressable style={styles.retryButton} onPress={() => Linking.openSettings()}>
-                <ThemedText style={styles.retryText}>Open Settings</ThemedText>
-              </Pressable>
-            )}
-          </View>
+          <TrackingLocationAccessPrompt
+            status={status as "loading" | "denied" | "error"}
+            accessIssue={accessIssue}
+            errorMessage={errorMessage}
+            onRetry={() => {
+              setStatus("loading");
+              setCoords(null);
+              setErrorMessage(null);
+              setAccessIssue(null);
+              startTrackingSession("walk")
+                .then((trackingSession) => {
+                  if (trackingSession.type !== "walk") {
+                    router.replace("/(tabs)/activity/cycle-map");
+                    return null;
+                  }
+                  return Location.getCurrentPositionAsync({
+                    accuracy: Location.Accuracy.High });
+                })
+                .then((pos) => {
+                  if (!pos) return;
+                  const next = {
+                    latitude: pos.coords.latitude,
+                    longitude: pos.coords.longitude,
+                    timestamp: pos.timestamp,
+                    accuracy: pos.coords.accuracy };
+                  setCoords(next);
+                  setStatus("ready");
+                })
+                .catch((e) => {
+                  const failure = describeTrackingLocationFailure(e, "Failed to get your location");
+                  setAccessIssue(failure.issue);
+                  setErrorMessage(failure.errorMessage);
+                  setStatus(failure.status);
+                });
+            }}
+          />
         )}
       </View>
 
@@ -655,6 +714,29 @@ export default function WalkMapScreen() {
               </Pressable>
             </View>
           </Animated.View>
+        </View>
+      </Modal>
+      <Modal visible={stopConfirmVisible} transparent animationType="fade" onRequestClose={() => setStopConfirmVisible(false)}>
+        <View style={styles.modalBackdrop}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setStopConfirmVisible(false)} />
+          <View style={styles.modalSheet}>
+            <ThemedText type="heading" style={styles.modalTitle}>
+              Stop this walk?
+            </ThemedText>
+            <ThemedText style={styles.modalBody}>Your progress will be lost if you stop now.</ThemedText>
+            <View style={styles.modalButtons}>
+              <Pressable style={styles.modalDanger} onPress={confirmStop} accessibilityRole="button" accessibilityLabel="Yes, stop walk">
+                <ThemedText type="heading" style={styles.modalPrimaryText}>
+                  Yes, stop
+                </ThemedText>
+              </Pressable>
+              <Pressable style={styles.modalSecondary} onPress={() => setStopConfirmVisible(false)} accessibilityRole="button" accessibilityLabel="Keep walking">
+                <ThemedText type="heading" style={styles.modalSecondaryText}>
+                  Keep walking
+                </ThemedText>
+              </Pressable>
+            </View>
+          </View>
         </View>
       </Modal>
     </SafeAreaView>

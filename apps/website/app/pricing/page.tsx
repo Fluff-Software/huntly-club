@@ -1,3 +1,26 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Pricing",
+  description: "Huntly World subscription pricing — coming soon.",
+};
+
+export default function PricingPage() {
+  return (
+    <div className="section py-20 text-center">
+      <h1 className="text-3xl font-bold text-huntly-forest sm:text-4xl">Pricing coming soon</h1>
+      <p className="mt-4 text-huntly-slate">
+        We&apos;re finalising our subscription plans. In the meantime,{" "}
+        <Link href="/download" className="font-medium text-huntly-forest underline-offset-2 hover:underline">
+          download the app
+        </Link>{" "}
+        and explore the free introductory content.
+      </p>
+    </div>
+  );
+}
+
 // import type { Metadata } from "next";
 // import Link from "next/link";
 

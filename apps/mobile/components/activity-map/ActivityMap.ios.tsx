@@ -1,5 +1,6 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { StyleSheet } from "react-native";
+/** Default provider is Apple MapKit — no Google Maps API key on iOS. */
 import MapView, { Polyline } from "react-native-maps";
 import {
   ACTIVITY_MAP_RECENTER_DURATION_MS,

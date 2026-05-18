@@ -174,7 +174,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         },
       },
     ],
-    // iOS Apple Maps for ActivityMap.ios — no Android Google Maps API key.
+    // ActivityMap.ios (Apple Maps). Android uses MapLibre — react-native-maps excluded via autolinking.
     "react-native-maps",
     [
       "expo-widgets",

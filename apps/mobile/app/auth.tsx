@@ -14,6 +14,7 @@ import Animated, {
   withSpring } from "react-native-reanimated";
 import { Stack, useLocalSearchParams, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { Image as ExpoImage } from "expo-image";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -25,6 +26,7 @@ import { useLayoutScale } from "@/hooks/useLayoutScale";
 const HUNTLY_GREEN = "#4F6F52";
 const GRADIENT_TOP = "#8FA5EE";
 const BUTTON_BG = "#F4F0EB";
+const AUTH_LOGO = require("@/assets/images/logo.png");
 
 enum AuthScreenMode {
   WELCOME,
@@ -116,31 +118,28 @@ export default function AuthScreen() {
           justifyContent: "center",
           zIndex: 2 }}
       >
-        <Animated.View
+        <View
           style={{
             width: scaleW(350),
             height: scaleW(228),
             position: "relative",
             marginTop: scaleW(-100) }}
         >
-          {/* Logo - centered in 350-wide container */}
           <View
             style={{
               position: "absolute",
-          
               top: scaleW(-160),
               width: scaleW(350),
               height: scaleW(350),
               zIndex: 1 }}
           >
-            <Image
-              source={require("@/assets/images/logo.png")}
-              resizeMode="contain"
+            <ExpoImage
+              source={AUTH_LOGO}
+              contentFit="contain"
               style={{ width: "100%", height: "100%" }}
             />
           </View>
-         
-        </Animated.View>
+        </View>
       </View>
       {/* Bottom section: slogan + buttons on green */}
       <View

@@ -174,6 +174,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     "./plugins/withAndroidLocationNotification.js",
+    [
+      "@maplibre/maplibre-react-native",
+      {
+        android: {
+          // Matches existing Play Services usage (Firebase, Google Maps during migration).
+          locationEngine: "google",
+        },
+      },
+    ],
     ...(androidGoogleMapsApiKey
       ? ([["react-native-maps", { androidGoogleMapsApiKey }]] satisfies NonNullable<ExpoConfig["plugins"]>)
       : []),

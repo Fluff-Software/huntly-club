@@ -1,9 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { View, StyleSheet, Pressable, Modal, Animated, Easing, Platform } from "react-native";
+import { View, StyleSheet, Pressable, Modal, Animated, Easing } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import MapView, { Polyline } from "react-native-maps";
+import {
+  ActivityMap,
+  type ActivityMapRef,
+  type ActivityMapRegion,
+} from "@/components/activity-map";
 import * as Location from "expo-location";
 import { Pedometer } from "expo-sensors";
 import * as ImagePicker from "expo-image-picker";
@@ -44,13 +48,6 @@ type LatLng = {
   longitude: number;
   timestamp?: number;
   accuracy?: number | null;
-};
-
-type MapRegion = {
-  latitude: number;
-  longitude: number;
-  latitudeDelta: number;
-  longitudeDelta: number;
 };
 
 function formatDurationMs(ms: number) {
@@ -96,8 +93,8 @@ export default function WalkMapScreen() {
   const lastLiveStepsRef = useRef(0);
   const lastPersistedStepsRef = useRef(0);
   const [trail, setTrail] = useState<LatLng[]>([]);
-  const mapRef = useRef<MapView | null>(null);
-  const [currentRegion, setCurrentRegion] = useState<MapRegion | null>(null);
+  const mapRef = useRef<ActivityMapRef>(null);
+  const [currentRegion, setCurrentRegion] = useState<ActivityMapRegion | null>(null);
   const [startedAt] = useState<Date>(() => new Date());
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [stopConfirmVisible, setStopConfirmVisible] = useState(false);
@@ -449,14 +446,12 @@ export default function WalkMapScreen() {
     if (!coords) return;
     const r = currentRegion ?? region;
     if (!r) return;
-    mapRef.current?.animateToRegion(
-      {
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-        latitudeDelta: r.latitudeDelta,
-        longitudeDelta: r.longitudeDelta },
-      350
-    );
+    mapRef.current?.recenter({
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      latitudeDelta: r.latitudeDelta,
+      longitudeDelta: r.longitudeDelta,
+    });
   };
 
   const distanceMeters = useMemo(() => {
@@ -559,23 +554,14 @@ export default function WalkMapScreen() {
       <View style={styles.body}>
         {status === "ready" && region ? (
           <View style={styles.map}>
-            <MapView
-              ref={(r) => {
-                mapRef.current = r;
-              }}
+            <ActivityMap
+              ref={mapRef}
               style={StyleSheet.absoluteFill}
               initialRegion={region}
-              showsUserLocation
-              onRegionChangeComplete={(r) => setCurrentRegion(r as MapRegion)}
-            >
-              {trail.length >= 2 && (
-                <Polyline
-                  coordinates={trail}
-                  strokeColor="#2D5A27"
-                  strokeWidth={6}
-                />
-              )}
-            </MapView>
+              route={trail}
+              showUserLocation
+              onRegionChange={setCurrentRegion}
+            />
             <View pointerEvents="none" style={styles.stepsOverlay}>
               <View style={styles.stepsRow}>
                 <MaterialIcons name="directions-walk" size={scaleW(16)} color="#FFF" />
@@ -596,16 +582,14 @@ export default function WalkMapScreen() {
                 <ThemedText type="heading" style={styles.statsSubText}>{formatDurationMs(durationMs)}</ThemedText>
               </View>
             </View>
-            {Platform.OS !== "android" && (
-              <Pressable
-                onPress={handleRecenter}
-                style={[styles.mapOverlayButton, styles.recenterButton]}
-                accessibilityRole="button"
-                accessibilityLabel="Recenter map"
-              >
-                <MaterialIcons name="my-location" size={scaleW(20)} color="#FFF" />
-              </Pressable>
-            )}
+            <Pressable
+              onPress={handleRecenter}
+              style={[styles.mapOverlayButton, styles.recenterButton]}
+              accessibilityRole="button"
+              accessibilityLabel="Recenter map"
+            >
+              <MaterialIcons name="my-location" size={scaleW(20)} color="#FFF" />
+            </Pressable>
             <Pressable
               onPress={takeWalkPhoto}
               style={[styles.mapOverlayButton, styles.cameraButton]}

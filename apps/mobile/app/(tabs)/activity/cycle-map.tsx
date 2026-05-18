@@ -1,9 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { View, StyleSheet, Pressable, Modal, Animated, Easing, Platform } from "react-native";
+import { View, StyleSheet, Pressable, Modal, Animated, Easing } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import MapView, { Polyline } from "react-native-maps";
+import {
+  ActivityMap,
+  type ActivityMapRef,
+  type ActivityMapRegion,
+} from "@/components/activity-map";
 import * as Location from "expo-location";
 import * as ImagePicker from "expo-image-picker";
 import { ThemedText } from "@/components/ThemedText";
@@ -33,8 +37,6 @@ const STOP_RED = "#B3261E";
 
 type Coords = { latitude: number; longitude: number; timestamp?: number; accuracy?: number | null };
 type LatLng = { latitude: number; longitude: number; timestamp?: number; accuracy?: number | null };
-type MapRegion = { latitude: number; longitude: number; latitudeDelta: number; longitudeDelta: number };
-
 function formatDurationMs(ms: number) {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
   const minutes = Math.floor(totalSeconds / 60);
@@ -72,8 +74,8 @@ export default function CycleMapScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [accessIssue, setAccessIssue] = useState<TrackingLocationIssue | null>(null);
   const [trail, setTrail] = useState<LatLng[]>([]);
-  const mapRef = useRef<MapView | null>(null);
-  const [currentRegion, setCurrentRegion] = useState<MapRegion | null>(null);
+  const mapRef = useRef<ActivityMapRef>(null);
+  const [currentRegion, setCurrentRegion] = useState<ActivityMapRegion | null>(null);
   const [startedAt] = useState<Date>(() => new Date());
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [stopConfirmVisible, setStopConfirmVisible] = useState(false);
@@ -325,10 +327,12 @@ export default function CycleMapScreen() {
     if (!coords) return;
     const r = currentRegion ?? region;
     if (!r) return;
-    mapRef.current?.animateToRegion(
-      { latitude: coords.latitude, longitude: coords.longitude, latitudeDelta: r.latitudeDelta, longitudeDelta: r.longitudeDelta },
-      350
-    );
+    mapRef.current?.recenter({
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      latitudeDelta: r.latitudeDelta,
+      longitudeDelta: r.longitudeDelta,
+    });
   };
 
   const openConfirm = () => {
@@ -395,17 +399,14 @@ export default function CycleMapScreen() {
       <View style={styles.body}>
         {status === "ready" && region ? (
           <View style={styles.map}>
-            <MapView
-              ref={(r) => {
-                mapRef.current = r;
-              }}
+            <ActivityMap
+              ref={mapRef}
               style={StyleSheet.absoluteFill}
               initialRegion={region}
-              showsUserLocation
-              onRegionChangeComplete={(r) => setCurrentRegion(r as MapRegion)}
-            >
-              {trail.length >= 2 && <Polyline coordinates={trail} strokeColor="#2D5A27" strokeWidth={6} />}
-            </MapView>
+              route={trail}
+              showUserLocation
+              onRegionChange={setCurrentRegion}
+            />
 
             <View pointerEvents="none" style={styles.statsOverlay}>
               <View style={styles.statRow}>
@@ -422,16 +423,14 @@ export default function CycleMapScreen() {
               </View>
             </View>
 
-            {Platform.OS !== "android" && (
-              <Pressable
-                onPress={handleRecenter}
-                style={[styles.mapOverlayButton, styles.recenterButton]}
-                accessibilityRole="button"
-                accessibilityLabel="Recenter map"
-              >
-                <MaterialIcons name="my-location" size={scaleW(20)} color="#FFF" />
-              </Pressable>
-            )}
+            <Pressable
+              onPress={handleRecenter}
+              style={[styles.mapOverlayButton, styles.recenterButton]}
+              accessibilityRole="button"
+              accessibilityLabel="Recenter map"
+            >
+              <MaterialIcons name="my-location" size={scaleW(20)} color="#FFF" />
+            </Pressable>
 
             <Pressable
               onPress={takeCyclePhoto}

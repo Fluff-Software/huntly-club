@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { View, Image, Modal, StyleSheet, Pressable } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { MaterialIcons } from "@expo/vector-icons";
-import MapView, { Polyline } from "react-native-maps";
+import { ActivityMap, regionForRoute } from "@/components/activity-map";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import type { CycleJournalMeta, JournalEntry, WalkJournalMeta } from "@/services/journalService";
@@ -47,31 +47,6 @@ function formatDurationMs(ms: number) {
 function formatDistance(meters: number) {
   if (meters < 1000) return `${Math.round(meters)} m`;
   return `${(meters / 1000).toFixed(2)} km`;
-}
-
-function regionForRoute(route: { latitude: number; longitude: number }[]) {
-  if (route.length === 0) return null;
-  let minLat = route[0]!.latitude;
-  let maxLat = route[0]!.latitude;
-  let minLon = route[0]!.longitude;
-  let maxLon = route[0]!.longitude;
-  for (const p of route) {
-    if (p.latitude < minLat) minLat = p.latitude;
-    if (p.latitude > maxLat) maxLat = p.latitude;
-    if (p.longitude < minLon) minLon = p.longitude;
-    if (p.longitude > maxLon) maxLon = p.longitude;
-  }
-  const latitude = (minLat + maxLat) / 2;
-  const longitude = (minLon + maxLon) / 2;
-  const latDeltaRaw = Math.max(0.001, maxLat - minLat);
-  const lonDeltaRaw = Math.max(0.001, maxLon - minLon);
-  const padding = 1.6; // a little extra breathing room
-  return {
-    latitude,
-    longitude,
-    latitudeDelta: Math.max(0.01, latDeltaRaw * padding),
-    longitudeDelta: Math.max(0.01, lonDeltaRaw * padding),
-  };
 }
 
 interface JournalEntryCardProps {
@@ -291,17 +266,18 @@ export function JournalEntryCard({
               </View>
               {trackedRegion && trackedMeta.route.length >= 2 && (
                 <View style={styles.walkMapWrap}>
-                  <MapView
+                  <ActivityMap
                     style={styles.walkMap}
                     initialRegion={trackedRegion}
+                    route={trackedMeta.route}
+                    fitRoute
+                    routeStrokeWidth={5}
                     scrollEnabled={false}
                     zoomEnabled={false}
                     rotateEnabled={false}
                     pitchEnabled={false}
                     pointerEvents="none"
-                  >
-                    <Polyline coordinates={trackedMeta.route} strokeColor="#2D5A27" strokeWidth={5} />
-                  </MapView>
+                  />
                 </View>
               )}
               {trackedMeta.selectedProfiles.length > 0 && (

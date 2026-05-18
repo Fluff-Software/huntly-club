@@ -16,7 +16,7 @@ export function getMapTilerApiKey(): string | undefined {
   return key || undefined;
 }
 
-/** MapLibre `mapStyle` URL for MapView (Android). */
+/** MapLibre `mapStyle` URL for ActivityMap on Android. */
 export function getMapTilerMapStyleUrl(): string | undefined {
   const key = getMapTilerApiKey();
   if (!key) return undefined;

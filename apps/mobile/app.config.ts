@@ -25,14 +25,14 @@ const bundleId: Record<AppVariant, string> = {
 // time per device—dev or internal APKs replace the Play build with the same package name.
 const ANDROID_APPLICATION_ID = 'software.fluff.huntlyclub';
 
-/** Injected into AndroidManifest for react-native-maps (Google Maps). Not the same as Firebase — see .env.example. */
-const androidGoogleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY;
+/** MapTiler tiles for Android walk/cycle maps (MapLibre). See .env.example. */
+const maptilerApiKey = process.env.EXPO_PUBLIC_MAPTILER_API_KEY?.trim();
 
 const isEasBuild = process.env.EAS_BUILD === "true" || process.env.EAS_BUILD === "1";
-if (isEasBuild && process.env.EAS_BUILD_PLATFORM === "android" && !androidGoogleMapsApiKey) {
+if (isEasBuild && process.env.EAS_BUILD_PLATFORM === "android" && !maptilerApiKey) {
   throw new Error(
-    "EAS Android build: EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY is unset. " +
-      "google-services.json does not add the Maps SDK key. In Expo (expo.dev) open this project → Environment variables → add EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY for the environment used by this profile, then rebuild."
+    "EAS Android build: EXPO_PUBLIC_MAPTILER_API_KEY is unset. " +
+      "In Expo (expo.dev) open this project → Environment variables → add EXPO_PUBLIC_MAPTILER_API_KEY for the environment used by this profile, then rebuild."
   );
 }
 
@@ -130,15 +130,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         category: ["BROWSABLE", "DEFAULT"],
       },
     ],
-    ...(androidGoogleMapsApiKey
-      ? {
-          config: {
-            googleMaps: {
-              apiKey: androidGoogleMapsApiKey,
-            },
-          },
-        }
-      : {}),
   },
   web: {
     bundler: "metro",
@@ -178,14 +169,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       "@maplibre/maplibre-react-native",
       {
         android: {
-          // Matches existing Play Services usage (Firebase, Google Maps during migration).
+          // Matches existing Play Services usage (Firebase).
           locationEngine: "google",
         },
       },
     ],
-    ...(androidGoogleMapsApiKey
-      ? ([["react-native-maps", { androidGoogleMapsApiKey }]] satisfies NonNullable<ExpoConfig["plugins"]>)
-      : []),
+    // iOS Apple Maps for ActivityMap.ios — no Android Google Maps API key.
+    "react-native-maps",
     [
       "expo-widgets",
       {

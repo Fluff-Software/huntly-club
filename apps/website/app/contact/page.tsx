@@ -1,7 +1,18 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
-export const metadata = {
-  title: "Get in touch · Huntly World",
+export const metadata: Metadata = {
+  title: "Get in touch",
+  description:
+    "Contact Huntly World — we'd love to hear from families, schools, clubs and community leaders interested in outdoor adventure for children.",
+  openGraph: {
+    title: "Get in Touch — Huntly World",
+    description:
+      "Contact Huntly World — we'd love to hear from families, schools, clubs and community leaders interested in outdoor adventure for children.",
+  },
+  alternates: {
+    canonical: "https://huntly.world/contact",
+  },
 };
 
 export default function ContactPage() {

@@ -1,5 +1,17 @@
-export const metadata = {
-  title: "Support · Huntly World",
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Support",
+  description:
+    "Get help with the Huntly World outdoor adventure app. Contact our team for any questions, issues or feedback.",
+  openGraph: {
+    title: "Support — Huntly World",
+    description:
+      "Get help with the Huntly World outdoor adventure app. Contact our team for any questions, issues or feedback.",
+  },
+  alternates: {
+    canonical: "https://huntly.world/support",
+  },
 };
 
 export default function SupportPage() {

@@ -4,6 +4,7 @@ import "./globals.css";
 import Link from "next/link";
 import Image from "next/image";
 import Script from "next/script";
+import CookieBanner from "./components/CookieBanner";
 
 const nunito = Nunito({
   subsets: ["latin"],
@@ -63,7 +64,10 @@ export default function RootLayout({
   const gtmId = process.env.NEXT_PUBLIC_GTM_ID;
 
   return (
-    <html lang="en-GB" className={nunito.variable}>
+    <html lang="en-GB" className={nunito.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{analytics_storage:'denied',ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',wait_for_update:500});try{var c=localStorage.getItem('huntly_cookie_consent');if(c==='granted'){gtag('consent','update',{analytics_storage:'granted',ad_storage:'granted',ad_user_data:'granted',ad_personalization:'granted'});}}catch(e){}` }} />
+      </head>
       {gtmId && (
         <Script id="gtm-script" strategy="afterInteractive">
           {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -84,6 +88,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             />
           </noscript>
         )}
+        <CookieBanner />
         <div className="page-shell">
           <header className="border-b border-huntly-stone/70 bg-huntly-parchment/95 backdrop-blur">
             <div className="section flex min-w-0 items-center justify-between gap-3 py-3 sm:gap-5 sm:py-4">

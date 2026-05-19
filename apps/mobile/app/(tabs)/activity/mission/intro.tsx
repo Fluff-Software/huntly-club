@@ -11,6 +11,7 @@ import Animated, {
   useSharedValue,
   withSpring } from "react-native-reanimated";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
@@ -63,6 +64,8 @@ const FOREST_DARK = "#2D4A35";
 const FOREST_MID = "#3D5F45";
 const URGENT_RED = "#C0392B";
 const CREAM = "#F0E8C8";
+const CREAM_LIGHT = "#FAF6E8";
+const CREAM_SHADOW = "#D4C9A0";
 
 export default function IntroScreen() {
   const router = useRouter();
@@ -483,28 +486,35 @@ export default function IntroScreen() {
             onPressIn={() => { buttonScale.value = withSpring(0.97, { damping: 15, stiffness: 400 }); }}
             onPressOut={() => { buttonScale.value = withSpring(1, { damping: 15, stiffness: 400 }); }}
             style={{
-              backgroundColor: CREAM,
               borderRadius: scaleW(32),
-              paddingVertical: scaleW(18),
-              paddingHorizontal: scaleW(32),
-              alignItems: "center",
-              justifyContent: "center",
-              flexDirection: "row",
-              gap: scaleW(8),
-              shadowColor: "#000",
-              shadowOpacity: 0.2,
-              shadowRadius: 6,
-              shadowOffset: { width: 0, height: 3 },
-              elevation: 4 }}
+              overflow: "hidden",
+              shadowColor: FOREST_DARK,
+              shadowOpacity: 0.45,
+              shadowRadius: scaleW(10),
+              shadowOffset: { width: 0, height: scaleW(5) },
+              elevation: 8 }}
           >
-            <ThemedText
-              type="heading"
-              lightColor={FOREST_DARK}
-              darkColor={FOREST_DARK}
-              style={{ fontSize: scaleW(18), fontWeight: "800" }}>
-              Accept the mission
-            </ThemedText>
-            <MaterialIcons name="arrow-forward" size={scaleW(20)} color={FOREST_DARK} />
+            <LinearGradient
+              colors={[CREAM_LIGHT, CREAM, CREAM_SHADOW]}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={{
+                paddingVertical: scaleW(18),
+                paddingHorizontal: scaleW(32),
+                alignItems: "center",
+                justifyContent: "center",
+                flexDirection: "row",
+                gap: scaleW(8) }}
+            >
+              <ThemedText
+                type="heading"
+                lightColor={FOREST_DARK}
+                darkColor={FOREST_DARK}
+                style={{ fontSize: scaleW(18), fontWeight: "800" }}>
+                Accept the mission
+              </ThemedText>
+              <MaterialIcons name="arrow-forward" size={scaleW(20)} color={FOREST_DARK} />
+            </LinearGradient>
           </Pressable>
         </Animated.View>
       </View>

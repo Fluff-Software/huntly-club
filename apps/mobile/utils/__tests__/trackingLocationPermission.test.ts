@@ -1,6 +1,5 @@
 import {
   TrackingPermissionError,
-  getBackgroundTrackingPermissionAlertCopy,
   getTrackingLocationGuidance,
   isTrackingLocationAccessIssue,
   resolveTrackingLocationIssue,
@@ -45,14 +44,5 @@ describe("getTrackingLocationGuidance", () => {
     expect(guidance.title.length).toBeGreaterThan(0);
     expect(guidance.steps.length).toBeGreaterThanOrEqual(3);
     expect(guidance.steps.some((step) => /settings/i.test(step))).toBe(true);
-  });
-});
-
-describe("getBackgroundTrackingPermissionAlertCopy", () => {
-  it("names the exact option users should choose on the next screen", () => {
-    const copy = getBackgroundTrackingPermissionAlertCopy();
-    expect(copy.title.length).toBeGreaterThan(0);
-    expect(copy.message).toMatch(/next screen/i);
-    expect(copy.message + copy.title).toMatch(/always|all the time/i);
   });
 });

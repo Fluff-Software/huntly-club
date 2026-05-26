@@ -128,6 +128,57 @@ export async function uploadResourceFileAction(
   return uploadResourceFile(formData, prefix);
 }
 
+const CAMPFIRE_AUDIO_TYPES = [
+  "audio/mpeg",
+  "audio/mp3",
+  "audio/wav",
+  "audio/ogg",
+  "audio/aac",
+  "audio/m4a",
+];
+const CAMPFIRE_AUDIO_MAX_SIZE = 50 * 1024 * 1024;
+
+export async function uploadCampfireAudio(
+  formData: FormData
+): Promise<{ url?: string; error?: string }> {
+  const file = formData.get("file") as File | null;
+
+  if (!file?.size) return { error: "No file provided" };
+
+  if (!CAMPFIRE_AUDIO_TYPES.includes(file.type)) {
+    return {
+      error: "Invalid file type. Use MP3, WAV, OGG, AAC, or M4A.",
+    };
+  }
+  if (file.size > CAMPFIRE_AUDIO_MAX_SIZE) {
+    return { error: "File too large. Maximum size is 50MB." };
+  }
+
+  try {
+    const supabase = createServerSupabaseClient();
+    const ext = file.name.split(".").pop()?.toLowerCase() || "mp3";
+    const path = `sessions/${Date.now()}.${ext}`;
+
+    const { error } = await supabase.storage
+      .from("campfire-audio")
+      .upload(path, file, {
+        contentType: file.type,
+        upsert: false,
+      });
+
+    if (error) return { error: error.message };
+
+    const { data: urlData } = supabase.storage
+      .from("campfire-audio")
+      .getPublicUrl(path);
+    return { url: urlData.publicUrl };
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Upload failed",
+    };
+  }
+}
+
 export async function generateAdhocSlideImage(opts: {
   prompt: string;
 }): Promise<{ url?: string; error?: string }> {

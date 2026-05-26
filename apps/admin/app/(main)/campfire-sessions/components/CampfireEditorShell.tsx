@@ -7,6 +7,7 @@ import {
   useRef,
   useTransition,
   useState,
+  type ReactNode,
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -159,6 +160,7 @@ export function CampfireEditorShell({
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <ShortcutsGuide />
           <div className="flex items-center gap-0.5 rounded-lg border border-stone-700 bg-stone-900 p-0.5">
             <button
               type="button"
@@ -254,6 +256,65 @@ export function CampfireEditorShell({
         cancelLabel="Keep editing"
         variant="danger"
       />
+    </div>
+  );
+}
+
+const SHORTCUTS: { keys: ReactNode; label: string }[] = [
+  { keys: <><Kbd>Space</Kbd></>, label: "Play / Pause" },
+  { keys: <><Kbd>Ctrl</Kbd> <Kbd>Z</Kbd></>, label: "Undo" },
+  { keys: <><Kbd>Ctrl</Kbd> <Kbd>Shift</Kbd> <Kbd>Z</Kbd></>, label: "Redo" },
+  { keys: <><Kbd>Shift</Kbd> <Kbd>Scroll</Kbd></>, label: "Scroll timeline" },
+];
+
+function Kbd({ children }: { children: ReactNode }) {
+  return (
+    <kbd className="inline-block min-w-[1.25rem] rounded border border-stone-600 bg-stone-800 px-1 py-0.5 text-center font-mono text-[10px] leading-none text-stone-300">
+      {children}
+    </kbd>
+  );
+}
+
+function ShortcutsGuide() {
+  return (
+    <div className="group relative">
+      <button
+        type="button"
+        className="flex size-7 items-center justify-center rounded-md text-stone-500 hover:bg-stone-800 hover:text-stone-300"
+        aria-label="Keyboard shortcuts"
+      >
+        <svg
+          className="size-5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z"
+          />
+        </svg>
+      </button>
+      <div className="pointer-events-none absolute right-0 top-full z-50 pt-1.5 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
+        <div className="w-56 rounded-lg border border-stone-700 bg-stone-900 p-3 shadow-xl">
+          <p className="mb-2 text-xs font-semibold text-stone-300">
+            Keyboard shortcuts
+          </p>
+          <ul className="space-y-1.5">
+            {SHORTCUTS.map((s) => (
+              <li
+                key={s.label}
+                className="flex items-center justify-between gap-2"
+              >
+                <span className="text-xs text-stone-400">{s.label}</span>
+                <span className="flex items-center gap-0.5">{s.keys}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }

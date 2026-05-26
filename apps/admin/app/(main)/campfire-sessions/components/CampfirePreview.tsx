@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useCampfirePreviewAudio } from "../lib/use-campfire-preview-audio";
+import { useCampfirePreviewVideo } from "../lib/use-campfire-preview-video";
 import type {
   ActivityOption,
   ApprovedPhotoOption,
@@ -178,6 +179,7 @@ export function CampfirePreview({
   );
 
   useCampfirePreviewAudio(audioRef, components, currentTimeMs, isPlaying);
+  const setVideoRef = useCampfirePreviewVideo(components, currentTimeMs, isPlaying);
 
   const layerZ = useCallback(
     (comp: CampfireComponentRow) => {
@@ -528,9 +530,10 @@ export function CampfirePreview({
                 zIndex: layerZ(vc) + 1,
               }}
             >
+              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
               <video
+                ref={(el) => setVideoRef(vc.id, el)}
                 src={vData.videoUrl}
-                muted
                 playsInline
                 style={isFullscreen ? {
                   width: "100%",

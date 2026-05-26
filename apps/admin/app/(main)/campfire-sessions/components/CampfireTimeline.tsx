@@ -82,11 +82,12 @@ export function CampfireTimeline({
   };
 
   const handleBodyWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    if (Math.abs(e.deltaX) < 1) return;
+    const dx = e.shiftKey ? e.deltaY || e.deltaX : e.deltaX;
+    if (Math.abs(dx) < 1) return;
     e.preventDefault();
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollLeft += e.deltaX;
+    el.scrollLeft += dx;
     syncScrollLeft("body", el.scrollLeft);
   };
 

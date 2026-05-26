@@ -46,7 +46,7 @@ export function TimelineTrack({
       ref={setNodeRef}
       className={`flex border-b border-stone-700/80 ${isOver ? "bg-stone-800/80" : ""}`}
     >
-      <div className="flex w-36 shrink-0 items-center gap-1 border-r border-stone-700 bg-stone-800 px-2 py-2">
+      <div className="sticky left-0 z-10 flex w-36 shrink-0 items-center gap-1 border-r border-stone-700 bg-stone-800 px-2 py-2">
         <span className="min-w-0 flex-1 truncate text-xs font-medium text-stone-300">
           {track.name}
         </span>

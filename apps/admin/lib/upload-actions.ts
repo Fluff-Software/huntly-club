@@ -179,6 +179,55 @@ export async function uploadCampfireAudio(
   }
 }
 
+const CAMPFIRE_VIDEO_TYPES = [
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+  "video/x-m4v",
+];
+const CAMPFIRE_VIDEO_MAX_SIZE = 100 * 1024 * 1024;
+
+export async function uploadCampfireVideo(
+  formData: FormData
+): Promise<{ url?: string; error?: string }> {
+  const file = formData.get("file") as File | null;
+
+  if (!file?.size) return { error: "No file provided" };
+
+  if (!CAMPFIRE_VIDEO_TYPES.includes(file.type)) {
+    return {
+      error: "Invalid file type. Use MP4, WebM, or MOV.",
+    };
+  }
+  if (file.size > CAMPFIRE_VIDEO_MAX_SIZE) {
+    return { error: "File too large. Maximum size is 100MB." };
+  }
+
+  try {
+    const supabase = createServerSupabaseClient();
+    const ext = file.name.split(".").pop()?.toLowerCase() || "mp4";
+    const path = `sessions/${Date.now()}.${ext}`;
+
+    const { error } = await supabase.storage
+      .from("campfire-video")
+      .upload(path, file, {
+        contentType: file.type,
+        upsert: false,
+      });
+
+    if (error) return { error: error.message };
+
+    const { data: urlData } = supabase.storage
+      .from("campfire-video")
+      .getPublicUrl(path);
+    return { url: urlData.publicUrl };
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Upload failed",
+    };
+  }
+}
+
 export async function generateAdhocSlideImage(opts: {
   prompt: string;
 }): Promise<{ url?: string; error?: string }> {

@@ -137,7 +137,7 @@ export function CampfireTimeline({
             className="sticky top-0 z-10 flex border-b border-stone-700 bg-stone-800"
             onClick={handleRulerClick}
           >
-            <div className="w-36 shrink-0 border-r border-stone-700 px-2 py-1 text-[10px] font-medium text-stone-400">
+            <div className="sticky left-0 z-20 w-36 shrink-0 border-r border-stone-700 bg-stone-800 px-2 py-1 text-[10px] font-medium text-stone-400">
               Layers
             </div>
             <div

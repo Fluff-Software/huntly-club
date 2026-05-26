@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
-import { uploadCampfireAudio } from "@/lib/upload-actions";
+import { uploadCampfireAudio, uploadCampfireVideo } from "@/lib/upload-actions";
 import {
   audioComponentHasFile,
   getAudioComponentData,
@@ -13,6 +13,10 @@ import {
   getAudioDurationMsFromFile,
   getAudioDurationMsFromUrl,
 } from "../lib/audio-duration";
+import {
+  getVideoDurationMsFromFile,
+  getVideoDurationMsFromUrl,
+} from "../lib/video-duration";
 import {
   formatTimeMs,
   parseTimeInput,
@@ -74,6 +78,11 @@ export function CampfireComponentEditModal({
       ? getAudioComponentData(component).audioUrl
       : undefined;
 
+  const videoUrl =
+    component?.type === "video"
+      ? ((component.data as Record<string, unknown>).videoUrl as string) || undefined
+      : undefined;
+
   useEffect(() => {
     if (!open || !component || component.type !== "audio" || !audioUrl) return;
 
@@ -95,11 +104,34 @@ export function CampfireComponentEditModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sync when modal opens / URL changes
   }, [open, component?.id, audioUrl]);
 
+  useEffect(() => {
+    if (!open || !component || component.type !== "video" || !videoUrl) return;
+
+    let cancelled = false;
+    const comp = component;
+    getVideoDurationMsFromUrl(videoUrl)
+      .then((ms) => {
+        if (cancelled) return;
+        const durationMs = snapAudioDurationMs(ms);
+        if (durationMs !== comp.duration) {
+          onChange({ ...comp, duration: durationMs });
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, component?.id, videoUrl]);
+
   if (!open || !component) return null;
 
   const data = component.data as Record<string, unknown>;
   const audioLocked =
     component.type === "audio" && audioComponentHasFile(component);
+  const videoLocked =
+    component.type === "video" && Boolean((data.videoUrl as string)?.trim());
   const missionOptions =
     session.missions.length > 0
       ? activities.filter((a) => session.missions.includes(a.id))
@@ -173,11 +205,11 @@ export function CampfireComponentEditModal({
               placeholder="0.0s or 1:30"
             />
           </Field>
-          {audioLocked ? (
+          {audioLocked || videoLocked ? (
             <Field label="Duration">
               <p className="rounded-lg border border-stone-700 bg-stone-800/50 px-3 py-2 text-sm text-stone-300">
                 {formatTimeMs(component.duration)}{" "}
-                <span className="text-stone-500">(from audio file)</span>
+                <span className="text-stone-500">(from {audioLocked ? "audio" : "video"} file)</span>
               </p>
             </Field>
           ) : (
@@ -254,6 +286,96 @@ export function CampfireComponentEditModal({
             </Field>
           )}
 
+          {component.type === "video" && (
+            <>
+              <Field label="Display mode">
+                <select
+                  value={(data.displayMode as string) || "card"}
+                  onChange={(e) =>
+                    onChange({
+                      ...component,
+                      data: { ...data, displayMode: e.target.value },
+                    })
+                  }
+                  className={inputClass}
+                >
+                  <option value="card">Card</option>
+                  <option value="fullscreen">Fullscreen</option>
+                </select>
+              </Field>
+              {((data.displayMode as string) || "card") === "card" && (
+                <Field label="Ratio">
+                  <select
+                    value={(data.videoRatio as string) || "original"}
+                    onChange={(e) =>
+                      onChange({
+                        ...component,
+                        data: { ...data, videoRatio: e.target.value },
+                      })
+                    }
+                    className={inputClass}
+                  >
+                    <option value="square">Square</option>
+                    <option value="landscape">Landscape</option>
+                    <option value="portrait">Portrait</option>
+                    <option value="original">Original</option>
+                  </select>
+                </Field>
+              )}
+              <Field label="Video file">
+                <input
+                  type="file"
+                  accept="video/mp4,video/webm,video/quicktime,video/x-m4v"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setUploadError(null);
+
+                    let durationMs = component.duration;
+                    let durationReadFailed = false;
+                    try {
+                      const fileDurationMs =
+                        await getVideoDurationMsFromFile(file);
+                      durationMs = snapAudioDurationMs(fileDurationMs);
+                    } catch {
+                      durationReadFailed = true;
+                    }
+
+                    const fd = new FormData();
+                    fd.set("file", file);
+                    const { url, error: upErr } =
+                      await uploadCampfireVideo(fd);
+                    if (upErr) {
+                      setUploadError(upErr);
+                      return;
+                    }
+                    if (url) {
+                      onChange({
+                        ...component,
+                        duration: durationMs,
+                        data: { ...data, videoUrl: url, displayMode: data.displayMode || "card" },
+                      });
+                      if (durationReadFailed) {
+                        setUploadError(
+                          "Video uploaded, but could not read file length — re-upload or remove the file to set duration manually."
+                        );
+                      }
+                    }
+                    e.target.value = "";
+                  }}
+                  className="text-xs text-stone-300"
+                />
+                {(data.videoUrl as string) && (
+                  <video
+                    src={data.videoUrl as string}
+                    controls
+                    className="mt-2 w-full rounded"
+                  />
+                )}
+              </Field>
+            </>
+          )}
+
           {component.type === "captain" && (
             <>
               <Field label="Captain">
@@ -272,8 +394,6 @@ export function CampfireComponentEditModal({
                         ...data,
                         captainId: id,
                         captainSlug: cap?.slug,
-                        captainPose:
-                          (data.captainPose as string) || "standing",
                       },
                     });
                   }}
@@ -287,24 +407,6 @@ export function CampfireComponentEditModal({
                   ))}
                 </select>
               </Field>
-              {(data.captainId as number) && (
-                <Field label="Pose">
-                  <select
-                    value={(data.captainPose as string) || "standing"}
-                    onChange={(e) =>
-                      onChange({
-                        ...component,
-                        data: { ...data, captainPose: e.target.value },
-                      })
-                    }
-                    className={inputClass}
-                  >
-                    <option value="standing">Standing</option>
-                    <option value="crossed-arms">Crossed arms</option>
-                    <option value="waving">Waving</option>
-                  </select>
-                </Field>
-              )}
             </>
           )}
 

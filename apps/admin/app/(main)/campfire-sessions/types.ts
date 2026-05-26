@@ -10,6 +10,7 @@ export type CampfireSessionStatus = (typeof CAMPFIRE_STATUSES)[number];
 
 export const CAMPFIRE_COMPONENT_TYPES = [
   "audio",
+  "video",
   "captain",
   "subtitle",
   "mission_card",
@@ -25,7 +26,6 @@ export type AudioComponentData = {
 export type CaptainComponentData = {
   captainId?: number;
   captainSlug?: string;
-  captainPose?: string;
 };
 
 export type SubtitleComponentData = {
@@ -36,12 +36,19 @@ export type MissionCardComponentData = {
   activityId?: number;
 };
 
+export type VideoComponentData = {
+  videoUrl?: string;
+  displayMode?: "card" | "fullscreen";
+  videoRatio?: "square" | "landscape" | "portrait" | "original";
+};
+
 export type SubmissionComponentData = {
   photoId?: number;
 };
 
 export type CampfireComponentData =
   | AudioComponentData
+  | VideoComponentData
   | CaptainComponentData
   | SubtitleComponentData
   | MissionCardComponentData
@@ -113,6 +120,7 @@ export const PALETTE_ITEMS: {
   label: string;
 }[] = [
   { type: "audio", label: "Audio" },
+  { type: "video", label: "Video" },
   { type: "captain", label: "Captain" },
   { type: "subtitle", label: "Subtitle" },
   { type: "mission_card", label: "Mission Cards" },
@@ -140,6 +148,7 @@ export function defaultLayerSeedRows(sessionId: number): {
 
 export const COMPONENT_TYPE_LABELS: Record<CampfireComponentType, string> = {
   audio: "Audio",
+  video: "Video",
   captain: "Captain",
   subtitle: "Subtitle",
   mission_card: "Mission Cards",

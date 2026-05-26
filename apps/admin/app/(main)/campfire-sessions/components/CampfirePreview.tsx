@@ -194,6 +194,7 @@ export function CampfirePreview({
   const captainComp = active.find((c) => c.type === "captain");
   const activeMissionCards = active.filter((c) => c.type === "mission_card");
   const activeSubmissions = active.filter((c) => c.type === "submission");
+  const activeVideos = active.filter((c) => c.type === "video");
 
   const subtitleText =
     subtitle && typeof (subtitle.data as { text?: string }).text === "string"
@@ -203,7 +204,6 @@ export function CampfirePreview({
   const captainData = captainComp?.data as {
     captainId?: number;
     captainSlug?: string;
-    captainPose?: string;
   } | undefined;
 
   const captain =
@@ -490,6 +490,67 @@ export function CampfirePreview({
           );
         })}
 
+        {phoneWidth > 0 && activeVideos.map((vc) => {
+          const vData = vc.data as { videoUrl?: string; displayMode?: string; videoRatio?: string };
+          if (!vData.videoUrl) return null;
+          const { opacity, translateX, rotate } = slideTransform(vc, currentTimeMs, phoneWidth);
+          const isFullscreen = vData.displayMode === "fullscreen";
+          const ratio = vData.videoRatio || "original";
+          const sizeMap: Record<string, number> = {
+            square: 300,
+            landscape: 300,
+            portrait: 200,
+            original: 300,
+          };
+          const cardW = s(sizeMap[ratio] ?? 300);
+          const aspectMap: Record<string, number | undefined> = {
+            square: 1,
+            landscape: 9 / 16,
+            portrait: 16 / 9,
+            original: undefined,
+          };
+          const aspect = aspectMap[ratio];
+          const cardH = aspect ? cardW * aspect : cardW;
+          return (
+            <div
+              key={vc.id}
+              className={isFullscreen ? "absolute inset-0" : "absolute left-1/2"}
+              style={isFullscreen ? {
+                opacity,
+                transition: "none",
+                zIndex: layerZ(vc) + 1,
+              } : {
+                top: s(80),
+                width: cardW,
+                opacity,
+                transform: `translateX(calc(-50% + ${translateX}px)) rotate(${rotate}deg)`,
+                transition: "none",
+                zIndex: layerZ(vc) + 1,
+              }}
+            >
+              <video
+                src={vData.videoUrl}
+                muted
+                playsInline
+                style={isFullscreen ? {
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  display: "block",
+                } : {
+                  width: cardW,
+                  ...(ratio !== "original" ? { height: cardH } : {}),
+                  borderRadius: s(16),
+                  objectFit: ratio === "original" ? "contain" : "cover",
+                  display: "block",
+                  border: "2px solid #FFF",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
+                }}
+              />
+            </div>
+          );
+        })}
+
         {(() => {
           const captainOpacity = captainComp ? componentOpacity(captainComp, currentTimeMs) : 0;
           const subOpacities = subtitle
@@ -504,7 +565,7 @@ export function CampfirePreview({
               style={{ opacity: bgOpacity, transition: "none" }}
             >
               <p
-                className="text-center text-xs font-medium leading-snug text-white drop-shadow-sm"
+                className="text-center text-base font-medium leading-snug text-white drop-shadow-sm"
                 style={{
                   opacity: subtitleText ? (bgOpacity > 0 ? textOpacity / bgOpacity : 0) : 0,
                   transition: "none",

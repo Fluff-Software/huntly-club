@@ -294,7 +294,7 @@ export function CampfireComponentEditModal({
                   onChange={(e) =>
                     onChange({
                       ...component,
-                      data: { ...data, displayMode: e.target.value },
+                      data: { ...data, displayMode: e.target.value as "card" | "fullscreen" },
                     })
                   }
                   className={inputClass}
@@ -310,7 +310,7 @@ export function CampfireComponentEditModal({
                     onChange={(e) =>
                       onChange({
                         ...component,
-                        data: { ...data, videoRatio: e.target.value },
+                        data: { ...data, videoRatio: e.target.value as "square" | "landscape" | "portrait" | "original" },
                       })
                     }
                     className={inputClass}
@@ -353,7 +353,7 @@ export function CampfireComponentEditModal({
                       onChange({
                         ...component,
                         duration: durationMs,
-                        data: { ...data, videoUrl: url, displayMode: data.displayMode || "card" },
+                        data: { ...data, videoUrl: url, displayMode: (data.displayMode as "card" | "fullscreen") || "card" },
                       });
                       if (durationReadFailed) {
                         setUploadError(

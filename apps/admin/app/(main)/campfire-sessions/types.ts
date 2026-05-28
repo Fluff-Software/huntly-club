@@ -40,6 +40,12 @@ export type VideoComponentData = {
   videoUrl?: string;
   displayMode?: "card" | "fullscreen";
   videoRatio?: "square" | "landscape" | "portrait" | "original";
+  /**
+   * Only used when displayMode === "fullscreen".
+   * - width: scale so video width matches preview width (height may overflow/letterbox)
+   * - height: scale so video height matches preview height (width may overflow/letterbox)
+   */
+  maximize?: "width" | "height";
 };
 
 export type SubmissionComponentData = {

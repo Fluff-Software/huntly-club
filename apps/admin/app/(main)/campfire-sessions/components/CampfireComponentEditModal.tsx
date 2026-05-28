@@ -294,7 +294,13 @@ export function CampfireComponentEditModal({
                   onChange={(e) =>
                     onChange({
                       ...component,
-                      data: { ...data, displayMode: e.target.value as "card" | "fullscreen" },
+                      data: {
+                        ...data,
+                        displayMode: e.target.value as "card" | "fullscreen",
+                        ...(e.target.value === "fullscreen" && !data.maximize
+                          ? { maximize: "height" as const }
+                          : {}),
+                      },
                     })
                   }
                   className={inputClass}
@@ -319,6 +325,23 @@ export function CampfireComponentEditModal({
                     <option value="landscape">Landscape</option>
                     <option value="portrait">Portrait</option>
                     <option value="original">Original</option>
+                  </select>
+                </Field>
+              )}
+              {((data.displayMode as string) || "card") === "fullscreen" && (
+                <Field label="Maximize">
+                  <select
+                    value={(data.maximize as string) || "height"}
+                    onChange={(e) =>
+                      onChange({
+                        ...component,
+                        data: { ...data, maximize: e.target.value as "width" | "height" },
+                      })
+                    }
+                    className={inputClass}
+                  >
+                    <option value="height">Height</option>
+                    <option value="width">Width</option>
                   </select>
                 </Field>
               )}
@@ -353,7 +376,18 @@ export function CampfireComponentEditModal({
                       onChange({
                         ...component,
                         duration: durationMs,
-                        data: { ...data, videoUrl: url, displayMode: (data.displayMode as "card" | "fullscreen") || "card" },
+                        data: {
+                          ...data,
+                          videoUrl: url,
+                          displayMode:
+                            (data.displayMode as "card" | "fullscreen") || "card",
+                          maximize:
+                            ((data.displayMode as string) || "card") ===
+                              "fullscreen"
+                              ? ((data.maximize as "width" | "height") ||
+                                "height")
+                              : (data.maximize as "width" | "height" | undefined),
+                        },
                       });
                       if (durationReadFailed) {
                         setUploadError(

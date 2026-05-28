@@ -493,11 +493,19 @@ export function CampfirePreview({
         })}
 
         {phoneWidth > 0 && activeVideos.map((vc) => {
-          const vData = vc.data as { videoUrl?: string; displayMode?: string; videoRatio?: string };
+          const vData = vc.data as {
+            videoUrl?: string;
+            displayMode?: string;
+            videoRatio?: string;
+            maximize?: string;
+          };
           if (!vData.videoUrl) return null;
           const { opacity, translateX, rotate } = slideTransform(vc, currentTimeMs, phoneWidth);
           const isFullscreen = vData.displayMode === "fullscreen";
           const ratio = vData.videoRatio || "original";
+          const maximize = (vData.maximize === "width" || vData.maximize === "height")
+            ? (vData.maximize as "width" | "height")
+            : "height";
           const sizeMap: Record<string, number> = {
             square: 300,
             landscape: 300,
@@ -530,26 +538,46 @@ export function CampfirePreview({
                 zIndex: layerZ(vc) + 1,
               }}
             >
-              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-              <video
-                ref={(el) => setVideoRef(vc.id, el)}
-                src={vData.videoUrl}
-                playsInline
-                style={isFullscreen ? {
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  display: "block",
-                } : {
-                  width: cardW,
-                  ...(ratio !== "original" ? { height: cardH } : {}),
-                  borderRadius: s(16),
-                  objectFit: ratio === "original" ? "contain" : "cover",
-                  display: "block",
-                  border: "2px solid #FFF",
-                  boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
-                }}
-              />
+              {isFullscreen ? (
+                <div
+                  className="h-full w-full"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "#000",
+                  }}
+                >
+                  {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                  <video
+                    ref={(el) => setVideoRef(vc.id, el)}
+                    src={vData.videoUrl}
+                    playsInline
+                    style={{
+                      ...(maximize === "width"
+                        ? { width: "100%", height: "auto", maxHeight: "none" }
+                        : { height: "100%", width: "auto", maxWidth: "none" }),
+                      display: "block",
+                    }}
+                  />
+                </div>
+              ) : (
+                // eslint-disable-next-line jsx-a11y/media-has-caption
+                <video
+                  ref={(el) => setVideoRef(vc.id, el)}
+                  src={vData.videoUrl}
+                  playsInline
+                  style={{
+                    width: cardW,
+                    ...(ratio !== "original" ? { height: cardH } : {}),
+                    borderRadius: s(16),
+                    objectFit: ratio === "original" ? "contain" : "cover",
+                    display: "block",
+                    border: "2px solid #FFF",
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
+                  }}
+                />
+              )}
             </div>
           );
         })}

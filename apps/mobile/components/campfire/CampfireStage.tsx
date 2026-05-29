@@ -16,6 +16,9 @@ import {
   type VideoComponentData,
 } from "@/services/campfireService";
 import { CampfireVideo } from "./CampfireVideo";
+import { CampfireFullscreenVideo } from "./CampfireFullscreenVideo";
+import { CampfireOriginalVideoCard } from "./CampfireOriginalVideoCard";
+import { getVideoCardLayout } from "./campfireVideoLayout";
 
 const FONT_JUA = "Jua_400Regular";
 const FONT_BODY = "ComicNeue_400Regular";
@@ -148,6 +151,7 @@ type Props = {
 
 export function CampfireStage({
   width,
+  height,
   scaleW: s,
   currentTimeMs,
   isPlaying,
@@ -196,6 +200,10 @@ export function CampfireStage({
     : null;
   const bgOpacity = Math.max(subOpacities?.bgOpacity ?? 0, captainOpacity);
   const textOpacity = subOpacities?.textOpacity ?? 0;
+  const captainImageSource =
+    captain && captainComp ? resolveCaptainImage(captain) : null;
+  const showFooter =
+    bgOpacity > 0 || (captainImageSource != null && captainOpacity > 0);
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -448,152 +456,129 @@ export function CampfireStage({
         if (!vData.videoUrl) return null;
         const player = videoPlayers.get(vc.id);
         if (!player) return null;
-        const { opacity, translateX, rotate } = slideTransform(
-          vc,
-          currentTimeMs,
-          width
-        );
+        const slide = slideTransform(vc, currentTimeMs, width);
         const offsetSec = Math.max(0, (currentTimeMs - vc.start_time) / 1000);
-        const isFullscreen = vData.displayMode === "fullscreen";
-        const ratio = vData.videoRatio || "original";
-        const sizeMap: Record<string, number> = {
-          square: 300,
-          landscape: 300,
-          portrait: 200,
-          original: 300,
-        };
-        const cardW = s(sizeMap[ratio] ?? 300);
-        const aspectMap: Record<string, number | undefined> = {
-          square: 1,
-          landscape: 9 / 16,
-          portrait: 16 / 9,
-          original: undefined,
-        };
-        const aspect = aspectMap[ratio];
-        const cardH = aspect ? cardW * aspect : cardW;
+        const z = layerZ(vc) + 1;
 
-        if (isFullscreen) {
+        if (vData.displayMode === "fullscreen") {
           return (
-            <View
+            <CampfireFullscreenVideo
               key={vc.id}
-              style={[
-                StyleSheet.absoluteFill,
-                {
-                  opacity,
-                  backgroundColor: "#000",
-                  zIndex: layerZ(vc) + 1,
-                },
-              ]}
-            >
-              <CampfireVideo
-                player={player}
-                offsetSec={offsetSec}
-                isPlaying={isPlaying}
-                style={{ flex: 1 }}
-                contentFit="contain"
-              />
-            </View>
+              player={player}
+              vData={vData}
+              stageWidth={width}
+              stageHeight={height}
+              slide={slide}
+              zIndex={z}
+              offsetSec={offsetSec}
+              isPlaying={isPlaying}
+            />
+          );
+        }
+
+        const layout = getVideoCardLayout(vData, s, slide, z);
+
+        if (layout.usesIntrinsicSize) {
+          return (
+            <CampfireOriginalVideoCard
+              key={vc.id}
+              player={player}
+              cardW={layout.cardW}
+              scale={s}
+              slide={slide}
+              zIndex={z}
+              offsetSec={offsetSec}
+              isPlaying={isPlaying}
+            />
           );
         }
 
         return (
-          <View
-            key={vc.id}
-            style={{
-              position: "absolute",
-              top: s(80),
-              left: 0,
-              right: 0,
-              alignItems: "center",
-              zIndex: layerZ(vc) + 1,
-            }}
-          >
-            <View
-              style={{
-                width: cardW,
-                height: cardH,
-                opacity,
-                transform: [{ translateX }, { rotate: `${rotate}deg` }],
-                borderRadius: s(16),
-                overflow: "hidden",
-                borderWidth: 2,
-                borderColor: "#FFF",
-                shadowColor: "#000",
-                shadowOpacity: 0.3,
-                shadowRadius: 4,
-                shadowOffset: { width: 0, height: 2 },
-                elevation: 4,
-              }}
-            >
+          <View key={vc.id} style={layout.outerStyle}>
+            <View style={layout.innerStyle!}>
               <CampfireVideo
                 player={player}
                 offsetSec={offsetSec}
                 isPlaying={isPlaying}
-                style={{ width: "100%", height: "100%" }}
-                contentFit={ratio === "original" ? "contain" : "cover"}
+                style={layout.videoStyle}
+                contentFit={layout.contentFit}
               />
             </View>
           </View>
         );
       })}
 
-      {/* Subtitle bar */}
-      {bgOpacity > 0 && (
-        <View
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            zIndex: 31,
-            backgroundColor: "rgba(0,0,0,0.5)",
-            paddingHorizontal: s(12),
-            paddingVertical: s(10),
-            opacity: bgOpacity,
-          }}
-        >
-          <Text
-            style={{
-              textAlign: "center",
-              fontSize: s(16),
-              lineHeight: s(20),
-              color: "#FFF",
-              fontFamily: FONT_BODY,
-              opacity: subtitleText && bgOpacity > 0 ? textOpacity / bgOpacity : 0,
-            }}
-          >
-            {subtitleText || "\u00A0"}
-          </Text>
-        </View>
-      )}
-
-      {/* Captain */}
-      {captain &&
-        captainComp &&
-        (() => {
-          const imgSrc = resolveCaptainImage(captain);
-          if (!imgSrc) return null;
-          return (
+      {/* Captain + subtitle footer (matches admin preview stacking) */}
+      {showFooter && (
+        <View style={styles.footer}>
+          {captainImageSource != null && captainOpacity > 0 && (
             <View
-              style={{
-                position: "absolute",
-                bottom: s(32),
-                left: 0,
-                right: 0,
-                alignItems: "center",
-                zIndex: 30,
-                opacity: captainOpacity,
-              }}
+              style={[
+                styles.captainWrap,
+                {
+                  width: width * 0.55,
+                  opacity: captainOpacity,
+                },
+              ]}
             >
               <ExpoImage
-                source={imgSrc}
-                style={{ width: width * 0.55, height: width * 0.55 }}
+                source={captainImageSource}
+                style={{ width: "100%", height: width * 0.48 }}
                 contentFit="contain"
+                contentPosition="bottom"
                 cachePolicy="memory-disk"
               />
             </View>
-          );
-        })()}
+          )}
+          {bgOpacity > 0 && (
+            <View
+              style={[
+                styles.subtitleBar,
+                {
+                  paddingHorizontal: s(12),
+                  paddingVertical: s(10),
+                  opacity: bgOpacity,
+                },
+              ]}
+            >
+              <Text
+                style={{
+                  textAlign: "center",
+                  fontSize: s(16),
+                  lineHeight: s(20),
+                  color: "#FFF",
+                  fontFamily: FONT_BODY,
+                  opacity:
+                    subtitleText && bgOpacity > 0 ? textOpacity / bgOpacity : 0,
+                }}
+              >
+                {subtitleText || "\u00A0"}
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  footer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    zIndex: 30,
+  },
+  captainWrap: {
+    zIndex: 30,
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+  subtitleBar: {
+    alignSelf: "stretch",
+    zIndex: 31,
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+});

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   ImageBackground,
@@ -44,6 +44,7 @@ export default function CampfireScreen() {
 
   const durationMs = bundle ? sessionDurationMs(bundle) : 0;
   const finished = durationMs > 0 && currentTimeMs >= durationMs;
+  const hasExitedAfterFinishRef = useRef(false);
 
   // 1. Load the latest replay session and its content.
   useEffect(() => {
@@ -132,6 +133,16 @@ export default function CampfireScreen() {
     return () => cancelAnimationFrame(raf);
   }, [isPlaying, durationMs]);
 
+  // Return to the home tab when playback reaches the end.
+  useEffect(() => {
+    if (loadState !== "ready" || !finished || hasExitedAfterFinishRef.current) {
+      return;
+    }
+    hasExitedAfterFinishRef.current = true;
+    setIsPlaying(false);
+    router.replace("/(tabs)");
+  }, [loadState, finished]);
+
   useCampfireAudio(
     bundle?.components ?? [],
     currentTimeMs,
@@ -140,18 +151,13 @@ export default function CampfireScreen() {
   );
 
   const togglePlay = useCallback(() => {
-    if (finished) {
-      setCurrentTimeMs(0);
-      setIsPlaying(true);
-      return;
-    }
+    if (finished) return;
     setIsPlaying((p) => !p);
   }, [finished]);
 
   const handleClose = useCallback(() => {
     setIsPlaying(false);
-    if (router.canGoBack()) router.back();
-    else router.replace("/(tabs)");
+    router.replace("/(tabs)");
   }, []);
 
   const showSpinner = loadState === "loading" || loadState === "preparing";
@@ -233,12 +239,12 @@ export default function CampfireScreen() {
           </View>
         )}
 
-        {/* Paused / finished hint */}
-        {loadState === "ready" && (!isPlaying || finished) && (
+        {/* Paused hint */}
+        {loadState === "ready" && !isPlaying && !finished && (
           <View style={styles.centerFill} pointerEvents="none">
             <View style={styles.playBadge}>
               <MaterialIcons
-                name={finished ? "replay" : "play-arrow"}
+                name="play-arrow"
                 size={scaleW(44)}
                 color="#FFFFFF"
               />

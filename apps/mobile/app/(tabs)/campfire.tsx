@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   ImageBackground,
@@ -7,8 +7,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Image as ExpoImage } from "expo-image";
-import { preload as preloadAudio } from "expo-audio";
 import { router, useFocusEffect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
@@ -16,8 +14,8 @@ import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { CampfireStage } from "@/components/campfire/CampfireStage";
 import { useCampfireAudio } from "@/components/campfire/useCampfireAudio";
 import { useCampfireVideoPlayers } from "@/components/campfire/useCampfireVideoPlayers";
+import { prepareCampfireMedia } from "@/components/campfire/prepareCampfireMedia";
 import {
-  collectMediaUrls,
   getCampfireSessionBundle,
   getLatestReplaySession,
   sessionDurationMs,
@@ -73,19 +71,11 @@ export default function CampfireScreen() {
     };
   }, []);
 
-  // 2. Prefetch images + audio so they render/start instantly once shown.
+  // 2. Prefetch images before reveal (audio loads in useCampfireAudio).
   useEffect(() => {
     if (loadState !== "preparing" || !bundle) return;
     let cancelled = false;
-    const { images, audio } = collectMediaUrls(bundle);
-    const tasks: Promise<unknown>[] = [];
-    if (images.length > 0) {
-      tasks.push(ExpoImage.prefetch(images, "memory-disk"));
-    }
-    for (const url of audio) {
-      tasks.push(preloadAudio({ uri: url }));
-    }
-    Promise.allSettled(tasks).then(() => {
+    void prepareCampfireMedia(bundle).then(() => {
       if (!cancelled) setMediaReady(true);
     });
     return () => {
@@ -142,7 +132,12 @@ export default function CampfireScreen() {
     return () => cancelAnimationFrame(raf);
   }, [isPlaying, durationMs]);
 
-  useCampfireAudio(bundle?.components ?? [], currentTimeMs, isPlaying);
+  useCampfireAudio(
+    bundle?.components ?? [],
+    currentTimeMs,
+    isPlaying,
+    loadState === "ready"
+  );
 
   const togglePlay = useCallback(() => {
     if (finished) {

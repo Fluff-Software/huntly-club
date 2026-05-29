@@ -516,6 +516,11 @@ export default function TabLayout() {
         options={{
           href: null }}
       />
+      <Tabs.Screen
+        name="campfire"
+        options={{
+          href: null }}
+      />
       </Tabs>
       {showActiveTrackingBanner ? (
         <Pressable

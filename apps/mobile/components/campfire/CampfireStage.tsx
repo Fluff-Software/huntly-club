@@ -1,5 +1,7 @@
 import React, { useMemo } from "react";
-import { View, Text, Image, StyleSheet } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
+import { Image as ExpoImage } from "expo-image";
+import type { VideoPlayer } from "expo-video";
 import type {
   ActivityOption,
   ApprovedPhotoOption,
@@ -143,6 +145,7 @@ type Props = {
   activities: ActivityOption[];
   captains: CaptainOption[];
   approvedPhotos: ApprovedPhotoOption[];
+  videoPlayers: Map<number, VideoPlayer>;
 };
 
 export function CampfireStage({
@@ -155,6 +158,7 @@ export function CampfireStage({
   activities,
   captains,
   approvedPhotos,
+  videoPlayers,
 }: Props) {
   const layerZ = useMemo(
     () => (comp: CampfireComponentRow) => {
@@ -252,10 +256,11 @@ export function CampfireStage({
                 }}
               >
                 {mission.image ? (
-                  <Image
+                  <ExpoImage
                     source={{ uri: mission.image }}
                     style={{ width: "100%", height: "100%" }}
-                    resizeMode="cover"
+                    contentFit="cover"
+                    cachePolicy="memory-disk"
                   />
                 ) : (
                   <Text
@@ -392,10 +397,11 @@ export function CampfireStage({
                 elevation: 4,
               }}
             >
-              <Image
+              <ExpoImage
                 source={{ uri: photo.photo_url }}
                 style={{ width: "100%", height: "100%" }}
-                resizeMode="cover"
+                contentFit="cover"
+                cachePolicy="memory-disk"
               />
               {photo.activity_title && (
                 <Text
@@ -442,6 +448,8 @@ export function CampfireStage({
       {activeVideos.map((vc) => {
         const vData = vc.data as VideoComponentData;
         if (!vData.videoUrl) return null;
+        const player = videoPlayers.get(vc.id);
+        if (!player) return null;
         const { opacity, translateX, rotate } = slideTransform(
           vc,
           currentTimeMs,
@@ -480,7 +488,7 @@ export function CampfireStage({
               ]}
             >
               <CampfireVideo
-                url={vData.videoUrl}
+                player={player}
                 offsetSec={offsetSec}
                 isPlaying={isPlaying}
                 style={{ flex: 1 }}
@@ -520,7 +528,7 @@ export function CampfireStage({
               }}
             >
               <CampfireVideo
-                url={vData.videoUrl}
+                player={player}
                 offsetSec={offsetSec}
                 isPlaying={isPlaying}
                 style={{ width: "100%", height: "100%" }}
@@ -579,10 +587,11 @@ export function CampfireStage({
                 opacity: captainOpacity,
               }}
             >
-              <Image
+              <ExpoImage
                 source={imgSrc}
                 style={{ width: width * 0.55, height: width * 0.55 }}
-                resizeMode="contain"
+                contentFit="contain"
+                cachePolicy="memory-disk"
               />
             </View>
           );

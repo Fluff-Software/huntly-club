@@ -7,13 +7,17 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Image as ExpoImage } from "expo-image";
+import { preload as preloadAudio } from "expo-audio";
 import { router, useFocusEffect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { CampfireStage } from "@/components/campfire/CampfireStage";
 import { useCampfireAudio } from "@/components/campfire/useCampfireAudio";
+import { useCampfireVideoPlayers } from "@/components/campfire/useCampfireVideoPlayers";
 import {
+  collectMediaUrls,
   getCampfireSessionBundle,
   getLatestReplaySession,
   sessionDurationMs,
@@ -22,7 +26,10 @@ import {
 
 const BG = require("@/assets/images/campfire-bg.jpg");
 
-type LoadState = "loading" | "ready" | "empty" | "error";
+/** Hard cap so a slow/broken asset can never trap the user on the spinner. */
+const PREPARE_TIMEOUT_MS = 15000;
+
+type LoadState = "loading" | "preparing" | "ready" | "empty" | "error";
 
 export default function CampfireScreen() {
   const { scaleW, width, height } = useLayoutScale();
@@ -31,11 +38,16 @@ export default function CampfireScreen() {
   const [bundle, setBundle] = useState<CampfireSessionBundle | null>(null);
   const [currentTimeMs, setCurrentTimeMs] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [mediaReady, setMediaReady] = useState(false);
+
+  const { players: videoPlayers, ready: videosReady } = useCampfireVideoPlayers(
+    bundle?.components ?? null
+  );
 
   const durationMs = bundle ? sessionDurationMs(bundle) : 0;
   const finished = durationMs > 0 && currentTimeMs >= durationMs;
 
-  // Load the latest replay session and its content.
+  // 1. Load the latest replay session and its content.
   useEffect(() => {
     let cancelled = false;
     setLoadState("loading");
@@ -54,13 +66,51 @@ export default function CampfireScreen() {
       }
       setBundle(data);
       setCurrentTimeMs(0);
-      setLoadState("ready");
-      setIsPlaying(true);
+      setLoadState("preparing");
     })();
     return () => {
       cancelled = true;
     };
   }, []);
+
+  // 2. Prefetch images + audio so they render/start instantly once shown.
+  useEffect(() => {
+    if (loadState !== "preparing" || !bundle) return;
+    let cancelled = false;
+    const { images, audio } = collectMediaUrls(bundle);
+    const tasks: Promise<unknown>[] = [];
+    if (images.length > 0) {
+      tasks.push(ExpoImage.prefetch(images, "memory-disk"));
+    }
+    for (const url of audio) {
+      tasks.push(preloadAudio({ uri: url }));
+    }
+    Promise.allSettled(tasks).then(() => {
+      if (!cancelled) setMediaReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadState, bundle]);
+
+  // 3. Reveal the stage only once images, audio and video are all ready.
+  useEffect(() => {
+    if (loadState !== "preparing") return;
+    if (mediaReady && videosReady) {
+      setLoadState("ready");
+      setIsPlaying(true);
+    }
+  }, [loadState, mediaReady, videosReady]);
+
+  // 3b. Safety net: never block the user indefinitely on preparing.
+  useEffect(() => {
+    if (loadState !== "preparing") return;
+    const timer = setTimeout(() => {
+      setLoadState("ready");
+      setIsPlaying(true);
+    }, PREPARE_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [loadState]);
 
   // Pause playback when the screen loses focus.
   useFocusEffect(
@@ -110,6 +160,7 @@ export default function CampfireScreen() {
   }, []);
 
   const progress = durationMs > 0 ? Math.min(1, currentTimeMs / durationMs) : 0;
+  const showSpinner = loadState === "loading" || loadState === "preparing";
 
   return (
     <View style={styles.container}>
@@ -129,13 +180,24 @@ export default function CampfireScreen() {
               activities={bundle.activities}
               captains={bundle.captains}
               approvedPhotos={bundle.approvedPhotos}
+              videoPlayers={videoPlayers}
             />
           </Pressable>
         )}
 
-        {loadState === "loading" && (
+        {showSpinner && (
           <View style={styles.centerFill}>
             <ActivityIndicator size="large" color="#FFFFFF" />
+            <ThemedText
+              style={{
+                marginTop: scaleW(12),
+                fontSize: scaleW(14),
+                fontWeight: "600",
+                color: "#FFFFFF",
+              }}
+            >
+              Getting the campfire ready…
+            </ThemedText>
           </View>
         )}
 

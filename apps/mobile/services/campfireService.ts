@@ -297,6 +297,37 @@ export async function getCampfireSessionBundle(
   };
 }
 
+/**
+ * Collects the remote media URLs in a session so they can be prefetched before
+ * playback starts. Built-in captains use bundled local images (no URL), so only
+ * remote captain avatars are included.
+ */
+export function collectMediaUrls(bundle: CampfireSessionBundle): {
+  images: string[];
+  audio: string[];
+} {
+  const images = new Set<string>();
+  const audio = new Set<string>();
+
+  for (const a of bundle.activities) {
+    if (a.image) images.add(a.image);
+  }
+  for (const p of bundle.approvedPhotos) {
+    if (p.photo_url) images.add(p.photo_url);
+  }
+  for (const c of bundle.captains) {
+    if (c.avatar_url) images.add(c.avatar_url);
+  }
+  for (const comp of bundle.components) {
+    if (comp.type === "audio") {
+      const url = (comp.data as AudioComponentData).audioUrl?.trim();
+      if (url) audio.add(url);
+    }
+  }
+
+  return { images: Array.from(images), audio: Array.from(audio) };
+}
+
 /** Total session length in ms, derived from the components if not stored. */
 export function sessionDurationMs(bundle: CampfireSessionBundle): number {
   const fromComponents = bundle.components.reduce(

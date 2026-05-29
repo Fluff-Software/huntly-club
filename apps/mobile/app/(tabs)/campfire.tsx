@@ -154,7 +154,6 @@ export default function CampfireScreen() {
     else router.replace("/(tabs)");
   }, []);
 
-  const progress = durationMs > 0 ? Math.min(1, currentTimeMs / durationMs) : 0;
   const showSpinner = loadState === "loading" || loadState === "preparing";
 
   return (
@@ -259,14 +258,6 @@ export default function CampfireScreen() {
             <MaterialIcons name="close" size={scaleW(24)} color="#FFFFFF" />
           </Pressable>
         </SafeAreaView>
-
-        {loadState === "ready" && durationMs > 0 && (
-          <SafeAreaView style={styles.progressWrap} edges={["bottom"]} pointerEvents="none">
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
-            </View>
-          </SafeAreaView>
-        )}
       </ImageBackground>
     </View>
   );
@@ -318,23 +309,5 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.4)",
     alignItems: "center",
     justifyContent: "center",
-  },
-  progressWrap: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-  },
-  progressTrack: {
-    height: 4,
-    marginHorizontal: 16,
-    marginBottom: 8,
-    borderRadius: 2,
-    backgroundColor: "rgba(255,255,255,0.3)",
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: "#C47A2A",
   },
 });

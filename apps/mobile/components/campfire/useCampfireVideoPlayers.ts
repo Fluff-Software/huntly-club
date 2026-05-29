@@ -49,9 +49,9 @@ export function useCampfireVideoPlayers(
       const url = (c.data as VideoComponentData).videoUrl!.trim();
       const player = createVideoPlayer({ uri: url });
       try {
-        // Narration comes from audio components; keep video silent so it
-        // does not take the device audio session from expo-audio.
-        player.muted = true;
+        player.muted = false;
+        player.volume = 1;
+        player.audioMixingMode = "mixWithOthers";
         player.timeUpdateEventInterval = 0.25;
         player.pause();
       } catch {

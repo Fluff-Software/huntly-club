@@ -25,8 +25,14 @@ export function CampfireVideo({
 }: Props) {
   useEffect(() => {
     try {
-      if (isPlaying) player.play();
-      else player.pause();
+      if (isPlaying) {
+        player.muted = false;
+        player.volume = 1;
+        player.audioMixingMode = "mixWithOthers";
+        player.play();
+      } else {
+        player.pause();
+      }
     } catch {
       // ignore
     }

@@ -125,7 +125,7 @@ export function useCampfireAudio(
           playsInSilentMode: true,
           allowsRecording: false,
           shouldPlayInBackground: false,
-          interruptionMode: "doNotMix",
+          interruptionMode: "mixWithOthers",
         });
       } catch {
         // ignore

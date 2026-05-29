@@ -105,6 +105,16 @@ export const CAMPFIRE_BUILTIN_CAPTAINS: CaptainOption[] = [
 const SESSION_COLUMNS =
   "id, title, status, scheduled_at, duration, description, thumbnail_url";
 
+/** Campfire stage captain art: `season-images/captains/camp-{slug}.webp`. */
+export function getCampfireCaptainImageUrl(slug: string): string | null {
+  const normalized = slug?.toLowerCase().trim();
+  if (!normalized) return null;
+  const { data } = supabase.storage
+    .from("season-images")
+    .getPublicUrl(`captains/camp-${normalized}.webp`);
+  return data.publicUrl;
+}
+
 /**
  * Returns the most recent campfire session in "replay" status, or null.
  * "Most recent" = latest scheduled_at, falling back to most recently created.
@@ -299,8 +309,7 @@ export async function getCampfireSessionBundle(
 
 /**
  * Collects the remote media URLs in a session so they can be prefetched before
- * playback starts. Built-in captains use bundled local images (no URL), so only
- * remote captain avatars are included.
+ * playback starts.
  */
 export function collectMediaUrls(bundle: CampfireSessionBundle): {
   images: string[];
@@ -316,7 +325,9 @@ export function collectMediaUrls(bundle: CampfireSessionBundle): {
     if (p.photo_url) images.add(p.photo_url);
   }
   for (const c of bundle.captains) {
-    if (c.avatar_url) images.add(c.avatar_url);
+    const campUrl = c.slug ? getCampfireCaptainImageUrl(c.slug) : null;
+    if (campUrl) images.add(campUrl);
+    else if (c.avatar_url) images.add(c.avatar_url);
   }
   for (const comp of bundle.components) {
     if (comp.type === "audio") {

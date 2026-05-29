@@ -2,29 +2,24 @@ import React, { useMemo } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 import type { VideoPlayer } from "expo-video";
-import type {
-  ActivityOption,
-  ApprovedPhotoOption,
-  CampfireComponentRow,
-  CampfireTrackRow,
-  CaptainComponentData,
-  CaptainOption,
-  MissionCardComponentData,
-  SubmissionComponentData,
-  SubtitleComponentData,
-  VideoComponentData,
+import {
+  getCampfireCaptainImageUrl,
+  type ActivityOption,
+  type ApprovedPhotoOption,
+  type CampfireComponentRow,
+  type CampfireTrackRow,
+  type CaptainComponentData,
+  type CaptainOption,
+  type MissionCardComponentData,
+  type SubmissionComponentData,
+  type SubtitleComponentData,
+  type VideoComponentData,
 } from "@/services/campfireService";
 import { CampfireVideo } from "./CampfireVideo";
 
 const FONT_JUA = "Jua_400Regular";
 const FONT_BODY = "ComicNeue_400Regular";
 const FONT_BODY_BOLD = "ComicNeue_700Bold";
-
-const CAPTAIN_IMAGES: Record<string, ReturnType<typeof require>> = {
-  oli: require("@/assets/images/oli-standing.png"),
-  bella: require("@/assets/images/bella-standing.png"),
-  felix: require("@/assets/images/felix-standing.png"),
-};
 
 const CLUB_CARD_AUTHOR_COLORS = [
   "#D4A05A",
@@ -129,7 +124,10 @@ function subtitleOpacities(
 
 function resolveCaptainImage(captain: CaptainOption) {
   const slug = captain.slug?.toLowerCase();
-  if (slug && CAPTAIN_IMAGES[slug]) return CAPTAIN_IMAGES[slug];
+  if (slug) {
+    const campUrl = getCampfireCaptainImageUrl(slug);
+    if (campUrl) return { uri: campUrl };
+  }
   if (captain.avatar_url) return { uri: captain.avatar_url };
   return null;
 }

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useCampfirePreviewAudio } from "../lib/use-campfire-preview-audio";
 import { useCampfirePreviewVideo } from "../lib/use-campfire-preview-video";
+import { getCampfireCaptainImageUrl } from "@/lib/captains";
 import type {
   ActivityOption,
   ApprovedPhotoOption,
@@ -18,15 +19,13 @@ const FONT_COMIC_NEUE = "var(--font-comic-neue), sans-serif";
 /** Must match the mobile app's REFERENCE_WIDTH in useLayoutScale.ts */
 const MOBILE_REFERENCE_WIDTH = 390;
 
-const CAPTAIN_PREVIEW_IMAGES: Record<string, string> = {
-  oli: "/captains/oli.png",
-  bella: "/captains/bella.png",
-  felix: "/captains/felix.png",
-};
-
 function getCaptainPreviewImage(captain: CaptainOption): string | null {
   const slug = captain.slug?.toLowerCase();
-  return CAPTAIN_PREVIEW_IMAGES[slug] ?? captain.avatar_url ?? null;
+  if (slug) {
+    const campUrl = getCampfireCaptainImageUrl(slug);
+    if (campUrl) return campUrl;
+  }
+  return captain.avatar_url ?? null;
 }
 
 type Props = {

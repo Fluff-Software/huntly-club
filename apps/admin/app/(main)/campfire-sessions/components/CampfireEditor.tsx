@@ -556,6 +556,7 @@ export function CampfireEditor({
           <CampfireDetailsPanel
             session={session}
             activities={activities}
+            timelineDurationMs={sessionDurationFromComponents(components)}
             onSessionChange={(updates) => {
               updateDraft((prev) => ({
                 ...prev,
@@ -640,7 +641,7 @@ export function CampfireEditor({
               if (!item) return null;
               return (
                 <div
-                  className={`cursor-grabbing rounded-lg border px-4 py-2.5 text-sm font-medium shadow-lg ${PALETTE_CHIP_CLASSES[item.type]}`}
+                  className={`cursor-grabbing rounded-lg px-4 py-2.5 text-sm font-medium shadow-xl ring-1 ring-inset ${PALETTE_CHIP_CLASSES[item.type]}`}
                 >
                   {item.label}
                 </div>

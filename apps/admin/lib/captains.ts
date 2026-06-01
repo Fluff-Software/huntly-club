@@ -71,6 +71,14 @@ export function getCaptainReferenceImageUrl(slug: string): string | null {
   return `${supabaseUrl}/storage/v1/object/public/season-images/captains/${slug}.webp`;
 }
 
+/** Campfire session captain pose on the stage (`camp-oli.webp`, etc.). */
+export function getCampfireCaptainImageUrl(slug: string): string | null {
+  const supabaseUrl = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl || !slug.trim()) return null;
+  const normalized = slug.toLowerCase().trim();
+  return `${supabaseUrl}/storage/v1/object/public/season-images/captains/camp-${normalized}.webp`;
+}
+
 export function detectCaptainsInPrompt(prompt: string): Captain[] {
   const lower = prompt.toLowerCase();
   return CAPTAINS.filter((c) => lower.includes(c.name.toLowerCase()));

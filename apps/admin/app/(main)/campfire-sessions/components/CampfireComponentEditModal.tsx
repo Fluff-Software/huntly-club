@@ -31,6 +31,8 @@ import {
   type CampfireSessionRow,
   type CaptainOption,
 } from "../types";
+import { MissionCardPicker } from "./MissionCardPicker";
+import { SubmissionPhotoPicker } from "./SubmissionPhotoPicker";
 
 type Props = {
   open: boolean;
@@ -57,17 +59,23 @@ export function CampfireComponentEditModal({
 }: Props) {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [nestedPickerOpen, setNestedPickerOpen] = useState(false);
 
   useBodyScrollLock(open);
 
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && nestedPickerOpen) return;
       if (e.key === "Escape") onClose();
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose]);
+  }, [open, onClose, nestedPickerOpen]);
+
+  useEffect(() => {
+    if (!open) setNestedPickerOpen(false);
+  }, [open]);
 
   useEffect(() => {
     if (open) setUploadError(null);
@@ -462,52 +470,34 @@ export function CampfireComponentEditModal({
 
           {component.type === "mission_card" && (
             <Field label="Mission">
-              <select
-                value={(data.activityId as number) ?? ""}
-                onChange={(e) =>
-                  onChange({
-                    ...component,
-                    data: {
-                      ...data,
-                      activityId: parseInt(e.target.value, 10),
-                    },
-                  })
-                }
-                className={inputClass}
-              >
-                <option value="">Select mission</option>
-                {missionOptions.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.title}
-                  </option>
-                ))}
-              </select>
+              <MissionCardPicker
+                missionOptions={missionOptions}
+                activityId={(data.activityId as number) || undefined}
+                onChange={(id) => {
+                  const nextData = { ...data } as Record<string, unknown>;
+                  if (id != null) nextData.activityId = id;
+                  else delete nextData.activityId;
+                  onChange({ ...component, data: nextData });
+                }}
+                onFlowOpenChange={setNestedPickerOpen}
+              />
             </Field>
           )}
 
           {component.type === "submission" && (
             <Field label="Approved photo">
-              <select
-                value={(data.photoId as number) ?? ""}
-                onChange={(e) =>
-                  onChange({
-                    ...component,
-                    data: {
-                      ...data,
-                      photoId: parseInt(e.target.value, 10),
-                    },
-                  })
-                }
-                className={inputClass}
-              >
-                <option value="">Select photo</option>
-                {approvedPhotos.map((p) => (
-                  <option key={p.photo_id} value={p.photo_id}>
-                    {p.nickname ?? "Explorer"} —{" "}
-                    {p.activity_title ?? "Mission"}
-                  </option>
-                ))}
-              </select>
+              <SubmissionPhotoPicker
+                approvedPhotos={approvedPhotos}
+                missionOptions={missionOptions}
+                photoId={(data.photoId as number) || undefined}
+                onChange={(id) => {
+                  const nextData = { ...data } as Record<string, unknown>;
+                  if (id != null) nextData.photoId = id;
+                  else delete nextData.photoId;
+                  onChange({ ...component, data: nextData });
+                }}
+                onFlowOpenChange={setNestedPickerOpen}
+              />
             </Field>
           )}
 

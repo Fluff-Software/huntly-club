@@ -25,6 +25,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { AdventureTile } from "@/components/AdventureTile";
 import { PastAdventuresTile } from "@/components/PastAdventuresTile";
+import { CampfireTile } from "@/components/CampfireTile";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useCurrentChapterActivities } from "@/hooks/useCurrentChapterActivities";
 import { useUser } from "@/contexts/UserContext";
@@ -667,6 +668,9 @@ export default function HomeScreen() {
             </View>
           </AnimatedReanimated.View>
         )}
+
+        {/* Campfire tile */}
+        <CampfireTile />
 
         {/* Club photos */}
         {clubCards.length > 0 && (

@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { uploadActivityImage } from "@/lib/upload-actions";
 import { compressImageFileForUpload } from "@/lib/client-image-resize";
 import { ImageCropModal } from "@/components/ImageCropModal";
+import { MISSION_MEDIA_ASPECT } from "@/lib/image-aspects";
 import { updateImagePrompt, generateImageForAsset, approveImageAsset } from "../../../../images/actions";
 import { attachUploadedImageToAsset, regenerateActivityCoverPrompt } from "./actions";
 
@@ -278,7 +279,7 @@ export function MissionImagePanel({ asset, seasonId, chapterId, activityId }: Pr
         open={cropOpen}
         file={pendingFile}
         title="Crop mission image"
-        aspect={16 / 9}
+        aspect={MISSION_MEDIA_ASPECT}
         onCancel={handleCancelCrop}
         onConfirm={handleConfirmCrop}
       />

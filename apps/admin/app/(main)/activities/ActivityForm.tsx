@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 import { Button } from "@/components/Button";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { ImageCropModal } from "@/components/ImageCropModal";
+import { MISSION_MEDIA_ASPECT } from "@/lib/image-aspects";
 import { uploadActivityImage } from "@/lib/upload-actions";
 import { compressImageFileForUpload } from "@/lib/client-image-resize";
 
@@ -805,7 +806,7 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
         open={stepCropOpen}
         file={stepPendingFile}
         title="Crop step image"
-        aspect={16 / 9}
+        aspect={MISSION_MEDIA_ASPECT}
         onCancel={handleCancelStepCrop}
         onConfirm={handleConfirmStepCrop}
       />

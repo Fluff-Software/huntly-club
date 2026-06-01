@@ -27,11 +27,11 @@ export default function PricingPage() {
 // export const metadata: Metadata = {
 //   title: "Huntly World Pricing — Join the Adventure Club",
 //   description:
-//     "Simple, honest pricing for Huntly World — the outdoor adventure club for children aged 5–10. Monthly and annual subscriptions available.",
+//     "Simple, honest pricing for Huntly World — the outdoor adventure club for children aged 4-14. Monthly and annual subscriptions available.",
 //   openGraph: {
 //     title: "Huntly World Pricing — Join the Adventure Club",
 //     description:
-//       "Simple, honest pricing for Huntly World — the outdoor adventure club for children aged 5–10. Monthly and annual subscriptions available.",
+//       "Simple, honest pricing for Huntly World — the outdoor adventure club for children aged 4-14. Monthly and annual subscriptions available.",
 //   },
 //   alternates: {
 //     canonical: "https://huntly.world/pricing",
@@ -54,7 +54,7 @@ export default function PricingPage() {
 //   operatingSystem: "iOS, Android",
 //   applicationCategory: "EducationalApplication",
 //   description:
-//     "An outdoor adventure club app for children aged 5–10. Weekly missions, story-driven seasons, team challenges and achievement tracking.",
+//     "An outdoor adventure club app for children aged 4-14. Weekly missions, story-driven seasons, team challenges and achievement tracking.",
 //   offers: [
 //     {
 //       "@type": "Offer",

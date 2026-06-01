@@ -74,7 +74,7 @@ const faqs = [
   {
     question: "Who is Huntly World for?",
     answer:
-      "Huntly World is for families, schools and clubs who want to get children aged 5–10 outdoors, exploring and learning together. Parents can use it at home; educators and group leaders can use it with their class or club.",
+      "Huntly World is for families, schools and clubs who want to get children aged 4-14 outdoors, exploring and learning together. Parents can use it at home; educators and group leaders can use it with their class or club.",
   },
   {
     question: "How do schools or clubs use it?",
@@ -95,7 +95,7 @@ const organizationSchema = {
   url: "https://huntly.world",
   logo: "https://huntly.world/logo.png",
   description:
-    "Huntly World is a secret outdoor adventure club for children aged 5–10. Weekly missions, story-driven seasons, and real-world challenges.",
+    "Huntly World is a secret outdoor adventure club for children aged 4-14. Weekly missions, story-driven seasons, and real-world challenges.",
   contactPoint: {
     "@type": "ContactPoint",
     email: "huntly@fluff.software",
@@ -114,7 +114,7 @@ const softwareApplicationSchema = {
   operatingSystem: "iOS, Android",
   applicationCategory: "EducationalApplication",
   description:
-    "An outdoor adventure club app for children aged 5–10. Weekly missions, story-driven seasons, team challenges and achievement tracking.",
+    "An outdoor adventure club app for children aged 4-14. Weekly missions, story-driven seasons, team challenges and achievement tracking.",
   offers: {
     "@type": "Offer",
     price: "0",
@@ -172,7 +172,7 @@ export default function HomePage() {
                 The adventure club for curious kids.
               </h1>
               <p className="mt-3 text-lg text-white/95 drop-shadow sm:text-xl">
-                Weekly outdoor missions. Story-driven seasons. Real-world challenges. Huntly World is the kids adventure club that gets children aged 5–10 outside and exploring.
+                Weekly outdoor missions. Story-driven seasons. Real-world challenges. Huntly World is the kids adventure club that gets children aged 4-14 outside and exploring.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
@@ -199,7 +199,7 @@ export default function HomePage() {
               What is Huntly World?
             </h2>
             <p className="text-huntly-slate">
-              Huntly World is an outdoor adventure club for children aged 5–10. Each season unfolds a new story — and with it, a set of weekly missions that take kids outside to explore, discover, and complete real-world challenges. It&apos;s screen-free adventure that actually happens outdoors, guided by three beloved team captains: Bella of the Bears, Felix of the Foxes, and Oli of the Otters.
+              Huntly World is an outdoor adventure club for children aged 4-14. Each season unfolds a new story — and with it, a set of weekly missions that take kids outside to explore, discover, and complete real-world challenges. It&apos;s screen-free adventure that actually happens outdoors, guided by three beloved team captains: Bella of the Bears, Felix of the Foxes, and Oli of the Otters.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-4">
               <Link href="/how-it-works" className="btn-primary">

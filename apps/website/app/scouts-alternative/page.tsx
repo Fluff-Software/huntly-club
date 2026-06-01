@@ -80,7 +80,7 @@ export default function ScoutsAlternativePage() {
               Looking for a flexible kids adventure club?
             </h1>
             <p className="mt-4 text-huntly-slate sm:text-lg">
-              Huntly World is a structured outdoor adventure club for children aged 5–10 — with weekly missions, story-driven seasons, and team challenges. No fixed meeting times. No specific location. Just great adventures, whenever your family is ready.
+              Huntly World is a structured outdoor adventure club for children aged 4–14 — with weekly missions, story-driven seasons, and team challenges. No fixed meeting times. No specific location. Just great adventures, whenever your family is ready.
             </p>
           </div>
         </div>
@@ -143,7 +143,7 @@ export default function ScoutsAlternativePage() {
               Huntly World gives children a real sense of belonging — a team, a captain to look up to, and an adventure that&apos;s genuinely theirs. Weekly outdoor missions build the habit of getting outside and exploring. The story structure means there&apos;s always something to look forward to. And the achievement system means progress feels real and earned.
             </p>
             <p className="mt-3 text-huntly-slate">
-              Children aged 5–10 who use Huntly World regularly spend more time outside, show more curiosity about the natural world, and report that they love completing missions with their family. The best part? They ask to go out.
+              Children aged 4–14 who use Huntly World regularly spend more time outside, show more curiosity about the natural world, and report that they love completing missions with their family. The best part? They ask to go out.
             </p>
           </div>
 

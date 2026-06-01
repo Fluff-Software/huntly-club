@@ -15,7 +15,7 @@ const nunito = Nunito({
 const BASE_URL = "https://huntly.world";
 const DEFAULT_TITLE = "Huntly World — The Outdoor Adventure Club for Curious Kids";
 const DEFAULT_DESCRIPTION =
-  "Huntly World is a secret adventure club for children aged 5–10. Weekly outdoor missions, story-driven seasons, and real-world challenges — led by Bella, Ollie, and Felix. Join the club.";
+  "Huntly World is a secret adventure club for children aged 4–14. Weekly outdoor missions, story-driven seasons, and real-world challenges — led by Bella, Ollie, and Felix. Join the club.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),

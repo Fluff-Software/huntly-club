@@ -53,7 +53,7 @@ const faqs = [
   {
     question: "What age is Huntly World for?",
     answer:
-      "Huntly World is designed for children aged 5–10. Younger children will need more support from a parent to follow the story; older children in the range can engage more independently. The app is not designed for children under 5.",
+      "Huntly World is designed for children aged 4–14. Younger children will need more support from a parent to follow the story; older children in the range can engage more independently. The app is not designed for children under 4.",
   },
 ];
 

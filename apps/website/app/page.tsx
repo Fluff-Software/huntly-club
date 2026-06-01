@@ -333,9 +333,6 @@ export default function HomePage() {
               </blockquote>
             ))}
           </div>
-          <p className="mt-4 text-center text-xs text-huntly-slate/70">
-            Placeholder quotes — replace with real parent reviews when available.
-          </p>
         </section>
 
         {/* Safe, simple, and built in the UK */}

@@ -46,31 +46,40 @@ export default function CampfireScreen() {
   const finished = durationMs > 0 && currentTimeMs >= durationMs;
   const hasExitedAfterFinishRef = useRef(false);
 
-  // 1. Load the latest replay session and its content.
-  useEffect(() => {
-    let cancelled = false;
-    setLoadState("loading");
-    (async () => {
-      const session = await getLatestReplaySession();
-      if (cancelled) return;
-      if (!session) {
-        setLoadState("empty");
-        return;
-      }
-      const data = await getCampfireSessionBundle(session.id);
-      if (cancelled) return;
-      if (!data) {
-        setLoadState("error");
-        return;
-      }
-      setBundle(data);
+  // Reload each time the screen is opened (hidden tab may stay mounted after finish).
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      hasExitedAfterFinishRef.current = false;
+      setMediaReady(false);
       setCurrentTimeMs(0);
-      setLoadState("preparing");
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+      setIsPlaying(false);
+      setLoadState("loading");
+
+      (async () => {
+        const session = await getLatestReplaySession();
+        if (cancelled) return;
+        if (!session) {
+          setLoadState("empty");
+          return;
+        }
+        const data = await getCampfireSessionBundle(session.id);
+        if (cancelled) return;
+        if (!data) {
+          setLoadState("error");
+          return;
+        }
+        setBundle(data);
+        setCurrentTimeMs(0);
+        setLoadState("preparing");
+      })();
+
+      return () => {
+        cancelled = true;
+        setIsPlaying(false);
+      };
+    }, [])
+  );
 
   // 2. Prefetch images before reveal (audio loads in useCampfireAudio).
   useEffect(() => {
@@ -102,13 +111,6 @@ export default function CampfireScreen() {
     }, PREPARE_TIMEOUT_MS);
     return () => clearTimeout(timer);
   }, [loadState]);
-
-  // Pause playback when the screen loses focus.
-  useFocusEffect(
-    useCallback(() => {
-      return () => setIsPlaying(false);
-    }, [])
-  );
 
   // Timeline clock.
   useEffect(() => {

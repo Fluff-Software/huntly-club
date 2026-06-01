@@ -6,6 +6,11 @@ import type {
   ActivityOption,
   ApprovedPhotoOption,
 } from "../types";
+import {
+  CampfireMissionPickerModal,
+  PickerModal,
+  PickerModalFooter,
+} from "./CampfirePickerModals";
 
 type Props = {
   approvedPhotos: ApprovedPhotoOption[];
@@ -50,7 +55,6 @@ export function SubmissionPhotoPicker({
   const [pickedMission, setPickedMission] = useState<ActivityOption | null>(
     null
   );
-  const [missionFilter, setMissionFilter] = useState("");
 
   const flowOpen = missionModalOpen || galleryModalOpen;
 
@@ -78,15 +82,14 @@ export function SubmissionPhotoPicker({
     return approvedPhotos.filter((p) => p.activity_id === pickedMission.id);
   }, [approvedPhotos, pickedMission]);
 
-  const filteredMissions = useMemo(() => {
-    const q = missionFilter.trim().toLowerCase();
-    if (!q) return missions;
-    return missions.filter(
-      ({ activity }) =>
-        activity.title.toLowerCase().includes(q) ||
-        activity.name.toLowerCase().includes(q)
-    );
-  }, [missions, missionFilter]);
+  const missionPickerRows = useMemo(
+    () =>
+      missions.map(({ activity, photoCount }) => ({
+        activity,
+        subtitle: `${photoCount} approved ${photoCount === 1 ? "photo" : "photos"}`,
+      })),
+    [missions]
+  );
 
   useEffect(() => {
     if (!flowOpen) return;
@@ -109,11 +112,9 @@ export function SubmissionPhotoPicker({
     setMissionModalOpen(false);
     setGalleryModalOpen(false);
     setPickedMission(null);
-    setMissionFilter("");
   }
 
   function openMissionPicker() {
-    setMissionFilter("");
     setPickedMission(null);
     setGalleryModalOpen(false);
     setMissionModalOpen(true);
@@ -210,81 +211,15 @@ export function SubmissionPhotoPicker({
         )}
       </div>
 
-      {missionModalOpen && (
-        <PickerModal
-          title="Choose mission"
-          description="Pick the mission this submission was made for."
-          onBackdropClick={closeFlow}
-          zClass="z-[60]"
-        >
-          {missions.length > 6 && (
-            <div className="shrink-0 border-b border-stone-800 px-4 py-3">
-              <input
-                type="search"
-                value={missionFilter}
-                onChange={(e) => setMissionFilter(e.target.value)}
-                placeholder="Search missions…"
-                autoFocus
-                className={searchInputClass}
-                aria-label="Search missions"
-              />
-            </div>
-          )}
-          <ul className="min-h-0 flex-1 overflow-y-auto p-2" role="list">
-            {filteredMissions.length === 0 ? (
-              <li className="px-2 py-6 text-center text-sm text-stone-500">
-                {missions.length === 0
-                  ? "No missions with approved photos."
-                  : "No missions match your search."}
-              </li>
-            ) : (
-              filteredMissions.map(({ activity, photoCount }) => (
-                <li key={activity.id}>
-                  <button
-                    type="button"
-                    onClick={() => pickMission(activity)}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-stone-800/70"
-                  >
-                    <MissionThumb image={activity.image} title={activity.title} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-medium text-stone-100">
-                        {activity.title}
-                      </span>
-                      <span className="mt-0.5 block text-xs text-stone-500">
-                        {photoCount} approved{" "}
-                        {photoCount === 1 ? "photo" : "photos"}
-                      </span>
-                    </span>
-                    <svg
-                      className="size-4 shrink-0 text-stone-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      strokeWidth={2}
-                      aria-hidden
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="m8.25 4.5 7.5 7.5-7.5 7.5"
-                      />
-                    </svg>
-                  </button>
-                </li>
-              ))
-            )}
-          </ul>
-          <ModalFooter>
-            <button
-              type="button"
-              onClick={closeFlow}
-              className="rounded-lg px-4 py-2 text-sm font-medium text-stone-400 hover:text-stone-200"
-            >
-              Cancel
-            </button>
-          </ModalFooter>
-        </PickerModal>
-      )}
+      <CampfireMissionPickerModal
+        open={missionModalOpen}
+        title="Choose mission"
+        description="Pick the mission this submission was made for."
+        rows={missionPickerRows}
+        emptyMessage="No missions with approved photos."
+        onSelect={pickMission}
+        onClose={closeFlow}
+      />
 
       {galleryModalOpen && pickedMission && (
         <PickerModal
@@ -367,7 +302,7 @@ export function SubmissionPhotoPicker({
               })}
             </ul>
           )}
-          <ModalFooter>
+          <PickerModalFooter>
             <button
               type="button"
               onClick={closeFlow}
@@ -375,84 +310,9 @@ export function SubmissionPhotoPicker({
             >
               Cancel
             </button>
-          </ModalFooter>
+          </PickerModalFooter>
         </PickerModal>
       )}
     </>
   );
 }
-
-function MissionThumb({
-  image,
-  title,
-}: {
-  image: string | null;
-  title: string;
-}) {
-  return (
-    <div className="relative size-11 shrink-0 overflow-hidden rounded-lg bg-stone-800 ring-1 ring-inset ring-stone-700">
-      {image ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={image} alt="" className="size-full object-cover" />
-      ) : (
-        <span
-          className="flex size-full items-center justify-center text-[10px] font-medium text-stone-500"
-          aria-hidden
-        >
-          {title.slice(0, 1).toUpperCase()}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function PickerModal({
-  title,
-  description,
-  children,
-  onBackdropClick,
-  zClass,
-  wide,
-}: {
-  title: string;
-  description: string;
-  children: React.ReactNode;
-  onBackdropClick: () => void;
-  zClass: string;
-  wide?: boolean;
-}) {
-  return (
-    <div
-      className={`fixed inset-0 ${zClass} flex items-center justify-center bg-black/60 p-4`}
-      aria-modal="true"
-      role="dialog"
-      onClick={onBackdropClick}
-    >
-      <div
-        className={`flex max-h-[min(88vh,640px)] w-full flex-col overflow-hidden rounded-xl border border-stone-600 bg-stone-900 shadow-xl ${
-          wide ? "max-w-2xl" : "max-w-md"
-        }`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="shrink-0 border-b border-stone-700 px-4 py-3">
-          <h2 className="text-sm font-semibold text-stone-100">{title}</h2>
-          <p className="mt-1 text-xs leading-snug text-stone-500">
-            {description}
-          </p>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function ModalFooter({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex shrink-0 justify-end border-t border-stone-700 px-4 py-3">
-      {children}
-    </div>
-  );
-}
-
-const searchInputClass =
-  "w-full rounded-lg border border-stone-600/80 bg-stone-950/60 py-2 px-3 text-sm text-stone-100 placeholder:text-stone-600 focus:border-huntly-sage focus:outline-none focus:ring-2 focus:ring-huntly-sage/25";

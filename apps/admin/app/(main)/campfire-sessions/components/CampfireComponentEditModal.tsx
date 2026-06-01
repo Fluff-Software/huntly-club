@@ -31,6 +31,7 @@ import {
   type CampfireSessionRow,
   type CaptainOption,
 } from "../types";
+import { MissionCardPicker } from "./MissionCardPicker";
 import { SubmissionPhotoPicker } from "./SubmissionPhotoPicker";
 
 type Props = {
@@ -58,22 +59,22 @@ export function CampfireComponentEditModal({
 }: Props) {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [submissionPickerOpen, setSubmissionPickerOpen] = useState(false);
+  const [nestedPickerOpen, setNestedPickerOpen] = useState(false);
 
   useBodyScrollLock(open);
 
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && submissionPickerOpen) return;
+      if (e.key === "Escape" && nestedPickerOpen) return;
       if (e.key === "Escape") onClose();
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose, submissionPickerOpen]);
+  }, [open, onClose, nestedPickerOpen]);
 
   useEffect(() => {
-    if (!open) setSubmissionPickerOpen(false);
+    if (!open) setNestedPickerOpen(false);
   }, [open]);
 
   useEffect(() => {
@@ -469,26 +470,17 @@ export function CampfireComponentEditModal({
 
           {component.type === "mission_card" && (
             <Field label="Mission">
-              <select
-                value={(data.activityId as number) ?? ""}
-                onChange={(e) =>
-                  onChange({
-                    ...component,
-                    data: {
-                      ...data,
-                      activityId: parseInt(e.target.value, 10),
-                    },
-                  })
-                }
-                className={inputClass}
-              >
-                <option value="">Select mission</option>
-                {missionOptions.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.title}
-                  </option>
-                ))}
-              </select>
+              <MissionCardPicker
+                missionOptions={missionOptions}
+                activityId={(data.activityId as number) || undefined}
+                onChange={(id) => {
+                  const nextData = { ...data } as Record<string, unknown>;
+                  if (id != null) nextData.activityId = id;
+                  else delete nextData.activityId;
+                  onChange({ ...component, data: nextData });
+                }}
+                onFlowOpenChange={setNestedPickerOpen}
+              />
             </Field>
           )}
 
@@ -504,7 +496,7 @@ export function CampfireComponentEditModal({
                   else delete nextData.photoId;
                   onChange({ ...component, data: nextData });
                 }}
-                onFlowOpenChange={setSubmissionPickerOpen}
+                onFlowOpenChange={setNestedPickerOpen}
               />
             </Field>
           )}

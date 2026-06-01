@@ -141,6 +141,31 @@ function subtitleOpacities(
   return { bgOpacity, textOpacity };
 }
 
+function topLayerComponent(
+  comps: CampfireComponentRow[],
+  layerZ: (c: CampfireComponentRow) => number
+): CampfireComponentRow | undefined {
+  if (comps.length === 0) return undefined;
+  return comps.reduce((best, c) => (layerZ(c) > layerZ(best) ? c : best));
+}
+
+function resolveCaptainForComponent(
+  comp: CampfireComponentRow,
+  captains: CaptainOption[]
+): CaptainOption | null {
+  const data = comp.data as {
+    captainId?: number;
+    captainSlug?: string;
+  };
+  if (data.captainId != null) {
+    return captains.find((c) => c.id === data.captainId) ?? null;
+  }
+  if (data.captainSlug) {
+    return captains.find((c) => c.slug === data.captainSlug) ?? null;
+  }
+  return null;
+}
+
 const CLUB_CARD_AUTHOR_COLORS = [
   "#D4A05A",
   "#8B7BA8",
@@ -191,8 +216,11 @@ export function CampfirePreview({
   const allSubtitles = components.filter((c) => c.type === "subtitle");
   const active = components.filter((c) => isActive(c, currentTimeMs));
 
-  const subtitle = active.find((c) => c.type === "subtitle");
-  const captainComp = active.find((c) => c.type === "captain");
+  const activeSubtitles = active.filter((c) => c.type === "subtitle");
+  const subtitle = topLayerComponent(activeSubtitles, layerZ);
+  const activeCaptains = active
+    .filter((c) => c.type === "captain")
+    .sort((a, b) => layerZ(a) - layerZ(b));
   const activeMissionCards = active.filter((c) => c.type === "mission_card");
   const activeSubmissions = active.filter((c) => c.type === "submission");
   const activeVideos = active.filter((c) => c.type === "video");
@@ -202,17 +230,10 @@ export function CampfirePreview({
       ? (subtitle.data as { text: string }).text
       : null;
 
-  const captainData = captainComp?.data as {
-    captainId?: number;
-    captainSlug?: string;
-  } | undefined;
-
-  const captain =
-    captainData?.captainId != null
-      ? captains.find((c) => c.id === captainData.captainId)
-      : captainData?.captainSlug
-        ? captains.find((c) => c.slug === captainData.captainSlug)
-        : null;
+  const maxCaptainOpacity = activeCaptains.reduce(
+    (max, c) => Math.max(max, componentOpacity(c, currentTimeMs)),
+    0
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-orange-950/20 p-2">
@@ -581,17 +602,63 @@ export function CampfirePreview({
           );
         })}
 
+        {activeCaptains.map((captainComp) => {
+          const captain = resolveCaptainForComponent(captainComp, captains);
+          if (!captain) return null;
+          const imgSrc = getCaptainPreviewImage(captain);
+          if (!imgSrc) return null;
+          const opacity = componentOpacity(captainComp, currentTimeMs);
+          if (opacity <= 0) return null;
+          const alignment =
+            (captainComp.data as { alignment?: "left" | "middle" | "right" })
+              .alignment ?? "middle";
+          const positionClass =
+            alignment === "left"
+              ? "left-3 right-auto"
+              : alignment === "right"
+                ? "left-auto right-3"
+                : "left-1/2 -translate-x-1/2";
+          const objectPosition =
+            alignment === "left"
+              ? "object-left-bottom"
+              : alignment === "right"
+                ? "object-right-bottom"
+                : "object-bottom";
+          return (
+            <div
+              key={captainComp.id}
+              className={`absolute bottom-8 w-[41.25%] ${positionClass}`}
+              style={{
+                opacity,
+                transition: "none",
+                zIndex: 30 + layerZ(captainComp),
+              }}
+            >
+              <Image
+                src={imgSrc}
+                alt={captain.name}
+                width={400}
+                height={400}
+                className={`h-auto w-full object-contain ${objectPosition}`}
+                unoptimized={imgSrc.startsWith("http")}
+              />
+            </div>
+          );
+        })}
+
         {(() => {
-          const captainOpacity = captainComp ? componentOpacity(captainComp, currentTimeMs) : 0;
           const subOpacities = subtitle
             ? subtitleOpacities(subtitle, allSubtitles, currentTimeMs)
             : null;
-          const bgOpacity = Math.max(subOpacities?.bgOpacity ?? 0, captainOpacity);
+          const bgOpacity = Math.max(
+            subOpacities?.bgOpacity ?? 0,
+            maxCaptainOpacity
+          );
           const textOpacity = subOpacities?.textOpacity ?? 0;
 
           return bgOpacity > 0 ? (
             <div
-              className="absolute bottom-0 left-0 right-0 z-[31] bg-black/50 px-3 py-2.5 backdrop-blur-sm"
+              className="absolute bottom-0 left-0 right-0 z-50 bg-black/50 px-3 py-2.5 backdrop-blur-sm"
               style={{ opacity: bgOpacity, transition: "none" }}
             >
               <p
@@ -606,27 +673,6 @@ export function CampfirePreview({
               </p>
             </div>
           ) : null;
-        })()}
-
-        {captain && captainComp && (() => {
-          const imgSrc = getCaptainPreviewImage(captain);
-          if (!imgSrc) return null;
-          const opacity = componentOpacity(captainComp, currentTimeMs);
-          return (
-            <div
-              className="absolute bottom-8 left-1/2 z-[30] w-[55%] -translate-x-1/2"
-              style={{ opacity, transition: "none" }}
-            >
-              <Image
-                src={imgSrc}
-                alt={captain.name}
-                width={400}
-                height={400}
-                className="h-auto w-full object-contain object-bottom"
-                unoptimized={imgSrc.startsWith("http")}
-              />
-            </div>
-          );
         })()}
       </div>
     </div>

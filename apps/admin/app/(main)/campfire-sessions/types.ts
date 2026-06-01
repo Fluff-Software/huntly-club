@@ -23,9 +23,14 @@ export type AudioComponentData = {
   audioUrl?: string;
 };
 
+export const CAPTAIN_ALIGNMENTS = ["left", "middle", "right"] as const;
+
+export type CaptainAlignment = (typeof CAPTAIN_ALIGNMENTS)[number];
+
 export type CaptainComponentData = {
   captainId?: number;
   captainSlug?: string;
+  alignment?: CaptainAlignment;
 };
 
 export type SubtitleComponentData = {

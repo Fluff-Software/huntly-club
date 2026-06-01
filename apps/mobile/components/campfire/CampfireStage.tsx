@@ -125,6 +125,42 @@ function subtitleOpacities(
   };
 }
 
+function topLayerComponent(
+  comps: CampfireComponentRow[],
+  layerZ: (c: CampfireComponentRow) => number
+): CampfireComponentRow | undefined {
+  if (comps.length === 0) return undefined;
+  return comps.reduce((best, c) => (layerZ(c) > layerZ(best) ? c : best));
+}
+
+function resolveCaptainForComponent(
+  comp: CampfireComponentRow,
+  captains: CaptainOption[]
+): CaptainOption | null {
+  const data = comp.data as CaptainComponentData;
+  if (data.captainId != null) {
+    return captains.find((c) => c.id === data.captainId) ?? null;
+  }
+  if (data.captainSlug) {
+    return captains.find((c) => c.slug === data.captainSlug) ?? null;
+  }
+  return null;
+}
+
+function captainPositionStyle(
+  alignment: NonNullable<CaptainComponentData["alignment"]>,
+  stageWidth: number
+): {
+  left?: number;
+  right?: number;
+  width: number;
+} {
+  const w = stageWidth * 0.4125;
+  if (alignment === "left") return { left: 0, width: w };
+  if (alignment === "right") return { right: 0, width: w };
+  return { left: (stageWidth - w) / 2, width: w };
+}
+
 function resolveCaptainImage(captain: CaptainOption) {
   const slug = captain.slug?.toLowerCase();
   if (slug) {
@@ -173,8 +209,11 @@ export function CampfireStage({
   const allSubtitles = components.filter((c) => c.type === "subtitle");
   const active = components.filter((c) => isActive(c, currentTimeMs));
 
-  const subtitle = active.find((c) => c.type === "subtitle");
-  const captainComp = active.find((c) => c.type === "captain");
+  const activeSubtitles = active.filter((c) => c.type === "subtitle");
+  const subtitle = topLayerComponent(activeSubtitles, layerZ);
+  const activeCaptains = active
+    .filter((c) => c.type === "captain")
+    .sort((a, b) => layerZ(a) - layerZ(b));
   const activeMissionCards = active.filter((c) => c.type === "mission_card");
   const activeSubmissions = active.filter((c) => c.type === "submission");
   const activeVideos = active.filter((c) => c.type === "video");
@@ -184,26 +223,16 @@ export function CampfireStage({
       ? (subtitle.data as SubtitleComponentData).text ?? null
       : null;
 
-  const captainData = captainComp?.data as CaptainComponentData | undefined;
-  const captain =
-    captainData?.captainId != null
-      ? captains.find((c) => c.id === captainData.captainId) ?? null
-      : captainData?.captainSlug
-        ? captains.find((c) => c.slug === captainData.captainSlug) ?? null
-        : null;
-
-  const captainOpacity = captainComp
-    ? componentOpacity(captainComp, currentTimeMs)
-    : 0;
+  const maxCaptainOpacity = activeCaptains.reduce(
+    (max, c) => Math.max(max, componentOpacity(c, currentTimeMs)),
+    0
+  );
   const subOpacities = subtitle
     ? subtitleOpacities(subtitle, allSubtitles, currentTimeMs)
     : null;
-  const bgOpacity = Math.max(subOpacities?.bgOpacity ?? 0, captainOpacity);
+  const bgOpacity = Math.max(subOpacities?.bgOpacity ?? 0, maxCaptainOpacity);
   const textOpacity = subOpacities?.textOpacity ?? 0;
-  const captainImageSource =
-    captain && captainComp ? resolveCaptainImage(captain) : null;
-  const showFooter =
-    bgOpacity > 0 || (captainImageSource != null && captainOpacity > 0);
+  const showFooter = bgOpacity > 0 || maxCaptainOpacity > 0;
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -511,25 +540,49 @@ export function CampfireStage({
       {/* Captain + subtitle footer (matches admin preview stacking) */}
       {showFooter && (
         <View style={styles.footer}>
-          {captainImageSource != null && captainOpacity > 0 && (
-            <View
-              style={[
-                styles.captainWrap,
-                {
-                  width: width * 0.55,
-                  opacity: captainOpacity,
-                },
-              ]}
-            >
-              <ExpoImage
-                source={captainImageSource}
-                style={{ width: "100%", height: width * 0.48 }}
-                contentFit="contain"
-                contentPosition="bottom"
-                cachePolicy="memory-disk"
-              />
-            </View>
-          )}
+          <View
+            style={[styles.captainLayer, { minHeight: width * 0.36 }]}
+            pointerEvents="none"
+          >
+            {activeCaptains.map((captainComp) => {
+              const captain = resolveCaptainForComponent(captainComp, captains);
+              if (!captain) return null;
+              const imageSource = resolveCaptainImage(captain);
+              if (!imageSource) return null;
+              const opacity = componentOpacity(captainComp, currentTimeMs);
+              if (opacity <= 0) return null;
+              const alignment =
+                (captainComp.data as CaptainComponentData).alignment ?? "middle";
+              const position = captainPositionStyle(alignment, width);
+              const contentPosition =
+                alignment === "left"
+                  ? "bottom left"
+                  : alignment === "right"
+                    ? "bottom right"
+                    : "bottom";
+              return (
+                <View
+                  key={captainComp.id}
+                  style={[
+                    styles.captainWrap,
+                    position,
+                    {
+                      opacity,
+                      zIndex: 30 + layerZ(captainComp),
+                    },
+                  ]}
+                >
+                  <ExpoImage
+                    source={imageSource}
+                    style={{ width: "100%", height: width * 0.36 }}
+                    contentFit="contain"
+                    contentPosition={contentPosition}
+                    cachePolicy="memory-disk"
+                  />
+                </View>
+              );
+            })}
+          </View>
           {bgOpacity > 0 && (
             <View
               style={[
@@ -538,6 +591,7 @@ export function CampfireStage({
                   paddingHorizontal: s(12),
                   paddingVertical: s(10),
                   opacity: bgOpacity,
+                  zIndex: 50,
                 },
               ]}
             >
@@ -568,11 +622,15 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    alignItems: "center",
     zIndex: 30,
   },
+  captainLayer: {
+    width: "100%",
+    position: "relative",
+  },
   captainWrap: {
-    zIndex: 30,
+    position: "absolute",
+    bottom: 0,
     alignItems: "center",
     justifyContent: "flex-end",
   },

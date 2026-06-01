@@ -16,7 +16,13 @@ export type CampfireComponentType =
   | "submission";
 
 export type AudioComponentData = { audioUrl?: string };
-export type CaptainComponentData = { captainId?: number; captainSlug?: string };
+export type CaptainAlignment = "left" | "middle" | "right";
+
+export type CaptainComponentData = {
+  captainId?: number;
+  captainSlug?: string;
+  alignment?: CaptainAlignment;
+};
 export type SubtitleComponentData = { text?: string };
 export type MissionCardComponentData = { activityId?: number };
 export type SubmissionComponentData = { photoId?: number };

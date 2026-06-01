@@ -24,11 +24,13 @@ import {
   snapMs,
 } from "../lib/campfire-timeline";
 import {
+  CAPTAIN_ALIGNMENTS,
   COMPONENT_TYPE_LABELS,
   type ActivityOption,
   type ApprovedPhotoOption,
   type CampfireComponentRow,
   type CampfireSessionRow,
+  type CaptainAlignment,
   type CaptainOption,
 } from "../types";
 import { MissionCardPicker } from "./MissionCardPicker";
@@ -449,6 +451,20 @@ export function CampfireComponentEditModal({
                   ))}
                 </select>
               </Field>
+              <Field label="Alignment">
+                <CaptainAlignmentPicker
+                  value={
+                    ((data.alignment as CaptainAlignment | undefined) ??
+                      "middle") as CaptainAlignment
+                  }
+                  onChange={(alignment) =>
+                    onChange({
+                      ...component,
+                      data: { ...data, alignment },
+                    })
+                  }
+                />
+              </Field>
             </>
           )}
 
@@ -532,6 +548,48 @@ export function CampfireComponentEditModal({
 
 const inputClass =
   "w-full rounded-lg border border-stone-600 bg-stone-800/80 px-3 py-2 text-sm text-stone-100 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage/30";
+
+const CAPTAIN_ALIGNMENT_LABELS: Record<CaptainAlignment, string> = {
+  left: "Left",
+  middle: "Middle",
+  right: "Right",
+};
+
+function CaptainAlignmentPicker({
+  value,
+  onChange,
+}: {
+  value: CaptainAlignment;
+  onChange: (alignment: CaptainAlignment) => void;
+}) {
+  return (
+    <div
+      className="grid grid-cols-3 gap-1.5"
+      role="radiogroup"
+      aria-label="Captain alignment"
+    >
+      {CAPTAIN_ALIGNMENTS.map((alignment) => {
+        const selected = value === alignment;
+        return (
+          <button
+            key={alignment}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            onClick={() => onChange(alignment)}
+            className={`rounded-lg border px-2 py-2 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-huntly-sage/50 ${
+              selected
+                ? "border-violet-700/60 bg-violet-950/50 text-violet-100 ring-1 ring-violet-600/50"
+                : "border-stone-700/80 bg-stone-950/40 text-stone-400 hover:border-stone-600 hover:bg-stone-800/50 hover:text-stone-200"
+            }`}
+          >
+            {CAPTAIN_ALIGNMENT_LABELS[alignment]}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 function Field({
   label,

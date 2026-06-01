@@ -8,6 +8,7 @@ import {
 } from "@/lib/upload-actions";
 import { compressImageFileForUpload } from "@/lib/client-image-resize";
 import { ImageCropModal } from "@/components/ImageCropModal";
+import { MISSION_MEDIA_ASPECT } from "@/lib/image-aspects";
 
 type ImageUploadFieldProps = {
   name: string;
@@ -126,7 +127,7 @@ export function ImageUploadField({
         open={cropOpen}
         file={pendingFile}
         title={uploadKind === "season" ? "Crop hero image" : "Crop activity image"}
-        aspect={16 / 9}
+        aspect={uploadKind === "activity" ? MISSION_MEDIA_ASPECT : 16 / 9}
         onCancel={handleCancelCrop}
         onConfirm={handleConfirmCrop}
       />

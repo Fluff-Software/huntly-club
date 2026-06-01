@@ -182,7 +182,7 @@ export function ImageCropModal({
   const imgRef = useRef<HTMLImageElement | null>(null);
   const imgBoxRef = useRef<HTMLDivElement | null>(null);
   const [crop, setCrop] = useState<Crop>();
-  const [lockAspect, setLockAspect] = useState(true);
+  const [lockAspect, setLockAspect] = useState(false);
   const [isCropping, setIsCropping] = useState(false);
   const [isBlurring, setIsBlurring] = useState(false);
   const [blurPx, setBlurPx] = useState(14);
@@ -224,7 +224,7 @@ export function ImageCropModal({
     if (!open) return;
     // Reset state when opening a new crop session
     setCrop(initialState?.crop);
-    setLockAspect(initialState?.lockAspect ?? true);
+    setLockAspect(initialState?.lockAspect ?? false);
     setIsCropping(false);
     setIsBlurring(false);
     setBlurPx(initialState?.blurPx ?? 14);
@@ -237,16 +237,15 @@ export function ImageCropModal({
 
   if (!open) return null;
 
-  const effectiveAspect = lockAspect ? (imageAspect ?? aspect) : undefined;
+  const effectiveAspect = lockAspect ? (imageAspect ?? aspect) : aspect;
 
   function percentFromPixel(px: number, dimension: number) {
     if (!dimension) return 0;
     return (px / dimension) * 100;
   }
 
-  function applyOriginalAspectToCurrentCrop(nextLockAspect: boolean) {
-    if (!nextLockAspect) return;
-    if (!imageAspect || !imageSize) {
+  function applyAspectToCurrentCrop(targetAspect: number) {
+    if (!imageSize) {
       setCrop({ unit: "%", x: 0, y: 0, width: 100, height: 100 });
       return;
     }
@@ -259,7 +258,6 @@ export function ImageCropModal({
     let newW = px.width;
     let newH = px.height;
     const currentAspect = px.width / Math.max(1, px.height);
-    const targetAspect = imageAspect;
 
     if (currentAspect > targetAspect) {
       newW = newH * targetAspect;
@@ -312,7 +310,12 @@ export function ImageCropModal({
   function handleResetCropOnly() {
     if (pending) return;
     setError(null);
-    setCrop({ unit: "%", x: 0, y: 0, width: 100, height: 100 });
+    if (imageSize) {
+      const targetAspect = lockAspect ? (imageAspect ?? aspect) : aspect;
+      setCrop(makeCenteredAspectCrop(imageSize.w, imageSize.h, targetAspect));
+    } else {
+      setCrop({ unit: "%", x: 0, y: 0, width: 100, height: 100 });
+    }
   }
 
   function handleClearBlurOnly() {
@@ -512,8 +515,10 @@ export function ImageCropModal({
                       const h = img.naturalHeight || img.height;
                       setImageAspect(w > 0 && h > 0 ? w / h : null);
                       setImageSize(w > 0 && h > 0 ? { w, h } : null);
-                      // If no initial crop, start with full image selected (no crop).
-                      setCrop((prev) => prev ?? { unit: "%", x: 0, y: 0, width: 100, height: 100 });
+                      if (!initialState?.crop && w > 0 && h > 0) {
+                        const targetAspect = lockAspect ? w / h : aspect;
+                        setCrop(makeCenteredAspectCrop(w, h, targetAspect));
+                      }
 
                       if (enableBlur) {
                         const mask = document.createElement("canvas");
@@ -642,15 +647,15 @@ export function ImageCropModal({
                     onClick={() => {
                       const next = !lockAspect;
                       setLockAspect(next);
-                      applyOriginalAspectToCurrentCrop(next);
-                      if (!next) {
-                        // Keep the current selection when unlocking; if none yet, default to full image.
-                        setCrop((prev) => prev ?? { unit: "%", x: 0, y: 0, width: 100, height: 100 });
-                      }
+                      applyAspectToCurrentCrop(next ? (imageAspect ?? aspect) : aspect);
                     }}
                     aria-pressed={lockAspect}
                     className="group inline-flex h-10 items-center gap-2 rounded-full border border-stone-300 bg-white px-3 py-0 text-sm font-medium text-stone-800 shadow-sm transition-colors hover:bg-stone-50 disabled:opacity-50"
-                    title={lockAspect ? "Aspect ratio locked" : "Free crop"}
+                    title={
+                      lockAspect
+                        ? "Using the photo's original aspect ratio"
+                        : "Cropped to match how this image appears in the app"
+                    }
                   >
                     <span className="text-xs text-stone-600">Original Ratio</span>
                     <span

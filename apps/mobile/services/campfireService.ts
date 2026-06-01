@@ -188,9 +188,7 @@ async function fetchApprovedPhotos(
   if (ids.length === 0) return [];
   const { data, error } = await supabase
     .from("user_activity_photos")
-    .select(
-      `photo_id, photo_url, activity_id, activities ( title ), profiles ( nickname )`
-    )
+    .select("photo_id, photo_url, activity_id, profile_id, activities ( title )")
     .eq("status", 1)
     .in("photo_id", ids);
 
@@ -199,23 +197,51 @@ async function fetchApprovedPhotos(
     return [];
   }
 
-  return (data ?? []).map((row: Record<string, unknown>) => {
+  const rows = data ?? [];
+  const profileIds = [
+    ...new Set(
+      rows
+        .map((row) => row.profile_id as number | undefined)
+        .filter((id): id is number => id != null)
+    ),
+  ];
+
+  const nicknamesByProfileId: Record<number, string> = {};
+  if (profileIds.length > 0) {
+    const { data: profilesData, error: profilesError } = await supabase
+      .from("profile_public")
+      .select("id, nickname")
+      .in("id", profileIds);
+
+    if (profilesError) {
+      console.error(
+        "Failed to load submission nicknames for campfire:",
+        profilesError
+      );
+    } else {
+      for (const p of profilesData ?? []) {
+        nicknamesByProfileId[p.id] = p.nickname ?? "";
+      }
+    }
+  }
+
+  return rows.map((row: Record<string, unknown>) => {
     const activities = row.activities as
       | { title: string | null }
       | { title: string | null }[]
       | null;
-    const profiles = row.profiles as
-      | { nickname: string | null }
-      | { nickname: string | null }[]
-      | null;
     const act = Array.isArray(activities) ? activities[0] : activities;
-    const prof = Array.isArray(profiles) ? profiles[0] : profiles;
+    const profileId = row.profile_id as number | undefined;
+    const nickname =
+      profileId != null
+        ? nicknamesByProfileId[profileId]?.trim() || null
+        : null;
     return {
       photo_id: row.photo_id as number,
       photo_url: row.photo_url as string,
       activity_id: (row.activity_id as number | null) ?? null,
       activity_title: act?.title ?? null,
-      nickname: prof?.nickname ?? null,
+      nickname,
     };
   });
 }

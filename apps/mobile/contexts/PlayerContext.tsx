@@ -22,125 +22,99 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const { user } = useAuth();
+  const userId = user?.id ?? null;
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
 
   const isMountedRef = useRef(true);
-  const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastRefreshTimeRef = useRef<number>(0);
-  const isRefreshingRef = useRef(false);
+  const inFlightRef = useRef<Promise<void> | null>(null);
+  const pendingRefreshRef = useRef(false);
+  const profilesCountRef = useRef(0);
 
   useEffect(() => {
-    if (!user) {
-      setProfiles([]);
-      setLoading(false);
-    }
-  }, [user]);
+    profilesCountRef.current = profiles.length;
+  }, [profiles.length]);
 
   const fetchProfiles = useCallback(async (): Promise<void> => {
-    if (!user || !isMountedRef.current || isRefreshingRef.current) {
+    if (!userId || !isMountedRef.current) {
       return;
     }
 
-    try {
-      isRefreshingRef.current = true;
-      setLoading(true);
-      
-      const profilesData = await getProfiles(user.id);
-      
-      // Only update state if component is still mounted
-      if (isMountedRef.current) {
-        setProfiles(profilesData);
-      }
-    } catch (error) {
-      if (isMountedRef.current) {
-        console.error("Error fetching profiles:", error);
-        // Don't clear profiles on error - keep current state
-      }
-    } finally {
-      if (isMountedRef.current) {
-        setLoading(false);
-      }
-      isRefreshingRef.current = false;
+    if (inFlightRef.current) {
+      pendingRefreshRef.current = true;
+      await inFlightRef.current;
+      return;
     }
-  }, [user]);
 
-  // Simplified debounced refresh without complex timeout logic
+    const run = async (): Promise<void> => {
+      do {
+        pendingRefreshRef.current = false;
+
+        try {
+          if (profilesCountRef.current === 0) {
+            setLoading(true);
+          }
+          const profilesData = await getProfiles(userId);
+          if (isMountedRef.current) {
+            setProfiles(profilesData);
+          }
+        } catch (error) {
+          if (isMountedRef.current) {
+            console.error("Error fetching profiles:", error);
+          }
+        } finally {
+          if (isMountedRef.current) {
+            setLoading(false);
+          }
+        }
+      } while (pendingRefreshRef.current && isMountedRef.current);
+    };
+
+    const promise = run();
+    inFlightRef.current = promise;
+    try {
+      await promise;
+    } finally {
+      if (inFlightRef.current === promise) {
+        inFlightRef.current = null;
+      }
+    }
+  }, [userId]);
+
   const refreshProfiles = useCallback(async (): Promise<void> => {
     if (!isMountedRef.current) return;
-
-    const now = Date.now();
-    const timeSinceLastRefresh = now - lastRefreshTimeRef.current;
-    const DEBOUNCE_TIME = 2000; // 2 seconds
-
-    // Clear any existing timeout
-    if (refreshTimeoutRef.current) {
-      clearTimeout(refreshTimeoutRef.current);
-      refreshTimeoutRef.current = null;
-    }
-
-    // If enough time has passed, refresh immediately
-    if (timeSinceLastRefresh >= DEBOUNCE_TIME) {
-      lastRefreshTimeRef.current = now;
-      await fetchProfiles();
-      return;
-    }
-
-    // Otherwise, schedule a refresh
-    const remainingTime = DEBOUNCE_TIME - timeSinceLastRefresh;
-    refreshTimeoutRef.current = setTimeout(async () => {
-      if (isMountedRef.current) {
-        lastRefreshTimeRef.current = Date.now();
-        await fetchProfiles();
-      }
-      refreshTimeoutRef.current = null;
-    }, remainingTime);
+    pendingRefreshRef.current = true;
+    await fetchProfiles();
   }, [fetchProfiles]);
 
-  // Initial fetch on mount and user change
   useEffect(() => {
-    let mounted = true;
     isMountedRef.current = true;
 
-    const initializeProfiles = async () => {
-      if (mounted && user) {
-        await fetchProfiles();
-      }
-    };
+    if (!userId) {
+      setProfiles([]);
+      setLoading(false);
+      pendingRefreshRef.current = false;
+      inFlightRef.current = null;
+      return () => {
+        isMountedRef.current = false;
+      };
+    }
 
-    initializeProfiles();
+    void fetchProfiles();
 
     return () => {
-      mounted = false;
       isMountedRef.current = false;
-      
-      // Clean up timeout
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current);
-        refreshTimeoutRef.current = null;
-      }
+      pendingRefreshRef.current = false;
     };
-  }, [user?.id]); // Only depend on user.id to avoid unnecessary re-runs
+  }, [userId, fetchProfiles]);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current);
-        refreshTimeoutRef.current = null;
-      }
-    };
-  }, []);
-
-  // Memoize context value to prevent unnecessary re-renders
   const contextValue = useMemo(
     () => ({
       profiles,
       refreshProfiles,
       loading,
     }),
-    [profiles, refreshProfiles, loading]
+    [profiles, refreshProfiles, loading],
   );
 
   return (

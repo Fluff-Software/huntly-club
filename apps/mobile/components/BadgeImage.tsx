@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleProp, ViewStyle } from "react-native";
+import { ImageStyle, StyleProp } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 import { ThemedText } from "@/components/ThemedText";
 import { Badge, getBadgeDisplay } from "@/services/badgeService";
@@ -9,7 +9,7 @@ type BadgeImageProps = {
   badge: Pick<Badge, "image_url">;
   size: number;
   emojiFontSize?: number;
-  style?: StyleProp<ViewStyle>;
+  style?: StyleProp<ImageStyle>;
   /** When true, skip cross-fade so cached images appear instantly (e.g. modals). */
   instant?: boolean;
 };

@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   ImageBackground,
   Pressable,
   StyleSheet,
@@ -31,6 +32,7 @@ const BG = require("@/assets/images/campfire-bg.jpg");
 const PREPARE_TIMEOUT_MS = 15000;
 
 type LoadState = "loading" | "preparing" | "ready" | "empty" | "error";
+type ReactionBurst = { id: string; emoji: string; createdAtMs: number };
 
 export default function CampfireScreen() {
   const { scaleW, width, height } = useLayoutScale();
@@ -57,6 +59,7 @@ export default function CampfireScreen() {
   const liveResyncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const liveChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const isLiveRef = useRef(false);
+  const [reactionBursts, setReactionBursts] = useState<ReactionBurst[]>([]);
 
   // Reload each time the screen is opened (hidden tab may stay mounted after finish).
   useFocusEffect(
@@ -192,11 +195,15 @@ export default function CampfireScreen() {
 
     // Realtime channel for future interactions (reactions, etc.).
     const channel = supabase.channel(`campfire:${bundle.session.id}`, {
-      config: { private: true, broadcast: { self: false } },
+      config: { private: true, broadcast: { self: true } },
     });
     channel.on("broadcast", { event: "reaction" }, ({ payload }) => {
-      // Placeholder for upcoming UI. Keeping it silent avoids noisy logs.
-      void payload;
+      const emoji = typeof payload?.emoji === "string" ? payload.emoji : "🔥";
+      const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      setReactionBursts((prev) => [
+        ...prev,
+        { id, emoji, createdAtMs: Date.now() },
+      ]);
     });
     channel.subscribe();
     liveChannelRef.current = channel;
@@ -272,6 +279,29 @@ export default function CampfireScreen() {
 
   const showSpinner = loadState === "loading" || loadState === "preparing";
 
+  const sendReaction = useCallback(
+    async (emoji: string) => {
+      if (!isLiveRef.current || !bundle || !liveChannelRef.current) return;
+      const playheadMs = currentTimeMs;
+      const payload = {
+        emoji,
+        at: new Date().toISOString(),
+        playhead_ms: Math.round(playheadMs),
+      };
+      try {
+        await liveChannelRef.current.send({
+          type: "broadcast",
+          event: "reaction",
+          payload,
+        });
+      } catch (e) {
+        // Silent fail: reactions are best-effort.
+        void e;
+      }
+    },
+    [bundle, currentTimeMs]
+  );
+
   return (
     <View style={styles.container}>
       <ImageBackground source={BG} style={styles.bg} resizeMode="cover">
@@ -292,6 +322,36 @@ export default function CampfireScreen() {
               approvedPhotos={bundle.approvedPhotos}
               videoPlayers={videoPlayers}
             />
+
+            {isLiveRef.current && (
+              <>
+                <ReactionOverlay
+                  bursts={reactionBursts}
+                  onPrune={(ids) => {
+                    if (ids.length === 0) return;
+                    setReactionBursts((prev) => prev.filter((b) => !ids.includes(b.id)));
+                  }}
+                  width={width}
+                  height={height}
+                />
+                <SafeAreaView
+                  pointerEvents="box-none"
+                  style={styles.liveControls}
+                >
+                  <Pressable
+                    onPress={() => void sendReaction("🔥")}
+                    style={styles.reactionButton}
+                    hitSlop={12}
+                  >
+                    <MaterialIcons
+                      name="local-fire-department"
+                      size={scaleW(22)}
+                      color="#FFF"
+                    />
+                  </Pressable>
+                </SafeAreaView>
+              </>
+            )}
           </Pressable>
         )}
 
@@ -426,4 +486,115 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  liveControls: {
+    position: "absolute",
+    right: 14,
+    bottom: 14,
+  },
+  reactionButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(24, 24, 27, 0.55)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+  },
 });
+
+function ReactionOverlay({
+  bursts,
+  onPrune,
+  width,
+  height,
+}: {
+  bursts: ReactionBurst[];
+  onPrune: (ids: string[]) => void;
+  width: number;
+  height: number;
+}) {
+  // prune bursts older than 2s
+  useEffect(() => {
+    if (bursts.length === 0) return;
+    const timer = setInterval(() => {
+      const now = Date.now();
+      const expired = bursts.filter((b) => now - b.createdAtMs > 2000).map((b) => b.id);
+      onPrune(expired);
+    }, 500);
+    return () => clearInterval(timer);
+  }, [bursts, onPrune]);
+
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {bursts.map((b, idx) => (
+        <FloatingEmoji
+          key={b.id}
+          emoji={b.emoji}
+          seed={idx}
+          width={width}
+          height={height}
+        />
+      ))}
+    </View>
+  );
+}
+
+function FloatingEmoji({
+  emoji,
+  seed,
+  width,
+  height,
+}: {
+  emoji: string;
+  seed: number;
+  width: number;
+  height: number;
+}) {
+  const anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: 1800,
+      useNativeDriver: true,
+    }).start();
+  }, [anim]);
+
+  const x = useMemo(() => {
+    const base = width * 0.72;
+    const spread = Math.min(90, width * 0.18);
+    const r = ((seed * 2654435761) % 1000) / 1000;
+    return base + (r - 0.5) * spread;
+  }, [seed, width]);
+
+  const y0 = height * 0.78;
+
+  const translateY = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -140],
+  });
+  const opacity = anim.interpolate({
+    inputRange: [0, 0.15, 1],
+    outputRange: [0, 1, 0],
+  });
+  const scale = anim.interpolate({
+    inputRange: [0, 0.2, 1],
+    outputRange: [0.9, 1, 1.05],
+  });
+
+  return (
+    <Animated.Text
+      style={{
+        position: "absolute",
+        left: x,
+        top: y0,
+        fontSize: 26,
+        opacity,
+        transform: [{ translateY }, { scale }],
+      }}
+    >
+      {emoji}
+    </Animated.Text>
+  );
+}

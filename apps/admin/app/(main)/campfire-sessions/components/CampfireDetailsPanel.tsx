@@ -12,6 +12,7 @@ import {
   CampfireStatusPill,
 } from "./CampfireStatusPill";
 import { SessionMissionsModal } from "./SessionMissionsModal";
+import { SessionDateTimePicker } from "./SessionDateTimePicker";
 
 type Props = {
   session: CampfireSessionRow;
@@ -26,10 +27,6 @@ export function CampfireDetailsPanel({
   timelineDurationMs,
   onSessionChange,
 }: Props) {
-  const scheduledLocal = session.scheduled_at
-    ? new Date(session.scheduled_at).toISOString().slice(0, 16)
-    : "";
-
   const selectedCount = session.missions.length;
   const [missionsModalOpen, setMissionsModalOpen] = useState(false);
 
@@ -66,7 +63,7 @@ export function CampfireDetailsPanel({
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="panel-scroll min-h-0 flex-1 overflow-y-auto">
         <PanelSection title="Details">
           <Field label="Title" htmlFor="session-title">
             <input
@@ -108,18 +105,12 @@ export function CampfireDetailsPanel({
           <Field
             label="Scheduled"
             htmlFor="session-scheduled"
-            hint="Local time. Leave empty for unscheduled sessions."
+            hint="Shown and edited in the club’s timezone. Leave empty for unscheduled sessions."
           >
-            <input
+            <SessionDateTimePicker
               id="session-scheduled"
-              type="datetime-local"
-              value={scheduledLocal}
-              onChange={(e) => {
-                const v = e.target.value;
-                onSessionChange({
-                  scheduled_at: v ? new Date(v).toISOString() : null,
-                });
-              }}
+              value={session.scheduled_at}
+              onChange={(iso) => onSessionChange({ scheduled_at: iso })}
               className={inputClass}
             />
           </Field>

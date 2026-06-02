@@ -46,18 +46,19 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const [checkingProfiles, setCheckingProfiles] = useState(true);
 
   useEffect(() => {
-    if (loading) return;
-
     const inAuthGroup = segments[0] === "auth";
     const inGetStarted = segments[0] === "get-started";
     const inSignUp = segments[0] === "sign-up";
     const inPrivacy = segments[0] === "privacy";
     const inUnauthFlow = inAuthGroup || inGetStarted || inSignUp || inPrivacy;
 
-    if (!user && !inUnauthFlow) {
+    // Keep signed-out users off app routes even while auth is re-validating (e.g. after sign-out).
+    if (!user && !session && !inUnauthFlow && !loading) {
       router.replace("/auth");
       return;
     }
+
+    if (loading) return;
 
     if (!user && inUnauthFlow) {
       setCheckingProfiles(false);

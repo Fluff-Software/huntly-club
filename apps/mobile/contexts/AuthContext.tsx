@@ -6,6 +6,7 @@ import React, {
   useCallback,
 } from "react";
 import { AppState, AppStateStatus } from "react-native";
+import { useRouter } from "expo-router";
 import {
   getCurrentUser,
   signIn,
@@ -31,9 +32,17 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function navigateToAuthScreen(router: ReturnType<typeof useRouter>) {
+  if (router.canDismiss()) {
+    router.dismissAll();
+  }
+  router.replace("/auth");
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -148,10 +157,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       await signOut();
       setSession(null);
       await updateUser(null);
+      navigateToAuthScreen(router);
     } finally {
       setLoading(false);
     }
-  }, [updateUser]);
+  }, [updateUser, router]);
 
   // When app comes to foreground, check if account was removed (server-side); if so, sign out.
   useEffect(() => {

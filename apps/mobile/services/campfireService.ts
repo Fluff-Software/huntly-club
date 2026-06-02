@@ -46,6 +46,8 @@ export type CampfireSessionRow = {
   title: string;
   status: CampfireSessionStatus;
   scheduled_at: string | null;
+  live_started_at?: string | null;
+  live_ended_at?: string | null;
   duration: number | null;
   description: string | null;
   thumbnail_url: string | null;
@@ -109,7 +111,75 @@ export const CAMPFIRE_BUILTIN_CAPTAINS: CaptainOption[] = [
 ];
 
 const SESSION_COLUMNS =
-  "id, title, status, scheduled_at, duration, description, thumbnail_url";
+  "id, title, status, scheduled_at, live_started_at, live_ended_at, duration, description, thumbnail_url";
+
+export async function getServerNowIso(): Promise<string | null> {
+  const { data, error } = await supabase.rpc("get_server_now");
+  if (error) {
+    console.error("Failed to load server time:", error.message);
+    return null;
+  }
+  return typeof data === "string" ? data : (data as string | null);
+}
+
+/**
+ * Returns the most recent campfire session in "live" status, or null.
+ */
+export async function getLatestLiveSession(): Promise<CampfireSessionRow | null> {
+  const { data, error } = await supabase
+    .from("campfire_sessions")
+    .select(SESSION_COLUMNS)
+    .eq("status", "live")
+    .order("live_started_at", { ascending: false, nullsFirst: false })
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to load latest live campfire session:", error);
+    return null;
+  }
+  return (data as CampfireSessionRow | null) ?? null;
+}
+
+/**
+ * Returns the next scheduled session (scheduled_at in the future), or null.
+ */
+export async function getNextScheduledSession(): Promise<CampfireSessionRow | null> {
+  const nowIso = await getServerNowIso();
+  const now = nowIso ? new Date(nowIso) : new Date();
+  const { data, error } = await supabase
+    .from("campfire_sessions")
+    .select(SESSION_COLUMNS)
+    .eq("status", "scheduled")
+    .not("scheduled_at", "is", null)
+    .gte("scheduled_at", now.toISOString())
+    .order("scheduled_at", { ascending: true, nullsFirst: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to load next scheduled campfire session:", error);
+    return null;
+  }
+  return (data as CampfireSessionRow | null) ?? null;
+}
+
+export async function getCampfireSessionById(
+  sessionId: number
+): Promise<CampfireSessionRow | null> {
+  const { data, error } = await supabase
+    .from("campfire_sessions")
+    .select(SESSION_COLUMNS)
+    .eq("id", sessionId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to load campfire session:", error);
+    return null;
+  }
+  return (data as CampfireSessionRow | null) ?? null;
+}
 
 /** Campfire stage captain art: `season-images/captains/camp-{slug}.webp`. */
 export function getCampfireCaptainImageUrl(slug: string): string | null {

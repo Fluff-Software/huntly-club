@@ -920,7 +920,7 @@ export default function HomeScreen() {
         )}
 
         {/* Campfire tile */}
-        {/* <CampfireTile /> */}
+        <CampfireTile />
 
         {/* Club photos */}
         {clubCards.length > 0 && (

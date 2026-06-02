@@ -283,20 +283,26 @@ export default function CampfireScreen() {
     async (emoji: string) => {
       if (!isLiveRef.current || !bundle || !liveChannelRef.current) return;
       const playheadMs = currentTimeMs;
-      const payload = {
-        emoji,
-        at: new Date().toISOString(),
-        playhead_ms: Math.round(playheadMs),
-      };
       try {
-        await liveChannelRef.current.send({
-          type: "broadcast",
-          event: "reaction",
-          payload,
+        const { data } = await supabase.auth.getUser();
+        if (!data.user) throw new Error("not_authenticated");
+        const { error } = await supabase.from("campfire_reactions").insert({
+          session_id: bundle.session.id,
+          emoji,
+          playhead_ms: Math.round(playheadMs),
         });
+        if (error) throw error;
       } catch (e) {
-        // Silent fail: reactions are best-effort.
-        void e;
+        // Best-effort fallback (e.g. if user isn't authed yet).
+        try {
+          await liveChannelRef.current.send({
+            type: "broadcast",
+            event: "reaction",
+            payload: { emoji, at: new Date().toISOString(), playhead_ms: Math.round(playheadMs) },
+          });
+        } catch {
+          void e;
+        }
       }
     },
     [bundle, currentTimeMs]

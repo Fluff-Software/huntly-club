@@ -33,6 +33,7 @@ const PREPARE_TIMEOUT_MS = 15000;
 
 type LoadState = "loading" | "preparing" | "ready" | "empty" | "error";
 type ReactionBurst = { id: string; emoji: string; createdAtMs: number };
+type PresenceState = Record<string, unknown[]>;
 
 export default function CampfireScreen() {
   const { scaleW, width, height } = useLayoutScale();
@@ -60,6 +61,7 @@ export default function CampfireScreen() {
   const liveChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const isLiveRef = useRef(false);
   const [reactionBursts, setReactionBursts] = useState<ReactionBurst[]>([]);
+  const [viewerCount, setViewerCount] = useState<number>(0);
 
   // Reload each time the screen is opened (hidden tab may stay mounted after finish).
   useFocusEffect(
@@ -205,8 +207,38 @@ export default function CampfireScreen() {
         { id, emoji, createdAtMs: Date.now() },
       ]);
     });
+
+    const updateViewerCount = () => {
+      const state = channel.presenceState() as PresenceState;
+      setViewerCount(Object.keys(state).length);
+    };
+
+    channel
+      .on("presence", { event: "sync" }, updateViewerCount)
+      .on("presence", { event: "join" }, updateViewerCount)
+      .on("presence", { event: "leave" }, updateViewerCount);
+
     channel.subscribe();
     liveChannelRef.current = channel;
+
+    // Track presence (viewer count). Only for authenticated users.
+    void supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return;
+      // Set a stable presence key based on user id.
+      channel.updateJoinPayload({
+        config: {
+          private: true,
+          broadcast: { self: true },
+          presence: { key: data.user.id },
+        },
+      });
+      // Track a small payload (kept minimal; presence is not for high-frequency updates).
+      try {
+        await channel.track({ online_at: new Date().toISOString() });
+      } catch {
+        // Presence is best-effort.
+      }
+    });
 
     // Periodically resync with server time to keep playhead accurate.
     liveResyncTimerRef.current = setInterval(async () => {
@@ -247,6 +279,7 @@ export default function CampfireScreen() {
         supabase.removeChannel(liveChannelRef.current);
         liveChannelRef.current = null;
       }
+      setViewerCount(0);
     };
   }, [loadState, bundle, durationMs]);
 
@@ -344,6 +377,12 @@ export default function CampfireScreen() {
                   pointerEvents="box-none"
                   style={styles.liveControls}
                 >
+                  <View style={styles.viewerPill}>
+                    <View style={styles.viewerDot} />
+                    <ThemedText style={styles.viewerText}>
+                      {viewerCount}
+                    </ThemedText>
+                  </View>
                   <Pressable
                     onPress={() => void sendReaction("🔥")}
                     style={styles.reactionButton}
@@ -496,6 +535,30 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 14,
     bottom: 14,
+    alignItems: "center",
+    gap: 10,
+  },
+  viewerPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "rgba(24, 24, 27, 0.55)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  viewerDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#4ADE80",
+  },
+  viewerText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#FFFFFF",
   },
   reactionButton: {
     width: 44,

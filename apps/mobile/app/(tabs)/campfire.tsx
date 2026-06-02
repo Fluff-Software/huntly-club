@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
@@ -20,6 +20,7 @@ import {
   getCampfireSessionBundle,
   getLatestLiveSession,
   getLatestReplaySession,
+  getNextScheduledSession,
   getServerNowIso,
   sessionDurationMs,
   type CampfireSessionBundle,
@@ -31,18 +32,36 @@ const BG = require("@/assets/images/campfire-bg.jpg");
 /** Hard cap so a slow/broken asset can never trap the user on the spinner. */
 const PREPARE_TIMEOUT_MS = 15000;
 
-type LoadState = "loading" | "preparing" | "ready" | "empty" | "error";
+type LoadState =
+  | "loading"
+  | "preparing"
+  | "ready"
+  | "countdown"
+  | "empty"
+  | "error";
 type ReactionBurst = { id: string; emoji: string; createdAtMs: number };
 type PresenceState = Record<string, unknown[]>;
+type CountdownParts = { hrs: number; mins: number; secs: number };
+
+function formatCountdown(ms: number): CountdownParts {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const hrs = Math.floor(total / 3600);
+  const mins = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+  return { hrs, mins, secs };
+}
 
 export default function CampfireScreen() {
   const { scaleW, width, height } = useLayoutScale();
+  const params = useLocalSearchParams<{ mode?: string }>();
 
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [bundle, setBundle] = useState<CampfireSessionBundle | null>(null);
   const [currentTimeMs, setCurrentTimeMs] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [mediaReady, setMediaReady] = useState(false);
+  const [countdownMs, setCountdownMs] = useState<number>(0);
+  const countdownTargetRef = useRef<number | null>(null);
 
   const { players: videoPlayers, ready: videosReady } = useCampfireVideoPlayers(
     bundle?.components ?? null
@@ -62,42 +81,100 @@ export default function CampfireScreen() {
   const isLiveRef = useRef(false);
   const [reactionBursts, setReactionBursts] = useState<ReactionBurst[]>([]);
   const [viewerCount, setViewerCount] = useState<number>(0);
+  const loadTokenRef = useRef(0);
 
-  // Reload each time the screen is opened (hidden tab may stay mounted after finish).
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
+  const loadCampfire = useCallback(
+    async (modeOverride?: string) => {
+      const token = ++loadTokenRef.current;
+      const mode = modeOverride ?? params.mode;
+
       hasExitedAfterFinishRef.current = false;
       setMediaReady(false);
       setCurrentTimeMs(0);
       setIsPlaying(false);
       setLoadState("loading");
 
-      (async () => {
-        const live = await getLatestLiveSession();
-        const session = live ?? (await getLatestReplaySession());
-        if (cancelled) return;
+      const safeSet = (fn: () => void) => {
+        if (loadTokenRef.current !== token) return;
+        fn();
+      };
+
+      if (mode === "replay") {
+        const session = await getLatestReplaySession();
+        if (loadTokenRef.current !== token) return;
         if (!session) {
-          setLoadState("empty");
+          safeSet(() => setLoadState("empty"));
           return;
         }
         const data = await getCampfireSessionBundle(session.id);
-        if (cancelled) return;
+        if (loadTokenRef.current !== token) return;
         if (!data) {
-          setLoadState("error");
+          safeSet(() => setLoadState("error"));
           return;
         }
-        setBundle(data);
-        // Live sessions should start "in progress" for late joiners.
-        if (session.status === "live" && session.live_started_at) {
-          const serverNowIso = await getServerNowIso();
-          if (cancelled) return;
-          const serverNowMs = serverNowIso ? Date.parse(serverNowIso) : Date.now();
+        safeSet(() => {
+          setBundle(data);
+          setCurrentTimeMs(0);
+          isLiveRef.current = false;
+          liveClockRef.current = null;
+          setLoadState("preparing");
+        });
+        return;
+      }
+
+      if (mode === "scheduled") {
+        const next = await getNextScheduledSession();
+        if (loadTokenRef.current !== token) return;
+        if (!next?.scheduled_at) {
+          safeSet(() => setLoadState("empty"));
+          return;
+        }
+        const startMs = Date.parse(next.scheduled_at);
+        const nowIso = await getServerNowIso();
+        if (loadTokenRef.current !== token) return;
+        const nowMs = nowIso ? Date.parse(nowIso) : Date.now();
+        const remaining = Math.max(0, startMs - nowMs);
+        if (remaining > 0) {
+          safeSet(() => {
+            countdownTargetRef.current = startMs;
+            setCountdownMs(remaining);
+            setBundle(null);
+            isLiveRef.current = false;
+            liveClockRef.current = null;
+            setLoadState("countdown");
+          });
+          return;
+        }
+        // If start time has passed, fall through to normal live/replay loading.
+      }
+
+      const live = await getLatestLiveSession();
+      const session = live ?? (await getLatestReplaySession());
+      if (loadTokenRef.current !== token) return;
+      if (!session) {
+        safeSet(() => setLoadState("empty"));
+        return;
+      }
+      const data = await getCampfireSessionBundle(session.id);
+      if (loadTokenRef.current !== token) return;
+      if (!data) {
+        safeSet(() => setLoadState("error"));
+        return;
+      }
+
+      safeSet(() => setBundle(data));
+
+      // Live sessions should start "in progress" for late joiners.
+      if (session.status === "live" && session.live_started_at) {
+        const serverNowIso = await getServerNowIso();
+        if (loadTokenRef.current !== token) return;
+        const serverNowMs = serverNowIso ? Date.parse(serverNowIso) : Date.now();
+        safeSet(() => {
           serverSkewMsRef.current = serverNowMs - Date.now();
-          const startedMs = Date.parse(session.live_started_at);
+          const startedMs = Date.parse(session.live_started_at!);
           const elapsed = Math.max(0, serverNowMs - startedMs);
           const d = Math.max(1, session.duration ?? sessionDurationMs(data));
-          const playhead = d > 0 ? elapsed % d : 0;
+          const playhead = Math.min(elapsed, d);
           liveClockRef.current = {
             deviceStartMs: Date.now(),
             playheadStartMs: playhead,
@@ -105,16 +182,30 @@ export default function CampfireScreen() {
           };
           isLiveRef.current = true;
           setCurrentTimeMs(playhead);
-        } else {
+        });
+      } else {
+        safeSet(() => {
           liveClockRef.current = null;
           isLiveRef.current = false;
           setCurrentTimeMs(0);
-        }
-        setLoadState("preparing");
-      })();
+        });
+      }
+
+      safeSet(() => setLoadState("preparing"));
+    },
+    [params.mode]
+  );
+
+  // Reload each time the screen is opened (hidden tab may stay mounted after finish).
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      void loadCampfire();
 
       return () => {
         cancelled = true;
+        if (cancelled) loadTokenRef.current++;
+        countdownTargetRef.current = null;
         if (liveResyncTimerRef.current) {
           clearInterval(liveResyncTimerRef.current);
           liveResyncTimerRef.current = null;
@@ -123,10 +214,35 @@ export default function CampfireScreen() {
           supabase.removeChannel(liveChannelRef.current);
           liveChannelRef.current = null;
         }
+        // Ensure no audio keeps playing when leaving the tab/screen.
         setIsPlaying(false);
+        setLoadState("loading");
+        setBundle(null);
+        setCurrentTimeMs(0);
+        setMediaReady(false);
       };
-    }, [])
+    }, [loadCampfire])
   );
+
+  // Countdown ticker for scheduled session flow.
+  useEffect(() => {
+    if (loadState !== "countdown") return;
+    const timer = setInterval(async () => {
+      const target = countdownTargetRef.current;
+      if (!target) return;
+      const nowIso = await getServerNowIso();
+      const nowMs = nowIso ? Date.parse(nowIso) : Date.now();
+      const remaining = Math.max(0, target - nowMs);
+      setCountdownMs(remaining);
+      if (remaining <= 0) {
+        // Jump back into normal campfire flow (live should be promoted by cron).
+        countdownTargetRef.current = null;
+        router.replace("/(tabs)/campfire");
+        void loadCampfire(undefined);
+      }
+    }, 500);
+    return () => clearInterval(timer);
+  }, [loadState, loadCampfire]);
 
   // 2. Prefetch images before reveal (audio loads in useCampfireAudio).
   useEffect(() => {
@@ -174,7 +290,12 @@ export default function CampfireScreen() {
           const { deviceStartMs, playheadStartMs, durationMs: liveDuration } =
             liveClockRef.current;
           const next = playheadStartMs + (now - deviceStartMs);
-          return liveDuration > 0 ? next % liveDuration : 0;
+          if (liveDuration <= 0) return 0;
+          if (next >= liveDuration) {
+            setIsPlaying(false);
+            return liveDuration;
+          }
+          return next;
         }
 
         const next = t + delta;
@@ -253,7 +374,7 @@ export default function CampfireScreen() {
       const d =
         liveClockRef.current?.durationMs ??
         Math.max(1, bundle.session.duration ?? durationMs);
-      const expected = d > 0 ? elapsed % d : 0;
+      const expected = Math.min(elapsed, d);
 
       // If we're off by more than ~300ms, snap.
       setCurrentTimeMs((current) => {
@@ -311,6 +432,10 @@ export default function CampfireScreen() {
   }, []);
 
   const showSpinner = loadState === "loading" || loadState === "preparing";
+  const countdownParts = useMemo(
+    () => formatCountdown(countdownMs),
+    [countdownMs]
+  );
 
   const sendReaction = useCallback(
     async (emoji: string) => {
@@ -398,6 +523,84 @@ export default function CampfireScreen() {
               </>
             )}
           </Pressable>
+        )}
+
+        {loadState === "countdown" && (
+          <View style={styles.centerFill}>
+            <View style={styles.countdownCard}>
+              <ThemedText
+                type="heading"
+                style={{
+                  fontSize: scaleW(18),
+                  fontWeight: "900",
+                  color: "#3B1A06",
+                  textAlign: "center",
+                }}
+              >
+                Weekly Campfire
+              </ThemedText>
+              <ThemedText
+                style={{
+                  marginTop: scaleW(6),
+                  fontSize: scaleW(13),
+                  fontWeight: "700",
+                  color: "#6B3D1A",
+                  textAlign: "center",
+                }}
+              >
+                Starts in
+              </ThemedText>
+
+              <View
+                style={{
+                  marginTop: scaleW(14),
+                  flexDirection: "row",
+                  justifyContent: "center",
+                  gap: scaleW(10),
+                }}
+              >
+                {[
+                  { v: countdownParts.hrs, label: "HRS" },
+                  { v: countdownParts.mins, label: "MINS" },
+                  { v: countdownParts.secs, label: "SECS" },
+                ].map((b) => (
+                  <View key={b.label} style={styles.countdownBox}>
+                    <ThemedText
+                      style={{
+                        fontSize: scaleW(22),
+                        fontWeight: "900",
+                        color: "#3B1A06",
+                      }}
+                    >
+                      {String(b.v).padStart(2, "0")}
+                    </ThemedText>
+                    <ThemedText
+                      style={{
+                        marginTop: scaleW(2),
+                        fontSize: scaleW(10),
+                        fontWeight: "900",
+                        color: "#6B3D1A",
+                      }}
+                    >
+                      {b.label}
+                    </ThemedText>
+                  </View>
+                ))}
+              </View>
+
+              <ThemedText
+                style={{
+                  marginTop: scaleW(14),
+                  fontSize: scaleW(12),
+                  fontWeight: "700",
+                  color: "#3B1A06",
+                  textAlign: "center",
+                }}
+              >
+                We’ll start automatically when it begins.
+              </ThemedText>
+            </View>
+          </View>
         )}
 
         {showSpinner && (
@@ -504,6 +707,24 @@ const styles = StyleSheet.create({
     marginHorizontal: 40,
     alignItems: "center",
     maxWidth: 320,
+  },
+  countdownCard: {
+    backgroundColor: "rgba(255,255,255,0.92)",
+    borderRadius: 20,
+    paddingVertical: 24,
+    paddingHorizontal: 22,
+    marginHorizontal: 34,
+    alignItems: "center",
+    maxWidth: 340,
+  },
+  countdownBox: {
+    backgroundColor: "rgba(255,255,255,0.72)",
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    minWidth: 62,
+    alignItems: "center",
+    justifyContent: "center",
   },
   playBadge: {
     width: 84,

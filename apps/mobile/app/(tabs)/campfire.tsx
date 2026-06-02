@@ -192,7 +192,7 @@ export default function CampfireScreen() {
 
     // Realtime channel for future interactions (reactions, etc.).
     const channel = supabase.channel(`campfire:${bundle.session.id}`, {
-      config: { broadcast: { self: false } },
+      config: { private: true, broadcast: { self: false } },
     });
     channel.on("broadcast", { event: "reaction" }, ({ payload }) => {
       // Placeholder for upcoming UI. Keeping it silent avoids noisy logs.

@@ -17,10 +17,13 @@ import { useCampfireVideoPlayers } from "@/components/campfire/useCampfireVideoP
 import { prepareCampfireMedia } from "@/components/campfire/prepareCampfireMedia";
 import {
   getCampfireSessionBundle,
+  getLatestLiveSession,
   getLatestReplaySession,
+  getServerNowIso,
   sessionDurationMs,
   type CampfireSessionBundle,
 } from "@/services/campfireService";
+import { supabase } from "@/services/supabase";
 
 const BG = require("@/assets/images/campfire-bg.jpg");
 
@@ -45,6 +48,15 @@ export default function CampfireScreen() {
   const durationMs = bundle ? sessionDurationMs(bundle) : 0;
   const finished = durationMs > 0 && currentTimeMs >= durationMs;
   const hasExitedAfterFinishRef = useRef(false);
+  const liveClockRef = useRef<{
+    deviceStartMs: number;
+    playheadStartMs: number;
+    durationMs: number;
+  } | null>(null);
+  const serverSkewMsRef = useRef(0);
+  const liveResyncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const liveChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const isLiveRef = useRef(false);
 
   // Reload each time the screen is opened (hidden tab may stay mounted after finish).
   useFocusEffect(
@@ -57,7 +69,8 @@ export default function CampfireScreen() {
       setLoadState("loading");
 
       (async () => {
-        const session = await getLatestReplaySession();
+        const live = await getLatestLiveSession();
+        const session = live ?? (await getLatestReplaySession());
         if (cancelled) return;
         if (!session) {
           setLoadState("empty");
@@ -70,12 +83,41 @@ export default function CampfireScreen() {
           return;
         }
         setBundle(data);
-        setCurrentTimeMs(0);
+        // Live sessions should start "in progress" for late joiners.
+        if (session.status === "live" && session.live_started_at) {
+          const serverNowIso = await getServerNowIso();
+          if (cancelled) return;
+          const serverNowMs = serverNowIso ? Date.parse(serverNowIso) : Date.now();
+          serverSkewMsRef.current = serverNowMs - Date.now();
+          const startedMs = Date.parse(session.live_started_at);
+          const elapsed = Math.max(0, serverNowMs - startedMs);
+          const d = Math.max(1, session.duration ?? sessionDurationMs(data));
+          const playhead = d > 0 ? elapsed % d : 0;
+          liveClockRef.current = {
+            deviceStartMs: Date.now(),
+            playheadStartMs: playhead,
+            durationMs: d,
+          };
+          isLiveRef.current = true;
+          setCurrentTimeMs(playhead);
+        } else {
+          liveClockRef.current = null;
+          isLiveRef.current = false;
+          setCurrentTimeMs(0);
+        }
         setLoadState("preparing");
       })();
 
       return () => {
         cancelled = true;
+        if (liveResyncTimerRef.current) {
+          clearInterval(liveResyncTimerRef.current);
+          liveResyncTimerRef.current = null;
+        }
+        if (liveChannelRef.current) {
+          supabase.removeChannel(liveChannelRef.current);
+          liveChannelRef.current = null;
+        }
         setIsPlaying(false);
       };
     }, [])
@@ -122,6 +164,14 @@ export default function CampfireScreen() {
       const delta = now - last;
       last = now;
       setCurrentTimeMs((t) => {
+        // Live playback derives time from the shared clock, not accumulated deltas.
+        if (isLiveRef.current && liveClockRef.current) {
+          const { deviceStartMs, playheadStartMs, durationMs: liveDuration } =
+            liveClockRef.current;
+          const next = playheadStartMs + (now - deviceStartMs);
+          return liveDuration > 0 ? next % liveDuration : 0;
+        }
+
         const next = t + delta;
         if (next >= durationMs) {
           setIsPlaying(false);
@@ -134,6 +184,64 @@ export default function CampfireScreen() {
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [isPlaying, durationMs]);
+
+  // Live drift correction + realtime channel hookup.
+  useEffect(() => {
+    if (loadState !== "ready" || !bundle) return;
+    if (!isLiveRef.current || !bundle.session.live_started_at) return;
+
+    // Realtime channel for future interactions (reactions, etc.).
+    const channel = supabase.channel(`campfire:${bundle.session.id}`, {
+      config: { broadcast: { self: false } },
+    });
+    channel.on("broadcast", { event: "reaction" }, ({ payload }) => {
+      // Placeholder for upcoming UI. Keeping it silent avoids noisy logs.
+      void payload;
+    });
+    channel.subscribe();
+    liveChannelRef.current = channel;
+
+    // Periodically resync with server time to keep playhead accurate.
+    liveResyncTimerRef.current = setInterval(async () => {
+      if (!bundle.session.live_started_at) return;
+      const serverNowIso = await getServerNowIso();
+      if (!serverNowIso) return;
+
+      const serverNowMs = Date.parse(serverNowIso);
+      serverSkewMsRef.current = serverNowMs - Date.now();
+      const startedMs = Date.parse(bundle.session.live_started_at);
+      const elapsed = Math.max(0, serverNowMs - startedMs);
+      const d =
+        liveClockRef.current?.durationMs ??
+        Math.max(1, bundle.session.duration ?? durationMs);
+      const expected = d > 0 ? elapsed % d : 0;
+
+      // If we're off by more than ~300ms, snap.
+      setCurrentTimeMs((current) => {
+        const diff = Math.abs(current - expected);
+        if (diff > 300) {
+          liveClockRef.current = {
+            deviceStartMs: Date.now(),
+            playheadStartMs: expected,
+            durationMs: d,
+          };
+          return expected;
+        }
+        return current;
+      });
+    }, 15000);
+
+    return () => {
+      if (liveResyncTimerRef.current) {
+        clearInterval(liveResyncTimerRef.current);
+        liveResyncTimerRef.current = null;
+      }
+      if (liveChannelRef.current) {
+        supabase.removeChannel(liveChannelRef.current);
+        liveChannelRef.current = null;
+      }
+    };
+  }, [loadState, bundle, durationMs]);
 
   // Return to the home tab when playback reaches the end.
   useEffect(() => {

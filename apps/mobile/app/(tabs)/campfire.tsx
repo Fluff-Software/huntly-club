@@ -25,6 +25,11 @@ import {
   sessionDurationMs,
   type CampfireSessionBundle,
 } from "@/services/campfireService";
+import {
+  getCampfireLivePreload,
+  invalidateCampfireLivePreload,
+  waitForCampfireLivePreload,
+} from "@/services/campfireLivePreload";
 import { supabase } from "@/services/supabase";
 
 const BG = require("@/assets/images/campfire-bg.jpg");
@@ -155,14 +160,31 @@ export default function CampfireScreen() {
         safeSet(() => setLoadState("empty"));
         return;
       }
-      const data = await getCampfireSessionBundle(session.id);
+
+      let preloadedImages = false;
+      let data: CampfireSessionBundle | null = null;
+      if (session.status === "live") {
+        const cached =
+          getCampfireLivePreload(session.id) ??
+          (await waitForCampfireLivePreload(session.id));
+        if (cached) {
+          data = cached.bundle;
+          preloadedImages = cached.imagesReady;
+        }
+      }
+      if (!data) {
+        data = await getCampfireSessionBundle(session.id);
+      }
       if (loadTokenRef.current !== token) return;
       if (!data) {
         safeSet(() => setLoadState("error"));
         return;
       }
 
-      safeSet(() => setBundle(data));
+      safeSet(() => {
+        setBundle(data);
+        if (preloadedImages) setMediaReady(true);
+      });
 
       // Live sessions should start "in progress" for late joiners.
       if (session.status === "live" && session.live_started_at) {
@@ -220,6 +242,7 @@ export default function CampfireScreen() {
         setBundle(null);
         setCurrentTimeMs(0);
         setMediaReady(false);
+        invalidateCampfireLivePreload();
       };
     }, [loadCampfire])
   );
@@ -247,6 +270,7 @@ export default function CampfireScreen() {
   // 2. Prefetch images before reveal (audio loads in useCampfireAudio).
   useEffect(() => {
     if (loadState !== "preparing" || !bundle) return;
+    if (mediaReady) return;
     let cancelled = false;
     void prepareCampfireMedia(bundle).then(() => {
       if (!cancelled) setMediaReady(true);
@@ -254,7 +278,7 @@ export default function CampfireScreen() {
     return () => {
       cancelled = true;
     };
-  }, [loadState, bundle]);
+  }, [loadState, bundle, mediaReady]);
 
   // 3. Reveal the stage only once images, audio and video are all ready.
   useEffect(() => {

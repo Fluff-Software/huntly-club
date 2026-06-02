@@ -1,10 +1,18 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View, ImageBackground, Pressable } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
-import { getNextScheduledSession } from "@/services/campfireService";
+import {
+  getLatestLiveSession,
+  getNextScheduledSession,
+  type CampfireSessionRow,
+} from "@/services/campfireService";
+import {
+  invalidateCampfireLivePreload,
+  startCampfireLivePreload,
+} from "@/services/campfireLivePreload";
 
 const TILE_BG = require("@/assets/images/campfire-tile-bg.png");
 
@@ -13,6 +21,7 @@ const BROWN_DEEP = "#3B1A06";
 const BROWN_MID = "#6B3D1A";
 const GREEN = "#2F6B43";
 const CREAM = "#F6EBDD";
+const LIVE_RED = "#C0392B";
 
 const SOON_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -26,28 +35,55 @@ function formatCountdownParts(ms: number) {
 
 export function CampfireTile() {
   const { scaleW } = useLayoutScale();
+  const [liveSession, setLiveSession] = useState<CampfireSessionRow | null>(null);
   const [scheduledAtMs, setScheduledAtMs] = useState<number | null>(null);
   const [countdownMs, setCountdownMs] = useState<number>(0);
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const next = await getNextScheduledSession();
-      if (cancelled) return;
-      const at = next?.scheduled_at ? Date.parse(next.scheduled_at) : null;
-      if (!at) return;
-      const now = Date.now();
-      const delta = at - now;
-      if (delta > 0 && delta <= SOON_WINDOW_MS) {
-        setScheduledAtMs(at);
-        setCountdownMs(delta);
-      }
-    })();
+  const refresh = useCallback(async () => {
+    const live = await getLatestLiveSession();
+    if (live) {
+      setLiveSession(live);
+      setScheduledAtMs(null);
+      setCountdownMs(0);
+      startCampfireLivePreload(live);
+      return;
+    }
+    setLiveSession(null);
+    invalidateCampfireLivePreload();
 
-    return () => {
-      cancelled = true;
-    };
+    const next = await getNextScheduledSession();
+    const at = next?.scheduled_at ? Date.parse(next.scheduled_at) : null;
+    if (!at) {
+      setScheduledAtMs(null);
+      setCountdownMs(0);
+      return;
+    }
+    const now = Date.now();
+    const delta = at - now;
+    if (delta > 0 && delta <= SOON_WINDOW_MS) {
+      setScheduledAtMs(at);
+      setCountdownMs(delta);
+      return;
+    }
+    // Session is no longer "soon" (already started/ended or too far away).
+    setScheduledAtMs(null);
+    setCountdownMs(0);
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refresh();
+    }, [refresh])
+  );
+
+  // Safety net: keep the tile fresh even if status flips while user stays on home.
+  useEffect(() => {
+    void refresh();
+    const t = setInterval(() => {
+      void refresh();
+    }, 30_000);
+    return () => clearInterval(t);
+  }, [refresh]);
 
   useEffect(() => {
     if (!scheduledAtMs) return;
@@ -61,6 +97,117 @@ export function CampfireTile() {
     () => formatCountdownParts(countdownMs),
     [countdownMs]
   );
+
+  if (liveSession) {
+    return (
+      <View
+        style={{
+          borderRadius: scaleW(22),
+          minHeight: scaleW(150),
+          overflow: "hidden",
+          shadowColor: "#000",
+          shadowOpacity: 0.28,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: 3 },
+          borderWidth: 3,
+          borderColor: "#FFF",
+          elevation: 4,
+        }}
+      >
+        <ImageBackground
+          source={TILE_BG}
+          resizeMode="cover"
+          style={{ flex: 1, minHeight: scaleW(150) }}
+        >
+          <View
+            style={{
+              padding: scaleW(18),
+              paddingRight: scaleW(150),
+              justifyContent: "center",
+              flex: 1,
+              gap: scaleW(10),
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                alignSelf: "flex-start",
+                backgroundColor: LIVE_RED,
+                borderRadius: scaleW(20),
+                paddingVertical: scaleW(4),
+                paddingHorizontal: scaleW(10),
+                gap: scaleW(6),
+              }}
+            >
+              <View
+                style={{
+                  width: scaleW(8),
+                  height: scaleW(8),
+                  borderRadius: scaleW(4),
+                  backgroundColor: "#FFF",
+                }}
+              />
+              <ThemedText
+                type="title"
+                lightColor="#FFFFFF"
+                darkColor="#FFFFFF"
+                style={{ fontSize: scaleW(11), fontWeight: "800", letterSpacing: 0.6 }}
+              >
+                LIVE
+              </ThemedText>
+            </View>
+
+            <View style={{ gap: scaleW(4) }}>
+              <ThemedText
+                type="title"
+                lightColor={BROWN_DEEP}
+                darkColor={BROWN_DEEP}
+                style={{ fontSize: scaleW(20), fontWeight: "900", lineHeight: scaleW(24) }}
+              >
+                Campfire is live!
+              </ThemedText>
+              {liveSession.title ? (
+                <ThemedText
+                  lightColor={BROWN_MID}
+                  darkColor={BROWN_MID}
+                  style={{ fontSize: scaleW(13), fontWeight: "600" }}
+                  numberOfLines={2}
+                >
+                  {liveSession.title}
+                </ThemedText>
+              ) : null}
+            </View>
+
+            <Pressable
+              onPress={() => router.push("/(tabs)/campfire")}
+              style={{
+                alignSelf: "flex-start",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: scaleW(8),
+                backgroundColor: "rgba(47, 107, 67, 0.92)",
+                borderRadius: scaleW(22),
+                paddingVertical: scaleW(10),
+                paddingHorizontal: scaleW(16),
+                minWidth: scaleW(180),
+              }}
+            >
+              <MaterialIcons name="local-fire-department" size={scaleW(18)} color={CREAM} />
+              <ThemedText
+                type="title"
+                lightColor={CREAM}
+                darkColor={CREAM}
+                style={{ fontSize: scaleW(15), fontWeight: "900" }}
+              >
+                Join now
+              </ThemedText>
+            </Pressable>
+          </View>
+        </ImageBackground>
+      </View>
+    );
+  }
 
   if (scheduledAtMs) {
     return (

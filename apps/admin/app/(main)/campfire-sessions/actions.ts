@@ -196,11 +196,20 @@ export async function updateCampfireSession(
     return { error: "Invalid status" };
   }
 
+  const shouldClearLiveTimes =
+    payload.status === "scheduled" ||
+    (payload.scheduled_at != null &&
+      payload.scheduled_at !== "" &&
+      Date.parse(payload.scheduled_at) > Date.now());
+
   const supabase = createServerSupabaseClient();
   const { error } = await supabase
     .from("campfire_sessions")
     .update({
       ...payload,
+      ...(shouldClearLiveTimes
+        ? { live_started_at: null, live_ended_at: null }
+        : {}),
       updated_at: new Date().toISOString(),
     })
     .eq("id", sessionId);
@@ -441,6 +450,12 @@ export async function persistCampfireEditorDraft(
 ): Promise<CampfireFormState> {
   const supabase = createServerSupabaseClient();
 
+  const shouldClearLiveTimes =
+    draft.session.status === "scheduled" ||
+    (draft.session.scheduled_at != null &&
+      draft.session.scheduled_at !== "" &&
+      Date.parse(draft.session.scheduled_at) > Date.now());
+
   const { error: sessionError } = await supabase
     .from("campfire_sessions")
     .update({
@@ -450,6 +465,9 @@ export async function persistCampfireEditorDraft(
       missions: draft.session.missions,
       description: draft.session.description,
       duration: draft.session.duration,
+      ...(shouldClearLiveTimes
+        ? { live_started_at: null, live_ended_at: null }
+        : {}),
       updated_at: new Date().toISOString(),
     })
     .eq("id", sessionId);

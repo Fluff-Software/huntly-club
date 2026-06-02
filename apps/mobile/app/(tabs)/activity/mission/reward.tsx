@@ -27,9 +27,7 @@ import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { MissionCard } from "@/components/MissionCard";
 import { getActivityById, getActivityImageSource } from "@/services/packService";
 import type { MissionCardData } from "@/constants/missionCards";
-import { useUser } from "@/contexts/UserContext";
 import { usePlayer } from "@/contexts/PlayerContext";
-import { START_MISSION_STEP } from "@/constants/startMissionOnboarding";
 import { hasOtherApprovedMissionPhotos } from "@/services/activityProgressService";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -67,7 +65,6 @@ export default function RewardScreen() {
   const navigation = useNavigation();
   const { scaleW } = useLayoutScale();
   const insets = useSafeAreaInsets();
-  const { updateStartMissionStep } = useUser();
   const { profiles } = usePlayer();
   const params = useLocalSearchParams<{
     activityId?: string;
@@ -221,14 +218,8 @@ export default function RewardScreen() {
   const handleGoHome = () => {
     if (goingHome) return;
     setGoingHome(true);
-    InteractionManager.runAfterInteractions(async () => {
-      try {
-        await updateStartMissionStep(START_MISSION_STEP.MISSION_COMPLETE);
-        router.replace("/(tabs)");
-      } catch (error) {
-        console.error("Error completing starter mission onboarding:", error);
-        setGoingHome(false);
-      }
+    InteractionManager.runAfterInteractions(() => {
+      router.replace("/(tabs)");
     });
   };
 

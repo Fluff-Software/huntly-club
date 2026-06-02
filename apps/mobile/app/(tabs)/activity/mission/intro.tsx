@@ -16,9 +16,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { getActivityById } from "@/services/packService";
-import { useUser } from "@/contexts/UserContext";
 import { usePlayer } from "@/contexts/PlayerContext";
-import { isStartMissionOnboardingActive } from "@/constants/startMissionOnboarding";
 import type { Activity } from "@/types/activity";
 import { ACTIVITY_CATEGORIES } from "@/types/activity";
 import { getCategoryColor, getCategoryLabel } from "@/utils/categoryUtils";
@@ -72,9 +70,7 @@ export default function IntroScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { scaleW, width, isTablet } = useLayoutScale();
   const insets = useSafeAreaInsets();
-  const { userData } = useUser();
   const { profiles } = usePlayer();
-  const onboardingActive = isStartMissionOnboardingActive(userData?.start_mission_step);
   const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -181,10 +177,8 @@ export default function IntroScreen() {
     activity.intro_character_name?.trim() ||
     (validCaptain ? validCaptain.charAt(0).toUpperCase() + validCaptain.slice(1) : null);
 
-  // Tab bar already includes the home-indicator inset; only add it when the bar is hidden.
-  const footerPaddingBottom =
-    (onboardingActive ? insets.bottom + scaleW(16) : scaleW(10)) +
-    (isTablet && !onboardingActive ? scaleW(8) : 0);
+  // Keep a little space above the fixed footer buttons.
+  const footerPaddingBottom = scaleW(10) + (isTablet ? scaleW(8) : 0);
 
   const hasUrgent = !!activity.intro_urgent_message?.trim();
   const hasDialogue = !!activity.intro_dialogue?.trim();

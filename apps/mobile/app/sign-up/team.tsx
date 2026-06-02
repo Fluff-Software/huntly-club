@@ -20,7 +20,6 @@ import { usePlayer } from "@/contexts/PlayerContext";
 import { useUser } from "@/contexts/UserContext";
 import { getTeams, getProfiles, createProfile, updateUserDataTeam } from "@/services/profileService";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
-import { START_MISSION_STEP } from "@/constants/startMissionOnboarding";
 import { hasExplorersForTeamStep } from "@/utils/hasExplorersForTeamStep";
 
 const HUNTLY_GREEN = "#4F6F52";
@@ -81,7 +80,7 @@ export default function SignUpTeamScreen() {
     setTutorialStep } = useSignUp();
   const { user } = useAuth();
   const { profiles, loading: profilesLoading, refreshProfiles } = usePlayer();
-  const { refreshUserData, updateStartMissionStep } = useUser();
+  const { refreshUserData } = useUser();
   const [creating, setCreating] = useState(false);
 
   const goToAddExplorers = () => {
@@ -131,10 +130,9 @@ export default function SignUpTeamScreen() {
       }
       await refreshProfiles();
       clearSignUpData();
-      setTutorialStep("done");
-      setShowPostSignUpWelcome(false);
-      await updateStartMissionStep(START_MISSION_STEP.WELCOME);
-      router.replace("/onboarding/welcome");
+      setTutorialStep("intro");
+      setShowPostSignUpWelcome(true);
+      router.replace("/(tabs)");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to create profiles.";
       Alert.alert("Error", message);

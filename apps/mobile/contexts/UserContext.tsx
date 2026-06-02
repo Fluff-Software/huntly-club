@@ -12,6 +12,7 @@ import {
   getProfiles,
   getUserData,
   updateUserDataLastSeenSeasonId,
+  updateUserDataFirstMissionActivityId,
   updateUserDataStartMissionStep,
   updateUserDataWeeklyEmail,
   Team,
@@ -24,6 +25,7 @@ type UserData = {
   weekly_email: boolean;
   last_seen_season_id: number | null;
   start_mission_step: number;
+  first_mission_activity_id: number | null;
 };
 
 type UserContextType = {
@@ -42,6 +44,8 @@ type UserContextType = {
   updateLastSeenSeasonId: (seasonId: number) => Promise<void>;
   /** Persist mission-first onboarding step. */
   updateStartMissionStep: (step: number) => Promise<void>;
+  /** Persist first mission target activity id for the clubhouse CTA card. */
+  updateFirstMissionActivityId: (activityId: number | null) => Promise<void>;
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -157,6 +161,17 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     [user?.id]
   );
 
+  const updateFirstMissionActivityId = useCallback(
+    async (activityId: number | null) => {
+      if (!user?.id) return;
+      await updateUserDataFirstMissionActivityId(user.id, activityId);
+      setUserData((prev) =>
+        prev ? { ...prev, first_mission_activity_id: activityId } : prev
+      );
+    },
+    [user?.id]
+  );
+
   const value = useMemo<UserContextType>(
     () => ({
       userData,
@@ -169,6 +184,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       updateWeeklyEmail,
       updateLastSeenSeasonId,
       updateStartMissionStep,
+      updateFirstMissionActivityId,
     }),
     [
       userData,
@@ -180,6 +196,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       updateWeeklyEmail,
       updateLastSeenSeasonId,
       updateStartMissionStep,
+      updateFirstMissionActivityId,
     ]
   );
 

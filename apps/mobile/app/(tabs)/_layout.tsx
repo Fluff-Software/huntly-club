@@ -29,7 +29,6 @@ import {
   registerForPushNotificationsAsync,
   setPushEnabled,
   setPushOptInAsked } from "@/services/pushNotificationService";
-import { isStartMissionOnboardingActive } from "@/constants/startMissionOnboarding";
 
 const HOME_CLUBHOUSE = require("@/assets/images/home-clubhouse.png");
 const HOME_STORY = require("@/assets/images/home-story.png");
@@ -126,7 +125,6 @@ export default function TabLayout() {
   const [seasonAnnouncementChecking, setSeasonAnnouncementChecking] =
     useState(true);
   const [hasCompletedTutorial, setHasCompletedTutorial] = useState<boolean | null>(null);
-  const onboardingActive = isStartMissionOnboardingActive(userData?.start_mission_step);
 
   const hasCheckedSeasonAnnouncementRef = useRef(false);
 
@@ -144,7 +142,6 @@ export default function TabLayout() {
   // On clubhouse/tabs load: if user has no tutorial achievement (check first profile), show the tutorial
   const firstProfileId = profiles[0]?.id ?? null;
   useEffect(() => {
-    if (onboardingActive) return;
     if (firstProfileId == null) return;
     let cancelled = false;
     getHasCompletedTutorial(firstProfileId).then((completed) => {
@@ -160,11 +157,10 @@ export default function TabLayout() {
     return () => {
       cancelled = true;
     };
-  }, [firstProfileId, onboardingActive, setShowPostSignUpWelcome, setTutorialStep]);
+  }, [firstProfileId, setShowPostSignUpWelcome, setTutorialStep]);
 
   // When showPostSignUpWelcome was set (e.g. "Show tutorial again"): re-check and hide if they already have achievement (unless replay requested)
   useEffect(() => {
-    if (onboardingActive) return;
     if (!showPostSignUpWelcome || firstProfileId == null) {
       if (!showPostSignUpWelcome) setHasCompletedTutorial(null);
       return;
@@ -182,7 +178,7 @@ export default function TabLayout() {
     return () => {
       cancelled = true;
     };
-  }, [showPostSignUpWelcome, firstProfileId, replayTutorialRequested, onboardingActive, setShowPostSignUpWelcome]);
+  }, [showPostSignUpWelcome, firstProfileId, replayTutorialRequested, setShowPostSignUpWelcome]);
 
   // After a modal/tour is dismissed we wait a short moment so the user lands on the clubhouse first.
   const POST_MODAL_DELAY_MS = 600;
@@ -194,7 +190,6 @@ export default function TabLayout() {
     if (!user?.id) return;
     if (showSeasonAnnouncementModal || seasonAnnouncementChecking) return;
     if (showPostSignUpWelcome) return;
-    if (onboardingActive) return;
     if (hasRequestedPushPermissionRef.current) return;
     hasRequestedPushPermissionRef.current = true;
 
@@ -219,7 +214,6 @@ export default function TabLayout() {
     showSeasonAnnouncementModal,
     seasonAnnouncementChecking,
     showPostSignUpWelcome,
-    onboardingActive,
   ]);
 
   const maybeShowSeasonAnnouncement = useCallback(async () => {
@@ -228,7 +222,6 @@ export default function TabLayout() {
       return;
     }
     if (userLoading) return;
-    if (onboardingActive) return;
     if (showPostSignUpWelcome) return;
     if (seasonLoading) return;
     if (!userData) {
@@ -253,7 +246,6 @@ export default function TabLayout() {
     userLoading,
     userData,
     showPostSignUpWelcome,
-    onboardingActive,
     seasonLoading,
     firstSeason?.id,
     userData?.last_seen_season_id,
@@ -293,10 +285,7 @@ export default function TabLayout() {
   const seasonCtaFontSize = isTablet ? scaleW(22) : undefined;
 
   const tutorialVisible =
-    !onboardingActive &&
-    !showSeasonAnnouncementModal &&
-    showPostSignUpWelcome &&
-    hasCompletedTutorial === false;
+    !showSeasonAnnouncementModal && showPostSignUpWelcome && hasCompletedTutorial === false;
 
   const activeTrackingTitle =
     activeTrackingSession?.status === "active"
@@ -313,7 +302,6 @@ export default function TabLayout() {
 
   const isTabDisabled = (routeName: string) => {
     if (!tutorialVisible) return false;
-    if (onboardingActive) return true;
     const step = tutorialStep as string;
     if (step === "click_story") return routeName !== "story";
     if (step === "click_missions") return routeName !== "missions";
@@ -333,7 +321,10 @@ export default function TabLayout() {
         }
       });
     }
-    router.replace("/(tabs)");
+    // Tutorial ends on Backpack; send the player back to Clubhouse (index route is `/(tabs)`, not `/(tabs)/index`).
+    requestAnimationFrame(() => {
+      router.replace("/(tabs)");
+    });
     setTimeout(() => {
       void maybeShowSeasonAnnouncement();
       void maybeRequestPushPermission();
@@ -361,11 +352,11 @@ export default function TabLayout() {
     (props: BottomTabBarProps) => (
       <SlideUpTabBar
         {...props}
-        onboardingActive={onboardingActive}
+        onboardingActive={false}
         tabBarSlideDistance={tabBarHeight}
       />
     ),
-    [onboardingActive, tabBarHeight]
+    [tabBarHeight]
   );
 
   return (
@@ -377,20 +368,17 @@ export default function TabLayout() {
         tabBarInactiveTintColor: inactiveColor,
         tabBarLabelPosition: "below-icon",
         tabBarStyle: {
-          ...(onboardingActive
-            ? { display: "none", height: 0, paddingTop: 0, paddingBottom: 0, borderTopWidth: 0 }
-            : {
-                borderTopWidth: 0,
-                height: tabBarHeight,
-                paddingTop: scaleW(16),
-                paddingBottom: tabBarPaddingBottom,
-                paddingHorizontal: scaleW(8),
-                elevation: 8,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: scaleW(-2) },
-                shadowOpacity: 0.12,
-                shadowRadius: scaleW(4),
-                backgroundColor: TAB_BAR_COLORS[route.name] ?? TAB_BAR_COLORS.index }) },
+          borderTopWidth: 0,
+          height: tabBarHeight,
+          paddingTop: scaleW(16),
+          paddingBottom: tabBarPaddingBottom,
+          paddingHorizontal: scaleW(8),
+          elevation: 8,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: scaleW(-2) },
+          shadowOpacity: 0.12,
+          shadowRadius: scaleW(4),
+          backgroundColor: TAB_BAR_COLORS[route.name] ?? TAB_BAR_COLORS.index },
         tabBarLabelStyle: {
           fontSize: scaleW(12),
           fontWeight: "600",

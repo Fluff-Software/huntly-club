@@ -1,13 +1,15 @@
 import React from "react";
-import { View, Modal, Pressable, Image } from "react-native";
+import { View, Modal, Pressable } from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
+import { BadgeImage } from "@/components/BadgeImage";
 import { ThemedText } from "./ThemedText";
-import { Badge, getBadgeDisplay, UserBadge } from "@/services/badgeService";
+import { Badge, UserBadge } from "@/services/badgeService";
+import { prefetchBadgeImage } from "@/utils/badgeImageCache";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 
 interface BadgeDetailModalProps {
@@ -36,12 +38,13 @@ export const BadgeDetailModal: React.FC<BadgeDetailModalProps> = ({
 
   React.useEffect(() => {
     if (!visible || !badge) return;
+    prefetchBadgeImage(badge);
     spinY.value = 0;
     spinY.value = withTiming(360, {
       duration: 900,
       easing: Easing.out(Easing.cubic),
     });
-  }, [visible, badge?.id, spinY]);
+  }, [visible, badge?.id, badge?.image_url, spinY]);
 
   const badgeAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ perspective: 900 }, { rotateY: `${spinY.value}deg` }],
@@ -57,19 +60,9 @@ export const BadgeDetailModal: React.FC<BadgeDetailModalProps> = ({
 
   if (!badge) return null;
 
-  const badgeDisplay = getBadgeDisplay(badge);
   const hasMultipleBadges = allBadges.length > 1;
   const canGoNext = hasMultipleBadges && currentIndex < allBadges.length - 1;
   const canGoPrev = hasMultipleBadges && currentIndex > 0;
-
-  const getImageSource = () => {
-    if (badgeDisplay.type === "image" && badgeDisplay.content.startsWith("http")) {
-      return { uri: badgeDisplay.content };
-    }
-    return null;
-  };
-
-  const imageSource = getImageSource();
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -219,17 +212,12 @@ export const BadgeDetailModal: React.FC<BadgeDetailModalProps> = ({
                   badgeAnimatedStyle,
                 ]}
               >
-                {badgeDisplay.type === "image" && imageSource ? (
-                  <Image
-                    source={imageSource}
-                    style={{ width: iconInner, height: iconInner }}
-                    resizeMode="contain"
-                  />
-                ) : (
-                  <ThemedText style={{ fontSize: scaleW(58), lineHeight: scaleW(62) }}>
-                    {badgeDisplay.content}
-                  </ThemedText>
-                )}
+                <BadgeImage
+                  badge={badge}
+                  size={iconInner}
+                  emojiFontSize={scaleW(58)}
+                  instant
+                />
               </Animated.View>
             </Pressable>
           </View>

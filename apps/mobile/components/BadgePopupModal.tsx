@@ -1,7 +1,9 @@
 import React from "react";
-import { View, Modal, Pressable, Image } from "react-native";
+import { View, Modal, Pressable } from "react-native";
+import { BadgeImage } from "@/components/BadgeImage";
 import { ThemedText } from "./ThemedText";
-import { Badge, getBadgeDisplay } from "@/services/badgeService";
+import { Badge } from "@/services/badgeService";
+import { prefetchBadgeImage } from "@/utils/badgeImageCache";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 
 interface BadgePopupModalProps {
@@ -18,18 +20,12 @@ export const BadgePopupModal: React.FC<BadgePopupModalProps> = ({
   onViewAllBadges,
 }) => {
   const { scaleW, isTablet } = useLayoutScale();
+
+  React.useEffect(() => {
+    if (visible && badge) prefetchBadgeImage(badge);
+  }, [visible, badge?.id, badge?.image_url]);
+
   if (!badge) return null;
-
-  const badgeDisplay = getBadgeDisplay(badge);
-
-  const getImageSource = () => {
-    if (badgeDisplay.type === "image" && badgeDisplay.content.startsWith("http")) {
-      return { uri: badgeDisplay.content };
-    }
-    return null;
-  };
-
-  const imageSource = getImageSource();
   const cardPadding = scaleW(isTablet ? 26 : 20);
   const iconOuter = scaleW(isTablet ? 140 : 120);
   const iconInner = scaleW(isTablet ? 104 : 88);
@@ -77,17 +73,12 @@ export const BadgePopupModal: React.FC<BadgePopupModalProps> = ({
               className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full items-center justify-center shadow-soft"
               style={{ width: iconOuter, height: iconOuter, marginBottom: scaleW(10) }}
             >
-              {badgeDisplay.type === "image" && imageSource ? (
-                <Image
-                  source={imageSource}
-                  style={{ width: iconInner, height: iconInner }}
-                  resizeMode="contain"
-                />
-              ) : (
-                <ThemedText style={{ fontSize: scaleW(52), lineHeight: scaleW(56) }}>
-                  {badgeDisplay.content}
-                </ThemedText>
-              )}
+              <BadgeImage
+                badge={badge}
+                size={iconInner}
+                emojiFontSize={scaleW(52)}
+                instant
+              />
             </View>
           </View>
 

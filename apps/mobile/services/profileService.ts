@@ -87,28 +87,55 @@ export const getTeams = async (): Promise<Team[]> => {
   return data || [];
 };
 
-/** Get user_data for the given user (team may be null). */
-export const getUserData = async (
-  userId: string
-): Promise<{
+export type UserDataRow = {
   user_id: string;
   team: number | null;
   weekly_email: boolean;
   last_seen_season_id: number | null;
   start_mission_step: number;
-} | null> => {
+  first_mission_activity_id: number | null;
+};
+
+const USER_DATA_SELECT_WITH_FIRST_MISSION =
+  "user_id, team, weekly_email, last_seen_season_id, start_mission_step, first_mission_activity_id";
+const USER_DATA_SELECT_BASE =
+  "user_id, team, weekly_email, last_seen_season_id, start_mission_step";
+
+function isMissingFirstMissionColumnError(error: { message?: string }): boolean {
+  return (error.message ?? "").includes("first_mission_activity_id");
+}
+
+/** Get user_data for the given user (team may be null). */
+export const getUserData = async (userId: string): Promise<UserDataRow | null> => {
   const { data, error } = await supabase
     .from("user_data")
-    .select("user_id, team, weekly_email, last_seen_season_id, start_mission_step")
+    .select(USER_DATA_SELECT_WITH_FIRST_MISSION)
     .eq("user_id", userId)
     .single();
 
-  if (error) {
-    if (error.code === "PGRST116") return null; // no row
-    console.error("Error fetching user_data:", error);
-    throw new Error(`Failed to fetch user data: ${error.message}`);
+  if (!error) {
+    return data;
   }
-  return data;
+
+  if (error.code === "PGRST116") return null; // no row
+
+  if (isMissingFirstMissionColumnError(error)) {
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from("user_data")
+      .select(USER_DATA_SELECT_BASE)
+      .eq("user_id", userId)
+      .single();
+
+    if (!fallbackError) {
+      return { ...fallbackData, first_mission_activity_id: null };
+    }
+    if (fallbackError.code === "PGRST116") return null;
+    console.error("Error fetching user_data (fallback):", fallbackError);
+    throw new Error(`Failed to fetch user data: ${fallbackError.message}`);
+  }
+
+  console.error("Error fetching user_data:", error);
+  throw new Error(`Failed to fetch user data: ${error.message}`);
 };
 
 /** Update the authenticated user's team in user_data (e.g. when they choose a team at sign-up). */
@@ -166,6 +193,28 @@ export const updateUserDataStartMissionStep = async (
   if (error) {
     console.error("Error updating user_data start_mission_step:", error);
     throw new Error(`Failed to update onboarding step: ${error.message}`);
+  }
+};
+
+/** Persist the user's first-mission target activity id in user_data. */
+export const updateUserDataFirstMissionActivityId = async (
+  userId: string,
+  activityId: number | null
+): Promise<void> => {
+  const { error } = await supabase
+    .from("user_data")
+    .update({ first_mission_activity_id: activityId })
+    .eq("user_id", userId);
+
+  if (error) {
+    if (isMissingFirstMissionColumnError(error)) {
+      console.warn(
+        "first_mission_activity_id column missing; run migration 20260621120000 on this Supabase project"
+      );
+      return;
+    }
+    console.error("Error updating user_data first_mission_activity_id:", error);
+    throw new Error(`Failed to update first mission target: ${error.message}`);
   }
 };
 

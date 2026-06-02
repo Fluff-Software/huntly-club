@@ -74,7 +74,7 @@ export default function ProfileScreen() {
   const [xpByProfileId, setXpByProfileId] = useState<Record<number, number>>({});
   const { user, signOut } = useAuth();
   const { teamId } = useUser();
-  const { profiles, refreshProfiles } = usePlayer();
+  const { profiles, refreshProfiles, loading: profilesLoading } = usePlayer();
   const router = useRouter();
   const { scaleW } = useLayoutScale();
 
@@ -662,7 +662,13 @@ export default function ProfileScreen() {
             )}
           </View>
 
-          {!isEditing && profiles.length === 0 && (
+          {!isEditing && profilesLoading && profiles.length === 0 && (
+            <View style={[styles.cardCream, { alignItems: "center", paddingVertical: scaleW(24) }]}>
+              <ActivityIndicator size="small" color={COLORS.darkGreen} />
+            </View>
+          )}
+
+          {!isEditing && !profilesLoading && profiles.length === 0 && (
             <View style={styles.cardCream}>
               <ThemedText style={styles.cardTextPrimary}>
                 No players yet

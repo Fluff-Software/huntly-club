@@ -16,8 +16,6 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { getActivityById } from "@/services/packService";
-import { useUser } from "@/contexts/UserContext";
-import { isStartMissionOnboardingActive } from "@/constants/startMissionOnboarding";
 import type { Activity } from "@/types/activity";
 import type { PrepChecklistItem } from "@/types/activity";
 
@@ -33,8 +31,6 @@ export default function PrepScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { scaleW, isTablet } = useLayoutScale();
   const insets = useSafeAreaInsets();
-  const { userData } = useUser();
-  const onboardingActive = isStartMissionOnboardingActive(userData?.start_mission_step);
   const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -173,12 +169,12 @@ export default function PrepScreen() {
           paddingHorizontal: scaleW(20),
           paddingBottom:
             insets.bottom +
-            (onboardingActive ? scaleW(20) : scaleW(8)) +
+            scaleW(8) +
             (isTablet ? scaleW(40) : 0),
           backgroundColor: LIGHT_GREEN_BG,
           borderTopWidth: 1,
           borderTopColor: "rgba(79,111,82,0.1)" } }),
-    [scaleW, insets.bottom, onboardingActive, isTablet]
+    [scaleW, insets.bottom, isTablet]
   );
 
   if (loading) {

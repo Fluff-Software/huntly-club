@@ -146,7 +146,7 @@ export async function ensureTrackingPermissions(): Promise<void> {
     throw new TrackingPermissionError("location_services_disabled");
   }
 
-  const foreground = await Location.getForegroundPermissionsAsync();
+  const foreground = await Location.requestForegroundPermissionsAsync();
   if (foreground.status !== "granted") {
     throw new TrackingPermissionError("foreground_denied");
   }
@@ -155,7 +155,7 @@ export async function ensureTrackingPermissions(): Promise<void> {
     await Notifications.requestPermissionsAsync();
   }
 
-  const background = await Location.getBackgroundPermissionsAsync();
+  const background = await Location.requestBackgroundPermissionsAsync();
   if (background.status !== "granted") {
     throw new TrackingPermissionError("background_denied");
   }

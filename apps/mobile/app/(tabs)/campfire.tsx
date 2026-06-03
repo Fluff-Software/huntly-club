@@ -34,6 +34,8 @@ import {
   waitForCampfireLivePreload,
 } from "@/services/campfireLivePreload";
 import { supabase } from "@/services/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import { usePlayer } from "@/contexts/PlayerContext";
 
 const BG = require("@/assets/images/campfire-bg.jpg");
 
@@ -51,6 +53,50 @@ type ReactionBurst = { id: string; emoji: string; createdAtMs: number };
 type PresenceState = Record<string, unknown[]>;
 type CountdownParts = { hrs: number; mins: number; secs: number };
 
+/** Sum profile_ids from each viewer; fall back to connection count for legacy payloads. */
+function countCampfireViewers(state: PresenceState): number {
+  let profileTotal = 0;
+  let sawProfileIds = false;
+
+  for (const metas of Object.values(state)) {
+    if (!Array.isArray(metas)) continue;
+    for (const meta of metas) {
+      if (!meta || typeof meta !== "object") continue;
+      const ids = (meta as { profile_ids?: unknown }).profile_ids;
+      if (!Array.isArray(ids) || ids.length === 0) continue;
+      sawProfileIds = true;
+      profileTotal += ids.filter((id): id is number => typeof id === "number").length;
+    }
+  }
+
+  return sawProfileIds ? profileTotal : Object.keys(state).length;
+}
+
+/** Session id for presence/reactions while waiting or during live playback. */
+function getCampfireInteractionSessionId(
+  loadState: LoadState,
+  waitingSession: CampfireSessionRow | null,
+  bundle: CampfireSessionBundle | null
+): number | null {
+  if (
+    waitingSession &&
+    (loadState === "countdown" ||
+      loadState === "loading" ||
+      loadState === "preparing")
+  ) {
+    return waitingSession.id;
+  }
+  if (
+    bundle?.session.status === "live" &&
+    (loadState === "loading" ||
+      loadState === "preparing" ||
+      loadState === "ready")
+  ) {
+    return bundle.session.id;
+  }
+  return null;
+}
+
 function formatCountdown(ms: number): CountdownParts {
   const total = Math.max(0, Math.floor(ms / 1000));
   const hrs = Math.floor(total / 3600);
@@ -62,6 +108,8 @@ function formatCountdown(ms: number): CountdownParts {
 export default function CampfireScreen() {
   const { scaleW, width, height } = useLayoutScale();
   const params = useLocalSearchParams<{ mode?: string }>();
+  const { user } = useAuth();
+  const { profiles } = usePlayer();
 
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [bundle, setBundle] = useState<CampfireSessionBundle | null>(null);
@@ -382,14 +430,21 @@ export default function CampfireScreen() {
     return () => cancelAnimationFrame(raf);
   }, [isPlaying, durationMs]);
 
-  // Live drift correction + realtime channel hookup.
-  useEffect(() => {
-    if (loadState !== "ready" || !bundle) return;
-    if (!isLiveRef.current || !bundle.session.live_started_at) return;
+  const interactionSessionId = useMemo(
+    () => getCampfireInteractionSessionId(loadState, waitingSession, bundle),
+    [loadState, waitingSession, bundle]
+  );
 
-    // Realtime channel for future interactions (reactions, etc.).
-    const channel = supabase.channel(`campfire:${bundle.session.id}`, {
-      config: { private: true, broadcast: { self: true } },
+  // Realtime presence + reactions while waiting or during live playback.
+  useEffect(() => {
+    if (!interactionSessionId) return;
+
+    const channel = supabase.channel(`campfire:${interactionSessionId}`, {
+      config: {
+        private: true,
+        broadcast: { self: true },
+        ...(user ? { presence: { key: user.id } } : {}),
+      },
     });
     channel.on("broadcast", { event: "reaction" }, ({ payload }) => {
       const emoji = typeof payload?.emoji === "string" ? payload.emoji : "🔥";
@@ -402,7 +457,7 @@ export default function CampfireScreen() {
 
     const updateViewerCount = () => {
       const state = channel.presenceState() as PresenceState;
-      setViewerCount(Object.keys(state).length);
+      setViewerCount(countCampfireViewers(state));
     };
 
     channel
@@ -410,31 +465,45 @@ export default function CampfireScreen() {
       .on("presence", { event: "join" }, updateViewerCount)
       .on("presence", { event: "leave" }, updateViewerCount);
 
-    channel.subscribe();
-    liveChannelRef.current = channel;
-
-    // Track presence (viewer count). Only for authenticated users.
-    void supabase.auth.getUser().then(async ({ data }) => {
-      if (!data.user) return;
-      // Set a stable presence key based on user id.
-      channel.updateJoinPayload({
-        config: {
-          private: true,
-          broadcast: { self: true },
-          presence: { key: data.user.id },
-        },
-      });
-      // Track a small payload (kept minimal; presence is not for high-frequency updates).
+    const profileIds = profiles.map((p) => p.id);
+    const trackPresence = async () => {
+      if (!user) return;
       try {
-        await channel.track({ online_at: new Date().toISOString() });
+        await channel.track({
+          profile_ids: profileIds,
+          online_at: new Date().toISOString(),
+        });
       } catch {
         // Presence is best-effort.
       }
+    };
+
+    channel.subscribe(async (status) => {
+      if (status === "SUBSCRIBED") {
+        await trackPresence();
+        updateViewerCount();
+      }
     });
+    liveChannelRef.current = channel;
+
+    const shouldResyncPlayhead =
+      loadState === "ready" &&
+      bundle?.session.live_started_at &&
+      isLiveRef.current;
+
+    if (!shouldResyncPlayhead) {
+      return () => {
+        if (liveChannelRef.current) {
+          supabase.removeChannel(liveChannelRef.current);
+          liveChannelRef.current = null;
+        }
+        setViewerCount(0);
+      };
+    }
 
     // Periodically resync with server time to keep playhead accurate.
     liveResyncTimerRef.current = setInterval(async () => {
-      if (!bundle.session.live_started_at) return;
+      if (!bundle?.session.live_started_at) return;
       const serverNowIso = await getServerNowIso();
       if (!serverNowIso) return;
 
@@ -473,7 +542,14 @@ export default function CampfireScreen() {
       }
       setViewerCount(0);
     };
-  }, [loadState, bundle, durationMs]);
+  }, [
+    interactionSessionId,
+    loadState,
+    bundle,
+    durationMs,
+    user,
+    profiles,
+  ]);
 
   // Return to the home tab when playback reaches the end.
   useEffect(() => {
@@ -510,13 +586,16 @@ export default function CampfireScreen() {
 
   const sendReaction = useCallback(
     async (emoji: string) => {
-      if (!isLiveRef.current || !bundle || !liveChannelRef.current) return;
-      const playheadMs = currentTimeMs;
+      if (!interactionSessionId || !liveChannelRef.current) return;
+      const playheadMs =
+        loadState === "countdown" || loadState === "preparing"
+          ? 0
+          : currentTimeMs;
       try {
         const { data } = await supabase.auth.getUser();
         if (!data.user) throw new Error("not_authenticated");
         const { error } = await supabase.from("campfire_reactions").insert({
-          session_id: bundle.session.id,
+          session_id: interactionSessionId,
           emoji,
           playhead_ms: Math.round(playheadMs),
         });
@@ -534,7 +613,38 @@ export default function CampfireScreen() {
         }
       }
     },
-    [bundle, currentTimeMs]
+    [interactionSessionId, currentTimeMs, loadState]
+  );
+
+  const liveInteractionChrome = (
+    <>
+      <ReactionOverlay
+        bursts={reactionBursts}
+        onPrune={(ids) => {
+          if (ids.length === 0) return;
+          setReactionBursts((prev) => prev.filter((b) => !ids.includes(b.id)));
+        }}
+        width={width}
+        height={height}
+      />
+      <SafeAreaView pointerEvents="box-none" style={styles.liveControls}>
+        <View style={styles.viewerPill}>
+          <View style={styles.viewerDot} />
+          <ThemedText style={styles.viewerText}>{viewerCount}</ThemedText>
+        </View>
+        <Pressable
+          onPress={() => void sendReaction("🔥")}
+          style={styles.reactionButton}
+          hitSlop={12}
+        >
+          <MaterialIcons
+            name="local-fire-department"
+            size={scaleW(22)}
+            color="#FFF"
+          />
+        </Pressable>
+      </SafeAreaView>
+    </>
   );
 
   return (
@@ -558,46 +668,13 @@ export default function CampfireScreen() {
               videoPlayers={videoPlayers}
             />
 
-            {isLiveRef.current && (
-              <>
-                <ReactionOverlay
-                  bursts={reactionBursts}
-                  onPrune={(ids) => {
-                    if (ids.length === 0) return;
-                    setReactionBursts((prev) => prev.filter((b) => !ids.includes(b.id)));
-                  }}
-                  width={width}
-                  height={height}
-                />
-                <SafeAreaView
-                  pointerEvents="box-none"
-                  style={styles.liveControls}
-                >
-                  <View style={styles.viewerPill}>
-                    <View style={styles.viewerDot} />
-                    <ThemedText style={styles.viewerText}>
-                      {viewerCount}
-                    </ThemedText>
-                  </View>
-                  <Pressable
-                    onPress={() => void sendReaction("🔥")}
-                    style={styles.reactionButton}
-                    hitSlop={12}
-                  >
-                    <MaterialIcons
-                      name="local-fire-department"
-                      size={scaleW(22)}
-                      color="#FFF"
-                    />
-                  </Pressable>
-                </SafeAreaView>
-              </>
-            )}
+            {interactionSessionId != null && liveInteractionChrome}
           </Pressable>
         )}
 
         {loadState === "countdown" && (
           <View style={styles.centerFill}>
+            {interactionSessionId != null && liveInteractionChrome}
             <View style={styles.countdownCard}>
               <ThemedText
                 type="heading"

@@ -29,6 +29,7 @@ import { AdventureTile } from "@/components/AdventureTile";
 import { PastAdventuresTile } from "@/components/PastAdventuresTile";
 import { CampfireTile } from "@/components/CampfireTile";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { useNavigationReturn } from "@/contexts/NavigationReturnContext";
 import { useTutorialActive } from "@/hooks/useTutorialActive";
 import { useRefreshWhenTutorialEnds } from "@/hooks/useRefreshWhenTutorialEnds";
 import { useCurrentChapterActivities } from "@/hooks/useCurrentChapterActivities";
@@ -140,6 +141,7 @@ function pickEarliestAvailableMission(
 
 export default function HomeScreen() {
   const { scaleW, width, height } = useLayoutScale();
+  const { pushWithReturn } = useNavigationReturn();
   const { profiles } = usePlayer();
   const {
     userData,
@@ -731,7 +733,7 @@ export default function HomeScreen() {
         {/* Profile button */}
         <View>
           <Pressable
-            onPress={() => router.push("/(tabs)/profile")}
+            onPress={() => pushWithReturn("/(tabs)/profile")}
             onPressIn={() => { profileButtonScale.value = withSpring(0.96, buttonSpring); }}
             onPressOut={() => { profileButtonScale.value = withSpring(1, buttonSpring); }}
             style={[styles.creamButton]}

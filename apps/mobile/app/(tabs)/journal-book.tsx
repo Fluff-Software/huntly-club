@@ -26,6 +26,7 @@ import {
   getJournalTimeline,
   type JournalEntry,
   type JournalTimelineItem } from "@/services/journalService";
+import { ChildScreenLayout } from "@/components/ChildScreenLayout";
 
 const JOURNAL_AMBER = "#B07D3E";
 const CREAM = "#F4F0EB";
@@ -94,7 +95,6 @@ export default function JournalBookScreen() {
           backgroundColor: JOURNAL_AMBER },
         scrollContent: {
           flexGrow: 1,
-          paddingTop: scaleW(12),
           paddingBottom: scaleW(100), // room for FAB
         },
         heading: {
@@ -159,14 +159,11 @@ export default function JournalBookScreen() {
   const showFab = teamId != null;
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <ScrollView
-        ref={scrollRef}
-        style={{ flex: 1 }}
+    <View style={styles.container}>
+      <ChildScreenLayout
+        backgroundColor={JOURNAL_AMBER}
+        scrollRef={scrollRef}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-        overScrollMode="never"
       >
         <Animated.View entering={FadeInDown.duration(500).delay(0)}>
           <ThemedText type="heading" style={styles.heading}>
@@ -226,7 +223,7 @@ export default function JournalBookScreen() {
               />
             )
           )}
-      </ScrollView>
+      </ChildScreenLayout>
 
       {showFab && (
         <Pressable style={styles.fab} onPress={() => setShowAddModal(true)}>
@@ -239,6 +236,6 @@ export default function JournalBookScreen() {
         onClose={() => setShowAddModal(false)}
         onSuccess={handleEntryAdded}
       />
-    </SafeAreaView>
+    </View>
   );
 }

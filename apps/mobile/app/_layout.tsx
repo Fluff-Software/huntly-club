@@ -22,6 +22,7 @@ import { NetworkProvider } from "@/contexts/NetworkContext";
 import { PurchasesProvider } from "@/contexts/PurchasesContext";
 import { PlayerProvider } from "@/contexts/PlayerContext";
 import { SignUpProvider } from "@/contexts/SignUpContext";
+import { NavigationReturnProvider } from "@/contexts/NavigationReturnContext";
 import { UserProvider } from "@/contexts/UserContext";
 import { AuthGuard } from "@/components/authentication/AuthGuard";
 import { OfflineBanner } from "@/components/OfflineBanner";
@@ -135,6 +136,7 @@ export default function RootLayout() {
     <NetworkProvider>
       <AuthProvider>
         <SignUpProvider>
+          <NavigationReturnProvider>
           <PurchasesProvider>
             <UserProvider>
               <PlayerProvider>
@@ -150,6 +152,7 @@ export default function RootLayout() {
               </PlayerProvider>
             </UserProvider>
           </PurchasesProvider>
+          </NavigationReturnProvider>
         </SignUpProvider>
       </AuthProvider>
     </NetworkProvider>

@@ -19,9 +19,11 @@ import { usePlayer } from "@/contexts/PlayerContext";
 import type { Profile } from "@/services/profileService";
 import { BadgePopupModal } from "@/components/BadgePopupModal";
 import { Badge } from "@/services/badgeService";
+import { useNavigationReturn } from "@/contexts/NavigationReturnContext";
 
 export default function ActivityDetailScreen() {
   const router = useRouter();
+  const { pushWithReturn } = useNavigationReturn();
   const { id } = useLocalSearchParams();
   const { profiles, refreshProfiles } = usePlayer();
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null);
@@ -276,7 +278,7 @@ export default function ActivityDetailScreen() {
         onViewAllBadges={() => {
           setShowBadgePopup(false);
           setEarnedBadge(null);
-          router.push("/(tabs)/badges");
+          pushWithReturn("/(tabs)/badges");
         }}
       />
     </BaseLayout>

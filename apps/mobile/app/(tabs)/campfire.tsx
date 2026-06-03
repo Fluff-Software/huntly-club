@@ -14,8 +14,14 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { CampfireStage } from "@/components/campfire/CampfireStage";
-import { useCampfireAudio } from "@/components/campfire/useCampfireAudio";
+import { CampfireVideoPreloadViews } from "@/components/campfire/CampfireVideoPreloadViews";
+import {
+  stopAllCampfireAudio,
+  useCampfireAudio,
+} from "@/components/campfire/useCampfireAudio";
+import { safePlayerPause } from "@/components/campfire/campfireVideoPlayerUtils";
 import { useCampfireVideoPlayers } from "@/components/campfire/useCampfireVideoPlayers";
+import { getCampfireVideoComponents } from "@/components/campfire/campfireVideoPreload";
 import { prepareCampfireMedia } from "@/components/campfire/prepareCampfireMedia";
 import {
   dismissCampfireLiveSession,
@@ -50,8 +56,10 @@ import { CHILD_SCREEN_PADDING_W } from "@/components/ChildScreenLayout";
 
 const BG = require("@/assets/images/campfire-bg.jpg");
 
-/** Hard cap so a slow/broken asset can never trap the user on the spinner. */
-const PREPARE_TIMEOUT_MS = 15000;
+/** Hard cap so a slow/broken image fetch can never trap the user on the spinner. */
+const PREPARE_TIMEOUT_MS = 15_000;
+/** Sessions with video need longer to seek/buffer for late live joins. */
+const VIDEO_PREPARE_TIMEOUT_MS = 28_000;
 
 type LoadState =
   | "loading"
@@ -88,8 +96,45 @@ export default function CampfireScreen() {
   const waitingSessionRef = useRef<CampfireSessionRow | null>(null);
   const countdownTargetRef = useRef<number | null>(null);
 
+  // Seek/buffer for late live joins once while preparing — not every frame during playback.
+  // Capture live-join offset during prepare and keep it on "ready" (never 0).
+  const videoWarmPlayheadRef = useRef(0);
+  const videoWarmPlayheadMs = useMemo(() => {
+    if (loadState === "loading") return 0;
+    if (loadState === "preparing") return currentTimeMs;
+    return videoWarmPlayheadRef.current;
+  }, [loadState, currentTimeMs]);
+
+  useEffect(() => {
+    if (loadState === "loading") {
+      videoWarmPlayheadRef.current = 0;
+    } else if (loadState === "preparing" || loadState === "ready") {
+      videoWarmPlayheadRef.current = videoWarmPlayheadMs;
+    }
+  }, [loadState, videoWarmPlayheadMs]);
+  const videoPlayersEnabled =
+    !!bundle?.components &&
+    (loadState === "countdown" ||
+      loadState === "preparing" ||
+      loadState === "ready");
+
   const { players: videoPlayers, ready: videosReady } = useCampfireVideoPlayers(
-    bundle?.components ?? null
+    bundle?.components ?? null,
+    {
+      playheadMs: videoWarmPlayheadMs,
+      sessionId: bundle?.session.id ?? null,
+      enabled: videoPlayersEnabled,
+    }
+  );
+  const videoPlayersRef = useRef(videoPlayers);
+  videoPlayersRef.current = videoPlayers;
+
+  const hasVideoComponents = useMemo(
+    () =>
+      bundle
+        ? getCampfireVideoComponents(bundle.components).length > 0
+        : false,
+    [bundle]
   );
 
   const durationMs = bundle ? sessionDurationMs(bundle) : 0;
@@ -323,6 +368,15 @@ export default function CampfireScreen() {
   const isFocused = useIsFocused();
 
   const stopCampfireSession = useCallback(() => {
+    stopAllCampfireAudio();
+    for (const player of videoPlayersRef.current.values()) {
+      safePlayerPause(player);
+      try {
+        player.muted = true;
+      } catch {
+        // ignore
+      }
+    }
     loadTokenRef.current++;
     countdownTargetRef.current = null;
     waitingSessionRef.current = null;
@@ -335,8 +389,9 @@ export default function CampfireScreen() {
     setRealtimeSessionId(null);
     setReactionBursts([]);
     setIsPlaying(false);
-    setLoadState("loading");
+    videoWarmPlayheadRef.current = 0;
     setBundle(null);
+    setLoadState("loading");
     setCurrentTimeMs(0);
     setMediaReady(false);
     invalidateCampfireLivePreload();
@@ -475,16 +530,19 @@ export default function CampfireScreen() {
     }
   }, [loadState, mediaReady, videosReady, isFocused]);
 
-  // 3b. Safety net: never block the user indefinitely on preparing.
+  // 3b. Safety net: never block indefinitely (video sessions get more time).
   useEffect(() => {
     if (loadState !== "preparing" || !isFocused) return;
+    const timeoutMs = hasVideoComponents
+      ? VIDEO_PREPARE_TIMEOUT_MS
+      : PREPARE_TIMEOUT_MS;
     const timer = setTimeout(() => {
       if (!isFocused) return;
       setLoadState("ready");
       setIsPlaying(true);
-    }, PREPARE_TIMEOUT_MS);
+    }, timeoutMs);
     return () => clearTimeout(timer);
-  }, [loadState, isFocused]);
+  }, [loadState, isFocused, hasVideoComponents]);
 
   const playbackEnabled = isFocused && loadState === "ready";
   const transportPlaying = playbackEnabled && isPlaying;
@@ -682,10 +740,19 @@ export default function CampfireScreen() {
     </>
   );
 
+  // One VideoView per player (Android). Hidden views only before the stage mounts.
+  const mountPreloadViews =
+    videoPlayers.size > 0 &&
+    (loadState === "countdown" || loadState === "preparing");
+
   return (
     <View style={styles.container}>
       <ImageBackground source={BG} style={styles.bg} resizeMode="cover">
         <View style={styles.overlay} />
+
+        {mountPreloadViews ? (
+          <CampfireVideoPreloadViews players={videoPlayers} />
+        ) : null}
 
         {loadState === "ready" && bundle && (
           <Pressable

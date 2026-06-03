@@ -7,10 +7,9 @@ import {
 /**
  * Buffers remote images for a campfire session before playback.
  *
- * Audio is loaded by `useCampfireAudio` when playback starts (with
- * `downloadFirst`-style buffering via `replace()` + wait for `isLoaded`).
- * We intentionally avoid `preload()` here — sharing a preloaded buffer with
- * a separate `createAudioPlayer` instance has been unreliable on device.
+ * Video is warmed by `campfireVideoPreload` / `campfireLivePreload` (expo-video
+ * players buffer off-screen; see SDK preloading docs). Audio is loaded by
+ * `useCampfireAudio` when playback starts (`downloadFirst` per clip).
  */
 export async function prepareCampfireMedia(
   bundle: CampfireSessionBundle

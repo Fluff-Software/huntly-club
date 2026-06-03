@@ -10,6 +10,38 @@ import type {
   CampfireComponentRow,
 } from "@/services/campfireService";
 
+/** Invalidates in-flight seek/play callbacks (Android can resume after `remove()`). */
+let campfireAudioEpoch = 0;
+let campfireAudioPlayer: AudioPlayer | null = null;
+
+function releaseCampfireAudioPlayer(player: AudioPlayer | null): void {
+  if (!player) return;
+  try {
+    player.pause();
+    player.volume = 0;
+    player.muted = true;
+  } catch {
+    // ignore
+  }
+  try {
+    player.remove();
+  } catch {
+    // ignore
+  }
+  if (campfireAudioPlayer === player) {
+    campfireAudioPlayer = null;
+  }
+}
+
+/** Stop timeline audio immediately — call from session teardown / back / tab blur. */
+export function stopAllCampfireAudio(): void {
+  campfireAudioEpoch += 1;
+  releaseCampfireAudioPlayer(campfireAudioPlayer);
+  void setIsAudioActiveAsync(false).catch(() => {
+    /* ignore */
+  });
+}
+
 function findActiveAudioAt(
   components: CampfireComponentRow[],
   timeMs: number
@@ -39,10 +71,13 @@ function offsetSecFor(
 
 function waitUntilLoaded(
   player: AudioPlayer,
+  epoch: number,
   onReady: () => void
 ): () => void {
   if (player.isLoaded) {
-    onReady();
+    if (epoch === campfireAudioEpoch && campfireAudioPlayer === player) {
+      onReady();
+    }
     return () => {};
   }
 
@@ -53,7 +88,9 @@ function waitUntilLoaded(
   const tick = () => {
     if (cancelled) return;
     if (player.isLoaded || Date.now() - startedAt > 15_000) {
-      onReady();
+      if (epoch === campfireAudioEpoch && campfireAudioPlayer === player) {
+        onReady();
+      }
       return;
     }
     raf = requestAnimationFrame(tick);
@@ -70,16 +107,27 @@ function syncPlayback(
   player: AudioPlayer,
   component: CampfireComponentRow,
   timeMs: number,
-  shouldPlay: boolean
+  shouldPlay: boolean,
+  epoch: number
 ) {
+  if (epoch !== campfireAudioEpoch || campfireAudioPlayer !== player) {
+    return;
+  }
+
   const offsetSec = offsetSecFor(component, timeMs);
   void player.seekTo(offsetSec).finally(() => {
+    if (epoch !== campfireAudioEpoch || campfireAudioPlayer !== player) {
+      return;
+    }
     try {
-      player.volume = 1;
-      if (shouldPlay) {
-        if (!player.playing) player.play();
-      } else {
+      if (!shouldPlay) {
         player.pause();
+        return;
+      }
+      player.volume = 1;
+      player.muted = false;
+      if (!player.playing) {
+        player.play();
       }
     } catch {
       // ignore
@@ -116,22 +164,16 @@ export function useCampfireAudio(
     componentRef.current = active.component;
   }
 
-  // Tear down immediately when playback is disabled (e.g. user left the screen).
+  useEffect(() => {
+    return () => {
+      stopAllCampfireAudio();
+    };
+  }, []);
+
   useEffect(() => {
     if (enabled) return;
-    const player = playerRef.current;
-    if (player) {
-      try {
-        player.pause();
-        player.remove();
-      } catch {
-        // ignore
-      }
-      playerRef.current = null;
-    }
-    void setIsAudioActiveAsync(false).catch(() => {
-      /* ignore */
-    });
+    stopAllCampfireAudio();
+    playerRef.current = null;
   }, [enabled]);
 
   useEffect(() => {
@@ -151,28 +193,22 @@ export function useCampfireAudio(
     })();
   }, [enabled]);
 
-  // Create / destroy player when the active clip changes.
   useEffect(() => {
-    const previous = playerRef.current;
-    if (previous) {
-      try {
-        previous.remove();
-      } catch {
-        // ignore
-      }
-      playerRef.current = null;
-    }
+    releaseCampfireAudioPlayer(playerRef.current);
+    playerRef.current = null;
 
     if (!enabled || !clipId || !clipUrl) return;
 
     const component = componentRef.current;
     if (!component) return;
 
+    const epoch = campfireAudioEpoch;
     const player = createAudioPlayer(clipUrl, {
       downloadFirst: true,
       updateInterval: 250,
     });
     playerRef.current = player;
+    campfireAudioPlayer = player;
     try {
       player.volume = 1;
       player.muted = false;
@@ -181,35 +217,33 @@ export function useCampfireAudio(
     }
 
     let cancelled = false;
-    const cancelWait = waitUntilLoaded(player, () => {
+    const cancelWait = waitUntilLoaded(player, epoch, () => {
       if (cancelled) return;
       syncPlayback(
         player,
         component,
         timeMsRef.current,
-        isPlayingRef.current
+        isPlayingRef.current,
+        epoch
       );
     });
 
     return () => {
       cancelled = true;
       cancelWait();
-      try {
-        player.remove();
-      } catch {
-        // ignore
-      }
+      releaseCampfireAudioPlayer(player);
       if (playerRef.current === player) {
         playerRef.current = null;
       }
     };
   }, [enabled, clipId, clipUrl]);
 
-  // Play / pause when transport state changes (same clip).
   useEffect(() => {
     const player = playerRef.current;
     const component = componentRef.current;
     if (!player || !enabled || !clipId || !component) return;
+
+    const epoch = campfireAudioEpoch;
 
     if (!isPlaying) {
       try {
@@ -225,23 +259,25 @@ export function useCampfireAudio(
     }
 
     if (!player.playing) {
-      syncPlayback(player, component, timeMsRef.current, true);
+      syncPlayback(player, component, timeMsRef.current, true, epoch);
     }
   }, [enabled, isPlaying, clipId]);
 
-  // Resync position while playing (reads time from ref — no effect churn).
   useEffect(() => {
     const player = playerRef.current;
     const component = componentRef.current;
     if (!player || !enabled || !isPlaying || !clipId || !component) return;
 
     const interval = setInterval(() => {
+      if (campfireAudioPlayer !== playerRef.current) return;
       const p = playerRef.current;
       const c = componentRef.current;
-      if (!p || !c) return;
+      if (!p || !c || !enabled) return;
+
+      const epoch = campfireAudioEpoch;
       try {
         if (!p.playing) {
-          syncPlayback(p, c, timeMsRef.current, true);
+          syncPlayback(p, c, timeMsRef.current, true, epoch);
           return;
         }
         const offsetSec = offsetSecFor(c, timeMsRef.current);

@@ -1,101 +1,116 @@
 import { useEffect, useRef, useState } from "react";
-import { createVideoPlayer, type VideoPlayer } from "expo-video";
-import type {
-  CampfireComponentRow,
-  VideoComponentData,
-} from "@/services/campfireService";
+import type { VideoPlayer } from "expo-video";
+import {
+  peekCampfirePreload,
+  rewarmCampfireVideoPreload,
+  waitForCampfireLivePreload,
+} from "@/services/campfireLivePreload";
+import type { CampfireComponentRow } from "@/services/campfireService";
+import {
+  getCampfireVideoComponents,
+  releaseCampfireVideoPlayers,
+  warmCampfireVideoPlayers,
+} from "./campfireVideoPreload";
 
 export type CampfireVideoPlayers = {
   players: Map<number, VideoPlayer>;
   ready: boolean;
 };
 
+type Options = {
+  playheadMs?: number;
+  sessionId?: number | null;
+  enabled?: boolean;
+};
+
 /**
- * Creates one persistent video player per video component up front and reports
- * when they have all buffered enough to render their first frame
- * (`readyToPlay`). The same player instances are handed to the stage so the
- * video is already decoded/buffered by the time it appears on screen.
+ * Owns expo-video players for a session: adopts tile/wait-screen preload when
+ * possible, seeks/buffers active clips for late live joins, and exposes the
+ * same instances to the stage.
  */
 export function useCampfireVideoPlayers(
-  components: CampfireComponentRow[] | null
+  components: CampfireComponentRow[] | null,
+  options: Options = {}
 ): CampfireVideoPlayers {
+  const playheadMs = options.playheadMs ?? 0;
+  const sessionId = options.sessionId ?? null;
+  const enabled = options.enabled ?? true;
+
   const [players, setPlayers] = useState<Map<number, VideoPlayer>>(new Map());
   const [ready, setReady] = useState(false);
+  const ownsPlayersRef = useRef(false);
+  const playersRef = useRef(players);
+  playersRef.current = players;
 
   useEffect(() => {
-    if (!components) {
+    if (!enabled || !components) {
+      if (ownsPlayersRef.current) {
+        releaseCampfireVideoPlayers(playersRef.current);
+        ownsPlayersRef.current = false;
+      }
       setPlayers(new Map());
       setReady(false);
       return;
     }
 
-    const videoComps = components.filter(
-      (c) =>
-        c.type === "video" &&
-        (c.data as VideoComponentData).videoUrl?.trim()
-    );
-
+    const videoComps = getCampfireVideoComponents(components);
     if (videoComps.length === 0) {
       setPlayers(new Map());
       setReady(true);
+      ownsPlayersRef.current = false;
       return;
     }
 
-    const map = new Map<number, VideoPlayer>();
-    const subscriptions: { remove: () => void }[] = [];
     let cancelled = false;
 
-    const readyPromises = videoComps.map((c) => {
-      const url = (c.data as VideoComponentData).videoUrl!.trim();
-      const player = createVideoPlayer({ uri: url });
-      try {
-        player.muted = false;
-        player.volume = 1;
-        player.audioMixingMode = "mixWithOthers";
-        player.timeUpdateEventInterval = 0.25;
-        player.pause();
-      } catch {
-        // ignore
-      }
-      map.set(c.id, player);
+    const run = async () => {
+      setReady(false);
 
-      return new Promise<void>((resolve) => {
-        if (player.status === "readyToPlay" || player.status === "error") {
-          resolve();
-          return;
+      let existing: Map<number, VideoPlayer> | null = null;
+      let fromCache = false;
+
+      if (sessionId != null) {
+        await waitForCampfireLivePreload(sessionId);
+        if (cancelled) return;
+
+        const peek = peekCampfirePreload(sessionId);
+        if (peek?.videoPlayers.size) {
+          existing = peek.videoPlayers;
+          fromCache = true;
+          if (peek.playheadMs !== playheadMs) {
+            rewarmCampfireVideoPreload(sessionId, playheadMs);
+            await waitForCampfireLivePreload(sessionId, playheadMs);
+          }
         }
-        const sub = player.addListener("statusChange", ({ status }) => {
-          if (status === "readyToPlay" || status === "error") resolve();
-        });
-        subscriptions.push(sub);
-      });
-    });
+      }
 
-    setPlayers(map);
-    setReady(false);
+      if (cancelled) return;
 
-    void Promise.allSettled(readyPromises).then(() => {
-      if (!cancelled) setReady(true);
-    });
+      const warmed = await warmCampfireVideoPlayers(
+        components,
+        playheadMs,
+        existing
+      );
+      if (cancelled) return;
+
+      ownsPlayersRef.current = !fromCache;
+      setPlayers(warmed.players);
+      setReady(warmed.ready);
+    };
+
+    void run();
 
     return () => {
       cancelled = true;
-      subscriptions.forEach((s) => {
-        try {
-          s.remove();
-        } catch {
-          // ignore
-        }
-      });
-      for (const player of map.values()) {
-        try {
-          player.release();
-        } catch {
-          // ignore
-        }
+      if (ownsPlayersRef.current) {
+        const toRelease = playersRef.current;
+        ownsPlayersRef.current = false;
+        queueMicrotask(() => {
+          releaseCampfireVideoPlayers(toRelease);
+        });
       }
     };
-  }, [components]);
+  }, [components, enabled, playheadMs, sessionId]);
 
   return { players, ready };
 }

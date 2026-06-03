@@ -1,6 +1,13 @@
 import React, { useEffect } from "react";
 import type { StyleProp, ViewStyle } from "react-native";
 import { VideoView, type VideoPlayer } from "expo-video";
+import {
+  isVideoPlayerAlive,
+  safePlayerCurrentTime,
+  safePlayerPause,
+  safePlayerPlay,
+  safePlayerSeek,
+} from "./campfireVideoPlayerUtils";
 
 type Props = {
   player: VideoPlayer;
@@ -12,9 +19,8 @@ type Props = {
 
 /**
  * Renders a pre-created, already-buffered video player and keeps its playback
- * position aligned with the campfire timeline clock. The player itself is
- * created/preloaded by `useCampfireVideoPlayers` so the first frame is ready
- * before this view mounts.
+ * position aligned with the campfire timeline clock. Heavy seek/buffer work
+ * happens in `campfireVideoPreload` before the stage is shown.
  */
 export function CampfireVideo({
   player,
@@ -24,40 +30,36 @@ export function CampfireVideo({
   contentFit = "contain",
 }: Props) {
   useEffect(() => {
+    if (!isVideoPlayerAlive(player)) return;
+
     try {
+      const current = safePlayerCurrentTime(player);
+      if (current != null && Math.abs(current - offsetSec) > 0.35) {
+        safePlayerSeek(player, offsetSec);
+      }
+
       if (isPlaying) {
         player.muted = false;
         player.volume = 1;
         player.audioMixingMode = "mixWithOthers";
-        player.play();
+        safePlayerPlay(player);
       } else {
-        player.pause();
+        safePlayerPause(player);
       }
     } catch {
-      // ignore
+      // Player was released (e.g. session teardown) — ignore.
     }
-  }, [player, isPlaying]);
+  }, [player, isPlaying, offsetSec]);
 
-  useEffect(() => {
-    try {
-      if (Math.abs(player.currentTime - offsetSec) > 0.3) {
-        player.currentTime = offsetSec;
-      }
-    } catch {
-      // ignore
-    }
-  }, [player, offsetSec]);
-
-  // Pause the shared player when this video leaves the screen.
   useEffect(() => {
     return () => {
-      try {
-        player.pause();
-      } catch {
-        // ignore
-      }
+      safePlayerPause(player);
     };
   }, [player]);
+
+  if (!isVideoPlayerAlive(player)) {
+    return null;
+  }
 
   return (
     <VideoView

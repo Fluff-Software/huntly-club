@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { View, ImageBackground, Pressable } from "react-native";
 import Animated, {
   Easing,
@@ -52,6 +52,8 @@ export function CampfireTile() {
   const [liveSession, setLiveSession] = useState<CampfireSessionRow | null>(null);
   const [scheduledAtMs, setScheduledAtMs] = useState<number | null>(null);
   const [countdownMs, setCountdownMs] = useState<number>(0);
+  const hasLoadedOnceRef = useRef(false);
+  const hasEntranceAnimatedRef = useRef(false);
   const tileTranslateX = useSharedValue(240);
   const tileOpacity = useSharedValue(0);
   const tileSlideStyle = useAnimatedStyle(() => ({
@@ -106,10 +108,16 @@ export function CampfireTile() {
         current && isCampfireLiveDismissed(current.id) ? null : current
       );
       let cancelled = false;
-      setStatusReady(false);
+      // Only hide for the initial load; later refocuses refresh in place (no re-slide).
+      if (!hasLoadedOnceRef.current) {
+        setStatusReady(false);
+      }
       void (async () => {
         await refresh();
-        if (!cancelled) setStatusReady(true);
+        if (!cancelled) {
+          setStatusReady(true);
+          hasLoadedOnceRef.current = true;
+        }
       })();
       return () => {
         cancelled = true;
@@ -117,9 +125,17 @@ export function CampfireTile() {
     }, [refresh])
   );
 
-  // Slide in after status is loaded — same motion as the home team card.
+  // Slide in once after first status load — same motion as the home team card.
   useEffect(() => {
     if (!statusReady) return;
+
+    if (hasEntranceAnimatedRef.current) {
+      tileTranslateX.value = 0;
+      tileOpacity.value = 1;
+      return;
+    }
+
+    hasEntranceAnimatedRef.current = true;
     tileTranslateX.value = 240;
     tileOpacity.value = 0;
     let cancelled = false;

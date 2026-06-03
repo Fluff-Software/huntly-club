@@ -15,7 +15,11 @@ import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { CampfireStage } from "@/components/campfire/CampfireStage";
 import { CampfireVideoPreloadViews } from "@/components/campfire/CampfireVideoPreloadViews";
-import { useCampfireAudio } from "@/components/campfire/useCampfireAudio";
+import {
+  stopAllCampfireAudio,
+  useCampfireAudio,
+} from "@/components/campfire/useCampfireAudio";
+import { safePlayerPause } from "@/components/campfire/campfireVideoPlayerUtils";
 import { useCampfireVideoPlayers } from "@/components/campfire/useCampfireVideoPlayers";
 import { getCampfireVideoComponents } from "@/components/campfire/campfireVideoPreload";
 import { prepareCampfireMedia } from "@/components/campfire/prepareCampfireMedia";
@@ -122,6 +126,8 @@ export default function CampfireScreen() {
       enabled: videoPlayersEnabled,
     }
   );
+  const videoPlayersRef = useRef(videoPlayers);
+  videoPlayersRef.current = videoPlayers;
 
   const hasVideoComponents = useMemo(
     () =>
@@ -362,6 +368,15 @@ export default function CampfireScreen() {
   const isFocused = useIsFocused();
 
   const stopCampfireSession = useCallback(() => {
+    stopAllCampfireAudio();
+    for (const player of videoPlayersRef.current.values()) {
+      safePlayerPause(player);
+      try {
+        player.muted = true;
+      } catch {
+        // ignore
+      }
+    }
     loadTokenRef.current++;
     countdownTargetRef.current = null;
     waitingSessionRef.current = null;

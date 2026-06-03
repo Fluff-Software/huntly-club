@@ -1,6 +1,6 @@
 import { Tabs, router, usePathname } from "expo-router";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Image, Modal, Platform, Pressable, StyleSheet, View } from "react-native";
+import { Image, Platform, Pressable, StyleSheet, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
@@ -16,11 +16,9 @@ import { useUser } from "@/contexts/UserContext";
 import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useActiveTrackingSession } from "@/hooks/useActiveTrackingSession";
-import { useFirstSeason } from "@/hooks/useFirstSeason";
 import { NewPlayerTutorial } from "@/components/NewPlayerTutorial";
 import { SlideUpTabBar } from "@/components/SlideUpTabBar";
 import { ThemedText } from "@/components/ThemedText";
-import { Button } from "@/components/ui/Button";
 import {
   getHasCompletedTutorial,
   recordTutorialAchievement } from "@/services/activityProgressService";
@@ -31,7 +29,6 @@ import {
   setPushOptInAsked } from "@/services/pushNotificationService";
 
 const HOME_CLUBHOUSE = require("@/assets/images/home-clubhouse.png");
-const HOME_STORY = require("@/assets/images/home-story.png");
 const HOME_MISSIONS = require("@/assets/images/home-missions.png");
 const HOME_TEAM = require("@/assets/images/home-team.png");
 
@@ -45,8 +42,6 @@ const TAB_BAR_COLORS: Record<string, string> = {
 
 const CREAM = "#F4F0EB";
 const HUNTLY_GREEN = "#4F6F52";
-const HUNTLY_CHARCOAL = "#3D3D3D";
-
 function TabIcon({
   source,
   color,
@@ -104,11 +99,7 @@ export default function TabLayout() {
   const pathname = usePathname();
   const { user } = useAuth();
   const { profiles, loading: profilesLoading } = usePlayer();
-  const { userData, loading: userLoading, updateLastSeenSeasonId } = useUser();
-  const {
-    firstSeason,
-    heroImageSource,
-    loading: seasonLoading } = useFirstSeason();
+  const { userData, loading: userLoading } = useUser();
   const { scaleW, isTablet } = useLayoutScale();
   const insets = useSafeAreaInsets();
   const { session: activeTrackingSession } = useActiveTrackingSession();
@@ -119,14 +110,7 @@ export default function TabLayout() {
   const setTutorialStep = signUpContext?.setTutorialStep;
   const replayTutorialRequested = signUpContext?.replayTutorialRequested ?? false;
   const setReplayTutorialRequested = signUpContext?.setReplayTutorialRequested;
-  const [showSeasonAnnouncementModal, setShowSeasonAnnouncementModal] =
-    useState(false);
-  const [seasonAnnouncementSaving, setSeasonAnnouncementSaving] = useState(false);
-  const [seasonAnnouncementChecking, setSeasonAnnouncementChecking] =
-    useState(true);
   const [hasCompletedTutorial, setHasCompletedTutorial] = useState<boolean | null>(null);
-
-  const hasCheckedSeasonAnnouncementRef = useRef(false);
 
   // If user has no team set, send them to add explorers first, then team selection (matches AuthGuard)
   useEffect(() => {
@@ -188,7 +172,6 @@ export default function TabLayout() {
   const hasRequestedPushPermissionRef = useRef(false);
   const maybeRequestPushPermission = useCallback(async () => {
     if (!user?.id) return;
-    if (showSeasonAnnouncementModal || seasonAnnouncementChecking) return;
     if (showPostSignUpWelcome) return;
     if (hasRequestedPushPermissionRef.current) return;
     hasRequestedPushPermissionRef.current = true;
@@ -209,58 +192,11 @@ export default function TabLayout() {
     } catch {
       // If anything fails, don't block the UI and don't loop prompts this session.
     }
-  }, [
-    user?.id,
-    showSeasonAnnouncementModal,
-    seasonAnnouncementChecking,
-    showPostSignUpWelcome,
-  ]);
-
-  const maybeShowSeasonAnnouncement = useCallback(async () => {
-    if (!user?.id) {
-      setSeasonAnnouncementChecking(false);
-      return;
-    }
-    if (userLoading) return;
-    if (showPostSignUpWelcome) return;
-    if (seasonLoading) return;
-    if (!userData) {
-      hasCheckedSeasonAnnouncementRef.current = true;
-      setSeasonAnnouncementChecking(false);
-      return;
-    }
-    if (!firstSeason?.id) {
-      hasCheckedSeasonAnnouncementRef.current = true;
-      setSeasonAnnouncementChecking(false);
-      return;
-    }
-    if (hasCheckedSeasonAnnouncementRef.current) return;
-    hasCheckedSeasonAnnouncementRef.current = true;
-    const seenSeasonId = userData?.last_seen_season_id ?? null;
-    if (seenSeasonId !== firstSeason.id) {
-      setShowSeasonAnnouncementModal(true);
-    }
-    setSeasonAnnouncementChecking(false);
-  }, [
-    user?.id,
-    userLoading,
-    userData,
-    showPostSignUpWelcome,
-    seasonLoading,
-    firstSeason?.id,
-    userData?.last_seen_season_id,
-  ]);
+  }, [user?.id, showPostSignUpWelcome]);
 
   useEffect(() => {
-    hasCheckedSeasonAnnouncementRef.current = false;
-    setSeasonAnnouncementChecking(true);
-    setShowSeasonAnnouncementModal(false);
     hasRequestedPushPermissionRef.current = false;
   }, [user?.id]);
-
-  useEffect(() => {
-    void maybeShowSeasonAnnouncement();
-  }, [maybeShowSeasonAnnouncement]);
 
   useEffect(() => {
     void maybeRequestPushPermission();
@@ -277,15 +213,8 @@ export default function TabLayout() {
       : insets.bottom;
   const tabBarPaddingBottom = tabBarExtraBottomPadding + bottomInset;
   const tabBarHeight = scaleW(56) + tabBarExtraBottomPadding + bottomInset;
-  const seasonCardMaxWidth = isTablet ? scaleW(460) : 360;
-  const seasonTitleFontSize = isTablet ? scaleW(30) : undefined;
-  const seasonNameFontSize = isTablet ? scaleW(24) : undefined;
-  const seasonBodyFontSize = isTablet ? scaleW(20) : undefined;
-  const seasonBodyLineHeight = isTablet ? scaleW(28) : undefined;
-  const seasonCtaFontSize = isTablet ? scaleW(22) : undefined;
-
   const tutorialVisible =
-    !showSeasonAnnouncementModal && showPostSignUpWelcome && hasCompletedTutorial === false;
+    showPostSignUpWelcome && hasCompletedTutorial === false;
 
   const activeTrackingTitle =
     activeTrackingSession?.status === "active"
@@ -303,7 +232,6 @@ export default function TabLayout() {
   const isTabDisabled = (routeName: string) => {
     if (!tutorialVisible) return false;
     const step = tutorialStep as string;
-    if (step === "click_story") return routeName !== "story";
     if (step === "click_missions") return routeName !== "missions";
     if (step === "click_team") return routeName !== "social";
     if (step === "click_journal") return routeName !== "journal";
@@ -325,24 +253,6 @@ export default function TabLayout() {
     requestAnimationFrame(() => {
       router.replace("/(tabs)");
     });
-    setTimeout(() => {
-      void maybeShowSeasonAnnouncement();
-      void maybeRequestPushPermission();
-    }, POST_MODAL_DELAY_MS);
-  };
-
-  const handleSeasonAnnouncementDismiss = async () => {
-    if (seasonAnnouncementSaving) return;
-    setSeasonAnnouncementSaving(true);
-    setShowSeasonAnnouncementModal(false);
-    if (firstSeason?.id) {
-      try {
-        await updateLastSeenSeasonId(firstSeason.id);
-      } catch (error) {
-        console.error("Error updating last seen season id:", error);
-      }
-    }
-    setSeasonAnnouncementSaving(false);
     setTimeout(() => {
       void maybeRequestPushPermission();
     }, POST_MODAL_DELAY_MS);
@@ -405,19 +315,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="story"
         options={{
-          title: "Story",
-          tabBarIcon: ({ color }) => (
-            <View style={[styles.storyIconWrapper, { width: scaleW(44), height: scaleW(44) }]}>
-              {tutorialStep === "click_story" && (
-                <View style={[styles.tutorialPulseContainer, { width: scaleW(44), height: scaleW(44) }]}>
-                  <StoryTabPulse size={scaleW(44)} />
-                </View>
-              )}
-              <TabIcon source={HOME_STORY} color={color} size={scaleW(24)} />
-            </View>
-          ),
-          href: profiles.length > 0 ? undefined : null,
-          popToTopOnBlur: true }}
+          href: null }}
       />
       <Tabs.Screen
         name="missions"
@@ -545,86 +443,6 @@ export default function TabLayout() {
         onDismiss={handleTutorialDismiss}
         tabBarHeight={tabBarHeight}
       />
-      {showSeasonAnnouncementModal && firstSeason ? (
-        <Modal
-          visible={showSeasonAnnouncementModal}
-          transparent
-          animationType="fade"
-          onRequestClose={handleSeasonAnnouncementDismiss}
-        >
-          <View style={styles.notificationPromptOverlay}>
-            <View
-              style={[
-                styles.notificationPromptCard,
-                { padding: scaleW(24), borderRadius: scaleW(16), maxWidth: seasonCardMaxWidth },
-              ]}
-            >
-              {firstSeason.hero_image ? (
-                <Image
-                  source={heroImageSource}
-                  resizeMode="cover"
-                  style={{
-                    width: "100%",
-                    height: scaleW(160),
-                    borderRadius: scaleW(12),
-                    marginBottom: scaleW(16) }}
-                />
-              ) : null}
-              <ThemedText
-                type="subtitle"
-                style={{
-                  marginBottom: scaleW(8),
-                  textAlign: "center",
-                  ...(seasonTitleFontSize != null ? { fontSize: seasonTitleFontSize } : {}) }}
-                lightColor={HUNTLY_GREEN}
-                darkColor={CREAM}
-              >
-                A new season has arrived!
-              </ThemedText>
-              {firstSeason.name ? (
-                <ThemedText
-                  style={{
-                    marginBottom: scaleW(8),
-                    textAlign: "center",
-                    fontWeight: "600",
-                    ...(seasonNameFontSize != null ? { fontSize: seasonNameFontSize } : {}) }}
-                  lightColor={HUNTLY_CHARCOAL}
-                  darkColor={CREAM}
-                >
-                  {firstSeason.name}
-                </ThemedText>
-              ) : null}
-              <ThemedText
-                style={{
-                  marginBottom: scaleW(16),
-                  textAlign: "center",
-                  ...(seasonBodyFontSize != null ? { fontSize: seasonBodyFontSize } : {}),
-                  ...(seasonBodyLineHeight != null ? { lineHeight: seasonBodyLineHeight } : {}) }}
-                lightColor={HUNTLY_CHARCOAL}
-                darkColor={CREAM}
-              >
-                Read the latest story and jump into this season&apos;s missions.
-              </ThemedText>
-              <Button
-                variant="secondary"
-                onPress={handleSeasonAnnouncementDismiss}
-                loading={seasonAnnouncementSaving}
-                disabled={seasonAnnouncementSaving}
-                className={isTablet ? "h-16 rounded-2xl mx-2" : "rounded-2xl"}
-              >
-                <ThemedText
-                  type="defaultSemiBold"
-                  lightColor="#FFFFFF"
-                  darkColor="#FFFFFF"
-                  style={seasonCtaFontSize != null ? { fontSize: seasonCtaFontSize } : undefined}
-                >
-                  Continue
-                </ThemedText>
-              </Button>
-            </View>
-          </View>
-        </Modal>
-      ) : null}
     </View>
   );
 }

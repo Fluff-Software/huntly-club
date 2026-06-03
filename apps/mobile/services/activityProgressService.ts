@@ -761,36 +761,38 @@ export type EarliestAvailableMission = {
   image: string | null;
 };
 
-/** Returns the earliest mission from unlocked chapters in the latest season. */
+/** Returns the earliest released mission in campfire session scope (oldest release_date first). */
 export const getEarliestAvailableMission = async (): Promise<EarliestAvailableMission | null> => {
   const today = ukTodayForChapterUnlockGate();
-  const { data: latestSeason, error: seasonError } = await supabase
-    .from("seasons")
-    .select("id")
-    .order("id", { ascending: false })
-    .limit(1)
-    .maybeSingle();
 
-  if (seasonError) {
-    throw new Error(`Failed to load latest season: ${seasonError.message}`);
+  const { data: sessionRows, error: sessionsError } = await supabase
+    .from("campfire_sessions")
+    .select("missions, scheduled_at, id");
+
+  if (sessionsError) {
+    throw new Error(`Failed to load campfire sessions: ${sessionsError.message}`);
   }
 
-  if (!latestSeason?.id) return null;
+  const missionIds = new Set<number>();
+  for (const row of sessionRows ?? []) {
+    const ids = (row.missions as number[] | null) ?? [];
+    for (const id of ids) {
+      if (Number.isFinite(id)) missionIds.add(Number(id));
+    }
+  }
+
+  if (missionIds.size === 0) return null;
 
   const { data, error } = await supabase
-    .from("chapter_activities")
-    .select(
-      `
-      order,
-      chapters!inner(unlock_date, season_id),
-      activities!inner(id, title, description, image, content_status)
-    `
-    )
-    .eq("chapters.season_id", latestSeason.id)
-    .lte("chapters.unlock_date", today)
-    .eq("activities.content_status", "published")
-    .order("unlock_date", { ascending: true, referencedTable: "chapters" })
-    .order("order", { ascending: true })
+    .from("activities")
+    .select("id, title, description, image, release_date, session_order")
+    .in("id", [...missionIds])
+    .eq("content_status", "published")
+    .not("release_date", "is", null)
+    .lte("release_date", today)
+    .order("release_date", { ascending: true })
+    .order("session_order", { ascending: true })
+    .order("id", { ascending: true })
     .limit(1)
     .maybeSingle();
 
@@ -798,14 +800,13 @@ export const getEarliestAvailableMission = async (): Promise<EarliestAvailableMi
     throw new Error(`Failed to load earliest available mission: ${error.message}`);
   }
 
-  const activity = Array.isArray(data?.activities) ? data.activities[0] : data?.activities;
-  if (!activity?.id) return null;
+  if (!data?.id) return null;
 
   return {
-    id: activity.id,
-    title: activity.title,
-    description: activity.description ?? null,
-    image: activity.image ?? null,
+    id: data.id,
+    title: data.title,
+    description: data.description ?? null,
+    image: data.image ?? null,
   };
 };
 

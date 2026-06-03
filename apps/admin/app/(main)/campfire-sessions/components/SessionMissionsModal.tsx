@@ -150,6 +150,15 @@ export function SessionMissionsModal({
                         />
                         <span className="min-w-0 flex-1 leading-snug">
                           {a.title}
+                          {a.release_date ? (
+                            <span className="block text-[11px] text-stone-500">
+                              Releases {formatReleaseDate(a.release_date)}
+                            </span>
+                          ) : (
+                            <span className="block text-[11px] text-amber-600/90">
+                              No release date set
+                            </span>
+                          )}
                         </span>
                       </label>
                     </li>
@@ -172,4 +181,13 @@ export function SessionMissionsModal({
       </div>
     </div>
   );
+}
+
+function formatReleaseDate(isoDate: string): string {
+  const parts = isoDate.split("-");
+  if (parts.length === 3) {
+    const [yyyy, mm, dd] = parts;
+    return `${dd}/${mm}/${yyyy.slice(-2)}`;
+  }
+  return isoDate;
 }

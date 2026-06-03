@@ -97,7 +97,7 @@ export async function getEditorData(sessionId: number): Promise<{
         .order("start_time", { ascending: true }),
       supabase
         .from("activities")
-        .select("id, name, title, description, image, xp")
+        .select("id, name, title, description, image, xp, release_date")
         .order("title", { ascending: true }),
       supabase
         .from("captains")
@@ -474,6 +474,8 @@ export async function persistCampfireEditorDraft(
 
   if (sessionError) return { error: sessionError.message };
 
+  await syncSessionMissionOrder(draft.session.missions);
+
   // --- Phase 1: Upsert tracks (inserts & updates before any deletes) ---
   const trackIdMap = new Map<number, number>();
 
@@ -567,6 +569,17 @@ export async function persistCampfireEditorDraft(
 
   revalidateCampfire(sessionId);
   return {};
+}
+
+async function syncSessionMissionOrder(missionIds: number[]) {
+  const supabase = createServerSupabaseClient();
+  for (let i = 0; i < missionIds.length; i++) {
+    const { error } = await supabase
+      .from("activities")
+      .update({ session_order: i })
+      .eq("id", missionIds[i]);
+    if (error) throw new Error(error.message);
+  }
 }
 
 async function syncSessionDuration(sessionId: number) {

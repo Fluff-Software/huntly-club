@@ -53,6 +53,7 @@ type ActivityFormProps = {
     mission_type?: string | null;
     safety_notes?: string | null;
     content_status?: string | null;
+    release_date?: string | null;
   };
 };
 
@@ -229,6 +230,22 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
             defaultValue={initial?.title ?? ""}
             className="w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
           />
+        </div>
+        <div>
+          <label htmlFor="release_date" className="mb-1 block text-sm font-medium text-stone-700">
+            Release date
+          </label>
+          <input
+            id="release_date"
+            name="release_date"
+            type="date"
+            required={initial == null}
+            defaultValue={initial?.release_date ?? ""}
+            className="w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+          />
+          <p className="mt-1 text-xs text-stone-500">
+            Missions unlock at 6:00 UK time on this date.
+          </p>
         </div>
       </div>
 

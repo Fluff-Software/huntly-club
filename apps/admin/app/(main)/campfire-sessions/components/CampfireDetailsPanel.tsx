@@ -32,7 +32,18 @@ export function CampfireDetailsPanel({
 
   const selectedActivities = useMemo(() => {
     const byId = new Map(activities.map((a) => [a.id, a]));
-    return session.missions.map((id) => byId.get(id) ?? { id, title: `Mission #${id}` });
+    return session.missions.map(
+      (id) =>
+        byId.get(id) ?? {
+          id,
+          name: "",
+          title: `Mission #${id}`,
+          description: null,
+          image: null,
+          xp: null,
+          release_date: null,
+        }
+    );
   }, [activities, session.missions]);
 
   return (
@@ -137,6 +148,13 @@ export function CampfireDetailsPanel({
                 >
                   <span className="min-w-0 flex-1 truncate text-xs font-medium text-stone-200">
                     {a.title}
+                    {a.release_date ? (
+                      <span className="ml-1 font-normal text-stone-500">
+                        · {formatReleaseDate(a.release_date)}
+                      </span>
+                    ) : (
+                      <span className="ml-1 font-normal text-amber-600/90">· no release date</span>
+                    )}
                   </span>
                   <button
                     type="button"
@@ -299,6 +317,15 @@ function Field({
       {hint && <p className="mt-1.5 text-[11px] leading-snug text-stone-600">{hint}</p>}
     </div>
   );
+}
+
+function formatReleaseDate(isoDate: string): string {
+  const parts = isoDate.split("-");
+  if (parts.length === 3) {
+    const [yyyy, mm, dd] = parts;
+    return `${dd}/${mm}/${yyyy.slice(-2)}`;
+  }
+  return isoDate;
 }
 
 function formatScheduledSummary(iso: string | null): string {

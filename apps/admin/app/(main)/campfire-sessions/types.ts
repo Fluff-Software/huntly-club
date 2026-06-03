@@ -103,6 +103,7 @@ export type ActivityOption = {
   description: string | null;
   image: string | null;
   xp: number | null;
+  release_date: string | null;
 };
 
 export type CaptainOption = {

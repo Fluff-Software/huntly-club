@@ -32,11 +32,11 @@ import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useNavigationReturn } from "@/contexts/NavigationReturnContext";
 import { useTutorialActive } from "@/hooks/useTutorialActive";
 import { useRefreshWhenTutorialEnds } from "@/hooks/useRefreshWhenTutorialEnds";
-import { useCurrentChapterActivities } from "@/hooks/useCurrentChapterActivities";
 import {
-  useChaptersWithActivities,
-  type ChapterWithActivities,
-} from "@/hooks/useAllChaptersActivities";
+  useCurrentSessionMissions,
+  useSessionsWithMissions,
+  type SessionWithActivities,
+} from "@/hooks/useSessionsWithMissions";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useUser } from "@/contexts/UserContext";
 import {
@@ -109,15 +109,15 @@ function missionImageToUrl(image: ImageSourcePropType): string | null {
   return null;
 }
 
-/** Earliest unlocked mission in chapter order (oldest chapter first). */
+/** Earliest unlocked mission across sessions (oldest session first, then mission order). */
 function pickEarliestAvailableMission(
-  chapters: ChapterWithActivities[],
+  sessions: SessionWithActivities[],
   completedActivityIds: Set<string>
 ): EarliestAvailableMission | null {
-  if (chapters.length === 0) return null;
+  if (sessions.length === 0) return null;
 
-  for (let chapterIndex = chapters.length - 1; chapterIndex >= 0; chapterIndex -= 1) {
-    for (const card of chapters[chapterIndex].activities) {
+  for (let sessionIndex = sessions.length - 1; sessionIndex >= 0; sessionIndex -= 1) {
+    for (const card of sessions[sessionIndex].activities) {
       if (!completedActivityIds.has(card.id)) {
         return {
           id: parseInt(card.id, 10),
@@ -129,7 +129,7 @@ function pickEarliestAvailableMission(
     }
   }
 
-  const fallback = chapters[chapters.length - 1]?.activities[0];
+  const fallback = sessions[sessions.length - 1]?.activities[0];
   if (!fallback) return null;
   return {
     id: parseInt(fallback.id, 10),
@@ -154,16 +154,16 @@ export default function HomeScreen() {
   } = useUser();
   const firstProfileId = profiles[0]?.id ?? null;
   const {
-    chapters,
+    sessions,
     completedActivityIds,
-    loading: chaptersLoading,
-    refetch: refetchChapters,
-  } = useChaptersWithActivities(firstProfileId);
+    loading: sessionsLoading,
+    refetch: refetchSessions,
+  } = useSessionsWithMissions(firstProfileId);
   const {
     latestMission,
     latestUnfinishedMission,
     loading: missionLoading,
-    refetch: refetchMissions } = useCurrentChapterActivities(null);
+    refetch: refetchMissions } = useCurrentSessionMissions(null);
   const [clubCards, setClubCards] = useState<ClubPhotoCardItem[]>([]);
   const [clubCardsLoading, setClubCardsLoading] = useState(true);
   const [loadingMoreClubCards, setLoadingMoreClubCards] = useState(false);
@@ -176,7 +176,7 @@ export default function HomeScreen() {
   /** Once the saved first-mission target is completed, never show the loading shell again this session. */
   const [firstMissionCardHidden, setFirstMissionCardHidden] = useState(false);
   const savedFirstMissionId = userData?.first_mission_activity_id ?? null;
-  const savedFirstMissionCompleteInChapterData = useMemo(
+  const savedFirstMissionCompleteInSessionData = useMemo(
     () =>
       savedFirstMissionId != null &&
       completedActivityIds.has(String(savedFirstMissionId)),
@@ -214,18 +214,18 @@ export default function HomeScreen() {
     let cancelled = false;
 
     const syncFirstMissionCard = async () => {
-      if (userLoading || chaptersLoading || !userData?.user_id || profiles.length === 0) {
-        if (!userLoading && !chaptersLoading && !firstMissionCardHidden) {
+      if (userLoading || sessionsLoading || !userData?.user_id || profiles.length === 0) {
+        if (!userLoading && !sessionsLoading && !firstMissionCardHidden) {
           setFirstMissionCard(null);
         }
         return;
       }
 
-      if (firstMissionCardHidden || savedFirstMissionCompleteInChapterData) {
+      if (firstMissionCardHidden || savedFirstMissionCompleteInSessionData) {
         if (!cancelled) {
           setFirstMissionCard(null);
           setFirstMissionCardLoading(false);
-          if (savedFirstMissionCompleteInChapterData) {
+          if (savedFirstMissionCompleteInSessionData) {
             setFirstMissionCardHidden(true);
           }
         }
@@ -238,7 +238,7 @@ export default function HomeScreen() {
         let targetMissionId = userData.first_mission_activity_id;
 
         if (targetMissionId == null) {
-          mission = pickEarliestAvailableMission(chapters, completedActivityIds);
+          mission = pickEarliestAvailableMission(sessions, completedActivityIds);
           if (!mission?.id) {
             if (!cancelled) setFirstMissionCard(null);
             return;
@@ -261,15 +261,15 @@ export default function HomeScreen() {
         }
 
         if (!mission) {
-          const fromChapters = chapters
-            .flatMap((chapter) => chapter.activities)
+          const fromSessions = sessions
+            .flatMap((session) => session.activities)
             .find((card) => parseInt(card.id, 10) === targetMissionId);
-          if (fromChapters) {
+          if (fromSessions) {
             mission = {
               id: targetMissionId,
-              title: fromChapters.title,
-              description: fromChapters.description || null,
-              image: missionImageToUrl(fromChapters.image),
+              title: fromSessions.title,
+              description: fromSessions.description || null,
+              image: missionImageToUrl(fromSessions.image),
             };
           } else {
             const activity = await getActivityById(targetMissionId);
@@ -303,14 +303,14 @@ export default function HomeScreen() {
     };
   }, [
     userLoading,
-    chaptersLoading,
+    sessionsLoading,
     userData?.user_id,
     userData?.first_mission_activity_id,
     profiles,
-    chapters,
+    sessions,
     completedActivityIds,
     firstMissionCardHidden,
-    savedFirstMissionCompleteInChapterData,
+    savedFirstMissionCompleteInSessionData,
     updateFirstMissionActivityId,
   ]);
 
@@ -394,8 +394,8 @@ export default function HomeScreen() {
 
   const refreshHomeData = useCallback(() => {
     refetchMissions();
-    void refetchChapters();
-  }, [refetchMissions, refetchChapters]);
+    void refetchSessions();
+  }, [refetchMissions, refetchSessions]);
 
   useFocusEffect(
     useCallback(() => {
@@ -788,7 +788,7 @@ export default function HomeScreen() {
         </View>
 
         {!firstMissionCardHidden &&
-        !savedFirstMissionCompleteInChapterData &&
+        !savedFirstMissionCompleteInSessionData &&
         (firstMissionCardLoading || firstMissionCard) ? (
           <AnimatedReanimated.View
             key={firstMissionCard ? `first-mission-${firstMissionCard.id}` : "first-mission-loading"}

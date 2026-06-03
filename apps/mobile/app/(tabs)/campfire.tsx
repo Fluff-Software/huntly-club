@@ -18,16 +18,19 @@ import { useCampfireVideoPlayers } from "@/components/campfire/useCampfireVideoP
 import { prepareCampfireMedia } from "@/components/campfire/prepareCampfireMedia";
 import {
   getCampfireSessionBundle,
-  getLatestLiveSession,
   getLatestReplaySession,
   getNextScheduledSession,
   getServerNowIso,
+  resolveCampfirePlaybackSession,
   sessionDurationMs,
   type CampfireSessionBundle,
+  type CampfireSessionRow,
 } from "@/services/campfireService";
 import {
+  CAMPFIRE_PRELOAD_LEAD_MS,
   getCampfireLivePreload,
   invalidateCampfireLivePreload,
+  startCampfireSessionPreload,
   waitForCampfireLivePreload,
 } from "@/services/campfireLivePreload";
 import { supabase } from "@/services/supabase";
@@ -66,6 +69,9 @@ export default function CampfireScreen() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [mediaReady, setMediaReady] = useState(false);
   const [countdownMs, setCountdownMs] = useState<number>(0);
+  const [waitingSession, setWaitingSession] =
+    useState<CampfireSessionRow | null>(null);
+  const waitingSessionRef = useRef<CampfireSessionRow | null>(null);
   const countdownTargetRef = useRef<number | null>(null);
 
   const { players: videoPlayers, ready: videosReady } = useCampfireVideoPlayers(
@@ -88,13 +94,23 @@ export default function CampfireScreen() {
   const [viewerCount, setViewerCount] = useState<number>(0);
   const loadTokenRef = useRef(0);
 
+  useEffect(() => {
+    waitingSessionRef.current = waitingSession;
+  }, [waitingSession]);
+
   const loadCampfire = useCallback(
     async (modeOverride?: string) => {
       const token = ++loadTokenRef.current;
       const mode = modeOverride ?? params.mode;
 
+      const waitingId = waitingSessionRef.current?.id;
+      const preloadedWhileWaiting =
+        waitingId != null ? getCampfireLivePreload(waitingId) : null;
+
       hasExitedAfterFinishRef.current = false;
-      setMediaReady(false);
+      if (!preloadedWhileWaiting) {
+        setMediaReady(false);
+      }
       setCurrentTimeMs(0);
       setIsPlaying(false);
       setLoadState("loading");
@@ -127,34 +143,34 @@ export default function CampfireScreen() {
         return;
       }
 
-      if (mode === "scheduled") {
+      // Countdown UI only when opening with ?mode=scheduled and start is still in the future.
+      if (mode === "scheduled" && modeOverride !== "start") {
         const next = await getNextScheduledSession();
         if (loadTokenRef.current !== token) return;
-        if (!next?.scheduled_at) {
-          safeSet(() => setLoadState("empty"));
-          return;
+        if (next?.scheduled_at) {
+          const startMs = Date.parse(next.scheduled_at);
+          const nowIso = await getServerNowIso();
+          if (loadTokenRef.current !== token) return;
+          const nowMs = nowIso ? Date.parse(nowIso) : Date.now();
+          const remaining = Math.max(0, startMs - nowMs);
+          if (remaining > 0) {
+            safeSet(() => {
+              countdownTargetRef.current = startMs;
+              setCountdownMs(remaining);
+              setWaitingSession(next);
+              setBundle(null);
+              setMediaReady(false);
+              isLiveRef.current = false;
+              liveClockRef.current = null;
+              setLoadState("countdown");
+            });
+            return;
+          }
         }
-        const startMs = Date.parse(next.scheduled_at);
-        const nowIso = await getServerNowIso();
-        if (loadTokenRef.current !== token) return;
-        const nowMs = nowIso ? Date.parse(nowIso) : Date.now();
-        const remaining = Math.max(0, startMs - nowMs);
-        if (remaining > 0) {
-          safeSet(() => {
-            countdownTargetRef.current = startMs;
-            setCountdownMs(remaining);
-            setBundle(null);
-            isLiveRef.current = false;
-            liveClockRef.current = null;
-            setLoadState("countdown");
-          });
-          return;
-        }
-        // If start time has passed, fall through to normal live/replay loading.
+        // Start time passed or no upcoming row — resolve live session below.
       }
 
-      const live = await getLatestLiveSession();
-      const session = live ?? (await getLatestReplaySession());
+      const session = await resolveCampfirePlaybackSession(waitingId);
       if (loadTokenRef.current !== token) return;
       if (!session) {
         safeSet(() => setLoadState("empty"));
@@ -183,7 +199,8 @@ export default function CampfireScreen() {
 
       safeSet(() => {
         setBundle(data);
-        if (preloadedImages) setMediaReady(true);
+        if (preloadedImages || preloadedWhileWaiting) setMediaReady(true);
+        setWaitingSession(null);
       });
 
       // Live sessions should start "in progress" for late joiners.
@@ -228,6 +245,8 @@ export default function CampfireScreen() {
         cancelled = true;
         if (cancelled) loadTokenRef.current++;
         countdownTargetRef.current = null;
+        waitingSessionRef.current = null;
+        setWaitingSession(null);
         if (liveResyncTimerRef.current) {
           clearInterval(liveResyncTimerRef.current);
           liveResyncTimerRef.current = null;
@@ -258,14 +277,42 @@ export default function CampfireScreen() {
       const remaining = Math.max(0, target - nowMs);
       setCountdownMs(remaining);
       if (remaining <= 0) {
-        // Jump back into normal campfire flow (live should be promoted by cron).
         countdownTargetRef.current = null;
-        router.replace("/(tabs)/campfire");
-        void loadCampfire(undefined);
+        // Bypass ?mode=scheduled so we don't re-query "future only" and show empty.
+        void loadCampfire("start");
       }
     }, 500);
     return () => clearInterval(timer);
   }, [loadState, loadCampfire]);
+
+  // Preload session media in the background during the final 30s on the wait screen.
+  useEffect(() => {
+    if (loadState !== "countdown" || !waitingSession) return;
+    if (countdownMs > CAMPFIRE_PRELOAD_LEAD_MS) return;
+
+    const sessionId = waitingSession.id;
+    startCampfireSessionPreload(sessionId);
+
+    let cancelled = false;
+    const applyPreload = async () => {
+      const hit =
+        getCampfireLivePreload(sessionId) ??
+        (await waitForCampfireLivePreload(sessionId));
+      if (cancelled || !hit) return;
+      setBundle(hit.bundle);
+      setMediaReady(true);
+    };
+
+    void applyPreload();
+    const poll = setInterval(() => {
+      void applyPreload();
+    }, 800);
+
+    return () => {
+      cancelled = true;
+      clearInterval(poll);
+    };
+  }, [loadState, waitingSession, countdownMs]);
 
   // 2. Prefetch images before reveal (audio loads in useCampfireAudio).
   useEffect(() => {
@@ -621,7 +668,9 @@ export default function CampfireScreen() {
                   textAlign: "center",
                 }}
               >
-                We’ll start automatically when it begins.
+                {countdownMs <= CAMPFIRE_PRELOAD_LEAD_MS
+                  ? "Getting everything ready…"
+                  : "We'll start automatically when it begins."}
               </ThemedText>
             </View>
           </View>

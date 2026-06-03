@@ -11,6 +11,9 @@ export type CampfireLivePreload = {
   imagesReady: boolean;
 };
 
+/** Start background preload this long before a scheduled session goes live. */
+export const CAMPFIRE_PRELOAD_LEAD_MS = 30_000;
+
 let cached: CampfireLivePreload | null = null;
 let inflight: Promise<CampfireLivePreload | null> | null = null;
 let inflightSessionId: number | null = null;
@@ -30,15 +33,14 @@ export function getCampfireLivePreload(
   return cached;
 }
 
-/** Fetch bundle + prefetch images for a live session (safe to call repeatedly). */
-export function startCampfireLivePreload(
-  session: CampfireSessionRow
-): void {
-  if (session.status !== "live") return;
-  if (cached?.sessionId === session.id && cached.imagesReady) return;
-  if (inflight && inflightSessionId === session.id) return;
+/**
+ * Fetch bundle + prefetch images for a session (scheduled or live).
+ * Safe to call repeatedly; used while waiting on the campfire screen.
+ */
+export function startCampfireSessionPreload(sessionId: number): void {
+  if (cached?.sessionId === sessionId && cached.imagesReady) return;
+  if (inflight && inflightSessionId === sessionId) return;
 
-  const sessionId = session.id;
   inflightSessionId = sessionId;
 
   inflight = (async () => {
@@ -54,13 +56,18 @@ export function startCampfireLivePreload(
     return entry;
   })()
     .catch((err) => {
-      console.error("Campfire live preload failed:", err);
+      console.error("Campfire session preload failed:", err);
       return null;
     })
     .finally(() => {
       inflight = null;
       inflightSessionId = null;
     });
+}
+
+/** @deprecated Use startCampfireSessionPreload — kept for tile live detection. */
+export function startCampfireLivePreload(session: CampfireSessionRow): void {
+  startCampfireSessionPreload(session.id);
 }
 
 export async function waitForCampfireLivePreload(

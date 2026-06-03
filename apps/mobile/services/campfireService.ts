@@ -142,6 +142,63 @@ export async function getLatestLiveSession(): Promise<CampfireSessionRow | null>
   return (data as CampfireSessionRow | null) ?? null;
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * After the countdown ends, resolve the session to play: live first, then poll
+ * the session we were waiting for (cron may take up to ~1 min), never a stale replay.
+ */
+export async function resolveCampfirePlaybackSession(
+  waitingSessionId?: number | null
+): Promise<CampfireSessionRow | null> {
+  const live = await getLatestLiveSession();
+  if (live) return live;
+
+  if (waitingSessionId == null) {
+    return getLatestReplaySession();
+  }
+
+  const deadline = Date.now() + 90_000;
+  while (Date.now() < deadline) {
+    const row = await getCampfireSessionById(waitingSessionId);
+    if (row?.status === "live") return row;
+
+    const latestLive = await getLatestLiveSession();
+    if (latestLive?.id === waitingSessionId) return latestLive;
+
+    if (row?.status === "scheduled" && row.scheduled_at) {
+      const nowIso = await getServerNowIso();
+      const nowMs = nowIso ? Date.parse(nowIso) : Date.now();
+      if (Date.parse(row.scheduled_at) <= nowMs) {
+        // Start time passed; cron may not have flipped status yet — play from scheduled_at.
+        return {
+          ...row,
+          status: "live",
+          live_started_at: row.live_started_at ?? row.scheduled_at,
+        };
+      }
+    }
+
+    await sleep(1000);
+  }
+
+  const last = await getCampfireSessionById(waitingSessionId);
+  if (last?.status === "live") return last;
+  if (last?.status === "scheduled" && last.scheduled_at) {
+    const nowIso = await getServerNowIso();
+    const nowMs = nowIso ? Date.parse(nowIso) : Date.now();
+    if (Date.parse(last.scheduled_at) <= nowMs) {
+      return {
+        ...last,
+        status: "live",
+        live_started_at: last.live_started_at ?? last.scheduled_at,
+      };
+    }
+  }
+
+  return null;
+}
+
 /**
  * Returns the next scheduled session (scheduled_at in the future), or null.
  */

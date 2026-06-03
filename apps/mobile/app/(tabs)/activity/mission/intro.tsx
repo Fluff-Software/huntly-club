@@ -11,13 +11,12 @@ import Animated, {
   useSharedValue,
   withSpring } from "react-native-reanimated";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { getActivityById } from "@/services/packService";
-import { useUser } from "@/contexts/UserContext";
 import { usePlayer } from "@/contexts/PlayerContext";
-import { isStartMissionOnboardingActive } from "@/constants/startMissionOnboarding";
 import type { Activity } from "@/types/activity";
 import { ACTIVITY_CATEGORIES } from "@/types/activity";
 import { getCategoryColor, getCategoryLabel } from "@/utils/categoryUtils";
@@ -63,15 +62,15 @@ const FOREST_DARK = "#2D4A35";
 const FOREST_MID = "#3D5F45";
 const URGENT_RED = "#C0392B";
 const CREAM = "#F0E8C8";
+const CREAM_LIGHT = "#FAF6E8";
+const CREAM_SHADOW = "#D4C9A0";
 
 export default function IntroScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { scaleW, width, isTablet } = useLayoutScale();
   const insets = useSafeAreaInsets();
-  const { userData } = useUser();
   const { profiles } = usePlayer();
-  const onboardingActive = isStartMissionOnboardingActive(userData?.start_mission_step);
   const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -178,10 +177,8 @@ export default function IntroScreen() {
     activity.intro_character_name?.trim() ||
     (validCaptain ? validCaptain.charAt(0).toUpperCase() + validCaptain.slice(1) : null);
 
-  // Tab bar already includes the home-indicator inset; only add it when the bar is hidden.
-  const footerPaddingBottom =
-    (onboardingActive ? insets.bottom + scaleW(16) : scaleW(10)) +
-    (isTablet && !onboardingActive ? scaleW(8) : 0);
+  // Keep a little space above the fixed footer buttons.
+  const footerPaddingBottom = scaleW(10) + (isTablet ? scaleW(8) : 0);
 
   const hasUrgent = !!activity.intro_urgent_message?.trim();
   const hasDialogue = !!activity.intro_dialogue?.trim();
@@ -483,28 +480,35 @@ export default function IntroScreen() {
             onPressIn={() => { buttonScale.value = withSpring(0.97, { damping: 15, stiffness: 400 }); }}
             onPressOut={() => { buttonScale.value = withSpring(1, { damping: 15, stiffness: 400 }); }}
             style={{
-              backgroundColor: CREAM,
               borderRadius: scaleW(32),
-              paddingVertical: scaleW(18),
-              paddingHorizontal: scaleW(32),
-              alignItems: "center",
-              justifyContent: "center",
-              flexDirection: "row",
-              gap: scaleW(8),
-              shadowColor: "#000",
-              shadowOpacity: 0.2,
-              shadowRadius: 6,
-              shadowOffset: { width: 0, height: 3 },
-              elevation: 4 }}
+              overflow: "hidden",
+              shadowColor: FOREST_DARK,
+              shadowOpacity: 0.45,
+              shadowRadius: scaleW(10),
+              shadowOffset: { width: 0, height: scaleW(5) },
+              elevation: 8 }}
           >
-            <ThemedText
-              type="heading"
-              lightColor={FOREST_DARK}
-              darkColor={FOREST_DARK}
-              style={{ fontSize: scaleW(18), fontWeight: "800" }}>
-              Accept the mission
-            </ThemedText>
-            <MaterialIcons name="arrow-forward" size={scaleW(20)} color={FOREST_DARK} />
+            <LinearGradient
+              colors={[CREAM_LIGHT, CREAM, CREAM_SHADOW]}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={{
+                paddingVertical: scaleW(18),
+                paddingHorizontal: scaleW(32),
+                alignItems: "center",
+                justifyContent: "center",
+                flexDirection: "row",
+                gap: scaleW(8) }}
+            >
+              <ThemedText
+                type="heading"
+                lightColor={FOREST_DARK}
+                darkColor={FOREST_DARK}
+                style={{ fontSize: scaleW(18), fontWeight: "800" }}>
+                Accept the mission
+              </ThemedText>
+              <MaterialIcons name="arrow-forward" size={scaleW(20)} color={FOREST_DARK} />
+            </LinearGradient>
           </Pressable>
         </Animated.View>
       </View>

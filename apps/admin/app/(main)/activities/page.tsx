@@ -1,21 +1,69 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { Button } from "@/components/Button";
 
+/** `unlock_date` from DB is YYYY-MM-DD; format without timezone shifts. */
+function formatChapterUnlockDate(isoDate: string): string {
+  const parts = isoDate.split("-");
+  if (parts.length === 3) {
+    const [yyyy, mm, dd] = parts;
+    return `${dd}/${mm}/${yyyy.slice(-2)}`;
+  }
+  return isoDate;
+}
+
+type ChapterEmbed = { unlock_date: string } | { unlock_date: string }[] | null;
+
+type RawChapterActivityRow = {
+  activity_id: number;
+  chapter_id: number;
+  chapters: ChapterEmbed;
+};
+
+function chapterUnlockDateFromRow(chapters: ChapterEmbed): string | null {
+  if (!chapters) return null;
+  const row = Array.isArray(chapters) ? chapters[0] : chapters;
+  return row?.unlock_date ?? null;
+}
+
+function buildUnlockDatesByActivityId(rows: RawChapterActivityRow[]): Record<number, string[]> {
+  const map = new Map<number, Set<string>>();
+  for (const row of rows) {
+    const date = chapterUnlockDateFromRow(row.chapters);
+    if (!date) continue;
+    let set = map.get(row.activity_id);
+    if (!set) {
+      set = new Set();
+      map.set(row.activity_id, set);
+    }
+    set.add(date);
+  }
+  const out: Record<number, string[]> = {};
+  for (const [activityId, dates] of map) {
+    out[activityId] = [...dates].sort();
+  }
+  return out;
+}
+
 async function getActivitiesWithProfilesPlayed() {
   const supabase = createServerSupabaseClient();
 
-  const [activitiesRes, profilesCountRes, progressRes] = await Promise.all([
-    supabase
-      .from("activities")
-      .select("id, name, title, xp, created_at")
-      .order("id"),
-    supabase.from("profiles").select("id", { count: "exact", head: true }),
-    supabase.from("user_activity_progress").select("activity_id"),
-  ]);
+  const [activitiesRes, profilesCountRes, progressRes, chapterLinksRes] =
+    await Promise.all([
+      supabase
+        .from("activities")
+        .select("id, name, title, xp, created_at")
+        .order("id"),
+      supabase.from("profiles").select("id", { count: "exact", head: true }),
+      supabase.from("user_activity_progress").select("activity_id"),
+      supabase
+        .from("chapter_activities")
+        .select("activity_id, chapter_id, chapters(unlock_date)"),
+    ]);
 
   if (activitiesRes.error) throw new Error(activitiesRes.error.message);
   if (profilesCountRes.error) throw new Error(profilesCountRes.error.message);
   if (progressRes.error) throw new Error(progressRes.error.message);
+  if (chapterLinksRes.error) throw new Error(chapterLinksRes.error.message);
 
   const activities = activitiesRes.data ?? [];
   const totalProfiles = profilesCountRes.count ?? 0;
@@ -29,7 +77,45 @@ async function getActivitiesWithProfilesPlayed() {
     {}
   );
 
-  return { activities, totalProfiles, progressCountByActivityId };
+  const unlockDatesByActivityId = buildUnlockDatesByActivityId(
+    (chapterLinksRes.data ?? []) as RawChapterActivityRow[]
+  );
+
+  return {
+    activities,
+    totalProfiles,
+    progressCountByActivityId,
+    unlockDatesByActivityId,
+  };
+}
+
+function ChapterUnlockCell({
+  unlockDates,
+}: {
+  unlockDates: string[] | undefined;
+}) {
+  if (!unlockDates?.length) {
+    return (
+      <span className="text-sm italic text-stone-400">
+        Not connected to a chapter
+      </span>
+    );
+  }
+  if (unlockDates.length === 1) {
+    return (
+      <span className="text-sm text-stone-700">
+        {formatChapterUnlockDate(unlockDates[0])}
+      </span>
+    );
+  }
+  return (
+    <div className="text-sm text-stone-700">
+      <p className="font-medium text-amber-800">Multiple chapters</p>
+      <p className="mt-0.5 text-xs text-stone-500">
+        {unlockDates.map(formatChapterUnlockDate).join(" · ")}
+      </p>
+    </div>
+  );
 }
 
 export default async function ActivitiesPage() {
@@ -37,6 +123,7 @@ export default async function ActivitiesPage() {
     activities,
     totalProfiles,
     progressCountByActivityId,
+    unlockDatesByActivityId,
   } = await getActivitiesWithProfilesPlayed();
 
   return (
@@ -102,6 +189,17 @@ export default async function ActivitiesPage() {
                   </div>
 
                   <div className="col-span-2 rounded-lg border border-stone-200 bg-stone-50/40 px-3 py-2">
+                    <p className="text-xs font-medium text-stone-500">
+                      Chapter unlock date
+                    </p>
+                    <div className="mt-0.5">
+                      <ChapterUnlockCell
+                        unlockDates={unlockDatesByActivityId[a.id]}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="col-span-2 rounded-lg border border-stone-200 bg-stone-50/40 px-3 py-2">
                     <p className="text-xs font-medium text-stone-500">Created</p>
                     <p className="mt-0.5 text-sm text-stone-900">
                       {new Date(a.created_at).toLocaleDateString("en-GB")}
@@ -151,6 +249,12 @@ export default async function ActivitiesPage() {
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500"
                   >
+                    Chapter unlock date
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500"
+                  >
                     Created
                   </th>
                   <th scope="col" className="relative px-6 py-3">
@@ -173,6 +277,11 @@ export default async function ActivitiesPage() {
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-stone-500">
                       {progressCountByActivityId[a.id] ?? 0} / {totalProfiles}
+                    </td>
+                    <td className="max-w-[12rem] px-6 py-4">
+                      <ChapterUnlockCell
+                        unlockDates={unlockDatesByActivityId[a.id]}
+                      />
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-stone-500">
                       {new Date(a.created_at).toLocaleDateString("en-GB")}

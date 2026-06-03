@@ -26,7 +26,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-dvh max-h-dvh min-h-0 overflow-hidden">
       <header
         className="fixed left-0 right-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-stone-200 bg-white px-4 shadow-sm md:hidden"
         aria-label="Mobile navigation"
@@ -72,7 +72,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         onNavigate={() => setSidebarOpen(false)}
       />
 
-      <main className="min-w-0 flex-1 p-4 pt-14 md:p-8 md:pt-8">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-4 pt-14 md:p-8 md:pt-8">
         {children}
       </main>
     </div>

@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { ukTodayForChapterUnlockGate } from "@/utils/ukChapterTime";
 
 export type ActivityStatus = "not_started" | "started" | "completed";
 
@@ -751,4 +752,81 @@ export const getRandomClubPhotos = async (
       team_name: teamName || undefined,
     };
   });
+};
+
+export type EarliestAvailableMission = {
+  id: number;
+  title: string;
+  description: string | null;
+  image: string | null;
+};
+
+/** Returns the earliest mission from unlocked chapters in the latest season. */
+export const getEarliestAvailableMission = async (): Promise<EarliestAvailableMission | null> => {
+  const today = ukTodayForChapterUnlockGate();
+  const { data: latestSeason, error: seasonError } = await supabase
+    .from("seasons")
+    .select("id")
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (seasonError) {
+    throw new Error(`Failed to load latest season: ${seasonError.message}`);
+  }
+
+  if (!latestSeason?.id) return null;
+
+  const { data, error } = await supabase
+    .from("chapter_activities")
+    .select(
+      `
+      order,
+      chapters!inner(unlock_date, season_id),
+      activities!inner(id, title, description, image, content_status)
+    `
+    )
+    .eq("chapters.season_id", latestSeason.id)
+    .lte("chapters.unlock_date", today)
+    .eq("activities.content_status", "published")
+    .order("unlock_date", { ascending: true, referencedTable: "chapters" })
+    .order("order", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to load earliest available mission: ${error.message}`);
+  }
+
+  const activity = Array.isArray(data?.activities) ? data.activities[0] : data?.activities;
+  if (!activity?.id) return null;
+
+  return {
+    id: activity.id,
+    title: activity.title,
+    description: activity.description ?? null,
+    image: activity.image ?? null,
+  };
+};
+
+/** Returns true if any of the given profiles has completed the activity. */
+export const hasAnyProfileCompletedActivity = async (
+  profileIds: number[],
+  activityId: number
+): Promise<boolean> => {
+  if (profileIds.length === 0) return false;
+
+  const { data, error } = await supabase
+    .from("user_activity_progress")
+    .select("id")
+    .in("profile_id", profileIds)
+    .eq("activity_id", activityId)
+    .not("completed_at", "is", null)
+    .limit(1);
+
+  if (error) {
+    throw new Error(`Failed to check mission completion: ${error.message}`);
+  }
+
+  return (data?.length ?? 0) > 0;
 };

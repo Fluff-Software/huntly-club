@@ -5,15 +5,32 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePurchases } from "@/contexts/PurchasesContext";
 import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { getProfiles, getUserData } from "@/services/profileService";
+import type { Profile } from "@/services/profileService";
 import { REQUIRE_EMAIL_VERIFICATION } from "@/constants/auth";
-import {
-  START_MISSION_STEP,
-  isStartMissionOnboardingActive,
-} from "@/constants/startMissionOnboarding";
-import { getWeekOneRippedMapChapterId } from "@/services/startMissionOnboardingService";
-import { getActivityByName } from "@/services/packService";
 
 const LOADER_BACKGROUND = "#4F6F52";
+
+function routeAfterSignupCheck(
+  router: ReturnType<typeof useRouter>,
+  profiles: Profile[],
+  userData: Awaited<ReturnType<typeof getUserData>>
+) {
+  if (profiles.length === 0) {
+    router.replace("/sign-up/players");
+    return;
+  }
+  if (userData?.team == null) {
+    router.replace("/sign-up/team");
+    return;
+  }
+  router.replace("/(tabs)");
+}
+
+async function resolveSignupState(userId: string) {
+  const profiles = await getProfiles(userId);
+  const userData = await getUserData(userId);
+  return { profiles, userData };
+}
 const LOADER_SPINNER = "#F4F0EB";
 
 type AuthGuardProps = {
@@ -29,22 +46,19 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const [checkingProfiles, setCheckingProfiles] = useState(true);
 
   useEffect(() => {
-    if (loading) return;
-
     const inAuthGroup = segments[0] === "auth";
     const inGetStarted = segments[0] === "get-started";
     const inSignUp = segments[0] === "sign-up";
-    const inOnboarding = segments[0] === "onboarding";
     const inPrivacy = segments[0] === "privacy";
-    const inStorySlides =
-      segments[0] === "(tabs)" && segments[1] === "story" && segments[2] === "slides";
-    const inMissionFlow = segments[0] === "(tabs)" && segments[1] === "activity";
     const inUnauthFlow = inAuthGroup || inGetStarted || inSignUp || inPrivacy;
 
-    if (!user && !inUnauthFlow) {
+    // Keep signed-out users off app routes even while auth is re-validating (e.g. after sign-out).
+    if (!user && !session && !inUnauthFlow && !loading) {
       router.replace("/auth");
       return;
     }
+
+    if (loading) return;
 
     if (!user && inUnauthFlow) {
       setCheckingProfiles(false);
@@ -71,29 +85,23 @@ export function AuthGuard({ children }: AuthGuardProps) {
     if (user && (inAuthGroup || inGetStarted || inSignUp)) {
       if (!inSignUp) {
         setCheckingProfiles(true);
-        Promise.all([getProfiles(user.id), getUserData(user.id)])
-          .then(([profiles, userData]) => {
-            if (profiles.length === 0) {
-              router.replace("/sign-up/players");
-            } else if (userData?.team == null) {
-              router.replace("/sign-up/team");
-            } else if (isStartMissionOnboardingActive(userData.start_mission_step)) {
-              if (userData.start_mission_step <= START_MISSION_STEP.WELCOME) {
-                router.replace("/onboarding/welcome");
-              } else if (userData.start_mission_step === START_MISSION_STEP.TEASER) {
-                router.replace("/onboarding/teaser");
-              } else if (userData.start_mission_step === START_MISSION_STEP.MISSION_INTRO) {
-                router.replace("/onboarding/mission-intro");
-              } else {
-                router.replace("/(tabs)");
-              }
-            } else {
-              router.replace("/(tabs)");
-            }
+        resolveSignupState(user.id)
+          .then(({ profiles, userData }) => {
+            routeAfterSignupCheck(router, profiles, userData);
           })
           .catch((error) => {
             console.error("Error checking profiles/user data:", error);
-            router.replace("/(tabs)");
+            getProfiles(user.id)
+              .then((profiles) => {
+                if (profiles.length === 0) {
+                  router.replace("/sign-up/players");
+                } else {
+                  router.replace("/sign-up/team");
+                }
+              })
+              .catch(() => {
+                router.replace("/sign-up/players");
+              });
           })
           .finally(() => setCheckingProfiles(false));
       } else {
@@ -102,10 +110,10 @@ export function AuthGuard({ children }: AuthGuardProps) {
       return;
     }
 
-    if (user && inOnboarding) {
+    if (user && !inUnauthFlow) {
       setCheckingProfiles(true);
-      Promise.all([getProfiles(user.id), getUserData(user.id)])
-        .then(async ([profiles, userData]) => {
+      resolveSignupState(user.id)
+        .then(({ profiles, userData }) => {
           if (profiles.length === 0) {
             router.replace("/sign-up/players");
             return;
@@ -114,91 +122,22 @@ export function AuthGuard({ children }: AuthGuardProps) {
             router.replace("/sign-up/team");
             return;
           }
-          if (!isStartMissionOnboardingActive(userData.start_mission_step)) {
-            router.replace("/(tabs)");
-            return;
-          }
-          if (userData.start_mission_step <= START_MISSION_STEP.WELCOME && segments[1] !== "welcome") {
-            router.replace("/onboarding/welcome");
-            return;
-          }
-          if (userData.start_mission_step === START_MISSION_STEP.TEASER && segments[1] !== "teaser") {
-            router.replace("/onboarding/teaser");
-            return;
-          }
-          if (
-            userData.start_mission_step === START_MISSION_STEP.MISSION_INTRO &&
-            segments[1] !== "mission-intro"
-          ) {
-            router.replace("/onboarding/mission-intro");
-          }
+          // No mission-first onboarding redirects. Signed-in users with complete setup
+          // can continue navigating normally.
         })
         .catch((error) => {
-          console.error("Error validating onboarding route:", error);
-        })
-        .finally(() => setCheckingProfiles(false));
-      return;
-    }
-
-    if (user && !inUnauthFlow && !inOnboarding) {
-      setCheckingProfiles(true);
-      Promise.all([getProfiles(user.id), getUserData(user.id)])
-        .then(async ([profiles, userData]) => {
-          if (profiles.length === 0) {
-            router.replace("/sign-up/players");
-            return;
-          }
-          if (userData?.team == null) {
-            router.replace("/sign-up/team");
-            return;
-          }
-          if (!isStartMissionOnboardingActive(userData.start_mission_step)) return;
-
-          const onboardingStep = userData.start_mission_step;
-          if (onboardingStep <= START_MISSION_STEP.WELCOME) {
-            router.replace("/onboarding/welcome");
-            return;
-          }
-          if (onboardingStep === START_MISSION_STEP.TEASER) {
-            router.replace("/onboarding/teaser");
-            return;
-          }
-          if (onboardingStep === START_MISSION_STEP.STORY) {
-            if (inStorySlides) return;
-            const chapterId = await getWeekOneRippedMapChapterId();
-            if (chapterId != null) {
-              router.replace({
-                pathname: "/(tabs)/story/slides",
-                params: {
-                  source: "chapter",
-                  chapterId: String(chapterId),
-                  onboardingFlow: "start-mission",
-                },
-              });
-            } else {
-              router.replace("/onboarding/teaser");
-            }
-            return;
-          }
-          if (onboardingStep === START_MISSION_STEP.MISSION_INTRO) {
-            router.replace("/onboarding/mission-intro");
-            return;
-          }
-          if (onboardingStep === START_MISSION_STEP.MISSION_IN_PROGRESS) {
-            if (inMissionFlow) return;
-            const activity = await getActivityByName("build_your_base");
-            if (activity?.id != null) {
-              router.replace({
-                pathname: "/(tabs)/activity/mission",
-                params: { id: String(activity.id), onboardingFlow: "start-mission" },
-              });
-            } else {
-              router.replace("/onboarding/mission-intro");
-            }
-          }
-        })
-        .catch((error) => {
-          console.error("Error checking mission-first onboarding:", error);
+          console.error("Error checking profiles/user data:", error);
+          getProfiles(user.id)
+            .then((profiles) => {
+              if (profiles.length === 0) {
+                router.replace("/sign-up/players");
+              } else {
+                router.replace("/sign-up/team");
+              }
+            })
+            .catch(() => {
+              router.replace("/sign-up/players");
+            });
         })
         .finally(() => setCheckingProfiles(false));
       return;
@@ -223,8 +162,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   // We still validate profiles/userData during normal navigation, but we don't want a blocking
   // full-screen spinner during tab switches. Keep the UI responsive and only block during
   // the initial auth bootstrap / non-tab flows.
-  const showOverlay =
-    loading || (checkingProfiles && segments[0] !== "(tabs)" && segments[0] !== "onboarding");
+  const showOverlay = loading || (checkingProfiles && segments[0] !== "(tabs)");
 
   return (
     <View style={styles.wrapper}>

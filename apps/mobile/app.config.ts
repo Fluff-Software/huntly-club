@@ -217,6 +217,23 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         enforceContrast: false,
       },
     ],
+    [
+      "expo-audio",
+      {
+        // Campfire playback only — no recording, no background audio.
+        microphonePermission: false,
+        recordAudioAndroid: false,
+        enableBackgroundPlayback: false,
+        enableBackgroundRecording: false,
+      },
+    ],
+    [
+      "expo-video",
+      {
+        supportsBackgroundPlayback: false,
+        supportsPictureInPicture: false,
+      },
+    ],
   ],
   experiments: {
     typedRoutes: true,

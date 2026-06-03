@@ -32,3 +32,83 @@
 .ReactCrop__rule-of-thirds-hz {
   background-color: rgba(255, 255, 255, 0.35);
 }
+
+/* Campfire timeline: horizontal scroll on top strip only */
+.timeline-h-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-color: #57534e #1c1917;
+  scrollbar-width: thin;
+}
+
+.timeline-h-scroll::-webkit-scrollbar {
+  height: 10px;
+}
+
+.timeline-h-scroll::-webkit-scrollbar-track {
+  background: #1c1917;
+}
+
+.timeline-h-scroll::-webkit-scrollbar-thumb {
+  background: #57534e;
+  border-radius: 4px;
+}
+
+.timeline-body-scroll {
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-color: #57534e #1c1917;
+  scrollbar-width: thin;
+}
+
+.timeline-body-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.timeline-body-scroll::-webkit-scrollbar-track {
+  background: #1c1917;
+}
+
+.timeline-body-scroll::-webkit-scrollbar-thumb {
+  background: #57534e;
+  border-radius: 4px;
+}
+
+/* Dark picker scroll areas (SessionDateTimePicker) */
+.picker-scroll {
+  scrollbar-color: #57534e #0c0a09;
+  scrollbar-width: thin;
+}
+
+.picker-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.picker-scroll::-webkit-scrollbar-track {
+  background: #0c0a09;
+}
+
+.picker-scroll::-webkit-scrollbar-thumb {
+  background: #57534e;
+  border-radius: 6px;
+}
+
+/* Session details panel scroll area */
+.panel-scroll {
+  scrollbar-color: #57534e #0c0a09;
+  scrollbar-width: thin;
+}
+
+.panel-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.panel-scroll::-webkit-scrollbar-track {
+  background: #0c0a09;
+}
+
+.panel-scroll::-webkit-scrollbar-thumb {
+  background: #57534e;
+  border-radius: 6px;
+}

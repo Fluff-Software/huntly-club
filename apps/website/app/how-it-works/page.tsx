@@ -4,11 +4,11 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "How Huntly World Works — Seasons, Chapters & Outdoor Missions",
   description:
-    "Huntly World is built around seasons, chapters, and weekly outdoor missions for children aged 4–14. Here's exactly how the adventure club works.",
+    "Huntly World is built around seasons, chapters, and weekly outdoor missions for children aged 4-14. Here's exactly how the adventure club works.",
   openGraph: {
     title: "How Huntly World Works — Seasons, Chapters & Outdoor Missions",
     description:
-      "Huntly World is built around seasons, chapters, and weekly outdoor missions for children aged 4–14. Here's exactly how the adventure club works.",
+      "Huntly World is built around seasons, chapters, and weekly outdoor missions for children aged 4-14. Here's exactly how the adventure club works.",
   },
   alternates: {
     canonical: "https://huntly.world/how-it-works",
@@ -53,7 +53,7 @@ const faqs = [
   {
     question: "Is there a minimum age?",
     answer:
-      "Huntly World is designed for children aged 4–14. Younger children will need a grown-up to help with the app; older children can follow missions more independently.",
+      "Huntly World is designed for children aged 4-14. Younger children will need a grown-up to help with the app; older children can follow missions more independently.",
   },
 ];
 

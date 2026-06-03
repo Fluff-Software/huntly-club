@@ -2,13 +2,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
 import * as Notifications from "expo-notifications";
 import { Pedometer } from "expo-sensors";
-import { Alert, Platform } from "react-native";
+import { Platform } from "react-native";
 import { syncActivityLiveSurface, endActivityLiveSurface } from "@/services/activityLiveSurfaceService";
 import { ACTIVITY_LIVE_HUNTLY_GREEN } from "@/constants/activityLiveSurfaceColors";
-import {
-  TrackingPermissionError,
-  getBackgroundTrackingPermissionAlertCopy,
-} from "@/utils/trackingLocationPermission";
+import { TrackingPermissionError } from "@/utils/trackingLocationPermission";
 
 export const TRACKING_LOCATION_TASK = "huntly-active-adventure-location";
 
@@ -99,13 +96,6 @@ function notify(session: ActiveTrackingSession | null) {
   listeners.forEach((listener) => listener(session));
 }
 
-function explainBackgroundTrackingPermission(): Promise<void> {
-  const { title, message } = getBackgroundTrackingPermissionAlertCopy();
-  return new Promise((resolve) => {
-    Alert.alert(title, message, [{ text: "Continue", onPress: () => resolve() }]);
-  });
-}
-
 export function subscribeActiveTrackingSession(listener: (session: ActiveTrackingSession | null) => void) {
   listeners.add(listener);
   return () => listeners.delete(listener);
@@ -156,7 +146,7 @@ export async function ensureTrackingPermissions(): Promise<void> {
     throw new TrackingPermissionError("location_services_disabled");
   }
 
-  const foreground = await Location.requestForegroundPermissionsAsync();
+  const foreground = await Location.getForegroundPermissionsAsync();
   if (foreground.status !== "granted") {
     throw new TrackingPermissionError("foreground_denied");
   }
@@ -165,12 +155,7 @@ export async function ensureTrackingPermissions(): Promise<void> {
     await Notifications.requestPermissionsAsync();
   }
 
-  const existingBackground = await Location.getBackgroundPermissionsAsync();
-  if (existingBackground.status !== "granted") {
-    await explainBackgroundTrackingPermission();
-  }
-
-  const background = await Location.requestBackgroundPermissionsAsync();
+  const background = await Location.getBackgroundPermissionsAsync();
   if (background.status !== "granted") {
     throw new TrackingPermissionError("background_denied");
   }

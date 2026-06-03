@@ -14,7 +14,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring } from "react-native-reanimated";
-import { useRouter, useFocusEffect } from "expo-router";
+import { Redirect, useRouter, useFocusEffect } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useUser } from "@/contexts/UserContext";
@@ -72,9 +72,9 @@ export default function ProfileScreen() {
     RecentActivityWithProfile[]
   >([]);
   const [xpByProfileId, setXpByProfileId] = useState<Record<number, number>>({});
-  const { user, signOut } = useAuth();
+  const { user, signOut, loading: authLoading } = useAuth();
   const { teamId } = useUser();
-  const { profiles, refreshProfiles } = usePlayer();
+  const { profiles, refreshProfiles, loading: profilesLoading } = usePlayer();
   const router = useRouter();
   const { scaleW } = useLayoutScale();
 
@@ -607,6 +607,10 @@ export default function ProfileScreen() {
     [scaleW],
   );
 
+  if (!authLoading && !user) {
+    return <Redirect href="/auth" />;
+  }
+
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <ScrollView
@@ -662,7 +666,13 @@ export default function ProfileScreen() {
             )}
           </View>
 
-          {!isEditing && profiles.length === 0 && (
+          {!isEditing && profilesLoading && profiles.length === 0 && (
+            <View style={[styles.cardCream, { alignItems: "center", paddingVertical: scaleW(24) }]}>
+              <ActivityIndicator size="small" color={COLORS.darkGreen} />
+            </View>
+          )}
+
+          {!isEditing && !profilesLoading && profiles.length === 0 && (
             <View style={styles.cardCream}>
               <ThemedText style={styles.cardTextPrimary}>
                 No players yet
@@ -1118,7 +1128,6 @@ export default function ProfileScreen() {
                   onPress: async () => {
                     try {
                       await signOut();
-                      router.replace("/auth");
                     } catch {
                       Alert.alert("Error", "Failed to log out");
                     }

@@ -18,18 +18,33 @@ import AnimatedReanimated, {
   withSpring,
   withTiming,
   Easing,
-  FadeIn } from "react-native-reanimated";
+  FadeIn,
+  FadeInDown,
+} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { AdventureTile } from "@/components/AdventureTile";
 import { PastAdventuresTile } from "@/components/PastAdventuresTile";
+import { CampfireTile } from "@/components/CampfireTile";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useCurrentChapterActivities } from "@/hooks/useCurrentChapterActivities";
+import {
+  useChaptersWithActivities,
+  type ChapterWithActivities,
+} from "@/hooks/useAllChaptersActivities";
+import { usePlayer } from "@/contexts/PlayerContext";
 import { useUser } from "@/contexts/UserContext";
-import { getRandomClubPhotos, type ClubPhotoCardItem } from "@/services/activityProgressService";
+import {
+  getRandomClubPhotos,
+  hasAnyProfileCompletedActivity,
+  type ClubPhotoCardItem,
+  type EarliestAvailableMission,
+} from "@/services/activityProgressService";
+import { getActivityById } from "@/services/packService";
 import { getTeamCardConfig } from "@/utils/teamUtils";
+import type { ImageSourcePropType } from "react-native";
 
 type HomeMode = "profile" | "activity" | "missions";
 const HOME_MODES: HomeMode[] = ["profile", "activity", "missions"];
@@ -84,9 +99,62 @@ const SPEECH_BUBBLE_MESSAGES = (leaderName: string) => [
   `Let's get out there and do something brilliant.`,
 ];
 
+function missionImageToUrl(image: ImageSourcePropType): string | null {
+  if (typeof image === "object" && image != null && "uri" in image && typeof image.uri === "string") {
+    return image.uri;
+  }
+  return null;
+}
+
+/** Earliest unlocked mission in chapter order (oldest chapter first). */
+function pickEarliestAvailableMission(
+  chapters: ChapterWithActivities[],
+  completedActivityIds: Set<string>
+): EarliestAvailableMission | null {
+  if (chapters.length === 0) return null;
+
+  for (let chapterIndex = chapters.length - 1; chapterIndex >= 0; chapterIndex -= 1) {
+    for (const card of chapters[chapterIndex].activities) {
+      if (!completedActivityIds.has(card.id)) {
+        return {
+          id: parseInt(card.id, 10),
+          title: card.title,
+          description: card.description || null,
+          image: missionImageToUrl(card.image),
+        };
+      }
+    }
+  }
+
+  const fallback = chapters[chapters.length - 1]?.activities[0];
+  if (!fallback) return null;
+  return {
+    id: parseInt(fallback.id, 10),
+    title: fallback.title,
+    description: fallback.description || null,
+    image: missionImageToUrl(fallback.image),
+  };
+}
+
 export default function HomeScreen() {
   const { scaleW, width, height } = useLayoutScale();
-  const { team, teamId, daysPlayed, pointsEarned } = useUser();
+  const { profiles } = usePlayer();
+  const {
+    userData,
+    team,
+    teamId,
+    daysPlayed,
+    pointsEarned,
+    loading: userLoading,
+    updateFirstMissionActivityId,
+  } = useUser();
+  const firstProfileId = profiles[0]?.id ?? null;
+  const {
+    chapters,
+    completedActivityIds,
+    loading: chaptersLoading,
+    refetch: refetchChapters,
+  } = useChaptersWithActivities(firstProfileId);
   const {
     latestMission,
     latestUnfinishedMission,
@@ -98,6 +166,18 @@ export default function HomeScreen() {
   const loadingMoreClubCardsRef = useRef(false);
   const [clubImageStatus, setClubImageStatus] = useState<Record<string, "loading" | "loaded" | "error">>({});
   const [missionsTab, setMissionsTab] = useState<"missions" | "adventures">("missions");
+  const [firstMissionCard, setFirstMissionCard] =
+    useState<EarliestAvailableMission | null>(null);
+  const [firstMissionCardLoading, setFirstMissionCardLoading] = useState(false);
+  /** Once the saved first-mission target is completed, never show the loading shell again this session. */
+  const [firstMissionCardHidden, setFirstMissionCardHidden] = useState(false);
+  const savedFirstMissionId = userData?.first_mission_activity_id ?? null;
+  const savedFirstMissionCompleteInChapterData = useMemo(
+    () =>
+      savedFirstMissionId != null &&
+      completedActivityIds.has(String(savedFirstMissionId)),
+    [savedFirstMissionId, completedActivityIds]
+  );
   const initialIndex = 1; // activity (Welcome back)
   const [currentIndex, setCurrentIndex] = useState<number>(initialIndex);
   const currentMode = HOME_MODES[currentIndex] ?? "activity";
@@ -120,6 +200,114 @@ export default function HomeScreen() {
     });
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    setFirstMissionCardHidden(false);
+  }, [userData?.user_id]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const syncFirstMissionCard = async () => {
+      if (userLoading || chaptersLoading || !userData?.user_id || profiles.length === 0) {
+        if (!userLoading && !chaptersLoading && !firstMissionCardHidden) {
+          setFirstMissionCard(null);
+        }
+        return;
+      }
+
+      if (firstMissionCardHidden || savedFirstMissionCompleteInChapterData) {
+        if (!cancelled) {
+          setFirstMissionCard(null);
+          setFirstMissionCardLoading(false);
+          if (savedFirstMissionCompleteInChapterData) {
+            setFirstMissionCardHidden(true);
+          }
+        }
+        return;
+      }
+
+      setFirstMissionCardLoading(true);
+      try {
+        let mission: EarliestAvailableMission | null = null;
+        let targetMissionId = userData.first_mission_activity_id;
+
+        if (targetMissionId == null) {
+          mission = pickEarliestAvailableMission(chapters, completedActivityIds);
+          if (!mission?.id) {
+            if (!cancelled) setFirstMissionCard(null);
+            return;
+          }
+          targetMissionId = mission.id;
+          await updateFirstMissionActivityId(targetMissionId);
+        }
+
+        const profileIds = profiles.map((profile) => profile.id);
+        const isCompleted = await hasAnyProfileCompletedActivity(
+          profileIds,
+          targetMissionId
+        );
+        if (isCompleted) {
+          if (!cancelled) {
+            setFirstMissionCard(null);
+            setFirstMissionCardHidden(true);
+          }
+          return;
+        }
+
+        if (!mission) {
+          const fromChapters = chapters
+            .flatMap((chapter) => chapter.activities)
+            .find((card) => parseInt(card.id, 10) === targetMissionId);
+          if (fromChapters) {
+            mission = {
+              id: targetMissionId,
+              title: fromChapters.title,
+              description: fromChapters.description || null,
+              image: missionImageToUrl(fromChapters.image),
+            };
+          } else {
+            const activity = await getActivityById(targetMissionId);
+            if (!activity) {
+              if (!cancelled) setFirstMissionCard(null);
+              return;
+            }
+            mission = {
+              id: activity.id,
+              title: activity.title,
+              description: activity.description ?? null,
+              image: activity.image ?? null,
+            };
+          }
+        }
+
+        if (!cancelled) {
+          setFirstMissionCard(mission);
+        }
+      } catch (error) {
+        console.error("Error resolving first mission card:", error);
+        if (!cancelled) setFirstMissionCard(null);
+      } finally {
+        if (!cancelled) setFirstMissionCardLoading(false);
+      }
+    };
+
+    void syncFirstMissionCard();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    userLoading,
+    chaptersLoading,
+    userData?.user_id,
+    userData?.first_mission_activity_id,
+    profiles,
+    chapters,
+    completedActivityIds,
+    firstMissionCardHidden,
+    savedFirstMissionCompleteInChapterData,
+    updateFirstMissionActivityId,
+  ]);
 
   const loadMoreClubCards = async () => {
     if (loadingMoreClubCardsRef.current || clubCards.length === 0 || clubCards.length >= CLUB_CARDS_MAX) return;
@@ -202,8 +390,9 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       refetchMissions();
+      void refetchChapters();
       resetToActivityPage();
-    }, [refetchMissions, resetToActivityPage])
+    }, [refetchMissions, refetchChapters, resetToActivityPage])
   );
 
   const pageAnimatedStyles = useMemo(() => {
@@ -585,6 +774,68 @@ export default function HomeScreen() {
           </ThemedText>
         </View>
 
+        {!firstMissionCardHidden &&
+        !savedFirstMissionCompleteInChapterData &&
+        (firstMissionCardLoading || firstMissionCard) ? (
+          <AnimatedReanimated.View
+            key={firstMissionCard ? `first-mission-${firstMissionCard.id}` : "first-mission-loading"}
+            entering={
+              firstMissionCard
+                ? FadeInDown.duration(420).springify().damping(16)
+                : undefined
+            }
+            style={{
+              backgroundColor: "rgba(255,255,255,0.95)",
+              borderRadius: scaleW(18),
+              borderWidth: 2,
+              borderColor: "#7FAF8A",
+              padding: scaleW(16),
+              gap: scaleW(10),
+              minHeight: scaleW(88),
+              justifyContent: "center",
+            }}
+          >
+            {firstMissionCardLoading && !firstMissionCard ? (
+              <ActivityIndicator size="small" color={HUNTLY_GREEN} />
+            ) : firstMissionCard ? (
+              <>
+                <ThemedText
+                  type="heading"
+                  style={{ fontSize: scaleW(20), fontWeight: "800", color: HUNTLY_GREEN }}
+                >
+                  Complete your first mission
+                </ThemedText>
+                <ThemedText style={{ fontSize: scaleW(15), color: "#3D3D3D" }}>
+                  Start with {firstMissionCard.title} and earn your first points.
+                </ThemedText>
+                <Pressable
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(tabs)/activity/mission",
+                      params: { id: String(firstMissionCard.id) },
+                    } as Parameters<typeof router.push>[0])
+                  }
+                  style={{
+                    alignSelf: "flex-start",
+                    backgroundColor: HUNTLY_GREEN,
+                    borderRadius: scaleW(24),
+                    paddingVertical: scaleW(10),
+                    paddingHorizontal: scaleW(16),
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: scaleW(4),
+                  }}
+                >
+                  <ThemedText lightColor="#FFF" darkColor="#FFF" style={{ fontSize: scaleW(14), fontWeight: "700" }}>
+                    Start first mission
+                  </ThemedText>
+                  <MaterialIcons name="chevron-right" size={scaleW(16)} color="#FFF" />
+                </Pressable>
+              </>
+            ) : null}
+          </AnimatedReanimated.View>
+        ) : null}
+
         {/* Character + speech bubble */}
         {teamCardConfig && (
           <AnimatedReanimated.View style={teamCardStyle}>
@@ -667,6 +918,9 @@ export default function HomeScreen() {
             </View>
           </AnimatedReanimated.View>
         )}
+
+        {/* Campfire tile */}
+        <CampfireTile />
 
         {/* Club photos */}
         {clubCards.length > 0 && (

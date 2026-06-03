@@ -11,6 +11,7 @@ const nav = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/seasons", label: "Seasons" },
   { href: "/activities", label: "Missions" },
+  { href: "/campfire-sessions", label: "Campfire Sessions" },
   { href: "/badges", label: "Badges" },
   { href: "/mission-completions", label: "Mission Completions" },
   { href: "/categories", label: "Categories" },
@@ -77,7 +78,7 @@ export function Sidebar({ open = false, onClose, onNavigate }: SidebarProps) {
   return (
     <>
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-56 flex-col border-r border-huntly-forest/80 bg-huntly-forest shadow-lg transition-transform duration-200 ease-out md:relative md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex h-dvh w-56 flex-col border-r border-huntly-forest/80 bg-huntly-forest shadow-lg transition-transform duration-200 ease-out md:relative md:h-full md:max-h-dvh md:shrink-0 md:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
         aria-label="Admin navigation"

@@ -4,11 +4,11 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Download Huntly World — Adventure App for Children",
   description:
-    "Download Huntly World on the App Store or Google Play. An outdoor adventure club app for children aged 4–14 — weekly missions, story-driven seasons, and team challenges.",
+    "Download Huntly World on the App Store or Google Play. An outdoor adventure club app for children aged 4-14 — weekly missions, story-driven seasons, and team challenges.",
   openGraph: {
     title: "Download Huntly World — Adventure App for Children",
     description:
-      "Download Huntly World on the App Store or Google Play. An outdoor adventure club app for children aged 4–14 — weekly missions, story-driven seasons, and team challenges.",
+      "Download Huntly World on the App Store or Google Play. An outdoor adventure club app for children aged 4-14 — weekly missions, story-driven seasons, and team challenges.",
   },
   alternates: {
     canonical: "https://huntly.world/download",

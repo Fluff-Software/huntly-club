@@ -30,7 +30,8 @@ import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useUser } from "@/contexts/UserContext";
-import { getActivityById } from "@/services/packService";
+import { getActivityById, getActivityImageSource } from "@/services/packService";
+import { buildRewardCardSnapshot } from "@/utils/missionRewardParams";
 import type { Badge } from "@/services/badgeService";
 import { completeActivity as completeActivityService } from "@/services/activityService";
 import {
@@ -428,10 +429,16 @@ export default function CompletionScreen() {
         message: "completed a mission",
         xp: activity.xp ?? 0 }));
 
+      const imageSource = getActivityImageSource(activity.image);
+      if (imageSource && "uri" in imageSource && imageSource.uri) {
+        void Image.prefetch(imageSource.uri);
+      }
+
       router.push({
         pathname: "/(tabs)/activity/mission/reward" as const,
         params: {
           activityId: String(activity.id),
+          cardSnapshot: buildRewardCardSnapshot(activity),
           achievements: JSON.stringify(achievementsForReward),
           unlockedBadges: JSON.stringify(unlockedBadges),
         } });

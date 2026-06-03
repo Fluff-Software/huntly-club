@@ -568,8 +568,11 @@ export default function CampfireScreen() {
     loadState === "ready"
   );
 
+  const isLivePlayback =
+    loadState === "ready" && bundle?.session.status === "live";
+
   const togglePlay = useCallback(() => {
-    if (finished) return;
+    if (finished || isLiveRef.current) return;
     setIsPlaying((p) => !p);
   }, [finished]);
 
@@ -653,7 +656,11 @@ export default function CampfireScreen() {
         <View style={styles.overlay} />
 
         {loadState === "ready" && bundle && (
-          <Pressable style={StyleSheet.absoluteFill} onPress={togglePlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={isLivePlayback ? undefined : togglePlay}
+            disabled={isLivePlayback}
+          >
             <CampfireStage
               width={width}
               height={height}
@@ -807,8 +814,8 @@ export default function CampfireScreen() {
           </View>
         )}
 
-        {/* Paused hint */}
-        {loadState === "ready" && !isPlaying && !finished && (
+        {/* Paused hint (replay only; live follows the shared clock) */}
+        {loadState === "ready" && !isPlaying && !finished && !isLivePlayback && (
           <View style={styles.centerFill} pointerEvents="none">
             <View style={styles.playBadge}>
               <MaterialIcons

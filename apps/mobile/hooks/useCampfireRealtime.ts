@@ -82,6 +82,9 @@ export function useCampfireRealtime({
     return () => subscription.unsubscribe();
   }, []);
 
+  const profileIdsRef = useRef(profileIds);
+  profileIdsRef.current = profileIds;
+
   useEffect(() => {
     if (sessionId == null || !userId) {
       setViewerCount(0);
@@ -89,7 +92,16 @@ export function useCampfireRealtime({
     }
 
     let cancelled = false;
-    let subscribed = false;
+    const subscribedRef = { current: false };
+
+    const trackPresence = async (channel: RealtimeChannel) => {
+      const ids = profileIdsRef.current;
+      if (ids.length === 0) return;
+      await channel.track({
+        profile_ids: ids,
+        online_at: new Date().toISOString(),
+      });
+    };
 
     const channel = supabase.channel(`campfire:${sessionId}`, {
       config: {
@@ -119,14 +131,9 @@ export function useCampfireRealtime({
     channel.subscribe(async (status, err) => {
       if (cancelled) return;
       if (status === "SUBSCRIBED") {
-        subscribed = true;
+        subscribedRef.current = true;
         try {
-          if (profileIds.length > 0) {
-            await channel.track({
-              profile_ids: profileIds,
-              online_at: new Date().toISOString(),
-            });
-          }
+          await trackPresence(channel);
           updateViewerCount();
         } catch (e) {
           console.warn("Campfire presence track failed:", e);
@@ -145,7 +152,7 @@ export function useCampfireRealtime({
       cancelled = true;
       channelRef.current = null;
       void (async () => {
-        if (subscribed) {
+        if (subscribedRef.current) {
           try {
             await channel.untrack();
           } catch {
@@ -158,14 +165,16 @@ export function useCampfireRealtime({
     };
   }, [sessionId, userId]);
 
-  // Re-track when profiles load; update count after payload sync (latest meta per key).
+  // Re-track when profiles load after subscribe.
   useEffect(() => {
     const channel = channelRef.current;
-    if (!channel || sessionId == null || !userId || profileIds.length === 0) return;
+    if (!channel || sessionId == null || !userId || profileIds.length === 0) {
+      return;
+    }
 
     void channel
       .track({
-        profile_ids: profileIds,
+        profile_ids: profileIdsRef.current,
         online_at: new Date().toISOString(),
       })
       .then(() => {

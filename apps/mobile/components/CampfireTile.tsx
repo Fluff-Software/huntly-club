@@ -9,6 +9,7 @@ import {
   getNextScheduledSession,
   getServerNowIso,
   getStartingScheduledSession,
+  isCampfireLiveDismissed,
   type CampfireSessionRow,
 } from "@/services/campfireService";
 import {
@@ -84,6 +85,9 @@ export function CampfireTile() {
 
   useFocusEffect(
     useCallback(() => {
+      setLiveSession((current) =>
+        current && isCampfireLiveDismissed(current.id) ? null : current
+      );
       void refresh();
     }, [refresh])
   );
@@ -96,6 +100,15 @@ export function CampfireTile() {
     }, 10_000);
     return () => clearInterval(t);
   }, [refresh]);
+
+  // Re-check soon after live ends (DB cron may lag behind playback).
+  useEffect(() => {
+    if (!liveSession) return;
+    const t = setInterval(() => {
+      void refresh();
+    }, 3000);
+    return () => clearInterval(t);
+  }, [liveSession?.id, refresh]);
 
   // Poll faster while waiting for live after the countdown hits zero.
   useEffect(() => {

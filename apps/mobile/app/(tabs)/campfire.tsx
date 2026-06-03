@@ -17,6 +17,7 @@ import { useCampfireAudio } from "@/components/campfire/useCampfireAudio";
 import { useCampfireVideoPlayers } from "@/components/campfire/useCampfireVideoPlayers";
 import { prepareCampfireMedia } from "@/components/campfire/prepareCampfireMedia";
 import {
+  dismissCampfireLiveSession,
   getCampfireSessionBundle,
   getCampfireSessionById,
   getLatestLiveSession,
@@ -97,6 +98,7 @@ export default function CampfireScreen() {
   const isLiveRef = useRef(false);
   const [reactionBursts, setReactionBursts] = useState<ReactionBurst[]>([]);
   const [realtimeSessionId, setRealtimeSessionId] = useState<number | null>(null);
+  const realtimeSessionIdRef = useRef<number | null>(null);
   const loadTokenRef = useRef(0);
   const loadStateRef = useRef<LoadState>("loading");
   const joinLiveInFlightRef = useRef(false);
@@ -109,18 +111,26 @@ export default function CampfireScreen() {
     loadStateRef.current = loadState;
   }, [loadState]);
 
+  const pinRealtimeSession = useCallback((sessionId: number) => {
+    realtimeSessionIdRef.current = sessionId;
+    setRealtimeSessionId(sessionId);
+  }, []);
+
   // Keep one Realtime topic for the whole visit (wait screen → live playback).
   useEffect(() => {
     if (waitingSession?.id != null) {
-      setRealtimeSessionId(waitingSession.id);
+      pinRealtimeSession(waitingSession.id);
     }
-  }, [waitingSession?.id]);
+  }, [waitingSession?.id, pinRealtimeSession]);
 
   useEffect(() => {
     if (bundle?.session.status === "live" && bundle.session.id != null) {
-      setRealtimeSessionId(bundle.session.id);
+      pinRealtimeSession(bundle.session.id);
     }
-  }, [bundle?.session.id, bundle?.session.status]);
+  }, [bundle?.session.id, bundle?.session.status, pinRealtimeSession]);
+
+  const effectiveRealtimeSessionId =
+    realtimeSessionId ?? realtimeSessionIdRef.current;
 
   const handleReactionBroadcast = useCallback((emoji: string) => {
     const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -133,7 +143,7 @@ export default function CampfireScreen() {
   const profileIds = useMemo(() => profiles.map((p) => p.id), [profiles]);
 
   const { viewerCount, channelRef: liveChannelRef } = useCampfireRealtime({
-    sessionId: realtimeSessionId,
+    sessionId: effectiveRealtimeSessionId,
     userId: user?.id,
     profileIds,
     onReaction: handleReactionBroadcast,
@@ -145,6 +155,9 @@ export default function CampfireScreen() {
       const mode = modeOverride ?? params.mode;
 
       const waitingId = waitingSessionRef.current?.id;
+      if (waitingId != null) {
+        pinRealtimeSession(waitingId);
+      }
       const preloadedWhileWaiting =
         waitingId != null ? getCampfireLivePreload(waitingId) : null;
 
@@ -239,7 +252,21 @@ export default function CampfireScreen() {
       }
 
       safeSet(() => {
-        setBundle(data);
+        const sessionRow =
+          session.status === "live"
+            ? {
+                ...data!.session,
+                status: "live" as const,
+                live_started_at:
+                  session.live_started_at ??
+                  data!.session.live_started_at ??
+                  data!.session.scheduled_at,
+              }
+            : data!.session;
+        setBundle({ ...data!, session: sessionRow });
+        if (sessionRow.id != null) {
+          pinRealtimeSession(sessionRow.id);
+        }
         if (preloadedImages || preloadedWhileWaiting) setMediaReady(true);
         setWaitingSession(null);
       });
@@ -273,7 +300,7 @@ export default function CampfireScreen() {
 
       safeSet(() => setLoadState("preparing"));
     },
-    [params.mode]
+    [params.mode, pinRealtimeSession]
   );
 
   const beginLivePlayback = useCallback(() => {
@@ -301,6 +328,7 @@ export default function CampfireScreen() {
           clearInterval(liveResyncTimerRef.current);
           liveResyncTimerRef.current = null;
         }
+        realtimeSessionIdRef.current = null;
         setRealtimeSessionId(null);
         setReactionBursts([]);
         // Ensure no audio keeps playing when leaving the tab/screen.
@@ -535,8 +563,11 @@ export default function CampfireScreen() {
     }
     hasExitedAfterFinishRef.current = true;
     setIsPlaying(false);
+    if (bundle?.session.id != null && isLiveRef.current) {
+      dismissCampfireLiveSession(bundle.session.id);
+    }
     router.replace("/(tabs)");
-  }, [loadState, finished]);
+  }, [loadState, finished, bundle?.session.id]);
 
   useCampfireAudio(
     bundle?.components ?? [],
@@ -546,7 +577,16 @@ export default function CampfireScreen() {
   );
 
   const isLivePlayback =
-    loadState === "ready" && bundle?.session.status === "live";
+    loadState === "ready" &&
+    (bundle?.session.status === "live" || isLiveRef.current);
+
+  const showLiveInteractions =
+    effectiveRealtimeSessionId != null &&
+    (loadState === "countdown" ||
+      loadState === "loading" ||
+      loadState === "preparing" ||
+      (loadState === "ready" &&
+        (isLiveRef.current || bundle?.session.status === "live")));
 
   const togglePlay = useCallback(() => {
     if (finished || isLiveRef.current) return;
@@ -566,7 +606,7 @@ export default function CampfireScreen() {
 
   const sendReaction = useCallback(
     async (emoji: string) => {
-      if (!realtimeSessionId || !liveChannelRef.current) return;
+      if (!effectiveRealtimeSessionId || !liveChannelRef.current) return;
       const playheadMs =
         loadState === "countdown" || loadState === "preparing"
           ? 0
@@ -575,7 +615,7 @@ export default function CampfireScreen() {
         const { data } = await supabase.auth.getUser();
         if (!data.user) throw new Error("not_authenticated");
         const { error } = await supabase.from("campfire_reactions").insert({
-          session_id: realtimeSessionId,
+          session_id: effectiveRealtimeSessionId,
           emoji,
           playhead_ms: Math.round(playheadMs),
         });
@@ -593,7 +633,7 @@ export default function CampfireScreen() {
         }
       }
     },
-    [realtimeSessionId, currentTimeMs, loadState]
+    [effectiveRealtimeSessionId, currentTimeMs, loadState]
   );
 
   const liveInteractionChrome = (
@@ -652,13 +692,13 @@ export default function CampfireScreen() {
               videoPlayers={videoPlayers}
             />
 
-            {realtimeSessionId != null && liveInteractionChrome}
+            {showLiveInteractions && liveInteractionChrome}
           </Pressable>
         )}
 
         {loadState === "countdown" && (
           <View style={styles.centerFill}>
-            {realtimeSessionId != null && liveInteractionChrome}
+            {showLiveInteractions && liveInteractionChrome}
             <View style={styles.countdownCard}>
               <ThemedText
                 type="heading"
@@ -739,6 +779,11 @@ export default function CampfireScreen() {
 
         {showSpinner && (
           <View style={styles.centerFill}>
+            {showLiveInteractions && (
+              <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+                {liveInteractionChrome}
+              </View>
+            )}
             <ActivityIndicator size="large" color="#FFFFFF" />
             <ThemedText
               style={{

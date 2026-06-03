@@ -122,8 +122,35 @@ export async function getServerNowIso(): Promise<string | null> {
   return typeof data === "string" ? data : (data as string | null);
 }
 
+/** Client hint: user finished watching this live session (before cron sets replay). */
+let dismissedLiveSessionId: number | null = null;
+
+export function dismissCampfireLiveSession(sessionId: number) {
+  dismissedLiveSessionId = sessionId;
+}
+
+export function clearDismissedCampfireLiveSession() {
+  dismissedLiveSessionId = null;
+}
+
+export function isCampfireLiveDismissed(sessionId: number): boolean {
+  return dismissedLiveSessionId === sessionId;
+}
+
+/** Whether a row is still in its live broadcast window (matches pg_cron end rule). */
+export function isCampfireSessionBroadcasting(
+  session: CampfireSessionRow,
+  nowMs: number = Date.now()
+): boolean {
+  if (session.status !== "live") return false;
+  if (!session.live_started_at || session.duration == null) return true;
+  const startedMs = Date.parse(session.live_started_at);
+  if (Number.isNaN(startedMs)) return true;
+  return nowMs < startedMs + session.duration;
+}
+
 /**
- * Returns the most recent campfire session in "live" status, or null.
+ * Returns the most recent campfire session still broadcasting live, or null.
  */
 export async function getLatestLiveSession(): Promise<CampfireSessionRow | null> {
   const { data, error } = await supabase
@@ -139,7 +166,22 @@ export async function getLatestLiveSession(): Promise<CampfireSessionRow | null>
     console.error("Failed to load latest live campfire session:", error);
     return null;
   }
-  return (data as CampfireSessionRow | null) ?? null;
+  const row = (data as CampfireSessionRow | null) ?? null;
+  if (!row) {
+    clearDismissedCampfireLiveSession();
+    return null;
+  }
+
+  const nowIso = await getServerNowIso();
+  const nowMs = nowIso ? Date.parse(nowIso) : Date.now();
+  if (!isCampfireSessionBroadcasting(row, nowMs)) {
+    clearDismissedCampfireLiveSession();
+    return null;
+  }
+  if (isCampfireLiveDismissed(row.id)) {
+    return null;
+  }
+  return row;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));

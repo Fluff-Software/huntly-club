@@ -32,6 +32,10 @@ import {
 } from "@/services/campfireService";
 import { useCampfireRealtime } from "@/hooks/useCampfireRealtime";
 import {
+  CAMPFIRE_REACTION_MIN_INTERVAL_MS,
+  sendCampfireReaction,
+} from "@/services/campfireReactionService";
+import {
   CAMPFIRE_PRELOAD_LEAD_MS,
   getCampfireLivePreload,
   invalidateCampfireLivePreload,
@@ -103,6 +107,7 @@ export default function CampfireScreen() {
   const loadTokenRef = useRef(0);
   const loadStateRef = useRef<LoadState>("loading");
   const joinLiveInFlightRef = useRef(false);
+  const lastReactionSentAtRef = useRef(0);
 
   useEffect(() => {
     waitingSessionRef.current = waitingSession;
@@ -135,10 +140,10 @@ export default function CampfireScreen() {
 
   const handleReactionBroadcast = useCallback((emoji: string) => {
     const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    setReactionBursts((prev) => [
-      ...prev,
-      { id, emoji, createdAtMs: Date.now() },
-    ]);
+    setReactionBursts((prev) => {
+      const next = [...prev, { id, emoji, createdAtMs: Date.now() }];
+      return next.length > 24 ? next.slice(-24) : next;
+    });
   }, []);
 
   const profileIds = useMemo(() => profiles.map((p) => p.id), [profiles]);
@@ -625,34 +630,28 @@ export default function CampfireScreen() {
 
   const sendReaction = useCallback(
     async (emoji: string) => {
-      if (!effectiveRealtimeSessionId || !liveChannelRef.current) return;
+      if (!effectiveRealtimeSessionId || !liveChannelRef.current || !user) {
+        return;
+      }
+      const now = Date.now();
+      if (now - lastReactionSentAtRef.current < CAMPFIRE_REACTION_MIN_INTERVAL_MS) {
+        return;
+      }
       const playheadMs =
         loadState === "countdown" || loadState === "preparing"
           ? 0
           : currentTimeMs;
-      try {
-        const { data } = await supabase.auth.getUser();
-        if (!data.user) throw new Error("not_authenticated");
-        const { error } = await supabase.from("campfire_reactions").insert({
-          session_id: effectiveRealtimeSessionId,
-          emoji,
-          playhead_ms: Math.round(playheadMs),
-        });
-        if (error) throw error;
-      } catch (e) {
-        // Best-effort fallback (e.g. if user isn't authed yet).
-        try {
-          await liveChannelRef.current.send({
-            type: "broadcast",
-            event: "reaction",
-            payload: { emoji, at: new Date().toISOString(), playhead_ms: Math.round(playheadMs) },
-          });
-        } catch {
-          void e;
-        }
+      const sent = await sendCampfireReaction(
+        liveChannelRef.current,
+        effectiveRealtimeSessionId,
+        emoji,
+        playheadMs
+      );
+      if (sent) {
+        lastReactionSentAtRef.current = now;
       }
     },
-    [effectiveRealtimeSessionId, currentTimeMs, loadState]
+    [effectiveRealtimeSessionId, currentTimeMs, loadState, user]
   );
 
   const liveInteractionChrome = (

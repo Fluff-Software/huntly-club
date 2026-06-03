@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/services/supabase";
+import {
+  resetIncomingCampfireReactionSampler,
+  shouldDisplayIncomingCampfireReaction,
+} from "@/services/campfireReactionService";
 
 type PresenceState = Record<string, unknown[]>;
 
@@ -112,6 +116,7 @@ export function useCampfireRealtime({
     });
 
     channel.on("broadcast", { event: "reaction" }, ({ payload }) => {
+      if (!shouldDisplayIncomingCampfireReaction()) return;
       const emoji = typeof payload?.emoji === "string" ? payload.emoji : "🔥";
       onReactionRef.current(emoji);
     });
@@ -150,6 +155,7 @@ export function useCampfireRealtime({
 
     return () => {
       cancelled = true;
+      resetIncomingCampfireReactionSampler();
       channelRef.current = null;
       void (async () => {
         if (subscribedRef.current) {

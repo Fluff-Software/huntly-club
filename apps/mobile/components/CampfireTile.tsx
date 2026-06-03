@@ -1,5 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View, ImageBackground, Pressable } from "react-native";
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { router, useFocusEffect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
@@ -27,6 +33,8 @@ const CREAM = "#F6EBDD";
 const LIVE_RED = "#C0392B";
 
 const SOON_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+const TILE_SLIDE_DURATION_MS = 420;
+const TILE_SLIDE_DELAY_MS = 150;
 
 function formatCountdownParts(ms: number) {
   const total = Math.max(0, Math.floor(ms / 1000));
@@ -38,9 +46,16 @@ function formatCountdownParts(ms: number) {
 
 export function CampfireTile() {
   const { scaleW } = useLayoutScale();
+  const [statusReady, setStatusReady] = useState(false);
   const [liveSession, setLiveSession] = useState<CampfireSessionRow | null>(null);
   const [scheduledAtMs, setScheduledAtMs] = useState<number | null>(null);
   const [countdownMs, setCountdownMs] = useState<number>(0);
+  const tileTranslateX = useSharedValue(240);
+  const tileOpacity = useSharedValue(0);
+  const tileSlideStyle = useAnimatedStyle(() => ({
+    opacity: tileOpacity.value,
+    transform: [{ translateX: tileTranslateX.value }],
+  }));
 
   const refresh = useCallback(async () => {
     const live = await getLatestLiveSession();
@@ -88,37 +103,68 @@ export function CampfireTile() {
       setLiveSession((current) =>
         current && isCampfireLiveDismissed(current.id) ? null : current
       );
-      void refresh();
+      let cancelled = false;
+      setStatusReady(false);
+      void (async () => {
+        await refresh();
+        if (!cancelled) setStatusReady(true);
+      })();
+      return () => {
+        cancelled = true;
+      };
     }, [refresh])
   );
 
+  // Slide in after status is loaded — same motion as the home team card.
+  useEffect(() => {
+    if (!statusReady) return;
+    tileTranslateX.value = 240;
+    tileOpacity.value = 0;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      if (cancelled) return;
+      tileTranslateX.value = withTiming(0, {
+        duration: TILE_SLIDE_DURATION_MS,
+        easing: Easing.out(Easing.cubic),
+      });
+      tileOpacity.value = withTiming(1, {
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+      });
+    }, TILE_SLIDE_DELAY_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [statusReady, tileOpacity, tileTranslateX]);
+
   // Safety net: keep the tile fresh even if status flips while user stays on home.
   useEffect(() => {
-    void refresh();
+    if (!statusReady) return;
     const t = setInterval(() => {
       void refresh();
     }, 10_000);
     return () => clearInterval(t);
-  }, [refresh]);
+  }, [refresh, statusReady]);
 
   // Re-check soon after live ends (DB cron may lag behind playback).
   useEffect(() => {
-    if (!liveSession) return;
+    if (!statusReady || !liveSession) return;
     const t = setInterval(() => {
       void refresh();
     }, 3000);
     return () => clearInterval(t);
-  }, [liveSession?.id, refresh]);
+  }, [liveSession?.id, refresh, statusReady]);
 
   // Poll faster while waiting for live after the countdown hits zero.
   useEffect(() => {
-    if (!scheduledAtMs || countdownMs > 0) return;
+    if (!statusReady || !scheduledAtMs || countdownMs > 0) return;
     void refresh();
     const t = setInterval(() => {
       void refresh();
     }, 2000);
     return () => clearInterval(t);
-  }, [scheduledAtMs, countdownMs, refresh]);
+  }, [scheduledAtMs, countdownMs, refresh, statusReady]);
 
   useEffect(() => {
     if (!scheduledAtMs) return;
@@ -144,8 +190,11 @@ export function CampfireTile() {
     [countdownMs]
   );
 
-  if (liveSession) {
-    return (
+  if (!statusReady) {
+    return <View style={{ minHeight: scaleW(150) }} />;
+  }
+
+  const tileContent = liveSession ? (
       <View
         style={{
           borderRadius: scaleW(22),
@@ -252,11 +301,7 @@ export function CampfireTile() {
           </View>
         </ImageBackground>
       </View>
-    );
-  }
-
-  if (scheduledAtMs) {
-    return (
+  ) : scheduledAtMs ? (
       <View
         style={{
           borderRadius: scaleW(22),
@@ -398,10 +443,7 @@ export function CampfireTile() {
           </View>
         </ImageBackground>
       </View>
-    );
-  }
-
-  return (
+  ) : (
     <View
       style={{
         borderRadius: scaleW(20),
@@ -502,4 +544,6 @@ export function CampfireTile() {
       </ImageBackground>
     </View>
   );
+
+  return <Animated.View style={tileSlideStyle}>{tileContent}</Animated.View>;
 }

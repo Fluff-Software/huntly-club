@@ -23,6 +23,8 @@ import {
   TeamInfo,
   TeamMonthlyWinner } from "@/services/teamActivityService";
 import { useUser } from "@/contexts/UserContext";
+import { useTutorialActive } from "@/hooks/useTutorialActive";
+import { useRefreshWhenTutorialEnds } from "@/hooks/useRefreshWhenTutorialEnds";
 import { getTeamCardConfig } from "@/utils/teamUtils";
 
 const CELEBRATE_IMAGE = require("@/assets/images/celebrate.png");
@@ -71,6 +73,7 @@ export default function SocialScreen() {
 
   const chartProgress = useRef(new Animated.Value(0)).current;
   const scrollRef = useRef<ScrollView>(null);
+  const isTutorialActive = useTutorialActive();
 
   const sortedTeamsForChart = useMemo(() => {
     const teamIdByName = Object.fromEntries(allTeams.map((t) => [t.name.toLowerCase(), t.id]));
@@ -133,10 +136,17 @@ export default function SocialScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      if (isTutorialActive) {
+        setLoading(false);
+        scrollRef.current?.scrollTo({ y: 0, animated: false });
+        return;
+      }
       void fetchTeamActivities();
       scrollRef.current?.scrollTo({ y: 0, animated: false });
-    }, [fetchTeamActivities])
+    }, [fetchTeamActivities, isTutorialActive])
   );
+
+  useRefreshWhenTutorialEnds(fetchTeamActivities);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

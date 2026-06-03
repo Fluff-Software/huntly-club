@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useMemo } from "react";
 
 export type SignUpPlayer = {
   name: string;
@@ -58,6 +58,8 @@ type SignUpContextValue = {
   /** When true, show tutorial even if user has completed it (e.g. "Show tutorial again" from Settings). */
   replayTutorialRequested: boolean;
   setReplayTutorialRequested: (value: boolean) => void;
+  /** True while the post-sign-up tutorial overlay is active (skip tab refetches). */
+  isTutorialActive: boolean;
 };
 
 const SignUpContext = createContext<SignUpContextValue | null>(null);
@@ -108,6 +110,11 @@ export function SignUpProvider({ children }: { children: React.ReactNode }) {
     setSelectedTeamName(null);
   }, []);
 
+  const isTutorialActive = useMemo(
+    () => showPostSignUpWelcome && tutorialStep !== "done",
+    [showPostSignUpWelcome, tutorialStep]
+  );
+
   return (
     <SignUpContext.Provider
       value={{
@@ -129,6 +136,7 @@ export function SignUpProvider({ children }: { children: React.ReactNode }) {
         setTutorialStep,
         replayTutorialRequested,
         setReplayTutorialRequested,
+        isTutorialActive,
       }}
     >
       {children}

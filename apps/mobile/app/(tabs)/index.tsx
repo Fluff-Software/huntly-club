@@ -29,6 +29,8 @@ import { AdventureTile } from "@/components/AdventureTile";
 import { PastAdventuresTile } from "@/components/PastAdventuresTile";
 import { CampfireTile } from "@/components/CampfireTile";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { useTutorialActive } from "@/hooks/useTutorialActive";
+import { useRefreshWhenTutorialEnds } from "@/hooks/useRefreshWhenTutorialEnds";
 import { useCurrentChapterActivities } from "@/hooks/useCurrentChapterActivities";
 import {
   useChaptersWithActivities,
@@ -178,6 +180,7 @@ export default function HomeScreen() {
       completedActivityIds.has(String(savedFirstMissionId)),
     [savedFirstMissionId, completedActivityIds]
   );
+  const isTutorialActive = useTutorialActive();
   const initialIndex = 1; // activity (Welcome back)
   const [currentIndex, setCurrentIndex] = useState<number>(initialIndex);
   const currentMode = HOME_MODES[currentIndex] ?? "activity";
@@ -387,13 +390,21 @@ export default function HomeScreen() {
     return () => clearTimeout(timer);
   }, [resetToActivityPage]);
 
+  const refreshHomeData = useCallback(() => {
+    refetchMissions();
+    void refetchChapters();
+  }, [refetchMissions, refetchChapters]);
+
   useFocusEffect(
     useCallback(() => {
-      refetchMissions();
-      void refetchChapters();
+      if (!isTutorialActive) {
+        refreshHomeData();
+      }
       resetToActivityPage();
-    }, [refetchMissions, refetchChapters, resetToActivityPage])
+    }, [isTutorialActive, refreshHomeData, resetToActivityPage])
   );
+
+  useRefreshWhenTutorialEnds(refreshHomeData);
 
   const pageAnimatedStyles = useMemo(() => {
     if (width <= 0) return [];

@@ -17,6 +17,8 @@ import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useFirstSeason } from "@/hooks/useFirstSeason";
 import { useCurrentChapter } from "@/hooks/useCurrentChapter";
 import { useAllChapters } from "@/hooks/useAllChapters";
+import { useTutorialActive } from "@/hooks/useTutorialActive";
+import { useRefreshWhenTutorialEnds } from "@/hooks/useRefreshWhenTutorialEnds";
 import { useRouter, useFocusEffect } from "expo-router";
 
 function formatReleaseDate(isoDate: string): string {
@@ -40,15 +42,24 @@ export default function StoryScreen() {
   const completeButtonScale = useSharedValue(1);
   const scrollRef = useRef<ScrollView>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const isTutorialActive = useTutorialActive();
+
+  const refreshStoryData = useCallback(() => {
+    refetchSeason();
+    refetchChapter();
+    refetchChapters();
+  }, [refetchSeason, refetchChapter, refetchChapters]);
 
   useFocusEffect(
     useCallback(() => {
-      refetchSeason();
-      refetchChapter();
-      refetchChapters();
+      if (!isTutorialActive) {
+        refreshStoryData();
+      }
       scrollRef.current?.scrollTo({ y: 0, animated: false });
-    }, [refetchSeason, refetchChapter, refetchChapters])
+    }, [isTutorialActive, refreshStoryData])
   );
+
+  useRefreshWhenTutorialEnds(refreshStoryData);
 
   const loading = seasonLoading || currentChapterLoading || chaptersLoading;
   const error = seasonError ?? chapterError ?? chaptersError;

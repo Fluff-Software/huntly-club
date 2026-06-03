@@ -13,6 +13,8 @@ import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useCurrentChapter } from "@/hooks/useCurrentChapter";
 import { useCountdownToUtcDate } from "@/hooks/useCountdownToUtcDate";
 import { useChaptersWithActivities, type ChapterWithActivities } from "@/hooks/useAllChaptersActivities";
+import { useTutorialActive } from "@/hooks/useTutorialActive";
+import { useRefreshWhenTutorialEnds } from "@/hooks/useRefreshWhenTutorialEnds";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { MissionCard } from "@/components/MissionCard";
 import { supabase } from "@/services/supabase";
@@ -60,16 +62,26 @@ export default function MissionsScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const [completionCountByActivityId, setCompletionCountByActivityId] = React.useState<Record<string, number>>({});
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const isTutorialActive = useTutorialActive();
+
+  const refreshMissionsData = useCallback(() => {
+    void refetch();
+    void refetchCurrentChapter();
+  }, [refetch, refetchCurrentChapter]);
 
   useFocusEffect(
     useCallback(() => {
-      refetch();
-      refetchCurrentChapter();
+      if (!isTutorialActive) {
+        refreshMissionsData();
+      }
       scrollRef.current?.scrollTo({ y: 0, animated: false });
-    }, [refetch, refetchCurrentChapter])
+    }, [isTutorialActive, refreshMissionsData])
   );
 
+  useRefreshWhenTutorialEnds(refreshMissionsData);
+
   React.useEffect(() => {
+    if (isTutorialActive) return;
     const profileIds = profiles.map((p) => p.id);
     const activityIds = chapters.flatMap((ch) => ch.activities.map((a) => parseInt(a.id, 10)));
     if (profileIds.length === 0 || activityIds.length === 0) {
@@ -93,7 +105,7 @@ export default function MissionsScreen() {
       setCompletionCountByActivityId(counts);
     })();
     return () => { cancelled = true; };
-  }, [chapters, profiles]);
+  }, [chapters, profiles, isTutorialActive]);
 
   useEffect(() => {
     if (!hasLoadedOnce && !loading && !error) {

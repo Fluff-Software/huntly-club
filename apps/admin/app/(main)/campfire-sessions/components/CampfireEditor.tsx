@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
-  DragOverlay,
   PointerSensor,
   pointerWithin,
   useSensor,
   useSensors,
+  type DragCancelEvent,
   type DragEndEvent,
   type DragMoveEvent,
   type DragStartEvent,
@@ -27,11 +27,9 @@ import {
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { audioComponentHasFile } from "../lib/audio-component";
 import type { FullEditorState } from "../lib/editor-draft";
-import { PALETTE_CHIP_CLASSES } from "../lib/component-styles";
 import {
   getCampfireCaptains,
   LAYER_DB_TYPE_PLACEHOLDER,
-  PALETTE_ITEMS,
   type ActivityOption,
   type ApprovedPhotoOption,
   type CampfireComponentRow,
@@ -43,6 +41,7 @@ import { CampfirePreview } from "./CampfirePreview";
 import { CampfireComponentEditModal } from "./CampfireComponentEditModal";
 import { CampfireDetailsPanel } from "./CampfireDetailsPanel";
 import { CampfireTimeline } from "./CampfireTimeline";
+import type { PaletteDragPreviewState } from "./TimelineTrack";
 import {
   TimelineResizeHandle,
   TIMELINE_DEFAULT_HEIGHT,
@@ -80,7 +79,8 @@ export function CampfireEditor({
   const [currentTimeMs, setCurrentTimeMs] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM_PX_PER_SEC);
-  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [paletteDragPreview, setPaletteDragPreview] =
+    useState<PaletteDragPreviewState | null>(null);
   const [deleteLayerConfirm, setDeleteLayerConfirm] = useState<{
     layerId: number;
     title: string;
@@ -107,16 +107,22 @@ export function CampfireEditor({
     origDuration: number;
   } | null>(null);
   const interactionPushedRef = useRef(false);
+  /** Live screen X during palette drags (dnd-kit delta includes scroll offset). */
+  const palettePointerClientXRef = useRef(0);
+  const palettePointerListenerRef = useRef<(() => void) | null>(null);
+  const isPaletteDragRef = useRef(false);
   const pxPerSec = zoom;
-  const durationMs = useMemo(
-    () =>
-      Math.max(
-        session.duration ?? 0,
-        sessionDurationFromComponents(components),
-        60000
-      ),
-    [session.duration, components]
-  );
+  const durationMs = useMemo(() => {
+    const fromPreview = paletteDragPreview
+      ? paletteDragPreview.startTime + paletteDragPreview.duration
+      : 0;
+    return Math.max(
+      session.duration ?? 0,
+      sessionDurationFromComponents(components),
+      fromPreview,
+      60000
+    );
+  }, [session.duration, components, paletteDragPreview]);
 
   const editingComponent = useMemo(
     () => components.find((c) => c.id === editingComponentId) ?? null,
@@ -220,20 +226,48 @@ export function CampfireEditor({
 
   const getTimeFromPointer = useCallback(
     (clientX: number): number => {
-      const scrollEl = timelineRef.current?.parentElement;
-      if (!scrollEl) return 0;
-      const rect = scrollEl.getBoundingClientRect();
-      const scrollLeft = scrollEl.scrollLeft;
-      const x = clientX - rect.left + scrollLeft - 144;
+      const timelineEl = timelineRef.current;
+      if (!timelineEl) return 0;
+      const x = clientX - timelineEl.getBoundingClientRect().left - 144;
       return snapMs(pxToMs(Math.max(0, x), pxPerSec));
     },
     [pxPerSec]
   );
 
+  const stopPalettePointerTracking = () => {
+    palettePointerListenerRef.current?.();
+    palettePointerListenerRef.current = null;
+    isPaletteDragRef.current = false;
+  };
+
+  const startPalettePointerTracking = (initialClientX: number) => {
+    stopPalettePointerTracking();
+    isPaletteDragRef.current = true;
+    palettePointerClientXRef.current = initialClientX;
+    const onPointerMove = (e: PointerEvent) => {
+      palettePointerClientXRef.current = e.clientX;
+    };
+    window.addEventListener("pointermove", onPointerMove);
+    palettePointerListenerRef.current = () => {
+      window.removeEventListener("pointermove", onPointerMove);
+    };
+  };
+
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveDragId(String(event.active.id));
     interactionPushedRef.current = false;
     const data = event.active.data.current;
+    if (data?.kind === "palette") {
+      const type = data.componentType as CampfireComponentType;
+      const trackId = tracks[0]?.id ?? 0;
+      const initialClientX =
+        event.activatorEvent && "clientX" in event.activatorEvent
+          ? (event.activatorEvent as PointerEvent).clientX
+          : 0;
+      startPalettePointerTracking(initialClientX);
+      const startTime = getTimeFromPointer(initialClientX);
+      setPaletteDragPreview(buildPaletteDragPreview(type, trackId, startTime));
+      return;
+    }
     if (data?.kind === "block") {
       const comp = components.find((c) => c.id === data.componentId);
       if (comp) {
@@ -246,16 +280,46 @@ export function CampfireEditor({
     }
   };
 
-  const getPointerClientX = (event: DragEndEvent): number => {
-    const activator = event.activatorEvent;
-    if (activator && "clientX" in activator) {
-      return (activator as PointerEvent).clientX + event.delta.x;
-    }
-    if (event.over?.rect) {
-      return event.over.rect.left + event.over.rect.width / 2;
-    }
-    return 0;
-  };
+  const buildPaletteDragPreview = useCallback(
+    (
+      type: CampfireComponentType,
+      trackId: number,
+      startTime: number
+    ): PaletteDragPreviewState => {
+      const candidate = {
+        id: -1,
+        start_time: startTime,
+        duration: DEFAULT_COMPONENT_DURATION_MS,
+      };
+      const siblings = components.filter((c) => c.track_id === trackId);
+      return {
+        type,
+        trackId,
+        startTime,
+        duration: DEFAULT_COMPONENT_DURATION_MS,
+        hasOverlap: wouldOverlap(candidate, siblings),
+      };
+    },
+    [components]
+  );
+
+  const updatePaletteDragPreview = useCallback(
+    (event: DragMoveEvent | DragEndEvent) => {
+      const activeData = event.active.data.current;
+      if (activeData?.kind !== "palette") return;
+
+      const type = activeData.componentType as CampfireComponentType;
+      const startTime = getTimeFromPointer(palettePointerClientXRef.current);
+      let trackId =
+        paletteDragPreview?.trackId ?? tracks[0]?.id ?? 0;
+      if (event.over?.data.current?.kind === "layer") {
+        trackId = event.over.data.current.layerId as number;
+      }
+
+      setPaletteDragPreview(buildPaletteDragPreview(type, trackId, startTime));
+    },
+    [buildPaletteDragPreview, getTimeFromPointer, paletteDragPreview?.trackId, tracks]
+  );
 
   const applyBlockDrag = useCallback(
     (
@@ -287,6 +351,11 @@ export function CampfireEditor({
   );
 
   const handleDragMove = (event: DragMoveEvent) => {
+    const activeData = event.active.data.current;
+    if (activeData?.kind === "palette") {
+      updatePaletteDragPreview(event);
+      return;
+    }
     if (!interactionPushedRef.current) {
       applyBlockDrag(event, updateDraft);
       interactionPushedRef.current = true;
@@ -295,37 +364,55 @@ export function CampfireEditor({
     }
   };
 
+  const clearPaletteDrag = () => {
+    stopPalettePointerTracking();
+    setPaletteDragPreview(null);
+  };
+
+  const handleDragCancel = (_event: DragCancelEvent) => {
+    clearPaletteDrag();
+    dragStartRef.current = null;
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
-    setActiveDragId(null);
     const { active, over, delta } = event;
     const activeData = active.data.current;
 
-    if (activeData?.kind === "palette" && over?.data.current?.kind === "layer") {
-      const trackId = over.data.current.layerId as number;
-      const type = activeData.componentType as CampfireComponentType;
-      const startTime = getTimeFromPointer(getPointerClientX(event));
-      const newId = nextTempId();
+    if (activeData?.kind === "palette") {
+      // Read drop position before clearPaletteDrag (it stops live-pointer tracking).
+      const dropClientX = palettePointerClientXRef.current;
+      if (over?.data.current?.kind === "layer") {
+        const trackId = over.data.current.layerId as number;
+        const type = activeData.componentType as CampfireComponentType;
+        const startTime = getTimeFromPointer(dropClientX);
+        const newId = nextTempId();
 
-      const candidate = { id: newId, start_time: startTime, duration: DEFAULT_COMPONENT_DURATION_MS };
-      const siblings = components.filter((c) => c.track_id === trackId);
-      if (wouldOverlap(candidate, siblings)) return;
+        const candidate = {
+          id: newId,
+          start_time: startTime,
+          duration: DEFAULT_COMPONENT_DURATION_MS,
+        };
+        const siblings = components.filter((c) => c.track_id === trackId);
+        if (wouldOverlap(candidate, siblings)) return;
 
-      updateDraft((prev) => ({
-        ...prev,
-        components: [
-          ...prev.components,
-          {
-            id: newId,
-            session_id: prev.session.id,
-            track_id: trackId,
-            type,
-            start_time: startTime,
-            duration: DEFAULT_COMPONENT_DURATION_MS,
-            data: {},
-          },
-        ],
-      }));
-      openComponentEditor(newId);
+        updateDraft((prev) => ({
+          ...prev,
+          components: [
+            ...prev.components,
+            {
+              id: newId,
+              session_id: prev.session.id,
+              track_id: trackId,
+              type,
+              start_time: startTime,
+              duration: DEFAULT_COMPONENT_DURATION_MS,
+              data: {},
+            },
+          ],
+        }));
+        openComponentEditor(newId);
+      }
+      clearPaletteDrag();
       return;
     }
 
@@ -530,6 +617,7 @@ export function CampfireEditor({
       onDragStart={handleDragStart}
       onDragMove={handleDragMove}
       onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
     >
       <div
         ref={editorLayoutRef}
@@ -609,6 +697,7 @@ export function CampfireEditor({
             isPlaying={isPlaying}
             selectedComponentId={editingComponentId}
             overlappingIds={overlappingIds}
+            paletteDragPreview={paletteDragPreview}
             onSelectComponent={handleBlockSelect}
             onPlayPause={() => setIsPlaying((p) => !p)}
             onSeek={setCurrentTimeMs}
@@ -632,23 +721,6 @@ export function CampfireEditor({
         variant="danger"
       />
 
-      <DragOverlay dropAnimation={null}>
-        {activeDragId?.startsWith("palette-")
-          ? (() => {
-              const item = PALETTE_ITEMS.find(
-                (p) => `palette-${p.type}` === activeDragId
-              );
-              if (!item) return null;
-              return (
-                <div
-                  className={`cursor-grabbing rounded-lg px-4 py-2.5 text-sm font-medium shadow-xl ring-1 ring-inset ${PALETTE_CHIP_CLASSES[item.type]}`}
-                >
-                  {item.label}
-                </div>
-              );
-            })()
-          : null}
-      </DragOverlay>
     </DndContext>
   );
 }

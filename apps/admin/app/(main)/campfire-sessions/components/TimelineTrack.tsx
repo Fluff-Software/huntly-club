@@ -2,8 +2,18 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import type { CampfireComponentRow, CampfireTrackRow } from "../types";
+import type { CampfireComponentType } from "../types";
 import { audioComponentHasFile } from "../lib/audio-component";
 import { TimelineBlock } from "./TimelineBlock";
+import { TimelineBlockPreview } from "./TimelineBlockPreview";
+
+export type PaletteDragPreviewState = {
+  type: CampfireComponentType;
+  trackId: number;
+  startTime: number;
+  duration: number;
+  hasOverlap: boolean;
+};
 
 type Props = {
   track: CampfireTrackRow;
@@ -12,6 +22,7 @@ type Props = {
   timelineWidthPx: number;
   selectedComponentId: number | null;
   overlappingIds: Set<number>;
+  paletteDragPreview: PaletteDragPreviewState | null;
   canDelete: boolean;
   onSelectComponent: (id: number) => void;
   onDeleteLayer: (layerId: number) => void;
@@ -29,6 +40,7 @@ export function TimelineTrack({
   timelineWidthPx,
   selectedComponentId,
   overlappingIds,
+  paletteDragPreview,
   canDelete,
   onSelectComponent,
   onDeleteLayer,
@@ -94,6 +106,15 @@ export function TimelineTrack({
             onResizeStart={(edge, e) => onResizeStart(comp.id, edge, e)}
           />
         ))}
+        {paletteDragPreview?.trackId === track.id ? (
+          <TimelineBlockPreview
+            type={paletteDragPreview.type}
+            startTimeMs={paletteDragPreview.startTime}
+            durationMs={paletteDragPreview.duration}
+            pxPerSec={pxPerSec}
+            hasOverlap={paletteDragPreview.hasOverlap}
+          />
+        ) : null}
       </div>
     </div>
   );

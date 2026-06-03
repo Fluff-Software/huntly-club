@@ -122,8 +122,35 @@ export async function getServerNowIso(): Promise<string | null> {
   return typeof data === "string" ? data : (data as string | null);
 }
 
+/** Client hint: user finished watching this live session (before cron sets replay). */
+let dismissedLiveSessionId: number | null = null;
+
+export function dismissCampfireLiveSession(sessionId: number) {
+  dismissedLiveSessionId = sessionId;
+}
+
+export function clearDismissedCampfireLiveSession() {
+  dismissedLiveSessionId = null;
+}
+
+export function isCampfireLiveDismissed(sessionId: number): boolean {
+  return dismissedLiveSessionId === sessionId;
+}
+
+/** Whether a row is still in its live broadcast window (matches pg_cron end rule). */
+export function isCampfireSessionBroadcasting(
+  session: CampfireSessionRow,
+  nowMs: number = Date.now()
+): boolean {
+  if (session.status !== "live") return false;
+  if (!session.live_started_at || session.duration == null) return true;
+  const startedMs = Date.parse(session.live_started_at);
+  if (Number.isNaN(startedMs)) return true;
+  return nowMs < startedMs + session.duration;
+}
+
 /**
- * Returns the most recent campfire session in "live" status, or null.
+ * Returns the most recent campfire session still broadcasting live, or null.
  */
 export async function getLatestLiveSession(): Promise<CampfireSessionRow | null> {
   const { data, error } = await supabase
@@ -137,6 +164,105 @@ export async function getLatestLiveSession(): Promise<CampfireSessionRow | null>
 
   if (error) {
     console.error("Failed to load latest live campfire session:", error);
+    return null;
+  }
+  const row = (data as CampfireSessionRow | null) ?? null;
+  if (!row) {
+    clearDismissedCampfireLiveSession();
+    return null;
+  }
+
+  const nowIso = await getServerNowIso();
+  const nowMs = nowIso ? Date.parse(nowIso) : Date.now();
+  if (!isCampfireSessionBroadcasting(row, nowMs)) {
+    clearDismissedCampfireLiveSession();
+    return null;
+  }
+  if (isCampfireLiveDismissed(row.id)) {
+    return null;
+  }
+  return row;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * After the countdown ends, resolve the session to play: live first, then poll
+ * the session we were waiting for (cron may take up to ~1 min), never a stale replay.
+ */
+export async function resolveCampfirePlaybackSession(
+  waitingSessionId?: number | null
+): Promise<CampfireSessionRow | null> {
+  const live = await getLatestLiveSession();
+  if (live) return live;
+
+  if (waitingSessionId == null) {
+    return getLatestReplaySession();
+  }
+
+  const deadline = Date.now() + 90_000;
+  while (Date.now() < deadline) {
+    const row = await getCampfireSessionById(waitingSessionId);
+    if (row?.status === "live") return row;
+
+    const latestLive = await getLatestLiveSession();
+    if (latestLive?.id === waitingSessionId) return latestLive;
+
+    if (row?.status === "scheduled" && row.scheduled_at) {
+      const nowIso = await getServerNowIso();
+      const nowMs = nowIso ? Date.parse(nowIso) : Date.now();
+      if (Date.parse(row.scheduled_at) <= nowMs) {
+        // Start time passed; cron may not have flipped status yet — play from scheduled_at.
+        return {
+          ...row,
+          status: "live",
+          live_started_at: row.live_started_at ?? row.scheduled_at,
+        };
+      }
+    }
+
+    await sleep(1000);
+  }
+
+  const last = await getCampfireSessionById(waitingSessionId);
+  if (last?.status === "live") return last;
+  if (last?.status === "scheduled" && last.scheduled_at) {
+    const nowIso = await getServerNowIso();
+    const nowMs = nowIso ? Date.parse(nowIso) : Date.now();
+    if (Date.parse(last.scheduled_at) <= nowMs) {
+      return {
+        ...last,
+        status: "live",
+        live_started_at: last.live_started_at ?? last.scheduled_at,
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Scheduled session whose start time has passed but status may still be `scheduled`
+ * until cron flips it to `live` (tile / wait UI grace period).
+ */
+export async function getStartingScheduledSession(): Promise<CampfireSessionRow | null> {
+  const nowIso = await getServerNowIso();
+  const nowMs = nowIso ? Date.parse(nowIso) : Date.now();
+  const graceStartMs = nowMs - 3 * 60 * 60 * 1000;
+
+  const { data, error } = await supabase
+    .from("campfire_sessions")
+    .select(SESSION_COLUMNS)
+    .eq("status", "scheduled")
+    .not("scheduled_at", "is", null)
+    .lte("scheduled_at", new Date(nowMs).toISOString())
+    .gte("scheduled_at", new Date(graceStartMs).toISOString())
+    .order("scheduled_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to load starting scheduled campfire session:", error);
     return null;
   }
   return (data as CampfireSessionRow | null) ?? null;

@@ -112,15 +112,17 @@ export function CampfireEditor({
   const palettePointerListenerRef = useRef<(() => void) | null>(null);
   const isPaletteDragRef = useRef(false);
   const pxPerSec = zoom;
-  const durationMs = useMemo(
-    () =>
-      Math.max(
-        session.duration ?? 0,
-        sessionDurationFromComponents(components),
-        60000
-      ),
-    [session.duration, components]
-  );
+  const durationMs = useMemo(() => {
+    const fromPreview = paletteDragPreview
+      ? paletteDragPreview.startTime + paletteDragPreview.duration
+      : 0;
+    return Math.max(
+      session.duration ?? 0,
+      sessionDurationFromComponents(components),
+      fromPreview,
+      60000
+    );
+  }, [session.duration, components, paletteDragPreview]);
 
   const editingComponent = useMemo(
     () => components.find((c) => c.id === editingComponentId) ?? null,

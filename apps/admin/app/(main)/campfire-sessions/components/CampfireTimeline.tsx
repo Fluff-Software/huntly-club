@@ -4,7 +4,7 @@ import { useCallback, useRef } from "react";
 import type { CampfireComponentRow, CampfireTrackRow } from "../types";
 import { msToPx, pxToMs } from "../lib/campfire-timeline";
 import { TimelinePlayhead } from "./TimelinePlayhead";
-import { TimelineTrack } from "./TimelineTrack";
+import { TimelineTrack, type PaletteDragPreviewState } from "./TimelineTrack";
 import { TransportControls } from "./TransportControls";
 
 type Props = {
@@ -16,6 +16,7 @@ type Props = {
   isPlaying: boolean;
   selectedComponentId: number | null;
   overlappingIds: Set<number>;
+  paletteDragPreview: PaletteDragPreviewState | null;
   onSelectComponent: (id: number | null) => void;
   onPlayPause: () => void;
   onSeek: (ms: number) => void;
@@ -40,6 +41,7 @@ export function CampfireTimeline({
   isPlaying,
   selectedComponentId,
   overlappingIds,
+  paletteDragPreview,
   onSelectComponent,
   onPlayPause,
   onSeek,
@@ -177,6 +179,7 @@ export function CampfireTimeline({
                 timelineWidthPx={timelineWidthPx}
                 selectedComponentId={selectedComponentId}
                 overlappingIds={overlappingIds}
+                paletteDragPreview={paletteDragPreview}
                 canDelete={canDeleteLayer}
                 onSelectComponent={onSelectComponent}
                 onDeleteLayer={onDeleteLayer}

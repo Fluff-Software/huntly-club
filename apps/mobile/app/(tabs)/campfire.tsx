@@ -47,6 +47,8 @@ import {
 import { supabase } from "@/services/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { BackHeader } from "@/components/BackHeader";
+import { CHILD_SCREEN_PADDING_W } from "@/components/ChildScreenLayout";
 
 const BG = require("@/assets/images/campfire-bg.jpg");
 
@@ -660,11 +662,6 @@ export default function CampfireScreen() {
     setIsPlaying((p) => !p);
   }, [finished]);
 
-  const handleClose = useCallback(() => {
-    stopCampfireSession();
-    router.replace("/(tabs)");
-  }, [stopCampfireSession]);
-
   const showSpinner = loadState === "loading" || loadState === "preparing";
   const countdownParts = useMemo(
     () => formatCountdown(countdownMs),
@@ -919,17 +916,12 @@ export default function CampfireScreen() {
           </View>
         )}
 
-        <SafeAreaView style={styles.controls} edges={["top"]} pointerEvents="box-none">
-          <Pressable
-            onPress={handleClose}
-            hitSlop={12}
-            style={({ pressed }) => [
-              styles.closeButton,
-              { opacity: pressed ? 0.7 : 1 },
-            ]}
-          >
-            <MaterialIcons name="close" size={scaleW(24)} color="#FFFFFF" />
-          </Pressable>
+        <SafeAreaView
+          style={[styles.controls, { paddingHorizontal: scaleW(CHILD_SCREEN_PADDING_W) }]}
+          edges={["top"]}
+          pointerEvents="box-none"
+        >
+          <BackHeader variant="dark" onBack={stopCampfireSession} />
         </SafeAreaView>
       </ImageBackground>
     </View>
@@ -988,9 +980,6 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    paddingHorizontal: 16,
   },
   closeButton: {
     marginTop: 8,

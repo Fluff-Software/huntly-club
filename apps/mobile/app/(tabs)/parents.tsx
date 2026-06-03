@@ -14,11 +14,13 @@ import { StatCard } from "@/components/StatCard";
 import { ParentPinModal } from "@/components/ParentPinModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUser } from "@/contexts/UserContext";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { supabase } from "@/services/supabase";
 import { getCategories } from "@/services/categoriesService";
 import { MaterialIcons } from "@expo/vector-icons";
+import { ChildScreenLayout } from "@/components/ChildScreenLayout";
+import { useNavigationReturn } from "@/contexts/NavigationReturnContext";
 
 const COLORS = {
   darkGreen: "#4F6F52",
@@ -40,7 +42,7 @@ interface CategoryAnalytics {
 export default function ParentsScreen() {
   const { user } = useAuth();
   const { daysPlayed, pointsEarned } = useUser();
-  const router = useRouter();
+  const { goBack } = useNavigationReturn();
   const { scaleW } = useLayoutScale();
   const [hasExplorers, setHasExplorers] = useState(false);
   const [categoryAnalytics, setCategoryAnalytics] = useState<
@@ -173,7 +175,7 @@ export default function ParentsScreen() {
   const handlePinCancel = () => {
     setShowPinModal(false);
     setIsAuthenticated(false);
-    router.back();
+    goBack();
   };
 
   const styles = useMemo(
@@ -185,10 +187,7 @@ export default function ParentsScreen() {
         headerBar: {
           backgroundColor: COLORS.darkGreen },
         scrollView: { flex: 1 },
-        scrollContent: {
-          paddingHorizontal: scaleW(30),
-          paddingTop: scaleW(8),
-          paddingBottom: scaleW(32) },
+        scrollContent: {},
         sectionTitle: {
           fontSize: scaleW(18),
           fontWeight: "600",
@@ -288,9 +287,11 @@ export default function ParentsScreen() {
 
   if (loading && isAuthenticated) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-        <View style={[styles.scrollContent, { flex: 1 }]}>
-          <View style={styles.loadingWrap}>
+      <ChildScreenLayout
+        backgroundColor={COLORS.darkGreen}
+        contentContainerStyle={{ flex: 1 }}
+      >
+        <View style={styles.loadingWrap}>
           <ActivityIndicator
             size="large"
             color={COLORS.white}
@@ -300,16 +301,17 @@ export default function ParentsScreen() {
             Loading explorer insights...
           </ThemedText>
         </View>
-        </View>
-      </SafeAreaView>
+      </ChildScreenLayout>
     );
   }
 
   if (!user) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-        <View style={[styles.scrollContent, { flex: 1 }]}>
-          <View style={styles.emptyWrap}>
+      <ChildScreenLayout
+        backgroundColor={COLORS.darkGreen}
+        contentContainerStyle={{ flex: 1 }}
+      >
+        <View style={styles.emptyWrap}>
           <View style={styles.emptyIcon}>
             <ThemedText style={{ fontSize: scaleW(28) }}>🔒</ThemedText>
           </View>
@@ -318,36 +320,42 @@ export default function ParentsScreen() {
             Please sign in to view explorer insights
           </ThemedText>
         </View>
-        </View>
-      </SafeAreaView>
+      </ChildScreenLayout>
     );
   }
 
   if (showPinModal) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator
-            size="large"
-            color={COLORS.white}
-            style={styles.loadingSpinner}
-          />
-          <ThemedText style={styles.loadingText}>Loading...</ThemedText>
-        </View>
+      <>
+        <ChildScreenLayout
+          backgroundColor={COLORS.darkGreen}
+          contentContainerStyle={{ flex: 1 }}
+        >
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator
+              size="large"
+              color={COLORS.white}
+              style={styles.loadingSpinner}
+            />
+            <ThemedText style={styles.loadingText}>Loading...</ThemedText>
+          </View>
+        </ChildScreenLayout>
         <ParentPinModal
           visible={showPinModal}
           onSuccess={handlePinSuccess}
           onCancel={handlePinCancel}
         />
-      </SafeAreaView>
+      </>
     );
   }
 
   if (!hasExplorers) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-        <View style={[styles.scrollContent, { flex: 1 }]}>
-          <View style={styles.emptyWrap}>
+      <ChildScreenLayout
+        backgroundColor={COLORS.darkGreen}
+        contentContainerStyle={{ flex: 1 }}
+      >
+        <View style={styles.emptyWrap}>
           <View style={styles.emptyIcon}>
             <ThemedText style={{ fontSize: scaleW(28) }}>👥</ThemedText>
           </View>
@@ -356,8 +364,7 @@ export default function ParentsScreen() {
             Create some explorers to see their progress and insights
           </ThemedText>
         </View>
-        </View>
-      </SafeAreaView>
+      </ChildScreenLayout>
     );
   }
 
@@ -369,14 +376,10 @@ export default function ParentsScreen() {
   ];
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-        overScrollMode="never"
-      >
+    <ChildScreenLayout
+      backgroundColor={COLORS.darkGreen}
+      contentContainerStyle={styles.scrollContent}
+    >
         {/* Progress – summary stats */}
         <Animated.View entering={FadeInDown.duration(500).delay(0)}>
           <ThemedText type="heading" style={styles.sectionTitle}>Progress</ThemedText>
@@ -452,8 +455,6 @@ export default function ParentsScreen() {
             </>
           )}
         </Animated.View>
-
-      </ScrollView>
-    </SafeAreaView>
+    </ChildScreenLayout>
   );
 }

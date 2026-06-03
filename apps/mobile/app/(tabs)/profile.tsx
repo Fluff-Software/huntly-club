@@ -36,6 +36,8 @@ import {
   type RecentCompletedActivity } from "@/services/activityProgressService";
 import { getXpByProfileIds } from "@/services/teamActivityService";
 import { MaterialIcons } from "@expo/vector-icons";
+import { ChildScreenLayout } from "@/components/ChildScreenLayout";
+import { useNavigationReturn } from "@/contexts/NavigationReturnContext";
 
 // Design colors from reference
 const COLORS = {
@@ -76,6 +78,7 @@ export default function ProfileScreen() {
   const { teamId } = useUser();
   const { profiles, refreshProfiles, loading: profilesLoading } = usePlayer();
   const router = useRouter();
+  const { pushWithReturn } = useNavigationReturn();
   const { scaleW } = useLayoutScale();
 
   const sortedProfiles = useMemo(
@@ -339,10 +342,7 @@ export default function ProfileScreen() {
           backgroundColor: COLORS.darkGreen },
         scrollView: {
           flex: 1 },
-        scrollContent: {
-          paddingHorizontal: scaleW(20),
-          paddingTop: scaleW(8),
-          paddingBottom: scaleW(32) },
+        scrollContent: {},
         section: {
           marginBottom: scaleW(24) },
         sectionHeader: {
@@ -612,13 +612,10 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-      <ScrollView
-        style={styles.scrollView}
+    <>
+      <ChildScreenLayout
+        backgroundColor={COLORS.darkGreen}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-        overScrollMode="never"
       >
         {/* Your players */}
         <Animated.View
@@ -1071,7 +1068,7 @@ export default function ProfileScreen() {
         >
           <Pressable
             style={styles.parentZoneButton}
-            onPress={() => router.push("/(tabs)/parents")}
+            onPress={() => pushWithReturn("/(tabs)/parents")}
             onPressIn={() => {
               parentZoneScale.value = withSpring(0.96, {
                 damping: 15,
@@ -1095,7 +1092,7 @@ export default function ProfileScreen() {
         >
           <Pressable
             style={styles.parentZoneButton}
-            onPress={() => router.push("/(tabs)/settings")}
+            onPress={() => pushWithReturn("/(tabs)/settings")}
             onPressIn={() => {
               settingsScale.value = withSpring(0.96, {
                 damping: 15,
@@ -1150,7 +1147,7 @@ export default function ProfileScreen() {
             </ThemedText>
           </Pressable>
         </Animated.View>
-      </ScrollView>
+      </ChildScreenLayout>
 
       {/* Delete profile confirmation modal */}
       <Modal
@@ -1295,6 +1292,6 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </>
   );
 }

@@ -8,11 +8,11 @@ import {
   Linking,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useParentResources } from "@/hooks/useParentResources";
+import { ChildScreenLayout } from "@/components/ChildScreenLayout";
 
 const RESOURCES_GREEN = "#3A5248";
 const CREAM = "#F4F0EB";
@@ -31,9 +31,6 @@ export default function ResourcesScreen() {
         },
         scrollContent: {
           flexGrow: 1,
-          paddingTop: scaleW(16),
-          paddingBottom: scaleW(40),
-          paddingHorizontal: scaleW(24),
         },
         heading: {
           fontSize: scaleW(24),
@@ -105,13 +102,10 @@ export default function ResourcesScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-        overScrollMode="never"
-      >
+    <ChildScreenLayout
+      backgroundColor={RESOURCES_GREEN}
+      contentContainerStyle={styles.scrollContent}
+    >
         <ThemedText type="heading" style={styles.heading}>
           Resources
         </ThemedText>
@@ -158,7 +152,6 @@ export default function ResourcesScreen() {
             </Animated.View>
           ))
         )}
-      </ScrollView>
-    </SafeAreaView>
+    </ChildScreenLayout>
   );
 }

@@ -10,6 +10,7 @@ import { router, useFocusEffect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { useNavigationReturn } from "@/contexts/NavigationReturnContext";
 import {
   getLatestLiveSession,
   getNextScheduledSession,
@@ -46,6 +47,7 @@ function formatCountdownParts(ms: number) {
 
 export function CampfireTile() {
   const { scaleW } = useLayoutScale();
+  const { pushWithReturn } = useNavigationReturn();
   const [statusReady, setStatusReady] = useState(false);
   const [liveSession, setLiveSession] = useState<CampfireSessionRow | null>(null);
   const [scheduledAtMs, setScheduledAtMs] = useState<number | null>(null);
@@ -275,7 +277,7 @@ export function CampfireTile() {
             </View>
 
             <Pressable
-              onPress={() => router.push("/(tabs)/campfire")}
+              onPress={() => pushWithReturn("/(tabs)/campfire")}
               style={{
                 alignSelf: "flex-start",
                 flexDirection: "row",
@@ -392,7 +394,7 @@ export function CampfireTile() {
 
             <View style={{ gap: scaleW(10) }}>
               <Pressable
-                onPress={() => router.push("/(tabs)/campfire?mode=scheduled")}
+                onPress={() => pushWithReturn("/(tabs)/campfire?mode=scheduled")}
                 style={{
                   alignSelf: "flex-start",
                   flexDirection: "row",
@@ -417,7 +419,7 @@ export function CampfireTile() {
               </Pressable>
 
               <Pressable
-                onPress={() => router.push("/(tabs)/campfire?mode=replay")}
+                onPress={() => pushWithReturn("/(tabs)/campfire?mode=replay")}
                 style={{
                   alignSelf: "flex-start",
                   flexDirection: "row",
@@ -518,7 +520,7 @@ export function CampfireTile() {
 
               {/* Watch button pill */}
               <Pressable
-                onPress={() => router.push("/(tabs)/campfire?mode=replay")}
+                onPress={() => pushWithReturn("/(tabs)/campfire?mode=replay")}
                 style={{
                   flexDirection: "row",
                   alignItems: "center",

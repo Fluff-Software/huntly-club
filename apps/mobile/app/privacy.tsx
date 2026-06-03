@@ -1,13 +1,12 @@
 import React from "react";
-import { ScrollView, StyleSheet, View, Pressable } from "react-native";
-import { Stack, router } from "expo-router";
+import { StyleSheet, View } from "react-native";
+import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { MaterialIcons } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { PRIVACY_POLICY_SECTIONS } from "@/constants/privacyPolicy";
+import { ChildScreenLayout } from "@/components/ChildScreenLayout";
 
 const COLORS = {
   darkGreen: "#4F6F52",
@@ -18,36 +17,14 @@ export default function PrivacyScreen() {
   const { scaleW } = useLayoutScale();
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+    <>
       <StatusBar style="dark" />
       <Stack.Screen
         options={{
           title: "Privacy Policy",
           headerShown: false }}
       />
-      <View style={[styles.header, { paddingHorizontal: scaleW(16), paddingVertical: scaleW(12) }]}>
-        <Pressable
-          onPress={() => router.back()}
-          style={({ pressed }) => [
-            styles.backButton,
-            { 
-              padding: scaleW(8),
-              opacity: pressed ? 0.7 : 1 },
-          ]}
-        >
-          <MaterialIcons name="arrow-back" size={scaleW(24)} color={COLORS.darkGreen} />
-        </Pressable>
-      </View>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[
-          styles.content,
-          {
-            padding: scaleW(24),
-            paddingBottom: scaleW(40) },
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
+      <ChildScreenLayout variant="light" backgroundColor={COLORS.white}>
         <ThemedText type="title" style={[styles.title, { marginBottom: scaleW(12) }]}>
           Privacy Policy
         </ThemedText>
@@ -64,8 +41,8 @@ export default function PrivacyScreen() {
             </ThemedText>
           </View>
         ))}
-      </ScrollView>
-    </SafeAreaView>
+      </ChildScreenLayout>
+    </>
   );
 }
 

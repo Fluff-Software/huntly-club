@@ -1,10 +1,10 @@
 import React from "react";
 import { View, Image, Pressable, StyleSheet, ImageBackground } from "react-native";
-import { router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { useNavigationReturn } from "@/contexts/NavigationReturnContext";
 
 const BACKPACK_BG = require("@/assets/images/backpack-bg.png");
 
@@ -116,6 +116,7 @@ function BackpackTile({
 
 export default function BackpackScreen() {
   const { scaleW } = useLayoutScale();
+  const { pushWithReturn } = useNavigationReturn();
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
@@ -128,7 +129,7 @@ export default function BackpackScreen() {
             bgColor="#5B7FA6"
             art={require("@/assets/images/journal-bg.png")}
             artStyle={{ width: scaleW(118), height: scaleW(100) }}
-            onPress={() => router.push("/(tabs)/journal-book")}
+            onPress={() => pushWithReturn("/(tabs)/journal-book")}
           />
           <BackpackTile
             title="Badges & Rewards"
@@ -137,7 +138,7 @@ export default function BackpackScreen() {
             bgColor="#62A94F"
             art={require("@/assets/images/backpack-badges-v2.png")}
             artStyle={{ width: scaleW(136), height: scaleW(120), right: -scaleW(25), bottom: -scaleW(10) }}
-            onPress={() => router.push("/(tabs)/badges")}
+            onPress={() => pushWithReturn("/(tabs)/badges")}
           />
           <BackpackTile
             title="Resources"
@@ -152,7 +153,7 @@ export default function BackpackScreen() {
               bottom: -scaleW(2),
               rotate: "8deg",
             }}
-            onPress={() => router.push("/(tabs)/resources")}
+            onPress={() => pushWithReturn("/(tabs)/resources")}
           />
         </View>
       </ImageBackground>

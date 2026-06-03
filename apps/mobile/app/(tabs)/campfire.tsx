@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useIsFocused } from "@react-navigation/native";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
@@ -312,34 +313,36 @@ export default function CampfireScreen() {
     });
   }, [loadCampfire]);
 
-  // Reload each time the screen is opened (hidden tab may stay mounted after finish).
+  const isFocused = useIsFocused();
+
+  const stopCampfireSession = useCallback(() => {
+    loadTokenRef.current++;
+    countdownTargetRef.current = null;
+    waitingSessionRef.current = null;
+    setWaitingSession(null);
+    if (liveResyncTimerRef.current) {
+      clearInterval(liveResyncTimerRef.current);
+      liveResyncTimerRef.current = null;
+    }
+    realtimeSessionIdRef.current = null;
+    setRealtimeSessionId(null);
+    setReactionBursts([]);
+    setIsPlaying(false);
+    setLoadState("loading");
+    setBundle(null);
+    setCurrentTimeMs(0);
+    setMediaReady(false);
+    invalidateCampfireLivePreload();
+  }, []);
+
+  // Reload when opened; stop playback when user leaves (tab switch = close).
   useFocusEffect(
     useCallback(() => {
-      let cancelled = false;
       void loadCampfire();
-
       return () => {
-        cancelled = true;
-        if (cancelled) loadTokenRef.current++;
-        countdownTargetRef.current = null;
-        waitingSessionRef.current = null;
-        setWaitingSession(null);
-        if (liveResyncTimerRef.current) {
-          clearInterval(liveResyncTimerRef.current);
-          liveResyncTimerRef.current = null;
-        }
-        realtimeSessionIdRef.current = null;
-        setRealtimeSessionId(null);
-        setReactionBursts([]);
-        // Ensure no audio keeps playing when leaving the tab/screen.
-        setIsPlaying(false);
-        setLoadState("loading");
-        setBundle(null);
-        setCurrentTimeMs(0);
-        setMediaReady(false);
-        invalidateCampfireLivePreload();
+        stopCampfireSession();
       };
-    }, [loadCampfire])
+    }, [loadCampfire, stopCampfireSession])
   );
 
   // Countdown ticker for scheduled session flow.
@@ -458,26 +461,42 @@ export default function CampfireScreen() {
 
   // 3. Reveal the stage only once images, audio and video are all ready.
   useEffect(() => {
-    if (loadState !== "preparing") return;
+    if (loadState !== "preparing" || !isFocused) return;
     if (mediaReady && videosReady) {
       setLoadState("ready");
       setIsPlaying(true);
     }
-  }, [loadState, mediaReady, videosReady]);
+  }, [loadState, mediaReady, videosReady, isFocused]);
 
   // 3b. Safety net: never block the user indefinitely on preparing.
   useEffect(() => {
-    if (loadState !== "preparing") return;
+    if (loadState !== "preparing" || !isFocused) return;
     const timer = setTimeout(() => {
+      if (!isFocused) return;
       setLoadState("ready");
       setIsPlaying(true);
     }, PREPARE_TIMEOUT_MS);
     return () => clearTimeout(timer);
-  }, [loadState]);
+  }, [loadState, isFocused]);
+
+  const playbackEnabled = isFocused && loadState === "ready";
+  const transportPlaying = playbackEnabled && isPlaying;
+
+  // Pause video immediately when the screen loses focus (tab stays mounted).
+  useEffect(() => {
+    if (isFocused) return;
+    for (const player of videoPlayers.values()) {
+      try {
+        player.pause();
+      } catch {
+        // ignore
+      }
+    }
+  }, [isFocused, videoPlayers]);
 
   // Timeline clock.
   useEffect(() => {
-    if (!isPlaying || durationMs <= 0) return;
+    if (!transportPlaying || durationMs <= 0) return;
     let raf: number;
     let last = Date.now();
     const tick = () => {
@@ -509,7 +528,7 @@ export default function CampfireScreen() {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [isPlaying, durationMs]);
+  }, [transportPlaying, durationMs]);
 
   // Periodically resync live playhead with server time.
   useEffect(() => {
@@ -572,8 +591,8 @@ export default function CampfireScreen() {
   useCampfireAudio(
     bundle?.components ?? [],
     currentTimeMs,
-    isPlaying,
-    loadState === "ready"
+    transportPlaying,
+    playbackEnabled
   );
 
   const isLivePlayback =
@@ -594,9 +613,9 @@ export default function CampfireScreen() {
   }, [finished]);
 
   const handleClose = useCallback(() => {
-    setIsPlaying(false);
+    stopCampfireSession();
     router.replace("/(tabs)");
-  }, []);
+  }, [stopCampfireSession]);
 
   const showSpinner = loadState === "loading" || loadState === "preparing";
   const countdownParts = useMemo(
@@ -683,7 +702,7 @@ export default function CampfireScreen() {
               height={height}
               scaleW={scaleW}
               currentTimeMs={currentTimeMs}
-              isPlaying={isPlaying}
+              isPlaying={transportPlaying}
               tracks={bundle.tracks}
               components={bundle.components}
               activities={bundle.activities}

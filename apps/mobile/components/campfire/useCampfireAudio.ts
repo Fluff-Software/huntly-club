@@ -116,6 +116,24 @@ export function useCampfireAudio(
     componentRef.current = active.component;
   }
 
+  // Tear down immediately when playback is disabled (e.g. user left the screen).
+  useEffect(() => {
+    if (enabled) return;
+    const player = playerRef.current;
+    if (player) {
+      try {
+        player.pause();
+        player.remove();
+      } catch {
+        // ignore
+      }
+      playerRef.current = null;
+    }
+    void setIsAudioActiveAsync(false).catch(() => {
+      /* ignore */
+    });
+  }, [enabled]);
+
   useEffect(() => {
     if (!enabled) return;
     void (async () => {

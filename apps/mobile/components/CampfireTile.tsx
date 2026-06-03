@@ -7,6 +7,8 @@ import { useLayoutScale } from "@/hooks/useLayoutScale";
 import {
   getLatestLiveSession,
   getNextScheduledSession,
+  getServerNowIso,
+  getStartingScheduledSession,
   type CampfireSessionRow,
 } from "@/services/campfireService";
 import {
@@ -49,23 +51,33 @@ export function CampfireTile() {
       return;
     }
     setLiveSession(null);
-    invalidateCampfireLivePreload();
+
+    const nowIso = await getServerNowIso();
+    const nowMs = nowIso ? Date.parse(nowIso) : Date.now();
 
     const next = await getNextScheduledSession();
-    const at = next?.scheduled_at ? Date.parse(next.scheduled_at) : null;
-    if (!at) {
-      setScheduledAtMs(null);
-      setCountdownMs(0);
-      return;
+    if (next?.scheduled_at) {
+      const at = Date.parse(next.scheduled_at);
+      const delta = at - nowMs;
+      if (delta > 0 && delta <= SOON_WINDOW_MS) {
+        setScheduledAtMs(at);
+        setCountdownMs(delta);
+        startCampfireLivePreload(next);
+        return;
+      }
     }
-    const now = Date.now();
-    const delta = at - now;
-    if (delta > 0 && delta <= SOON_WINDOW_MS) {
+
+    // Start time passed but cron may not have set `live` yet — keep countdown UI at 0.
+    const starting = await getStartingScheduledSession();
+    if (starting?.scheduled_at) {
+      const at = Date.parse(starting.scheduled_at);
       setScheduledAtMs(at);
-      setCountdownMs(delta);
+      setCountdownMs(Math.max(0, at - nowMs));
+      startCampfireLivePreload(starting);
       return;
     }
-    // Session is no longer "soon" (already started/ended or too far away).
+
+    invalidateCampfireLivePreload();
     setScheduledAtMs(null);
     setCountdownMs(0);
   }, []);
@@ -81,16 +93,37 @@ export function CampfireTile() {
     void refresh();
     const t = setInterval(() => {
       void refresh();
-    }, 30_000);
+    }, 10_000);
     return () => clearInterval(t);
   }, [refresh]);
 
+  // Poll faster while waiting for live after the countdown hits zero.
+  useEffect(() => {
+    if (!scheduledAtMs || countdownMs > 0) return;
+    void refresh();
+    const t = setInterval(() => {
+      void refresh();
+    }, 2000);
+    return () => clearInterval(t);
+  }, [scheduledAtMs, countdownMs, refresh]);
+
   useEffect(() => {
     if (!scheduledAtMs) return;
+    let cancelled = false;
+    const tick = async () => {
+      const nowIso = await getServerNowIso();
+      if (cancelled) return;
+      const nowMs = nowIso ? Date.parse(nowIso) : Date.now();
+      setCountdownMs(Math.max(0, scheduledAtMs - nowMs));
+    };
+    void tick();
     const timer = setInterval(() => {
-      setCountdownMs(Math.max(0, scheduledAtMs - Date.now()));
+      void tick();
     }, 250);
-    return () => clearInterval(timer);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
   }, [scheduledAtMs]);
 
   const parts = useMemo(

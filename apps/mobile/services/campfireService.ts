@@ -200,6 +200,33 @@ export async function resolveCampfirePlaybackSession(
 }
 
 /**
+ * Scheduled session whose start time has passed but status may still be `scheduled`
+ * until cron flips it to `live` (tile / wait UI grace period).
+ */
+export async function getStartingScheduledSession(): Promise<CampfireSessionRow | null> {
+  const nowIso = await getServerNowIso();
+  const nowMs = nowIso ? Date.parse(nowIso) : Date.now();
+  const graceStartMs = nowMs - 3 * 60 * 60 * 1000;
+
+  const { data, error } = await supabase
+    .from("campfire_sessions")
+    .select(SESSION_COLUMNS)
+    .eq("status", "scheduled")
+    .not("scheduled_at", "is", null)
+    .lte("scheduled_at", new Date(nowMs).toISOString())
+    .gte("scheduled_at", new Date(graceStartMs).toISOString())
+    .order("scheduled_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to load starting scheduled campfire session:", error);
+    return null;
+  }
+  return (data as CampfireSessionRow | null) ?? null;
+}
+
+/**
  * Returns the next scheduled session (scheduled_at in the future), or null.
  */
 export async function getNextScheduledSession(): Promise<CampfireSessionRow | null> {

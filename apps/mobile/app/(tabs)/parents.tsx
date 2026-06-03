@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Pressable,
   ActivityIndicator,
-  Linking,
   Image } from "react-native";
 import Animated, {
   FadeInDown } from "react-native-reanimated";
@@ -17,7 +16,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUser } from "@/contexts/UserContext";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
-import { useParentResources } from "@/hooks/useParentResources";
 import { supabase } from "@/services/supabase";
 import { getCategories } from "@/services/categoriesService";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -57,8 +55,6 @@ export default function ParentsScreen() {
   // const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(true);
-
-  const { resources, loading: resourcesLoading } = useParentResources();
 
   useEffect(() => {
     if (!user?.id) return;
@@ -251,32 +247,6 @@ export default function ParentsScreen() {
           fontSize: scaleW(15),
           fontWeight: "600",
           color: COLORS.white },
-        resourceCard: {
-          backgroundColor: COLORS.cardGray,
-          padding: scaleW(16),
-          marginBottom: scaleW(12) },
-        resourceTitle: {
-          fontSize: scaleW(16),
-          fontWeight: "600",
-          color: COLORS.charcoal,
-          marginBottom: scaleW(6) },
-        resourceDesc: {
-          fontSize: scaleW(14),
-          color: COLORS.charcoal,
-          marginBottom: scaleW(12) },
-        resourceButton: {
-          flexDirection: "row",
-          alignSelf: "flex-end",
-          alignItems: "center",
-          backgroundColor: COLORS.cream,
-          paddingVertical: scaleW(10),
-          paddingHorizontal: scaleW(16),
-          borderRadius: scaleW(24),
-          gap: scaleW(6) },
-        resourceButtonText: {
-          fontSize: scaleW(14),
-          fontWeight: "600",
-          color: COLORS.charcoal },
         loadingWrap: {
           flex: 1,
           justifyContent: "center",
@@ -480,49 +450,6 @@ export default function ParentsScreen() {
                 </Pressable>
               )}
             </>
-          )}
-        </Animated.View>
-
-        {/* Resources */}
-        <Animated.View entering={FadeInDown.duration(500).delay(280)}>
-          <ThemedText type="heading" style={[styles.sectionTitle, { marginTop: scaleW(24) }]}>
-            Resources
-          </ThemedText>
-          {resourcesLoading ? (
-            <View style={styles.resourceCard}>
-              <ActivityIndicator size="small" color={COLORS.charcoal} />
-              <ThemedText style={[styles.resourceDesc, { marginTop: scaleW(8) }]}>
-                Loading resources...
-              </ThemedText>
-            </View>
-          ) : resources.length === 0 ? (
-            <View style={styles.resourceCard}>
-              <ThemedText style={styles.resourceDesc}>No resources yet.</ThemedText>
-            </View>
-          ) : (
-            resources.map((resource) => (
-              <View key={resource.id} style={styles.resourceCard}>
-                <ThemedText type="heading" style={styles.resourceTitle}>
-                  {resource.title}
-                </ThemedText>
-                {resource.description ? (
-                  <ThemedText style={styles.resourceDesc}>{resource.description}</ThemedText>
-                ) : null}
-                <Pressable
-                  style={styles.resourceButton}
-                  onPress={() => {
-                    if (resource.file_url) {
-                      Linking.openURL(resource.file_url);
-                    }
-                  }}
-                >
-                  <ThemedText type="heading" style={styles.resourceButtonText}>
-                    Download
-                  </ThemedText>
-                  <MaterialIcons name="file-download" size={scaleW(18)} color={COLORS.charcoal} />
-                </Pressable>
-              </View>
-            ))
           )}
         </Animated.View>
 

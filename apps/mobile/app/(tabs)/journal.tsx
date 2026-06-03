@@ -22,7 +22,13 @@ function BackpackTile({
   cta: string;
   bgColor: string;
   art: number;
-  artStyle: { width: number; height: number; right?: number; bottom?: number };
+  artStyle: {
+    width: number;
+    height: number;
+    right?: number;
+    bottom?: number;
+    rotate?: string;
+  };
   onPress: () => void;
 }) {
   const { scaleW } = useLayoutScale();
@@ -51,7 +57,9 @@ function BackpackTile({
             position: "absolute",
             bottom: artStyle.bottom ?? 0,
             right: artStyle.right ?? 0,
-            ...artStyle,
+            width: artStyle.width,
+            height: artStyle.height,
+            transform: artStyle.rotate ? [{ rotate: artStyle.rotate }] : undefined,
           }}
         />
         <View
@@ -112,10 +120,10 @@ export default function BackpackScreen() {
   return (
     <SafeAreaView style={styles.container} edges={[]}>
       <ImageBackground source={BACKPACK_BG} style={styles.background} resizeMode="cover">
-        <View style={[styles.tilesContainer, { gap: scaleW(14) }]}>
+        <View style={[styles.tilesContainer, { gap: scaleW(12) }]}>
           <BackpackTile
             title="See your Journal"
-            subtitle="Read your family stories"
+            subtitle="Look back on your adventures"
             cta="Open"
             bgColor="#5B7FA6"
             art={require("@/assets/images/journal-bg.png")}
@@ -130,6 +138,21 @@ export default function BackpackScreen() {
             art={require("@/assets/images/backpack-badges-v2.png")}
             artStyle={{ width: scaleW(136), height: scaleW(120), right: -scaleW(25), bottom: -scaleW(10) }}
             onPress={() => router.push("/(tabs)/badges")}
+          />
+          <BackpackTile
+            title="Resources"
+            subtitle="Guides, tips and downloads"
+            cta="Browse"
+            bgColor="#3A5248"
+            art={require("@/assets/images/backpack-resources.png")}
+            artStyle={{
+              width: scaleW(118),
+              height: scaleW(112),
+              right: -scaleW(20),
+              bottom: -scaleW(2),
+              rotate: "8deg",
+            }}
+            onPress={() => router.push("/(tabs)/resources")}
           />
         </View>
       </ImageBackground>

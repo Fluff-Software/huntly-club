@@ -480,6 +480,11 @@ export default function TabLayout() {
           href: null }}
       />
       <Tabs.Screen
+        name="resources"
+        options={{
+          href: null }}
+      />
+      <Tabs.Screen
         name="testing"
         options={{
           href: null }}

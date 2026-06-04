@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import * as SplashScreen from "expo-splash-screen";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSegments } from "expo-router";
 
 type HomeBootstrapContextValue = {
   /** Hold splash / full-screen loader until clubhouse activity tiles finish first load. */
@@ -79,15 +80,27 @@ export function useHomeBootstrapOptional() {
  */
 export function SplashScreenGate({ fontsReady }: { fontsReady: boolean }) {
   const ctx = useHomeBootstrapOptional();
+  const { user } = useAuth();
+  const segments = useSegments();
+  const onTabs = segments[0] === "(tabs)";
 
   useEffect(() => {
     if (!fontsReady) return;
     const waitingForClubhouse =
-      ctx?.clubhouseActivityRequired && !ctx.clubhouseActivityReady;
+      !!user &&
+      onTabs &&
+      !!ctx?.clubhouseActivityRequired &&
+      !ctx.clubhouseActivityReady;
     if (!waitingForClubhouse) {
       void SplashScreen.hideAsync();
     }
-  }, [fontsReady, ctx?.clubhouseActivityRequired, ctx?.clubhouseActivityReady]);
+  }, [
+    fontsReady,
+    user,
+    onTabs,
+    ctx?.clubhouseActivityRequired,
+    ctx?.clubhouseActivityReady,
+  ]);
 
   return null;
 }

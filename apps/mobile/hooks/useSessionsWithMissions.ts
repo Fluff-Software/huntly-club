@@ -74,17 +74,33 @@ function orderMissionIds(
   });
 }
 
-export function useSessionsWithMissions(profileId: number | null = null): {
+export type UseSessionsWithMissionsOptions = {
+  /** When set, loads which activities any household profile has completed (one query). */
+  allProfileIds?: number[];
+  /** Activity ids to include in the any-profile completion check (e.g. saved first mission). */
+  extraActivityIds?: number[];
+};
+
+export function useSessionsWithMissions(
+  profileId: number | null = null,
+  options?: UseSessionsWithMissionsOptions
+): {
   sessions: SessionWithActivities[];
   completedActivityIds: Set<string>;
+  completedByAnyProfileActivityIds: Set<string>;
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
 } {
   const [sessions, setSessions] = useState<SessionWithActivities[]>([]);
   const [completedActivityIds, setCompletedActivityIds] = useState<Set<string>>(new Set());
+  const [completedByAnyProfileActivityIds, setCompletedByAnyProfileActivityIds] = useState<
+    Set<string>
+  >(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const allProfileIds = options?.allProfileIds;
+  const extraActivityIds = options?.extraActivityIds;
 
   const fetchData = useCallback(async () => {
     setError(null);
@@ -114,6 +130,24 @@ export function useSessionsWithMissions(profileId: number | null = null): {
 
     if (allMissionIds.size === 0) {
       setSessions([]);
+      setCompletedActivityIds(new Set());
+      const extraOnlyIds = (extraActivityIds ?? []).filter((id) => Number.isFinite(id));
+      const householdProfileIds = allProfileIds?.filter((id) => Number.isFinite(id)) ?? [];
+      if (householdProfileIds.length > 0 && extraOnlyIds.length > 0) {
+        const { data: anyProfileRows } = await supabase
+          .from("user_activity_progress")
+          .select("activity_id")
+          .in("profile_id", householdProfileIds)
+          .in("activity_id", extraOnlyIds)
+          .not("completed_at", "is", null);
+        setCompletedByAnyProfileActivityIds(
+          new Set(
+            (anyProfileRows ?? []).map((p: { activity_id: number }) => String(p.activity_id))
+          )
+        );
+      } else {
+        setCompletedByAnyProfileActivityIds(new Set());
+      }
       setLoading(false);
       return;
     }
@@ -166,6 +200,13 @@ export function useSessionsWithMissions(profileId: number | null = null): {
     setSessions(result);
 
     const allActivityIds = result.flatMap((s) => s.activities.map((a) => a.id));
+    const numericActivityIds = [
+      ...new Set([
+        ...allActivityIds.map((id) => parseInt(id, 10)).filter((id) => Number.isFinite(id)),
+        ...(extraActivityIds ?? []).filter((id) => Number.isFinite(id)),
+      ]),
+    ];
+
     if (profileId != null && allActivityIds.length > 0) {
       const { data: progressRows } = await supabase
         .from("user_activity_progress")
@@ -181,14 +222,38 @@ export function useSessionsWithMissions(profileId: number | null = null): {
       setCompletedActivityIds(new Set());
     }
 
+    const householdProfileIds = allProfileIds?.filter((id) => Number.isFinite(id)) ?? [];
+    if (householdProfileIds.length > 0 && numericActivityIds.length > 0) {
+      const { data: anyProfileRows } = await supabase
+        .from("user_activity_progress")
+        .select("activity_id")
+        .in("profile_id", householdProfileIds)
+        .in("activity_id", numericActivityIds)
+        .not("completed_at", "is", null);
+      setCompletedByAnyProfileActivityIds(
+        new Set(
+          (anyProfileRows ?? []).map((p: { activity_id: number }) => String(p.activity_id))
+        )
+      );
+    } else {
+      setCompletedByAnyProfileActivityIds(new Set());
+    }
+
     setLoading(false);
-  }, [profileId]);
+  }, [profileId, allProfileIds, extraActivityIds]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  return { sessions, completedActivityIds, loading, error, refetch: fetchData };
+  return {
+    sessions,
+    completedActivityIds,
+    completedByAnyProfileActivityIds,
+    loading,
+    error,
+    refetch: fetchData,
+  };
 }
 
 function toMissionCardData(card: MissionActivityCard): MissionCardData {

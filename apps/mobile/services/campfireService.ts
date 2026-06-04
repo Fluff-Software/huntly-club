@@ -122,6 +122,12 @@ export async function getServerNowIso(): Promise<string | null> {
   return typeof data === "string" ? data : (data as string | null);
 }
 
+async function resolveServerNowMs(nowMs?: number): Promise<number> {
+  if (nowMs !== undefined && !Number.isNaN(nowMs)) return nowMs;
+  const nowIso = await getServerNowIso();
+  return nowIso ? Date.parse(nowIso) : Date.now();
+}
+
 /** Client hint: user finished watching this live session (before cron sets replay). */
 let dismissedLiveSessionId: number | null = null;
 
@@ -245,17 +251,18 @@ export async function resolveCampfirePlaybackSession(
  * Scheduled session whose start time has passed but status may still be `scheduled`
  * until cron flips it to `live` (tile / wait UI grace period).
  */
-export async function getStartingScheduledSession(): Promise<CampfireSessionRow | null> {
-  const nowIso = await getServerNowIso();
-  const nowMs = nowIso ? Date.parse(nowIso) : Date.now();
-  const graceStartMs = nowMs - 3 * 60 * 60 * 1000;
+export async function getStartingScheduledSession(
+  nowMs?: number
+): Promise<CampfireSessionRow | null> {
+  const resolvedNowMs = await resolveServerNowMs(nowMs);
+  const graceStartMs = resolvedNowMs - 3 * 60 * 60 * 1000;
 
   const { data, error } = await supabase
     .from("campfire_sessions")
     .select(SESSION_COLUMNS)
     .eq("status", "scheduled")
     .not("scheduled_at", "is", null)
-    .lte("scheduled_at", new Date(nowMs).toISOString())
+    .lte("scheduled_at", new Date(resolvedNowMs).toISOString())
     .gte("scheduled_at", new Date(graceStartMs).toISOString())
     .order("scheduled_at", { ascending: false })
     .limit(1)
@@ -271,9 +278,11 @@ export async function getStartingScheduledSession(): Promise<CampfireSessionRow 
 /**
  * Returns the next scheduled session (scheduled_at in the future), or null.
  */
-export async function getNextScheduledSession(): Promise<CampfireSessionRow | null> {
-  const nowIso = await getServerNowIso();
-  const now = nowIso ? new Date(nowIso) : new Date();
+export async function getNextScheduledSession(
+  nowMs?: number
+): Promise<CampfireSessionRow | null> {
+  const resolvedNowMs = await resolveServerNowMs(nowMs);
+  const now = new Date(resolvedNowMs);
   const { data, error } = await supabase
     .from("campfire_sessions")
     .select(SESSION_COLUMNS)
@@ -289,6 +298,68 @@ export async function getNextScheduledSession(): Promise<CampfireSessionRow | nu
     return null;
   }
   return (data as CampfireSessionRow | null) ?? null;
+}
+
+/** Show countdown when next session is within this window (matches CampfireTile). */
+export const CAMPFIRE_SOON_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+export type CampfireTileRefreshResult = {
+  liveSession: CampfireSessionRow | null;
+  scheduledAtMs: number | null;
+  countdownMs: number;
+  preloadSession: CampfireSessionRow | null;
+};
+
+/**
+ * Single-pass campfire tile status: one live check, one server-time fetch, then
+ * parallel scheduled-session lookups.
+ */
+export async function fetchCampfireTileRefresh(): Promise<CampfireTileRefreshResult> {
+  const live = await getLatestLiveSession();
+  if (live) {
+    return {
+      liveSession: live,
+      scheduledAtMs: null,
+      countdownMs: 0,
+      preloadSession: live,
+    };
+  }
+
+  const nowMs = await resolveServerNowMs();
+  const [next, starting] = await Promise.all([
+    getNextScheduledSession(nowMs),
+    getStartingScheduledSession(nowMs),
+  ]);
+
+  if (next?.scheduled_at) {
+    const at = Date.parse(next.scheduled_at);
+    const delta = at - nowMs;
+    if (delta > 0 && delta <= CAMPFIRE_SOON_WINDOW_MS) {
+      return {
+        liveSession: null,
+        scheduledAtMs: at,
+        countdownMs: delta,
+        preloadSession: next,
+      };
+    }
+  }
+
+  if (starting?.scheduled_at) {
+    const at = Date.parse(starting.scheduled_at);
+    return {
+      liveSession: null,
+      scheduledAtMs: at,
+      countdownMs: Math.max(0, at - nowMs),
+      preloadSession: starting,
+    };
+  }
+
+  return {
+    liveSession: null,
+    scheduledAtMs: null,
+    countdownMs: 0,
+    preloadSession: null,
+  };
 }
 
 export async function getCampfireSessionById(

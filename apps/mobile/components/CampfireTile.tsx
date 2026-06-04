@@ -12,10 +12,8 @@ import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useNavigationReturn } from "@/contexts/NavigationReturnContext";
 import {
-  getLatestLiveSession,
-  getNextScheduledSession,
+  fetchCampfireTileRefresh,
   getServerNowIso,
-  getStartingScheduledSession,
   isCampfireLiveDismissed,
   type CampfireSessionRow,
 } from "@/services/campfireService";
@@ -34,7 +32,6 @@ const GREEN = "#2F6B43";
 const CREAM = "#F6EBDD";
 const LIVE_RED = "#C0392B";
 
-const SOON_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const TILE_SLIDE_DURATION_MS = 420;
 const TILE_SLIDE_DELAY_MS = 150;
 
@@ -72,44 +69,15 @@ export function CampfireTile({
   }));
 
   const refresh = useCallback(async () => {
-    const live = await getLatestLiveSession();
-    if (live) {
-      setLiveSession(live);
-      setScheduledAtMs(null);
-      setCountdownMs(0);
-      startCampfireLivePreload(live);
-      return;
+    const result = await fetchCampfireTileRefresh();
+    setLiveSession(result.liveSession);
+    setScheduledAtMs(result.scheduledAtMs);
+    setCountdownMs(result.countdownMs);
+    if (result.preloadSession) {
+      startCampfireLivePreload(result.preloadSession);
+    } else {
+      invalidateCampfireLivePreload();
     }
-    setLiveSession(null);
-
-    const nowIso = await getServerNowIso();
-    const nowMs = nowIso ? Date.parse(nowIso) : Date.now();
-
-    const next = await getNextScheduledSession();
-    if (next?.scheduled_at) {
-      const at = Date.parse(next.scheduled_at);
-      const delta = at - nowMs;
-      if (delta > 0 && delta <= SOON_WINDOW_MS) {
-        setScheduledAtMs(at);
-        setCountdownMs(delta);
-        startCampfireLivePreload(next);
-        return;
-      }
-    }
-
-    // Start time passed but cron may not have set `live` yet — keep countdown UI at 0.
-    const starting = await getStartingScheduledSession();
-    if (starting?.scheduled_at) {
-      const at = Date.parse(starting.scheduled_at);
-      setScheduledAtMs(at);
-      setCountdownMs(Math.max(0, at - nowMs));
-      startCampfireLivePreload(starting);
-      return;
-    }
-
-    invalidateCampfireLivePreload();
-    setScheduledAtMs(null);
-    setCountdownMs(0);
   }, []);
 
   useFocusEffect(

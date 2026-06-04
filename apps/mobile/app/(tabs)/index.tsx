@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useMemo, useCallback } from "react";
+import React, { useRef, useState, useEffect, useLayoutEffect, useMemo, useCallback } from "react";
 import {
   View,
   ScrollView,
@@ -40,7 +40,6 @@ import { useUser } from "@/contexts/UserContext";
 import { useHomeBootstrap } from "@/contexts/HomeBootstrapContext";
 import {
   getRandomClubPhotos,
-  hasAnyProfileCompletedActivity,
   type ClubPhotoCardItem,
   type EarliestAvailableMission,
 } from "@/services/activityProgressService";
@@ -148,7 +147,7 @@ function pickEarliestAvailableMission(
 
 export default function HomeScreen() {
   const { scaleW, width, height } = useLayoutScale();
-  const { requireClubhouseActivityReady, markClubhouseActivityReady } =
+  const { clubhouseActivityReady, requireClubhouseActivityReady, markClubhouseActivityReady } =
     useHomeBootstrap();
   const { pushWithReturn } = useNavigationReturn();
   const { profiles } = usePlayer();
@@ -162,12 +161,24 @@ export default function HomeScreen() {
     updateFirstMissionActivityId,
   } = useUser();
   const firstProfileId = profiles[0]?.id ?? null;
+  const allProfileIds = useMemo(() => profiles.map((profile) => profile.id), [profiles]);
+  const extraMissionActivityIds = useMemo(
+    () =>
+      userData?.first_mission_activity_id != null
+        ? [userData.first_mission_activity_id]
+        : [],
+    [userData?.first_mission_activity_id]
+  );
   const {
     sessions,
     completedActivityIds,
+    completedByAnyProfileActivityIds,
     loading: sessionsLoading,
     refetch: refetchSessions,
-  } = useSessionsWithMissions(firstProfileId);
+  } = useSessionsWithMissions(firstProfileId, {
+    allProfileIds,
+    extraActivityIds: extraMissionActivityIds,
+  });
   const {
     latestMission,
     latestUnfinishedMission,
@@ -326,13 +337,11 @@ export default function HomeScreen() {
             return;
           }
           targetMissionId = mission.id;
-          await updateFirstMissionActivityId(targetMissionId);
+          void updateFirstMissionActivityId(targetMissionId);
         }
 
-        const profileIds = profiles.map((profile) => profile.id);
-        const isCompleted = await hasAnyProfileCompletedActivity(
-          profileIds,
-          targetMissionId
+        const isCompleted = completedByAnyProfileActivityIds.has(
+          String(targetMissionId)
         );
         if (isCompleted) {
           if (!cancelled) {
@@ -393,6 +402,7 @@ export default function HomeScreen() {
     completedActivityIds,
     firstMissionCardHidden,
     savedFirstMissionCompleteInSessionData,
+    completedByAnyProfileActivityIds,
     updateFirstMissionActivityId,
   ]);
 
@@ -474,7 +484,7 @@ export default function HomeScreen() {
     if (clubTileReady) logHomeTileReady("club", "tile-gate");
   }, [clubTileReady]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     requireClubhouseActivityReady();
   }, [requireClubhouseActivityReady]);
 
@@ -1361,7 +1371,10 @@ export default function HomeScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[styles.container, !clubhouseActivityReady && { opacity: 0 }]}
+      pointerEvents={clubhouseActivityReady ? "auto" : "none"}
+    >
       <Animated.View
         style={[
           styles.backgroundContainer,

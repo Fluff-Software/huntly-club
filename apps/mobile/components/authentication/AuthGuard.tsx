@@ -47,16 +47,10 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const homeBootstrap = useHomeBootstrapOptional();
   const [checkingProfiles, setCheckingProfiles] = useState(true);
   const onTabs = segments[0] === "(tabs)";
+  // Do not wait for requireClubhouseActivityReady() in useEffect — that caused a
+  // one-frame flash of the home screen before this overlay mounted.
   const waitingForClubhouseActivity =
-    onTabs &&
-    !!homeBootstrap?.clubhouseActivityRequired &&
-    !homeBootstrap.clubhouseActivityReady;
-
-  useEffect(() => {
-    if (user && onTabs) {
-      homeBootstrap?.requireClubhouseActivityReady();
-    }
-  }, [user, onTabs, homeBootstrap?.requireClubhouseActivityReady]);
+    onTabs && !!user && !homeBootstrap?.clubhouseActivityReady;
 
   useEffect(() => {
     const inAuthGroup = segments[0] === "auth";

@@ -24,7 +24,6 @@ import {
   preloadTabBarNavigationAssets,
   TAB_BAR_CLUBHOUSE_ICON,
   TAB_BAR_MISSIONS_ICON,
-  TAB_BAR_TEAM_ICON,
 } from "@/utils/tabBarAssets";
 import {
   getHasCompletedTutorial,
@@ -34,9 +33,6 @@ import {
   registerForPushNotificationsAsync,
   setPushEnabled,
   setPushOptInAsked } from "@/services/pushNotificationService";
-
-const HOME_CLUBHOUSE = require("@/assets/images/home-clubhouse.png");
-const HOME_MISSIONS = require("@/assets/images/home-missions.png");
 
 const TAB_BAR_COLORS: Record<string, string> = {
   index: "#4F6F52",

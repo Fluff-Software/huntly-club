@@ -4,12 +4,10 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 /** Bundled tab bar PNGs (shared with tab layout). */
 export const TAB_BAR_CLUBHOUSE_ICON = require("@/assets/images/home-clubhouse.png");
 export const TAB_BAR_MISSIONS_ICON = require("@/assets/images/home-missions.png");
-export const TAB_BAR_TEAM_ICON = require("@/assets/images/home-team.png");
 
 const TAB_BAR_IMAGE_MODULES = [
   TAB_BAR_CLUBHOUSE_ICON,
   TAB_BAR_MISSIONS_ICON,
-  TAB_BAR_TEAM_ICON,
 ] as const;
 
 /**

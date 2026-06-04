@@ -688,24 +688,45 @@ function buildThumbnailUrl(originalUrl: string): string {
   return `${originalUrl}${separator}${params}`;
 }
 
-/**
- * Returns up to `count` random approved photos from the club (any activity).
- * Each item includes activity title and profile nickname for display.
- * status 1 = approved. Nicknames come from profile_public (id + nickname only).
- * Pass excludeIds when loading more to avoid duplicates.
- */
-export const getRandomClubPhotos = async (
+function mapClubPhotoRows(
+  rows: {
+    photo_id: number | string;
+    photo_url: string;
+    activity_title?: string;
+    nickname?: string;
+    team_name?: string;
+  }[]
+): ClubPhotoCardItem[] {
+  return rows.map((row) => {
+    const photoUrl = String(row.photo_url ?? "");
+    const teamName = row.team_name?.trim();
+    return {
+      id: String(row.photo_id),
+      thumb_url: buildThumbnailUrl(photoUrl),
+      photo_url: photoUrl,
+      title: row.activity_title ?? "",
+      author: row.nickname ?? "",
+      team_name: teamName ? teamName : undefined,
+    };
+  });
+}
+
+/** Client fallback when get_random_club_photos RPC is unavailable. */
+async function getRandomClubPhotosFallback(
   count: number,
-  excludeIds: string[] = []
-): Promise<ClubPhotoCardItem[]> => {
+  excludeIds: string[]
+): Promise<ClubPhotoCardItem[]> {
+  const poolSize = Math.max(count * 12, 72);
   const { data, error } = await supabase
     .from("user_activity_photos")
     .select("photo_id, photo_url, profile_id, activities(title)")
     .eq("status", 1)
-    .not("activity_id", "is", null);
+    .not("activity_id", "is", null)
+    .order("photo_id", { ascending: false })
+    .limit(poolSize);
 
   if (error) {
-    console.error("Error fetching club photos:", error);
+    console.error("Error fetching club photos (fallback):", error);
     throw new Error(`Failed to fetch club photos: ${error.message}`);
   }
 
@@ -752,6 +773,43 @@ export const getRandomClubPhotos = async (
       team_name: teamName || undefined,
     };
   });
+}
+
+/**
+ * Returns up to `count` random approved photos from the club (any activity).
+ * Uses bounded server RPC when available; falls back to a capped client query.
+ * Pass excludeIds when loading more to avoid duplicates.
+ */
+export const getRandomClubPhotos = async (
+  count: number,
+  excludeIds: string[] = []
+): Promise<ClubPhotoCardItem[]> => {
+  const excludeNumeric = excludeIds
+    .map((id) => Number(id))
+    .filter((id) => Number.isFinite(id));
+
+  const { data, error } = await supabase.rpc("get_random_club_photos", {
+    p_count: count,
+    p_exclude_ids: excludeNumeric,
+  });
+
+  if (!error && data != null) {
+    const rows = data as {
+      photo_id: number;
+      photo_url: string;
+      activity_title: string;
+      nickname: string;
+      team_name: string;
+    }[];
+    if (rows.length > 0) {
+      return mapClubPhotoRows(rows);
+    }
+    if (excludeNumeric.length === 0) return [];
+  } else if (error) {
+    console.warn("get_random_club_photos RPC failed, using fallback:", error.message);
+  }
+
+  return getRandomClubPhotosFallback(count, excludeIds);
 };
 
 export type EarliestAvailableMission = {

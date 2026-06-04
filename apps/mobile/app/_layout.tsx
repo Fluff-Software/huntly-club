@@ -24,6 +24,11 @@ import { PlayerProvider } from "@/contexts/PlayerContext";
 import { SignUpProvider } from "@/contexts/SignUpContext";
 import { NavigationReturnProvider } from "@/contexts/NavigationReturnContext";
 import { UserProvider } from "@/contexts/UserContext";
+import {
+  HomeBootstrapProvider,
+  SplashScreenGate,
+} from "@/contexts/HomeBootstrapContext";
+import { ProfileDashboardProvider } from "@/contexts/ProfileDashboardContext";
 import { AuthGuard } from "@/components/authentication/AuthGuard";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { supabase } from "@/services/supabase";
@@ -81,12 +86,6 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    if (fontsReady) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsReady]);
-
-  useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data as { screen?: string } | undefined;
       if (data?.screen === "story") {
@@ -140,15 +139,20 @@ export default function RootLayout() {
           <PurchasesProvider>
             <UserProvider>
               <PlayerProvider>
-                <ThemeProvider value={DefaultTheme}>
-                  <OfflineBanner />
-                  <LayoutAnimationConfig skipEntering>
-                    <AuthGuard>
-                      <Slot />
-                    </AuthGuard>
-                  </LayoutAnimationConfig>
-                  <StatusBar style="dark" />
-                </ThemeProvider>
+                <ProfileDashboardProvider>
+                <HomeBootstrapProvider>
+                  <SplashScreenGate fontsReady={fontsReady} />
+                  <ThemeProvider value={DefaultTheme}>
+                    <OfflineBanner />
+                    <LayoutAnimationConfig skipEntering>
+                      <AuthGuard>
+                        <Slot />
+                      </AuthGuard>
+                    </LayoutAnimationConfig>
+                    <StatusBar style="dark" />
+                  </ThemeProvider>
+                </HomeBootstrapProvider>
+                </ProfileDashboardProvider>
               </PlayerProvider>
             </UserProvider>
           </PurchasesProvider>

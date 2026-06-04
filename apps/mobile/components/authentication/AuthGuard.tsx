@@ -7,7 +7,6 @@ import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { getProfiles, getUserData } from "@/services/profileService";
 import type { Profile } from "@/services/profileService";
 import { REQUIRE_EMAIL_VERIFICATION } from "@/constants/auth";
-
 const LOADER_BACKGROUND = "#4F6F52";
 
 function routeAfterSignupCheck(
@@ -44,6 +43,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const router = useRouter();
   const signUpContext = useSignUpOptional();
   const [checkingProfiles, setCheckingProfiles] = useState(true);
+  const onTabs = segments[0] === "(tabs)";
 
   useEffect(() => {
     const inAuthGroup = segments[0] === "auth";
@@ -162,13 +162,13 @@ export function AuthGuard({ children }: AuthGuardProps) {
   // We still validate profiles/userData during normal navigation, but we don't want a blocking
   // full-screen spinner during tab switches. Keep the UI responsive and only block during
   // the initial auth bootstrap / non-tab flows.
-  const showOverlay = loading || (checkingProfiles && segments[0] !== "(tabs)");
+  const showOverlay = loading || (checkingProfiles && !onTabs);
 
   return (
     <View style={styles.wrapper}>
       {children}
       {showOverlay && (
-        <View style={styles.overlay} pointerEvents="none">
+        <View style={styles.overlay} pointerEvents="auto">
           <ActivityIndicator size="large" color={LOADER_SPINNER} />
         </View>
       )}

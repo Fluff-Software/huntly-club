@@ -1,6 +1,7 @@
 import { Tabs, router, usePathname } from "expo-router";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Image, Platform, Pressable, StyleSheet, View } from "react-native";
+import { BottomTabBar, type BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { MaterialIcons } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
@@ -8,7 +9,6 @@ import Animated, {
   withRepeat,
   withSequence,
   withTiming } from "react-native-reanimated";
-import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
@@ -20,6 +20,12 @@ import { NewPlayerTutorial } from "@/components/NewPlayerTutorial";
 import { TabTrophyIcon } from "@/components/TabTrophyIcon";
 import { SlideUpTabBar } from "@/components/SlideUpTabBar";
 import { ThemedText } from "@/components/ThemedText";
+import {
+  preloadTabBarNavigationAssets,
+  TAB_BAR_CLUBHOUSE_ICON,
+  TAB_BAR_MISSIONS_ICON,
+  TAB_BAR_TEAM_ICON,
+} from "@/utils/tabBarAssets";
 import {
   getHasCompletedTutorial,
   recordTutorialAchievement } from "@/services/activityProgressService";
@@ -111,6 +117,25 @@ export default function TabLayout() {
   const replayTutorialRequested = signUpContext?.replayTutorialRequested ?? false;
   const setReplayTutorialRequested = signUpContext?.setReplayTutorialRequested;
   const [hasCompletedTutorial, setHasCompletedTutorial] = useState<boolean | null>(null);
+  const [tabBarNavigationReady, setTabBarNavigationReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void preloadTabBarNavigationAssets()
+      .then(() => {
+        if (!cancelled) setTabBarNavigationReady(true);
+      })
+      .catch((error) => {
+        console.error("Failed to preload tab bar navigation assets:", error);
+        if (!cancelled) setTabBarNavigationReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const showTabBar =
+    tabBarNavigationReady && (!user?.id || !profilesLoading);
 
   // If user has no team set, send them to add explorers first, then team selection (matches AuthGuard)
   useEffect(() => {
@@ -259,14 +284,11 @@ export default function TabLayout() {
   };
 
   const renderTabBar = useCallback(
-    (props: BottomTabBarProps) => (
-      <SlideUpTabBar
-        {...props}
-        onboardingActive={false}
-        tabBarSlideDistance={tabBarHeight}
-      />
-    ),
-    [tabBarHeight]
+    (props: BottomTabBarProps) => {
+      if (!showTabBar) return null;
+      return <BottomTabBar {...props} />;
+    },
+    [showTabBar]
   );
 
   return (
@@ -308,7 +330,7 @@ export default function TabLayout() {
         options={{
           title: "Clubhouse",
           tabBarIcon: ({ color }) => (
-            <TabIcon source={HOME_CLUBHOUSE} color={color} size={scaleW(24)} />
+            <TabIcon source={TAB_BAR_CLUBHOUSE_ICON} color={color} size={scaleW(24)} />
           ),
           href: profiles.length > 0 ? undefined : null }}
       />
@@ -328,7 +350,7 @@ export default function TabLayout() {
                   <StoryTabPulse size={scaleW(44)} />
                 </View>
               )}
-              <TabIcon source={HOME_MISSIONS} color={color} size={scaleW(24)} />
+              <TabIcon source={TAB_BAR_MISSIONS_ICON} color={color} size={scaleW(24)} />
             </View>
           ),
           href: profiles.length > 0 ? undefined : null }}

@@ -24,6 +24,7 @@ import { usePlayer } from "@/contexts/PlayerContext";
 import { useUser } from "@/contexts/UserContext";
 import {
   getJournalTimeline,
+  preloadJournalTimelineCardImages,
   type JournalEntry,
   type JournalTimelineItem } from "@/services/journalService";
 import { ChildScreenLayout } from "@/components/ChildScreenLayout";
@@ -59,6 +60,8 @@ export default function JournalBookScreen() {
 
     try {
       const data = await getJournalTimeline(user.id, profileIds);
+      if (!isMountedRef.current) return;
+      await preloadJournalTimelineCardImages(data);
       if (isMountedRef.current) {
         setTimeline(data);
       }

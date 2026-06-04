@@ -7,7 +7,8 @@ import ReactCrop, {
   makeAspectCrop,
   convertToPixelCrop,
 } from "react-image-crop";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 
 type Props = {
@@ -24,15 +25,12 @@ type Props = {
 
 export type ImageCropState = {
   crop?: Crop;
-  lockAspect?: boolean;
   blurPx?: number;
   brushSize?: number;
   blurMaskDataUrl?: string | null; // PNG data URL, natural-pixel-space alpha mask
 };
 
 function pickOutputType(file: File): "image/jpeg" | "image/webp" {
-  // Keep "shrinkable" formats for upload payload size.
-  // If the input is PNG/GIF, we'll still output JPEG to keep size down.
   return file.type === "image/webp" ? "image/webp" : "image/jpeg";
 }
 
@@ -50,11 +48,10 @@ function clamp(n: number, min: number, max: number) {
 }
 
 function makeCenteredAspectCrop(mediaWidth: number, mediaHeight: number, aspect: number): Crop {
-  const widthPct = 90;
   const crop = makeAspectCrop(
     {
       unit: "%",
-      width: widthPct,
+      width: 90,
     },
     aspect,
     mediaWidth,
@@ -72,7 +69,6 @@ async function getCroppedFile(
 ): Promise<File> {
   const imageUrl = URL.createObjectURL(input);
   try {
-    // Ensure the underlying image is loaded; we already render <img>, but keep this safe.
     if (!imgEl.complete) {
       await new Promise<void>((resolve, reject) => {
         imgEl.onload = () => resolve();
@@ -181,30 +177,34 @@ export function ImageCropModal({
 
   const imgRef = useRef<HTMLImageElement | null>(null);
   const imgBoxRef = useRef<HTMLDivElement | null>(null);
+  const [mounted, setMounted] = useState(false);
   const [crop, setCrop] = useState<Crop>();
-  const [lockAspect, setLockAspect] = useState(false);
-  const [isCropping, setIsCropping] = useState(false);
+  const [isCropping, setIsCropping] = useState(true);
   const [isBlurring, setIsBlurring] = useState(false);
   const [blurPx, setBlurPx] = useState(14);
-  const [brushSize, setBrushSize] = useState(46); // in CSS px, mapped to natural pixels on paint
+  const [brushSize, setBrushSize] = useState(46);
   const [brushPos, setBrushPos] = useState<{ x: number; y: number } | null>(null);
   const [imageAspect, setImageAspect] = useState<number | null>(null);
   const [imageSize, setImageSize] = useState<{ w: number; h: number } | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isPortrait = imageAspect != null ? imageAspect < 1 : false;
-  const blurMaskRef = useRef<HTMLCanvasElement | null>(null); // natural-pixel-space alpha mask
-  const blurOverlayRef = useRef<HTMLCanvasElement | null>(null); // display-space preview overlay
+  const blurMaskRef = useRef<HTMLCanvasElement | null>(null);
+  const blurOverlayRef = useRef<HTMLCanvasElement | null>(null);
 
-  function requestCancel() {
-    if (pending || isCropping || isBlurring) return;
+  const requestCancel = useCallback(() => {
+    if (pending) return;
     onCancel();
-  }
+  }, [pending, onCancel]);
 
   const previewUrl = useMemo(() => {
     if (!file) return null;
     return URL.createObjectURL(file);
   }, [file]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!previewUrl) return;
@@ -222,10 +222,8 @@ export function ImageCropModal({
 
   useEffect(() => {
     if (!open) return;
-    // Reset state when opening a new crop session
     setCrop(initialState?.crop);
-    setLockAspect(initialState?.lockAspect ?? false);
-    setIsCropping(false);
+    setIsCropping(true);
     setIsBlurring(false);
     setBlurPx(initialState?.blurPx ?? 14);
     setBrushSize(initialState?.brushSize ?? 46);
@@ -233,53 +231,7 @@ export function ImageCropModal({
     setImageSize(null);
     setError(null);
     setPending(false);
-  }, [open, file, initialState?.blurPx, initialState?.brushSize, initialState?.crop, initialState?.lockAspect]);
-
-  if (!open) return null;
-
-  const effectiveAspect = lockAspect ? (imageAspect ?? aspect) : aspect;
-
-  function percentFromPixel(px: number, dimension: number) {
-    if (!dimension) return 0;
-    return (px / dimension) * 100;
-  }
-
-  function applyAspectToCurrentCrop(targetAspect: number) {
-    if (!imageSize) {
-      setCrop({ unit: "%", x: 0, y: 0, width: 100, height: 100 });
-      return;
-    }
-
-    const baseCrop = crop ?? { unit: "%", x: 0, y: 0, width: 100, height: 100 };
-    const px = convertToPixelCrop(baseCrop, imageSize.w, imageSize.h);
-    const cx = px.x + px.width / 2;
-    const cy = px.y + px.height / 2;
-
-    let newW = px.width;
-    let newH = px.height;
-    const currentAspect = px.width / Math.max(1, px.height);
-
-    if (currentAspect > targetAspect) {
-      newW = newH * targetAspect;
-    } else {
-      newH = newW / targetAspect;
-    }
-
-    newW = Math.min(newW, imageSize.w);
-    newH = Math.min(newH, imageSize.h);
-    let x = cx - newW / 2;
-    let y = cy - newH / 2;
-    x = clamp(x, 0, imageSize.w - newW);
-    y = clamp(y, 0, imageSize.h - newH);
-
-    setCrop({
-      unit: "%",
-      x: percentFromPixel(x, imageSize.w),
-      y: percentFromPixel(y, imageSize.h),
-      width: percentFromPixel(newW, imageSize.w),
-      height: percentFromPixel(newH, imageSize.h),
-    });
-  }
+  }, [open, file, initialState?.blurPx, initialState?.brushSize, initialState?.crop]);
 
   async function handleConfirm() {
     if (!file || !crop || !imgRef.current) return;
@@ -294,7 +246,6 @@ export function ImageCropModal({
       const cropped = await getCroppedFile(file, imgRef.current, crop, type, blur);
       const state: ImageCropState = {
         crop,
-        lockAspect,
         blurPx,
         brushSize,
         blurMaskDataUrl:
@@ -311,8 +262,7 @@ export function ImageCropModal({
     if (pending) return;
     setError(null);
     if (imageSize) {
-      const targetAspect = lockAspect ? (imageAspect ?? aspect) : aspect;
-      setCrop(makeCenteredAspectCrop(imageSize.w, imageSize.h, targetAspect));
+      setCrop(makeCenteredAspectCrop(imageSize.w, imageSize.h, aspect));
     } else {
       setCrop({ unit: "%", x: 0, y: 0, width: 100, height: 100 });
     }
@@ -382,7 +332,6 @@ export function ImageCropModal({
     const ctx = mask.getContext("2d");
     if (!ctx) return;
 
-    // Soft brush (Photoshop-like): radial gradient alpha
     const g = ctx.createRadialGradient(nx, ny, 0, nx, ny, Math.max(1, r));
     g.addColorStop(0, "rgba(255,255,255,0.85)");
     g.addColorStop(0.6, "rgba(255,255,255,0.35)");
@@ -409,30 +358,91 @@ export function ImageCropModal({
     setBrushPos({ x, y });
   }
 
-  return (
+  function handleImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+    const img = e.currentTarget;
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+    setImageAspect(w > 0 && h > 0 ? w / h : null);
+    setImageSize(w > 0 && h > 0 ? { w, h } : null);
+    if (!initialState?.crop && w > 0 && h > 0) {
+      setCrop(makeCenteredAspectCrop(w, h, aspect));
+    }
+
+    if (enableBlur) {
+      const mask = document.createElement("canvas");
+      mask.width = Math.max(1, Math.round(w));
+      mask.height = Math.max(1, Math.round(h));
+      blurMaskRef.current = mask;
+      const initialMask = initialState?.blurMaskDataUrl;
+      if (initialMask) {
+        const mimg = new window.Image();
+        mimg.onload = () => {
+          const mctx = mask.getContext("2d");
+          if (mctx) {
+            mctx.setTransform(1, 0, 0, 1, 0, 0);
+            mctx.clearRect(0, 0, mask.width, mask.height);
+            mctx.drawImage(mimg, 0, 0, mask.width, mask.height);
+          }
+          requestAnimationFrame(() => renderBlurOverlay());
+        };
+        mimg.src = initialMask;
+      }
+      requestAnimationFrame(() => renderBlurOverlay());
+    }
+  }
+
+  const imageClassName = `max-w-full select-none object-contain ${
+    isPortrait
+      ? "h-[calc(100dvh-18rem)] w-auto sm:h-[calc(92dvh-18rem)]"
+      : "h-auto w-full max-h-[calc(100dvh-18rem)] sm:max-h-[calc(92dvh-18rem)]"
+  }`;
+
+  const imageNode = previewUrl ? (
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        ref={imgRef}
+        alt="Crop preview"
+        src={previewUrl}
+        draggable={false}
+        className={imageClassName}
+        onDragStart={(e) => e.preventDefault()}
+        onLoad={handleImageLoad}
+      />
+      {enableBlur && (
+        <canvas
+          ref={blurOverlayRef}
+          className="pointer-events-none absolute inset-0 opacity-100"
+          aria-hidden
+        />
+      )}
+      {enableBlur && isBlurring && brushPos && (
+        <div
+          className="pointer-events-none absolute rounded-full border-2 border-white/80 ring-1 ring-black/40"
+          style={{
+            left: brushPos.x,
+            top: brushPos.y,
+            width: brushSize,
+            height: brushSize,
+            transform: "translate(-50%, -50%)",
+          }}
+          aria-hidden
+        />
+      )}
+    </>
+  ) : null;
+
+  if (!open || !mounted) return null;
+
+  return createPortal(
     <div
       className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-0 sm:p-4"
       aria-modal="true"
       role="dialog"
       aria-labelledby="image-crop-title"
+      data-image-crop-modal
       onClick={() => requestCancel()}
     >
-      <style jsx global>{`
-        /* When "preview" mode is on, keep a subtle mask to show what's cropped off. */
-        [data-crop-mask="off"] .ReactCrop__crop-mask {
-          opacity: 0.65 !important;
-        }
-        [data-crop-mask="off"] .ReactCrop__crop-selection {
-          box-shadow: none !important;
-        }
-
-        /* When blurring, make sure the brush layer receives pointer events. */
-        [data-tool="blur"] .ReactCrop__crop-mask,
-        [data-tool="blur"] .ReactCrop__crop-selection,
-        [data-tool="blur"] .ReactCrop__drag-handle {
-          pointer-events: none !important;
-        }
-      `}</style>
       <div
         className="flex h-[100dvh] w-full flex-col overflow-hidden bg-white shadow-xl sm:h-auto sm:max-h-[92dvh] sm:max-w-5xl sm:rounded-2xl sm:border sm:border-stone-200"
         onClick={(e) => e.stopPropagation()}
@@ -445,7 +455,7 @@ export function ImageCropModal({
           <button
             type="button"
             onClick={requestCancel}
-            disabled={pending || isCropping}
+            disabled={pending}
             className="rounded-md px-2 py-1 text-sm text-stone-600 hover:bg-stone-100 disabled:opacity-50"
           >
             Close
@@ -453,16 +463,19 @@ export function ImageCropModal({
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col p-4">
-          {/* Give crop handles room so they don't get clipped at edges */}
           <div
             className="relative z-0 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg bg-stone-900 p-3 sm:p-4"
             data-crop-mask={isCropping ? "on" : "off"}
           >
-            {previewUrl ? (
+            {!previewUrl ? (
+              <div className="flex h-full items-center justify-center text-sm text-stone-200">
+                No image selected
+              </div>
+            ) : (
               <ReactCrop
                 crop={crop}
                 onChange={(_, percentCrop) => setCrop(percentCrop)}
-                aspect={effectiveAspect}
+                aspect={aspect}
                 keepSelection
                 ruleOfThirds
                 disabled={pending || !isCropping || isBlurring}
@@ -497,88 +510,16 @@ export function ImageCropModal({
                   }}
                   onPointerLeave={() => setBrushPos(null)}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    ref={imgRef}
-                    alt="Crop preview"
-                    src={previewUrl}
-                    draggable={false}
-                    className={`max-w-full select-none object-contain ${
-                      isPortrait
-                        ? "h-[calc(100dvh-18rem)] w-auto sm:h-[calc(92dvh-18rem)]"
-                        : "h-auto w-full max-h-[calc(100dvh-18rem)] sm:max-h-[calc(92dvh-18rem)]"
-                    }`}
-                    onDragStart={(e) => e.preventDefault()}
-                    onLoad={(e) => {
-                      const img = e.currentTarget;
-                      const w = img.naturalWidth || img.width;
-                      const h = img.naturalHeight || img.height;
-                      setImageAspect(w > 0 && h > 0 ? w / h : null);
-                      setImageSize(w > 0 && h > 0 ? { w, h } : null);
-                      if (!initialState?.crop && w > 0 && h > 0) {
-                        const targetAspect = lockAspect ? w / h : aspect;
-                        setCrop(makeCenteredAspectCrop(w, h, targetAspect));
-                      }
-
-                      if (enableBlur) {
-                        const mask = document.createElement("canvas");
-                        mask.width = Math.max(1, Math.round(w));
-                        mask.height = Math.max(1, Math.round(h));
-                        blurMaskRef.current = mask;
-                        const initialMask = initialState?.blurMaskDataUrl;
-                        if (initialMask) {
-                          const mimg = new window.Image();
-                          mimg.onload = () => {
-                            const mctx = mask.getContext("2d");
-                            if (mctx) {
-                              mctx.setTransform(1, 0, 0, 1, 0, 0);
-                              mctx.clearRect(0, 0, mask.width, mask.height);
-                              mctx.drawImage(mimg, 0, 0, mask.width, mask.height);
-                            }
-                            requestAnimationFrame(() => renderBlurOverlay());
-                          };
-                          mimg.src = initialMask;
-                        }
-                        // Ensure overlay is synced when the image size changes.
-                        requestAnimationFrame(() => renderBlurOverlay());
-                      }
-                    }}
-                  />
-
-                  {enableBlur && (
-                    <canvas
-                      ref={blurOverlayRef}
-                      className={`pointer-events-none absolute inset-0 ${
-                        isBlurring ? "opacity-100" : "opacity-100"
-                      }`}
-                      aria-hidden
-                    />
-                  )}
-
-                  {enableBlur && isBlurring && brushPos && (
-                    <div
-                      className="pointer-events-none absolute rounded-full border-2 border-white/80 ring-1 ring-black/40"
-                      style={{
-                        left: brushPos.x,
-                        top: brushPos.y,
-                        width: brushSize,
-                        height: brushSize,
-                        transform: "translate(-50%, -50%)",
-                      }}
-                      aria-hidden
-                    />
-                  )}
+                  {imageNode}
                 </div>
               </ReactCrop>
-            ) : (
-              <div className="flex h-full items-center justify-center text-sm text-stone-200">No image selected</div>
             )}
           </div>
 
           <div className="relative z-10 mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-col gap-2">
               <p className="text-xs text-stone-500">
-                Drag the crop box corners/edges to select the area. Then we’ll auto resize/compress before uploading.
+                Drag the crop box to choose the area. The crop matches how this image appears in the app.
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 <button
@@ -617,7 +558,6 @@ export function ImageCropModal({
                         const next = !v;
                         if (next) setIsCropping(false);
                         if (!next) setBrushPos(null);
-                        // Keep existing mask; just redraw overlay.
                         requestAnimationFrame(() => renderBlurOverlay());
                         return next;
                       });
@@ -637,43 +577,6 @@ export function ImageCropModal({
                           isBlurring ? "translate-x-5" : "translate-x-0"
                         }`}
                       />
-                    </span>
-                  </button>
-                )}
-                {isCropping && (
-                  <button
-                    type="button"
-                    disabled={pending}
-                    onClick={() => {
-                      const next = !lockAspect;
-                      setLockAspect(next);
-                      applyAspectToCurrentCrop(next ? (imageAspect ?? aspect) : aspect);
-                    }}
-                    aria-pressed={lockAspect}
-                    className="group inline-flex h-10 items-center gap-2 rounded-full border border-stone-300 bg-white px-3 py-0 text-sm font-medium text-stone-800 shadow-sm transition-colors hover:bg-stone-50 disabled:opacity-50"
-                    title={
-                      lockAspect
-                        ? "Using the photo's original aspect ratio"
-                        : "Cropped to match how this image appears in the app"
-                    }
-                  >
-                    <span className="text-xs text-stone-600">Original Ratio</span>
-                    <span
-                      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
-                        lockAspect ? "bg-stone-800" : "bg-stone-300"
-                      }`}
-                    >
-                      <span
-                        className={`absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                          lockAspect ? "translate-x-5" : "translate-x-0"
-                        }`}
-                      />
-                      <span className="absolute left-2 top-1.5 text-[10px] text-stone-700">
-                        {lockAspect ? "" : " "}
-                      </span>
-                      <span className="absolute right-2 top-1.5 text-[10px] text-white/80">
-                        {lockAspect ? "" : " "}
-                      </span>
                     </span>
                   </button>
                 )}
@@ -730,7 +633,7 @@ export function ImageCropModal({
               <button
                 type="button"
                 onClick={requestCancel}
-                disabled={pending || isCropping}
+                disabled={pending}
                 className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:opacity-50"
               >
                 Cancel
@@ -738,7 +641,7 @@ export function ImageCropModal({
               <button
                 type="button"
                 onClick={handleConfirm}
-                disabled={pending || isCropping || !file || !crop}
+                disabled={pending || !file || !crop}
                 className="rounded-lg border border-stone-300 bg-stone-800 px-3 py-2 text-sm font-medium text-white hover:bg-stone-900 disabled:opacity-50"
               >
                 {pending ? "Editing…" : confirmLabel}
@@ -753,7 +656,7 @@ export function ImageCropModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
-

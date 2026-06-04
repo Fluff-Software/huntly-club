@@ -8,7 +8,7 @@ import {
 } from "@/lib/upload-actions";
 import { compressImageFileForUpload } from "@/lib/client-image-resize";
 import { ImageCropModal } from "@/components/ImageCropModal";
-import { MISSION_MEDIA_ASPECT } from "@/lib/image-aspects";
+import { MISSION_MEDIA_ASPECT, SEASON_HERO_ASPECT, imageAspectStyle } from "@/lib/image-aspects";
 
 type ImageUploadFieldProps = {
   name: string;
@@ -39,9 +39,23 @@ export function ImageUploadField({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    e.target.value = "";
+    e.target.blur();
+
+    const scrollEl = document.querySelector<HTMLElement>("main[data-app-scroll]");
+    const savedScrollTop = scrollEl?.scrollTop ?? 0;
+
     setUploadError(null);
     setPendingFile(file);
     setCropOpen(true);
+
+    requestAnimationFrame(() => {
+      if (scrollEl) scrollEl.scrollTop = savedScrollTop;
+    });
+  }
+
+  function handleChooseFileClick() {
+    fileInputRef.current?.click();
   }
 
   function resetFileInput() {
@@ -85,6 +99,8 @@ export function ImageUploadField({
     });
   }
 
+  const previewAspect = uploadKind === "activity" ? MISSION_MEDIA_ASPECT : SEASON_HERO_ASPECT;
+
   return (
     <div>
       <label htmlFor={name} className="mb-1 block text-sm font-medium text-stone-700">
@@ -93,14 +109,22 @@ export function ImageUploadField({
       {help && <p className="mb-1 text-xs text-stone-500">{help}</p>}
       <input id={name} name={name} type="hidden" value={url} />
       <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={handleChooseFileClick}
+          disabled={isPending}
+          className="rounded-lg bg-huntly-forest px-4 py-2 text-sm font-medium text-white hover:bg-huntly-leaf disabled:opacity-50"
+        >
+          Choose file
+        </button>
         <input
           ref={fileInputRef}
           type="file"
           accept="image/jpeg,image/png,image/webp,image/gif"
+          tabIndex={-1}
+          aria-hidden
+          className="fixed left-0 top-0 h-px w-px opacity-0"
           onChange={handleFileChange}
-          disabled={isPending}
-          className="block w-full max-w-xs text-sm text-stone-600 file:mr-2 file:rounded-lg file:border-0 file:bg-huntly-forest file:px-4 file:py-2 file:text-sm file:font-medium file:text-white file:hover:bg-huntly-leaf"
-          aria-label="Choose image file to upload"
         />
         {isPending && (
           <span className="text-sm text-stone-500">Uploading…</span>
@@ -112,12 +136,15 @@ export function ImageUploadField({
         </p>
       )}
       {url && hasValidPreview && (
-        <div className="relative mt-2 h-40 w-full max-w-sm overflow-hidden rounded-lg border border-stone-200">
+        <div
+          className="relative mt-2 w-full max-w-sm overflow-hidden rounded-lg border border-stone-200"
+          style={imageAspectStyle(previewAspect)}
+        >
           <Image
             src={url}
             alt=""
             fill
-            className="object-contain"
+            className="object-cover"
             unoptimized={!url.includes("supabase.co")}
             onError={() => setHasValidPreview(false)}
           />
@@ -127,7 +154,7 @@ export function ImageUploadField({
         open={cropOpen}
         file={pendingFile}
         title={uploadKind === "season" ? "Crop hero image" : "Crop activity image"}
-        aspect={uploadKind === "activity" ? MISSION_MEDIA_ASPECT : 16 / 9}
+        aspect={previewAspect}
         onCancel={handleCancelCrop}
         onConfirm={handleConfirmCrop}
       />

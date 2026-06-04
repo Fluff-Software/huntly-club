@@ -49,12 +49,6 @@ import {
   prefetchClubPhotoImages,
   prefetchTeamCardAssets,
 } from "@/utils/homeActivityPreload";
-import {
-  logHomeTileDuration,
-  logHomeTileReady,
-  logHomeTileSummary,
-  startHomeTileLoadTiming,
-} from "@/utils/homeTileLoadTiming";
 import type { ImageSourcePropType } from "react-native";
 
 type HomeMode = "profile" | "activity" | "missions";
@@ -192,7 +186,6 @@ export default function HomeScreen() {
   const [teamAssetsReady, setTeamAssetsReady] = useState(false);
   const [campfireTileReady, setCampfireTileReady] = useState(false);
   const hasRevealedActivityTilesRef = useRef(false);
-  const homeTileTimingStartedRef = useRef(false);
   const [missionsTab, setMissionsTab] = useState<"missions" | "adventures">("missions");
   const [firstMissionCard, setFirstMissionCard] =
     useState<EarliestAvailableMission | null>(null);
@@ -218,27 +211,15 @@ export default function HomeScreen() {
   }, [teamCardConfig?.leaderName]);
 
   useEffect(() => {
-    if (!homeTileTimingStartedRef.current) {
-      homeTileTimingStartedRef.current = true;
-      startHomeTileLoadTiming();
-    }
-  }, []);
-
-  useEffect(() => {
     let cancelled = false;
     setClubCardsLoading(true);
     setClubMediaReady(false);
-    const apiStart = performance.now();
     getRandomClubPhotos(CLUB_CARDS_PAGE_SIZE).then((cards) => {
       if (!cancelled) setClubCards(cards);
     }).catch(() => {
       if (!cancelled) setClubCards([]);
     }).finally(() => {
-      if (!cancelled) {
-        logHomeTileDuration("club", performance.now() - apiStart, "api");
-        logHomeTileReady("club", "api");
-        setClubCardsLoading(false);
-      }
+      if (!cancelled) setClubCardsLoading(false);
     });
     return () => { cancelled = true; };
   }, []);
@@ -254,22 +235,15 @@ export default function HomeScreen() {
       return;
     }
     if (clubCards.length === 0) {
-      logHomeTileReady("club", "images-skipped-empty");
       setClubMediaReady(true);
       return;
     }
     let cancelled = false;
     setClubMediaReady(false);
-    const prefetchStart = performance.now();
-    const imageCount = Math.min(clubCards.length, CLUB_CARDS_PAGE_SIZE);
     void prefetchClubPhotoImages(clubCards.slice(0, CLUB_CARDS_PAGE_SIZE))
       .catch(() => undefined)
       .finally(() => {
-        if (!cancelled) {
-          logHomeTileDuration("club", performance.now() - prefetchStart, `images x${imageCount}`);
-          logHomeTileReady("club", "images");
-          setClubMediaReady(true);
-        }
+        if (!cancelled) setClubMediaReady(true);
       });
     return () => {
       cancelled = true;
@@ -278,21 +252,15 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (!teamCardConfig) {
-      logHomeTileReady("team", "skipped-no-team");
       setTeamAssetsReady(true);
       return;
     }
     let cancelled = false;
     setTeamAssetsReady(false);
-    const teamStart = performance.now();
     void prefetchTeamCardAssets(teamCardConfig)
       .catch(() => undefined)
       .finally(() => {
-        if (!cancelled) {
-          logHomeTileDuration("team", performance.now() - teamStart, teamCardConfig.title);
-          logHomeTileReady("team");
-          setTeamAssetsReady(true);
-        }
+        if (!cancelled) setTeamAssetsReady(true);
       });
     return () => {
       cancelled = true;
@@ -467,49 +435,18 @@ export default function HomeScreen() {
     teamTileReady;
 
   const handleCampfireReadyChange = useCallback((ready: boolean) => {
-    if (ready) logHomeTileReady("campfire");
     setCampfireTileReady(ready);
   }, []);
-
-  useEffect(() => {
-    if (!firstMissionTileReady) return;
-    const detail =
-      showFirstMissionTile && firstMissionCard
-        ? `shown id=${firstMissionCard.id}`
-        : "hidden";
-    logHomeTileReady("first-mission", detail);
-  }, [firstMissionTileReady, showFirstMissionTile, firstMissionCard]);
-
-  useEffect(() => {
-    if (clubTileReady) logHomeTileReady("club", "tile-gate");
-  }, [clubTileReady]);
 
   useLayoutEffect(() => {
     requireClubhouseActivityReady();
   }, [requireClubhouseActivityReady]);
 
   useEffect(() => {
-    const pending: string[] = [];
-    if (!firstMissionTileReady) pending.push("first-mission");
-    if (!campfireTileReady) pending.push("campfire");
-    if (!clubTileReady) pending.push("club");
-    if (!teamTileReady) pending.push("team");
-    if (pending.length > 0) {
-      logHomeTileSummary(pending);
-    } else {
-      logHomeTileSummary([]);
-    }
     if (activityTilesReady) {
       markClubhouseActivityReady();
     }
-  }, [
-    activityTilesReady,
-    firstMissionTileReady,
-    campfireTileReady,
-    clubTileReady,
-    teamTileReady,
-    markClubhouseActivityReady,
-  ]);
+  }, [activityTilesReady, markClubhouseActivityReady]);
 
   const activityTilesOpacity = useSharedValue(0);
   const activityTilesTranslateY = useSharedValue(30);

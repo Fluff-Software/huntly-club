@@ -21,8 +21,6 @@ import {
   invalidateCampfireLivePreload,
   startCampfireLivePreload,
 } from "@/services/campfireLivePreload";
-import { logHomeTileDuration } from "@/utils/homeTileLoadTiming";
-
 const TILE_BG = require("@/assets/images/campfire-tile-bg.png");
 
 const AMBER = "#C47A2A";
@@ -91,10 +89,8 @@ export function CampfireTile({
         setStatusReady(false);
       }
       void (async () => {
-        const refreshStart = performance.now();
         await refresh();
         if (!cancelled) {
-          logHomeTileDuration("campfire", performance.now() - refreshStart, "refresh");
           setStatusReady(true);
           hasLoadedOnceRef.current = true;
         }

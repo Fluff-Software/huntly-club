@@ -23,6 +23,7 @@ import {
   invalidateCampfireLivePreload,
   startCampfireLivePreload,
 } from "@/services/campfireLivePreload";
+import { logHomeTileDuration } from "@/utils/homeTileLoadTiming";
 
 const TILE_BG = require("@/assets/images/campfire-tile-bg.png");
 
@@ -45,7 +46,16 @@ function formatCountdownParts(ms: number) {
   return { hrs, mins, secs };
 }
 
-export function CampfireTile() {
+type CampfireTileProps = {
+  /** When true, parent handles entrance; tile reports readiness via onReadyChange. */
+  coordinatedEntrance?: boolean;
+  onReadyChange?: (ready: boolean) => void;
+};
+
+export function CampfireTile({
+  coordinatedEntrance = false,
+  onReadyChange,
+}: CampfireTileProps) {
   const { scaleW } = useLayoutScale();
   const { pushWithReturn } = useNavigationReturn();
   const [statusReady, setStatusReady] = useState(false);
@@ -113,8 +123,10 @@ export function CampfireTile() {
         setStatusReady(false);
       }
       void (async () => {
+        const refreshStart = performance.now();
         await refresh();
         if (!cancelled) {
+          logHomeTileDuration("campfire", performance.now() - refreshStart, "refresh");
           setStatusReady(true);
           hasLoadedOnceRef.current = true;
         }
@@ -125,8 +137,17 @@ export function CampfireTile() {
     }, [refresh])
   );
 
+  useEffect(() => {
+    onReadyChange?.(statusReady);
+  }, [statusReady, onReadyChange]);
+
   // Slide in once after first status load — same motion as the home team card.
   useEffect(() => {
+    if (coordinatedEntrance) {
+      tileTranslateX.value = 0;
+      tileOpacity.value = 1;
+      return;
+    }
     if (!statusReady) return;
 
     if (hasEntranceAnimatedRef.current) {
@@ -154,7 +175,7 @@ export function CampfireTile() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [statusReady, tileOpacity, tileTranslateX]);
+  }, [coordinatedEntrance, statusReady, tileOpacity, tileTranslateX]);
 
   // Safety net: keep the tile fresh even if status flips while user stays on home.
   useEffect(() => {
@@ -562,6 +583,10 @@ export function CampfireTile() {
       </ImageBackground>
     </View>
   );
+
+  if (coordinatedEntrance) {
+    return tileContent;
+  }
 
   return <Animated.View style={tileSlideStyle}>{tileContent}</Animated.View>;
 }

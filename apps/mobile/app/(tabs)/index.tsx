@@ -18,8 +18,6 @@ import AnimatedReanimated, {
   withSpring,
   withTiming,
   Easing,
-  FadeIn,
-  FadeInDown,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
@@ -39,6 +37,7 @@ import {
 } from "@/hooks/useSessionsWithMissions";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useUser } from "@/contexts/UserContext";
+import { useHomeBootstrap } from "@/contexts/HomeBootstrapContext";
 import {
   getRandomClubPhotos,
   hasAnyProfileCompletedActivity,
@@ -47,6 +46,16 @@ import {
 } from "@/services/activityProgressService";
 import { getActivityById } from "@/services/packService";
 import { getTeamCardConfig } from "@/utils/teamUtils";
+import {
+  prefetchClubPhotoImages,
+  prefetchTeamCardAssets,
+} from "@/utils/homeActivityPreload";
+import {
+  logHomeTileDuration,
+  logHomeTileReady,
+  logHomeTileSummary,
+  startHomeTileLoadTiming,
+} from "@/utils/homeTileLoadTiming";
 import type { ImageSourcePropType } from "react-native";
 
 type HomeMode = "profile" | "activity" | "missions";
@@ -59,8 +68,6 @@ const HUNTLY_GREEN = "#4F6F52";
 
 const CLUB_CARDS_PAGE_SIZE = 6;
 const CLUB_CARDS_MAX = 24;
-
-const TEAM_CARD_SLIDE_DURATION_MS = 420;
 
 /** Pastel/bright author badge colors (white text) for club cards */
 const CLUB_CARD_AUTHOR_COLORS = [
@@ -141,6 +148,8 @@ function pickEarliestAvailableMission(
 
 export default function HomeScreen() {
   const { scaleW, width, height } = useLayoutScale();
+  const { requireClubhouseActivityReady, markClubhouseActivityReady } =
+    useHomeBootstrap();
   const { pushWithReturn } = useNavigationReturn();
   const { profiles } = usePlayer();
   const {
@@ -168,7 +177,11 @@ export default function HomeScreen() {
   const [clubCardsLoading, setClubCardsLoading] = useState(true);
   const [loadingMoreClubCards, setLoadingMoreClubCards] = useState(false);
   const loadingMoreClubCardsRef = useRef(false);
-  const [clubImageStatus, setClubImageStatus] = useState<Record<string, "loading" | "loaded" | "error">>({});
+  const [clubMediaReady, setClubMediaReady] = useState(false);
+  const [teamAssetsReady, setTeamAssetsReady] = useState(false);
+  const [campfireTileReady, setCampfireTileReady] = useState(false);
+  const hasRevealedActivityTilesRef = useRef(false);
+  const homeTileTimingStartedRef = useRef(false);
   const [missionsTab, setMissionsTab] = useState<"missions" | "adventures">("missions");
   const [firstMissionCard, setFirstMissionCard] =
     useState<EarliestAvailableMission | null>(null);
@@ -194,17 +207,86 @@ export default function HomeScreen() {
   }, [teamCardConfig?.leaderName]);
 
   useEffect(() => {
+    if (!homeTileTimingStartedRef.current) {
+      homeTileTimingStartedRef.current = true;
+      startHomeTileLoadTiming();
+    }
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     setClubCardsLoading(true);
+    setClubMediaReady(false);
+    const apiStart = performance.now();
     getRandomClubPhotos(CLUB_CARDS_PAGE_SIZE).then((cards) => {
       if (!cancelled) setClubCards(cards);
     }).catch(() => {
       if (!cancelled) setClubCards([]);
     }).finally(() => {
-      if (!cancelled) setClubCardsLoading(false);
+      if (!cancelled) {
+        logHomeTileDuration("club", performance.now() - apiStart, "api");
+        logHomeTileReady("club", "api");
+        setClubCardsLoading(false);
+      }
     });
     return () => { cancelled = true; };
   }, []);
+
+  const initialClubCardSignature = useMemo(
+    () => clubCards.slice(0, CLUB_CARDS_PAGE_SIZE).map((card) => card.id).join(","),
+    [clubCards]
+  );
+
+  useEffect(() => {
+    if (clubCardsLoading) {
+      setClubMediaReady(false);
+      return;
+    }
+    if (clubCards.length === 0) {
+      logHomeTileReady("club", "images-skipped-empty");
+      setClubMediaReady(true);
+      return;
+    }
+    let cancelled = false;
+    setClubMediaReady(false);
+    const prefetchStart = performance.now();
+    const imageCount = Math.min(clubCards.length, CLUB_CARDS_PAGE_SIZE);
+    void prefetchClubPhotoImages(clubCards.slice(0, CLUB_CARDS_PAGE_SIZE))
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) {
+          logHomeTileDuration("club", performance.now() - prefetchStart, `images x${imageCount}`);
+          logHomeTileReady("club", "images");
+          setClubMediaReady(true);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [clubCardsLoading, initialClubCardSignature]);
+
+  useEffect(() => {
+    if (!teamCardConfig) {
+      logHomeTileReady("team", "skipped-no-team");
+      setTeamAssetsReady(true);
+      return;
+    }
+    let cancelled = false;
+    setTeamAssetsReady(false);
+    const teamStart = performance.now();
+    void prefetchTeamCardAssets(teamCardConfig)
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) {
+          logHomeTileDuration("team", performance.now() - teamStart, teamCardConfig.title);
+          logHomeTileReady("team");
+          setTeamAssetsReady(true);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [teamCardConfig]);
 
   useEffect(() => {
     setFirstMissionCardHidden(false);
@@ -357,27 +439,90 @@ export default function HomeScreen() {
   const profileButtonScale = useSharedValue(1);
   const missionsButtonScale = useSharedValue(1);
   const navScale = useSharedValue(1);
-  const teamCardTranslateX = useSharedValue(240);
-  const teamCardOpacity = useSharedValue(0);
   const missionsButtonStyle = useAnimatedStyle(() => ({ transform: [{ scale: missionsButtonScale.value }] }));
   const navButtonStyle = useAnimatedStyle(() => ({ transform: [{ scale: navScale.value }] }));
-  const teamCardStyle = useAnimatedStyle(() => ({
-    opacity: teamCardOpacity.value,
-    transform: [{ translateX: teamCardTranslateX.value }] }));
 
-  // Slide the team card in after a short fixed delay — no image-load dependency.
+  const showFirstMissionTile =
+    !firstMissionCardHidden &&
+    !savedFirstMissionCompleteInSessionData &&
+    (firstMissionCardLoading || firstMissionCard != null);
+  const firstMissionTileReady = !showFirstMissionTile || !firstMissionCardLoading;
+  const showClubTile = clubCards.length > 0;
+  const clubTileReady = !clubCardsLoading && (!showClubTile || clubMediaReady);
+  const teamTileReady = !teamCardConfig || teamAssetsReady;
+  const activityTilesReady =
+    firstMissionTileReady &&
+    campfireTileReady &&
+    clubTileReady &&
+    teamTileReady;
+
+  const handleCampfireReadyChange = useCallback((ready: boolean) => {
+    if (ready) logHomeTileReady("campfire");
+    setCampfireTileReady(ready);
+  }, []);
+
   useEffect(() => {
-    teamCardTranslateX.value = 240;
-    teamCardOpacity.value = 0;
-    if (!teamCardConfig) return;
-    let cancelled = false;
-    const timer = setTimeout(() => {
-      if (cancelled) return;
-      teamCardTranslateX.value = withTiming(0, { duration: TEAM_CARD_SLIDE_DURATION_MS, easing: Easing.out(Easing.cubic) });
-      teamCardOpacity.value = withTiming(1, { duration: 300, easing: Easing.out(Easing.cubic) });
-    }, 150);
-    return () => { cancelled = true; clearTimeout(timer); };
-  }, [teamCardConfig, teamCardOpacity, teamCardTranslateX]);
+    if (!firstMissionTileReady) return;
+    const detail =
+      showFirstMissionTile && firstMissionCard
+        ? `shown id=${firstMissionCard.id}`
+        : "hidden";
+    logHomeTileReady("first-mission", detail);
+  }, [firstMissionTileReady, showFirstMissionTile, firstMissionCard]);
+
+  useEffect(() => {
+    if (clubTileReady) logHomeTileReady("club", "tile-gate");
+  }, [clubTileReady]);
+
+  useEffect(() => {
+    requireClubhouseActivityReady();
+  }, [requireClubhouseActivityReady]);
+
+  useEffect(() => {
+    const pending: string[] = [];
+    if (!firstMissionTileReady) pending.push("first-mission");
+    if (!campfireTileReady) pending.push("campfire");
+    if (!clubTileReady) pending.push("club");
+    if (!teamTileReady) pending.push("team");
+    if (pending.length > 0) {
+      logHomeTileSummary(pending);
+    } else {
+      logHomeTileSummary([]);
+    }
+    if (activityTilesReady) {
+      markClubhouseActivityReady();
+    }
+  }, [
+    activityTilesReady,
+    firstMissionTileReady,
+    campfireTileReady,
+    clubTileReady,
+    teamTileReady,
+    markClubhouseActivityReady,
+  ]);
+
+  const activityTilesOpacity = useSharedValue(0);
+  const activityTilesTranslateY = useSharedValue(30);
+  const activityTilesGroupStyle = useAnimatedStyle(() => ({
+    opacity: activityTilesOpacity.value,
+    transform: [{ translateY: activityTilesTranslateY.value }],
+  }));
+
+  useEffect(() => {
+    if (!activityTilesReady) {
+      if (!hasRevealedActivityTilesRef.current) {
+        activityTilesOpacity.value = 0;
+        activityTilesTranslateY.value = 30;
+      }
+      return;
+    }
+    hasRevealedActivityTilesRef.current = true;
+    activityTilesOpacity.value = withTiming(1, {
+      duration: 420,
+      easing: Easing.out(Easing.cubic),
+    });
+    activityTilesTranslateY.value = withSpring(0, { damping: 28, stiffness: 220 });
+  }, [activityTilesReady, activityTilesOpacity, activityTilesTranslateY]);
 
   const resetToActivityPage = useCallback(() => {
     if (width <= 0) return;
@@ -787,16 +932,23 @@ export default function HomeScreen() {
           </ThemedText>
         </View>
 
-        {!firstMissionCardHidden &&
-        !savedFirstMissionCompleteInSessionData &&
-        (firstMissionCardLoading || firstMissionCard) ? (
+        <View style={{ position: "relative" }}>
           <AnimatedReanimated.View
-            key={firstMissionCard ? `first-mission-${firstMissionCard.id}` : "first-mission-loading"}
-            entering={
-              firstMissionCard
-                ? FadeInDown.duration(420).springify().damping(16)
-                : undefined
-            }
+            style={[
+              { gap: scaleW(16) },
+              activityTilesGroupStyle,
+              !activityTilesReady && {
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                opacity: 0,
+              },
+            ]}
+            pointerEvents={activityTilesReady ? "auto" : "none"}
+          >
+        {showFirstMissionTile && firstMissionCard ? (
+          <View
             style={{
               backgroundColor: "rgba(255,255,255,0.95)",
               borderRadius: scaleW(18),
@@ -804,54 +956,45 @@ export default function HomeScreen() {
               borderColor: "#7FAF8A",
               padding: scaleW(16),
               gap: scaleW(10),
-              minHeight: scaleW(88),
-              justifyContent: "center",
             }}
           >
-            {firstMissionCardLoading && !firstMissionCard ? (
-              <ActivityIndicator size="small" color={HUNTLY_GREEN} />
-            ) : firstMissionCard ? (
-              <>
-                <ThemedText
-                  type="heading"
-                  style={{ fontSize: scaleW(20), fontWeight: "800", color: HUNTLY_GREEN }}
-                >
-                  Complete your first mission
-                </ThemedText>
-                <ThemedText style={{ fontSize: scaleW(15), color: "#3D3D3D" }}>
-                  Start with {firstMissionCard.title} and earn your first points.
-                </ThemedText>
-                <Pressable
-                  onPress={() =>
-                    router.push({
-                      pathname: "/(tabs)/activity/mission",
-                      params: { id: String(firstMissionCard.id) },
-                    } as Parameters<typeof router.push>[0])
-                  }
-                  style={{
-                    alignSelf: "flex-start",
-                    backgroundColor: HUNTLY_GREEN,
-                    borderRadius: scaleW(24),
-                    paddingVertical: scaleW(10),
-                    paddingHorizontal: scaleW(16),
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: scaleW(4),
-                  }}
-                >
-                  <ThemedText lightColor="#FFF" darkColor="#FFF" style={{ fontSize: scaleW(14), fontWeight: "700" }}>
-                    Start first mission
-                  </ThemedText>
-                  <MaterialIcons name="chevron-right" size={scaleW(16)} color="#FFF" />
-                </Pressable>
-              </>
-            ) : null}
-          </AnimatedReanimated.View>
+            <ThemedText
+              type="heading"
+              style={{ fontSize: scaleW(20), fontWeight: "800", color: HUNTLY_GREEN }}
+            >
+              Complete your first mission
+            </ThemedText>
+            <ThemedText style={{ fontSize: scaleW(15), color: "#3D3D3D" }}>
+              Start with {firstMissionCard.title} and earn your first points.
+            </ThemedText>
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: "/(tabs)/activity/mission",
+                  params: { id: String(firstMissionCard.id) },
+                } as Parameters<typeof router.push>[0])
+              }
+              style={{
+                alignSelf: "flex-start",
+                backgroundColor: HUNTLY_GREEN,
+                borderRadius: scaleW(24),
+                paddingVertical: scaleW(10),
+                paddingHorizontal: scaleW(16),
+                flexDirection: "row",
+                alignItems: "center",
+                gap: scaleW(4),
+              }}
+            >
+              <ThemedText lightColor="#FFF" darkColor="#FFF" style={{ fontSize: scaleW(14), fontWeight: "700" }}>
+                Start first mission
+              </ThemedText>
+              <MaterialIcons name="chevron-right" size={scaleW(16)} color="#FFF" />
+            </Pressable>
+          </View>
         ) : null}
 
         {/* Character + speech bubble */}
         {teamCardConfig && (
-          <AnimatedReanimated.View style={teamCardStyle}>
             <View style={{
               backgroundColor: teamCardConfig.backgroundColor,
               borderRadius: scaleW(20),
@@ -929,17 +1072,16 @@ export default function HomeScreen() {
                 </View>
               </View>
             </View>
-          </AnimatedReanimated.View>
         )}
 
         {/* Campfire tile */}
-        <CampfireTile />
+        <CampfireTile
+          coordinatedEntrance
+          onReadyChange={handleCampfireReadyChange}
+        />
 
         {/* Club photos */}
-        {clubCards.length > 0 && (
-          <AnimatedReanimated.View
-            entering={FadeIn.duration(420).easing(Easing.out(Easing.cubic))}
-          >
+        {showClubTile && (
             <View
               style={{
                 backgroundColor: "#BBE5EB",
@@ -981,7 +1123,6 @@ export default function HomeScreen() {
                 decelerationRate="fast"
               >
                 {clubCards.map((card, index) => {
-                  const status = clubImageStatus[card.id] ?? "loading";
                   const centerScrollX = index === 0 ? 0 : getCenterScrollX(index);
                   const rotation = clubCardsScrollX.interpolate({
                     inputRange: [
@@ -1002,18 +1143,8 @@ export default function HomeScreen() {
                             source={{ uri: card.thumb_url || card.photo_url }}
                             style={styles.clubCardImage}
                             contentFit="cover"
-                            onLoadEnd={() => {
-                              setClubImageStatus((prev) => ({ ...prev, [card.id]: "loaded" }));
-                            }}
-                            onError={() => {
-                              setClubImageStatus((prev) => ({ ...prev, [card.id]: "error" }));
-                            }}
+                            cachePolicy="memory-disk"
                           />
-                          {status !== "loaded" && (
-                            <View style={styles.clubCardPlaceholder}>
-                              <ActivityIndicator size="small" color="#FFFFFF" />
-                            </View>
-                          )}
                           {card.team_name && (() => {
                             const cfg = getTeamCardConfig(card.team_name);
                             return (
@@ -1066,8 +1197,9 @@ export default function HomeScreen() {
                 )}
               </Animated.ScrollView>
             </View>
-          </AnimatedReanimated.View>
         )}
+          </AnimatedReanimated.View>
+        </View>
       </View>
     </ScrollView>
   );

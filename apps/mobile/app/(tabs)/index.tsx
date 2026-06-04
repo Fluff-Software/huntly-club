@@ -1316,10 +1316,7 @@ export default function HomeScreen() {
   );
 
   return (
-    <View
-      style={[styles.container, !clubhouseActivityReady && { opacity: 0 }]}
-      pointerEvents={clubhouseActivityReady ? "auto" : "none"}
-    >
+    <View style={styles.container}>
       <Animated.View
         style={[
           styles.backgroundContainer,
@@ -1335,7 +1332,26 @@ export default function HomeScreen() {
           <View style={styles.backgroundOverlay} />
         </ImageBackground>
       </Animated.View>
-      <SafeAreaView edges={["top", "left", "right"]} style={styles.container}>
+      {!clubhouseActivityReady ? (
+        <View
+          style={{
+            ...StyleSheet.absoluteFillObject,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+          pointerEvents="none"
+        >
+          <ActivityIndicator size="large" color="#F4F0EB" />
+        </View>
+      ) : null}
+      <SafeAreaView
+        edges={["top", "left", "right"]}
+        style={[
+          styles.container,
+          !clubhouseActivityReady && { opacity: 0 },
+        ]}
+        pointerEvents={clubhouseActivityReady ? "auto" : "none"}
+      >
         <View className="flex-1" style={styles.container}>
         <View className="flex-1">
         {renderNavigationButtons()}

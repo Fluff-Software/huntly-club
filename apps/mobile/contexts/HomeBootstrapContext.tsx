@@ -8,10 +8,9 @@ import React, {
 } from "react";
 import * as SplashScreen from "expo-splash-screen";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSegments } from "expo-router";
 
 type HomeBootstrapContextValue = {
-  /** Hold splash / full-screen loader until clubhouse activity tiles finish first load. */
+  /** Index screen blocks interaction until clubhouse activity tiles finish first load. */
   clubhouseActivityRequired: boolean;
   clubhouseActivityReady: boolean;
   requireClubhouseActivityReady: () => void;
@@ -75,32 +74,14 @@ export function useHomeBootstrapOptional() {
 }
 
 /**
- * Keeps the native splash visible until fonts load and (when needed) clubhouse
- * activity tiles have finished their initial preload.
+ * Hides the native splash once fonts are ready. Clubhouse tile preload uses the
+ * in-app index background instead of holding the green splash screen.
  */
 export function SplashScreenGate({ fontsReady }: { fontsReady: boolean }) {
-  const ctx = useHomeBootstrapOptional();
-  const { user } = useAuth();
-  const segments = useSegments();
-  const onTabs = segments[0] === "(tabs)";
-
   useEffect(() => {
     if (!fontsReady) return;
-    const waitingForClubhouse =
-      !!user &&
-      onTabs &&
-      !!ctx?.clubhouseActivityRequired &&
-      !ctx.clubhouseActivityReady;
-    if (!waitingForClubhouse) {
-      void SplashScreen.hideAsync();
-    }
-  }, [
-    fontsReady,
-    user,
-    onTabs,
-    ctx?.clubhouseActivityRequired,
-    ctx?.clubhouseActivityReady,
-  ]);
+    void SplashScreen.hideAsync();
+  }, [fontsReady]);
 
   return null;
 }

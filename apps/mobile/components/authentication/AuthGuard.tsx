@@ -7,8 +7,6 @@ import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { getProfiles, getUserData } from "@/services/profileService";
 import type { Profile } from "@/services/profileService";
 import { REQUIRE_EMAIL_VERIFICATION } from "@/constants/auth";
-import { useHomeBootstrapOptional } from "@/contexts/HomeBootstrapContext";
-
 const LOADER_BACKGROUND = "#4F6F52";
 
 function routeAfterSignupCheck(
@@ -44,13 +42,8 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const segments = useSegments();
   const router = useRouter();
   const signUpContext = useSignUpOptional();
-  const homeBootstrap = useHomeBootstrapOptional();
   const [checkingProfiles, setCheckingProfiles] = useState(true);
   const onTabs = segments[0] === "(tabs)";
-  // Do not wait for requireClubhouseActivityReady() in useEffect — that caused a
-  // one-frame flash of the home screen before this overlay mounted.
-  const waitingForClubhouseActivity =
-    onTabs && !!user && !homeBootstrap?.clubhouseActivityReady;
 
   useEffect(() => {
     const inAuthGroup = segments[0] === "auth";
@@ -169,10 +162,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   // We still validate profiles/userData during normal navigation, but we don't want a blocking
   // full-screen spinner during tab switches. Keep the UI responsive and only block during
   // the initial auth bootstrap / non-tab flows.
-  const showOverlay =
-    loading ||
-    (checkingProfiles && !onTabs) ||
-    waitingForClubhouseActivity;
+  const showOverlay = loading || (checkingProfiles && !onTabs);
 
   return (
     <View style={styles.wrapper}>

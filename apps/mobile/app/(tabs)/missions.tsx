@@ -4,7 +4,8 @@ import {
   ScrollView,
   StyleSheet,
   ActivityIndicator,
-  Pressable } from "react-native";
+  Pressable,
+  ImageBackground } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
@@ -21,7 +22,7 @@ import { usePlayer } from "@/contexts/PlayerContext";
 import { MissionCard } from "@/components/MissionCard";
 import { supabase } from "@/services/supabase";
 
-const MISSIONS_ORANGE = "#D2684B";
+const MISSIONS_BG = require("@/assets/images/missions-bg.png");
 
 function sessionSectionTitle(session: SessionWithActivities): string {
   return session.title?.trim() || "Campfire session";
@@ -102,10 +103,10 @@ export default function MissionsScreen() {
   const styles = useMemo(
     () =>
       StyleSheet.create({
-        container: { flex: 1, backgroundColor: MISSIONS_ORANGE },
+        container: { flex: 1 },
+        background: { flex: 1 },
         scrollContent: {
           flexGrow: 1,
-          backgroundColor: MISSIONS_ORANGE,
           paddingTop: scaleW(12),
           paddingBottom: scaleW(32) },
         title: {
@@ -162,6 +163,7 @@ export default function MissionsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+      <ImageBackground source={MISSIONS_BG} style={styles.background} resizeMode="cover">
       <ScrollView
         ref={scrollRef}
         style={{ flex: 1 }}
@@ -278,6 +280,7 @@ export default function MissionsScreen() {
           </>
         )}
       </ScrollView>
+      </ImageBackground>
     </SafeAreaView>
   );
 }

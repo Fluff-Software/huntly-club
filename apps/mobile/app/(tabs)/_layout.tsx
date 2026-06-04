@@ -17,6 +17,8 @@ import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useActiveTrackingSession } from "@/hooks/useActiveTrackingSession";
 import { NewPlayerTutorial } from "@/components/NewPlayerTutorial";
+import { TabTrophyIcon } from "@/components/TabTrophyIcon";
+import { SlideUpTabBar } from "@/components/SlideUpTabBar";
 import { ThemedText } from "@/components/ThemedText";
 import {
   preloadTabBarNavigationAssets,
@@ -32,6 +34,9 @@ import {
   registerForPushNotificationsAsync,
   setPushEnabled,
   setPushOptInAsked } from "@/services/pushNotificationService";
+
+const HOME_CLUBHOUSE = require("@/assets/images/home-clubhouse.png");
+const HOME_MISSIONS = require("@/assets/images/home-missions.png");
 
 const TAB_BAR_COLORS: Record<string, string> = {
   index: "#4F6F52",
@@ -361,7 +366,7 @@ export default function TabLayout() {
                   <StoryTabPulse size={scaleW(44)} />
                 </View>
               )}
-              <TabIcon source={TAB_BAR_TEAM_ICON} color={color} size={scaleW(24)} />
+              <TabTrophyIcon color={color} size={scaleW(24)} />
             </View>
           ),
           // Always show the Team tab; the screen itself already handles

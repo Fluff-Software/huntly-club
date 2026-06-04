@@ -13,7 +13,7 @@ import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useNavigationReturn } from "@/contexts/NavigationReturnContext";
 import {
   fetchCampfireTileRefresh,
-  getServerNowIso,
+  getServerNowMs,
   isCampfireLiveDismissed,
   type CampfireSessionRow,
 } from "@/services/campfireService";
@@ -171,21 +171,13 @@ export function CampfireTile({
 
   useEffect(() => {
     if (!scheduledAtMs) return;
-    let cancelled = false;
-    const tick = async () => {
-      const nowIso = await getServerNowIso();
-      if (cancelled) return;
-      const nowMs = nowIso ? Date.parse(nowIso) : Date.now();
+    const tick = () => {
+      const nowMs = getServerNowMs();
       setCountdownMs(Math.max(0, scheduledAtMs - nowMs));
     };
-    void tick();
-    const timer = setInterval(() => {
-      void tick();
-    }, 250);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
+    tick();
+    const timer = setInterval(tick, 250);
+    return () => clearInterval(timer);
   }, [scheduledAtMs]);
 
   const parts = useMemo(

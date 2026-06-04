@@ -113,19 +113,88 @@ export const CAMPFIRE_BUILTIN_CAPTAINS: CaptainOption[] = [
 const SESSION_COLUMNS =
   "id, title, status, scheduled_at, live_started_at, live_ended_at, duration, description, thumbnail_url";
 
-export async function getServerNowIso(): Promise<string | null> {
-  const { data, error } = await supabase.rpc("get_server_now");
-  if (error) {
-    console.error("Failed to load server time:", error.message);
-    return null;
+/** Device clock + offset from last successful `get_server_now` RPC. */
+let serverTimeOffsetMs: number | null = null;
+let lastServerTimeSyncMs = 0;
+let serverTimeSyncInFlight: Promise<void> | null = null;
+let loggedServerTimeUnavailable = false;
+
+const SERVER_TIME_REFRESH_MS = 30_000;
+const SERVER_TIME_RETRY_AFTER_FAIL_MS = 60_000;
+
+function serverNowMsFromCache(): number {
+  return serverTimeOffsetMs != null
+    ? Date.now() + serverTimeOffsetMs
+    : Date.now();
+}
+
+function serverNowIsoFromCache(): string {
+  return new Date(serverNowMsFromCache()).toISOString();
+}
+
+async function syncServerTimeOffset(): Promise<void> {
+  const now = Date.now();
+  if (
+    serverTimeOffsetMs != null &&
+    now - lastServerTimeSyncMs < SERVER_TIME_REFRESH_MS
+  ) {
+    return;
   }
-  return typeof data === "string" ? data : (data as string | null);
+  if (
+    serverTimeOffsetMs == null &&
+    lastServerTimeSyncMs > 0 &&
+    now - lastServerTimeSyncMs < SERVER_TIME_RETRY_AFTER_FAIL_MS
+  ) {
+    return;
+  }
+  if (serverTimeSyncInFlight) {
+    await serverTimeSyncInFlight;
+    return;
+  }
+
+  const run = async () => {
+    const { data, error } = await supabase.rpc("get_server_now");
+    lastServerTimeSyncMs = Date.now();
+    if (error) {
+      if (!loggedServerTimeUnavailable) {
+        loggedServerTimeUnavailable = true;
+        console.warn(
+          "Server time unavailable, using device clock:",
+          error.message
+        );
+      }
+      return;
+    }
+    const iso =
+      typeof data === "string" ? data : (data as string | null) ?? null;
+    if (!iso) return;
+    loggedServerTimeUnavailable = false;
+    serverTimeOffsetMs = Date.parse(iso) - Date.now();
+  };
+
+  serverTimeSyncInFlight = run();
+  try {
+    await serverTimeSyncInFlight;
+  } finally {
+    serverTimeSyncInFlight = null;
+  }
+}
+
+/** Current time in ms (server-synced when available, otherwise device clock). */
+export function getServerNowMs(): number {
+  void syncServerTimeOffset();
+  return serverNowMsFromCache();
+}
+
+export async function getServerNowIso(): Promise<string | null> {
+  await syncServerTimeOffset();
+  return serverNowIsoFromCache();
 }
 
 async function resolveServerNowMs(nowMs?: number): Promise<number> {
   if (nowMs !== undefined && !Number.isNaN(nowMs)) return nowMs;
-  const nowIso = await getServerNowIso();
-  return nowIso ? Date.parse(nowIso) : Date.now();
+  await syncServerTimeOffset();
+  return serverNowMsFromCache();
 }
 
 /** Client hint: user finished watching this live session (before cron sets replay). */

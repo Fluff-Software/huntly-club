@@ -50,7 +50,7 @@ export default async function EditActivityPage({
   }
 
   return (
-    <div>
+    <div className="max-w-2xl pb-4">
       <h1 className="mb-8 text-2xl font-semibold text-stone-900">
         Edit mission: {activity.title}
       </h1>

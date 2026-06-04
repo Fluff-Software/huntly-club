@@ -6,7 +6,7 @@ import { useFormStatus } from "react-dom";
 import { Button } from "@/components/Button";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { ImageCropModal } from "@/components/ImageCropModal";
-import { MISSION_MEDIA_ASPECT } from "@/lib/image-aspects";
+import { MISSION_MEDIA_ASPECT, imageAspectStyle } from "@/lib/image-aspects";
 import { uploadActivityImage } from "@/lib/upload-actions";
 import { compressImageFileForUpload } from "@/lib/client-image-resize";
 
@@ -124,6 +124,8 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
   const [stepCropOpen, setStepCropOpen] = useState(false);
   const [stepCropIndex, setStepCropIndex] = useState<number | null>(null);
   const [stepPendingFile, setStepPendingFile] = useState<File | null>(null);
+  const [stepFileTargetIndex, setStepFileTargetIndex] = useState<number | null>(null);
+  const stepFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -182,6 +184,27 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
     setStepCropOpen(true);
   }
 
+  function handleStepFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    const index = stepFileTargetIndex;
+    e.target.value = "";
+    e.target.blur();
+    setStepFileTargetIndex(null);
+    if (!file || index == null) return;
+
+    const scrollEl = document.querySelector<HTMLElement>("main[data-app-scroll]");
+    const savedScrollTop = scrollEl?.scrollTop ?? 0;
+    handleOpenStepCrop(index, file);
+    requestAnimationFrame(() => {
+      if (scrollEl) scrollEl.scrollTop = savedScrollTop;
+    });
+  }
+
+  function handleUploadStepImageClick(index: number) {
+    setStepFileTargetIndex(index);
+    stepFileInputRef.current?.click();
+  }
+
   function handleCancelStepCrop() {
     setStepCropOpen(false);
     setStepCropIndex(null);
@@ -198,6 +221,7 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
   }
 
   return (
+    <>
     <form
       action={formAction}
       className="max-w-2xl space-y-6"
@@ -512,7 +536,10 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
                     <span className="text-sm text-stone-500">Uploading…</span>
                   ) : step.media_url ? (
                     <div className="flex items-start gap-2">
-                      <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg border border-stone-200">
+                      <div
+                        className="relative w-36 shrink-0 overflow-hidden rounded-lg border border-stone-200"
+                        style={imageAspectStyle(MISSION_MEDIA_ASPECT)}
+                      >
                         <Image
                           src={step.media_url}
                           alt=""
@@ -522,20 +549,13 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
                         />
                       </div>
                       <div className="flex flex-col gap-1">
-                        <label className="cursor-pointer rounded-lg border border-stone-300 px-2 py-1 text-xs text-stone-600 hover:bg-stone-100">
+                        <button
+                          type="button"
+                          onClick={() => handleUploadStepImageClick(index)}
+                          className="rounded-lg border border-stone-300 px-2 py-1 text-xs text-stone-600 hover:bg-stone-100"
+                        >
                           Change
-                          <input
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp,image/gif"
-                            className="sr-only"
-                            onChange={(e) => {
-                              const f = e.target.files?.[0];
-                              if (!f) return;
-                              e.currentTarget.value = "";
-                              handleOpenStepCrop(index, f);
-                            }}
-                          />
-                        </label>
+                        </button>
                         <button
                           type="button"
                           onClick={() =>
@@ -550,20 +570,13 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
                       </div>
                     </div>
                   ) : (
-                    <label className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-dashed border-stone-400 px-3 py-2 text-sm text-stone-600 hover:border-huntly-sage hover:text-huntly-forest">
+                    <button
+                      type="button"
+                      onClick={() => handleUploadStepImageClick(index)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-dashed border-stone-400 px-3 py-2 text-sm text-stone-600 hover:border-huntly-sage hover:text-huntly-forest"
+                    >
                       + Upload image
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp,image/gif"
-                        className="sr-only"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (!f) return;
-                          e.currentTarget.value = "";
-                          handleOpenStepCrop(index, f);
-                        }}
-                      />
-                    </label>
+                    </button>
                   )}
                   {step._uploadError && (
                     <p className="mt-1 text-xs text-red-600" role="alert">
@@ -819,6 +832,18 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
         )}
       </div>
 
+    </form>
+
+      <input
+        ref={stepFileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        tabIndex={-1}
+        aria-hidden
+        className="fixed left-0 top-0 h-px w-px opacity-0"
+        onChange={handleStepFileSelected}
+      />
+
       <ImageCropModal
         open={stepCropOpen}
         file={stepPendingFile}
@@ -827,6 +852,6 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
         onCancel={handleCancelStepCrop}
         onConfirm={handleConfirmStepCrop}
       />
-    </form>
+    </>
   );
 }

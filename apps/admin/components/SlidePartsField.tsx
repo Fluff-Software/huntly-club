@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/Button";
 import { ImageCropModal } from "@/components/ImageCropModal";
+import { STORY_SLIDE_ASPECT, imageAspectStyle } from "@/lib/image-aspects";
 import { compressImageFileForUpload } from "@/lib/client-image-resize";
 import { uploadSlideImage, generateAdhocSlideImage } from "@/lib/upload-actions";
 
@@ -280,12 +281,15 @@ export function SlidePartsField({
                   <span className="text-sm text-stone-500">Uploading…</span>
                 )}
                 {(slide.type === "image" ? slide.value : slide.image) && (
-                  <div className="relative mt-2 h-32 w-full max-w-sm overflow-hidden rounded-lg border border-stone-200">
+                  <div
+                    className="relative mt-2 w-full max-w-sm overflow-hidden rounded-lg border border-stone-200"
+                    style={imageAspectStyle(STORY_SLIDE_ASPECT)}
+                  >
                     <Image
                       src={slide.type === "image" ? slide.value : slide.image}
                       alt=""
                       fill
-                      className="object-contain"
+                      className="object-cover"
                       unoptimized={
                         !(slide.type === "image" ? slide.value : slide.image).includes("supabase.co")
                       }
@@ -331,7 +335,7 @@ export function SlidePartsField({
         open={cropOpen}
         file={pendingFile}
         title="Crop slide image"
-        aspect={16 / 9}
+        aspect={STORY_SLIDE_ASPECT}
         onCancel={handleCancelCrop}
         onConfirm={handleConfirmCrop}
       />

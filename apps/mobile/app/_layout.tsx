@@ -28,6 +28,7 @@ import {
   HomeBootstrapProvider,
   SplashScreenGate,
 } from "@/contexts/HomeBootstrapContext";
+import { ProfileDashboardProvider } from "@/contexts/ProfileDashboardContext";
 import { AuthGuard } from "@/components/authentication/AuthGuard";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { supabase } from "@/services/supabase";
@@ -138,6 +139,7 @@ export default function RootLayout() {
           <PurchasesProvider>
             <UserProvider>
               <PlayerProvider>
+                <ProfileDashboardProvider>
                 <HomeBootstrapProvider>
                   <SplashScreenGate fontsReady={fontsReady} />
                   <ThemeProvider value={DefaultTheme}>
@@ -150,6 +152,7 @@ export default function RootLayout() {
                     <StatusBar style="dark" />
                   </ThemeProvider>
                 </HomeBootstrapProvider>
+                </ProfileDashboardProvider>
               </PlayerProvider>
             </UserProvider>
           </PurchasesProvider>

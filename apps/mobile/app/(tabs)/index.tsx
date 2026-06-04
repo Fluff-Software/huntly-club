@@ -36,6 +36,7 @@ import {
   type SessionWithActivities,
 } from "@/hooks/useSessionsWithMissions";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { useProfileDashboard } from "@/contexts/ProfileDashboardContext";
 import { useUser } from "@/contexts/UserContext";
 import { useHomeBootstrap } from "@/contexts/HomeBootstrapContext";
 import {
@@ -144,7 +145,8 @@ export default function HomeScreen() {
   const { clubhouseActivityReady, requireClubhouseActivityReady, markClubhouseActivityReady } =
     useHomeBootstrap();
   const { pushWithReturn } = useNavigationReturn();
-  const { profiles } = usePlayer();
+  const { profiles, loading: profilesLoading } = usePlayer();
+  const { preload: preloadProfileDashboard } = useProfileDashboard();
   const {
     userData,
     team,
@@ -209,6 +211,12 @@ export default function HomeScreen() {
     const msgs = SPEECH_BUBBLE_MESSAGES(teamCardConfig?.leaderName ?? "");
     return msgs[Math.floor(Math.random() * msgs.length)];
   }, [teamCardConfig?.leaderName]);
+
+  useEffect(() => {
+    if (!profilesLoading && profiles.length > 0) {
+      preloadProfileDashboard();
+    }
+  }, [profilesLoading, profiles.length, preloadProfileDashboard]);
 
   useEffect(() => {
     let cancelled = false;

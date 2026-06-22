@@ -38,24 +38,20 @@ export function ImageUploadField({
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-
     e.target.value = "";
     e.target.blur();
-
-    const scrollEl = document.querySelector<HTMLElement>("main[data-app-scroll]");
-    const savedScrollTop = scrollEl?.scrollTop ?? 0;
-
     setUploadError(null);
     setPendingFile(file);
     setCropOpen(true);
-
-    requestAnimationFrame(() => {
-      if (scrollEl) scrollEl.scrollTop = savedScrollTop;
-    });
   }
 
   function handleChooseFileClick() {
+    const scrollEl = document.querySelector<HTMLElement>("main[data-app-scroll]");
+    const savedScrollTop = scrollEl?.scrollTop ?? 0;
     fileInputRef.current?.click();
+    requestAnimationFrame(() => {
+      if (scrollEl) scrollEl.scrollTop = savedScrollTop;
+    });
   }
 
   function resetFileInput() {

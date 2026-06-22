@@ -191,18 +191,17 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
     e.target.blur();
     setStepFileTargetIndex(null);
     if (!file || index == null) return;
-
-    const scrollEl = document.querySelector<HTMLElement>("main[data-app-scroll]");
-    const savedScrollTop = scrollEl?.scrollTop ?? 0;
     handleOpenStepCrop(index, file);
-    requestAnimationFrame(() => {
-      if (scrollEl) scrollEl.scrollTop = savedScrollTop;
-    });
   }
 
   function handleUploadStepImageClick(index: number) {
+    const scrollEl = document.querySelector<HTMLElement>("main[data-app-scroll]");
+    const savedScrollTop = scrollEl?.scrollTop ?? 0;
     setStepFileTargetIndex(index);
     stepFileInputRef.current?.click();
+    requestAnimationFrame(() => {
+      if (scrollEl) scrollEl.scrollTop = savedScrollTop;
+    });
   }
 
   function handleCancelStepCrop() {

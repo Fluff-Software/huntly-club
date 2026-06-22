@@ -191,18 +191,17 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
     e.target.blur();
     setStepFileTargetIndex(null);
     if (!file || index == null) return;
-
-    const scrollEl = document.querySelector<HTMLElement>("main[data-app-scroll]");
-    const savedScrollTop = scrollEl?.scrollTop ?? 0;
     handleOpenStepCrop(index, file);
-    requestAnimationFrame(() => {
-      if (scrollEl) scrollEl.scrollTop = savedScrollTop;
-    });
   }
 
   function handleUploadStepImageClick(index: number) {
+    const scrollEl = document.querySelector<HTMLElement>("main[data-app-scroll]");
+    const savedScrollTop = scrollEl?.scrollTop ?? 0;
     setStepFileTargetIndex(index);
     stepFileInputRef.current?.click();
+    requestAnimationFrame(() => {
+      if (scrollEl) scrollEl.scrollTop = savedScrollTop;
+    });
   }
 
   function handleCancelStepCrop() {
@@ -834,15 +833,17 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
 
     </form>
 
-      <input
-        ref={stepFileInputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif"
-        tabIndex={-1}
-        aria-hidden
-        className="fixed left-0 top-0 h-px w-px opacity-0"
-        onChange={handleStepFileSelected}
-      />
+      <span className="relative">
+        <input
+          ref={stepFileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          tabIndex={-1}
+          aria-hidden
+          className="absolute h-0 w-0 overflow-hidden opacity-0"
+          onChange={handleStepFileSelected}
+        />
+      </span>
 
       <ImageCropModal
         open={stepCropOpen}

@@ -12,6 +12,7 @@ import {
   type ApprovedPhotoOption,
   type CampfireComponentRow,
   type CampfireComponentType,
+  CAMPFIRE_SESSION_COLUMNS,
   type CampfireSessionRow,
   type CampfireSessionStatus,
   type CampfireTrackRow,
@@ -41,9 +42,7 @@ export async function getCampfireSessions(): Promise<CampfireSessionRow[]> {
   const supabase = createServerSupabaseClient();
   const { data, error } = await supabase
     .from("campfire_sessions")
-    .select(
-      "id, created_at, updated_at, title, status, scheduled_at, duration, description, thumbnail_url, missions"
-    )
+    .select(CAMPFIRE_SESSION_COLUMNS)
     .order("updated_at", { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -56,14 +55,29 @@ export async function getCampfireSession(
   const supabase = createServerSupabaseClient();
   const { data, error } = await supabase
     .from("campfire_sessions")
-    .select(
-      "id, created_at, updated_at, title, status, scheduled_at, duration, description, thumbnail_url, missions"
-    )
+    .select(CAMPFIRE_SESSION_COLUMNS)
     .eq("id", sessionId)
     .maybeSingle();
 
   if (error) throw new Error(error.message);
   return data as CampfireSessionRow | null;
+}
+
+export async function setCampfireSessionShowViewerCount(
+  sessionId: number,
+  showViewerCount: boolean
+): Promise<void> {
+  const supabase = createServerSupabaseClient();
+  const { error } = await supabase
+    .from("campfire_sessions")
+    .update({
+      show_viewer_count: showViewerCount,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", sessionId);
+
+  if (error) throw new Error(error.message);
+  revalidateCampfire(sessionId);
 }
 
 export async function getEditorData(sessionId: number): Promise<{
@@ -80,9 +94,7 @@ export async function getEditorData(sessionId: number): Promise<{
     await Promise.all([
       supabase
         .from("campfire_sessions")
-        .select(
-          "id, created_at, updated_at, title, status, scheduled_at, duration, description, thumbnail_url, missions"
-        )
+        .select(CAMPFIRE_SESSION_COLUMNS)
         .eq("id", sessionId)
         .single(),
       supabase

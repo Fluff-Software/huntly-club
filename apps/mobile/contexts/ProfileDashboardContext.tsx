@@ -92,9 +92,12 @@ export function ProfileDashboardProvider({
   const loadedKeyRef = useRef<string | null>(null);
   const inFlightRef = useRef<Promise<void> | null>(null);
   const pendingRefreshRef = useRef(false);
+  const profilesRef = useRef(profiles);
+  useEffect(() => { profilesRef.current = profiles; }, [profiles]);
 
   const loadDashboard = useCallback(
     async (options?: { force?: boolean }) => {
+      const profiles = profilesRef.current;
       if (!user?.id || profiles.length === 0) {
         loadedKeyRef.current = null;
         setRecentActivities([]);
@@ -148,7 +151,7 @@ export function ProfileDashboardProvider({
         }
       }
     },
-    [user?.id, profiles, profilesKey]
+    [user?.id, profilesKey]
   );
 
   const preload = useCallback(() => {

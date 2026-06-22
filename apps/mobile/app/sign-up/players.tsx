@@ -159,7 +159,7 @@ export default function SignUpPlayersScreen() {
                 marginTop: scaleW(20),
                 marginBottom: scaleW(46) }}
             >
-              You can add more explorers at anytime.
+              Add your children as explorers — you can add more at any time.
             </ThemedText>
           </Animated.View>
 
@@ -203,14 +203,14 @@ export default function SignUpPlayersScreen() {
                               fontWeight: "600",
                               fontSize: scaleW(16) }}
                           >
-                            Name
+                            Child's name
                           </ThemedText>
                           <ThemedText
                             lightColor="#36454F"
                             darkColor="#36454F"
                             style={{ fontSize: scaleW(12), marginTop: scaleW(4) }}
                           >
-                            (Only visible to you)
+                            Your child's name (only visible to you)
                           </ThemedText>
                         </View>
                         <Pressable
@@ -227,7 +227,7 @@ export default function SignUpPlayersScreen() {
                       <TextInput
                         value={name}
                         onChangeText={setName}
-                        placeholder="Enter name"
+                        placeholder="Enter your child's name"
                         placeholderTextColor="#9CA3AF"
                         autoCapitalize="words"
                         style={{
@@ -474,14 +474,14 @@ export default function SignUpPlayersScreen() {
                       fontWeight: "600",
                       fontSize: scaleW(16) }}
                   >
-                    Name
+                    Child's name
                   </ThemedText>
                   <ThemedText
                     lightColor="#36454F"
                     darkColor="#36454F"
                     style={{ fontSize: scaleW(12), marginTop: scaleW(4) }}
                   >
-                    (Only visible to you)
+                    Your child's name (only visible to you)
                   </ThemedText>
                 </View>
                 {showTrash && (
@@ -500,7 +500,7 @@ export default function SignUpPlayersScreen() {
               <TextInput
                 value={name}
                 onChangeText={setName}
-                placeholder="Enter name"
+                placeholder="Enter your child's name"
                 placeholderTextColor="#9CA3AF"
                 autoCapitalize="words"
                 style={{

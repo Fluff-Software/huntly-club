@@ -834,17 +834,15 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
 
     </form>
 
-      <span className="relative">
-        <input
-          ref={stepFileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
-          tabIndex={-1}
-          aria-hidden
-          className="absolute h-0 w-0 overflow-hidden opacity-0"
-          onChange={handleStepFileSelected}
-        />
-      </span>
+      <input
+        ref={stepFileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        tabIndex={-1}
+        aria-hidden
+        className="fixed left-0 top-0 h-px w-px opacity-0"
+        onChange={handleStepFileSelected}
+      />
 
       <ImageCropModal
         open={stepCropOpen}

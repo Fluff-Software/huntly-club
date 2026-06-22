@@ -38,20 +38,24 @@ export function ImageUploadField({
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+
     e.target.value = "";
     e.target.blur();
+
+    const scrollEl = document.querySelector<HTMLElement>("main[data-app-scroll]");
+    const savedScrollTop = scrollEl?.scrollTop ?? 0;
+
     setUploadError(null);
     setPendingFile(file);
     setCropOpen(true);
-  }
 
-  function handleChooseFileClick() {
-    const scrollEl = document.querySelector<HTMLElement>("main[data-app-scroll]");
-    const savedScrollTop = scrollEl?.scrollTop ?? 0;
-    fileInputRef.current?.click();
     requestAnimationFrame(() => {
       if (scrollEl) scrollEl.scrollTop = savedScrollTop;
     });
+  }
+
+  function handleChooseFileClick() {
+    fileInputRef.current?.click();
   }
 
   function resetFileInput() {
@@ -105,25 +109,23 @@ export function ImageUploadField({
       {help && <p className="mb-1 text-xs text-stone-500">{help}</p>}
       <input id={name} name={name} type="hidden" value={url} />
       <div className="flex flex-wrap items-center gap-2">
-        <span className="relative">
-          <button
-            type="button"
-            onClick={handleChooseFileClick}
-            disabled={isPending}
-            className="rounded-lg bg-huntly-forest px-4 py-2 text-sm font-medium text-white hover:bg-huntly-leaf disabled:opacity-50"
-          >
-            Choose file
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            tabIndex={-1}
-            aria-hidden
-            className="absolute h-0 w-0 overflow-hidden opacity-0"
-            onChange={handleFileChange}
-          />
-        </span>
+        <button
+          type="button"
+          onClick={handleChooseFileClick}
+          disabled={isPending}
+          className="rounded-lg bg-huntly-forest px-4 py-2 text-sm font-medium text-white hover:bg-huntly-leaf disabled:opacity-50"
+        >
+          Choose file
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          tabIndex={-1}
+          aria-hidden
+          className="fixed left-0 top-0 h-px w-px opacity-0"
+          onChange={handleFileChange}
+        />
         {isPending && (
           <span className="text-sm text-stone-500">Uploading…</span>
         )}

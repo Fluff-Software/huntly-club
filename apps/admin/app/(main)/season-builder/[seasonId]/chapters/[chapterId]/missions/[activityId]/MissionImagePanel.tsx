@@ -4,7 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { uploadActivityImage } from "@/lib/upload-actions";
 import { compressImageFileForUpload } from "@/lib/client-image-resize";
 import { ImageCropModal } from "@/components/ImageCropModal";
-import { MISSION_MEDIA_ASPECT } from "@/lib/image-aspects";
+import { MISSION_MEDIA_ASPECT, imageAspectStyle } from "@/lib/image-aspects";
 import { updateImagePrompt, generateImageForAsset, approveImageAsset } from "../../../../images/actions";
 import { attachUploadedImageToAsset, regenerateActivityCoverPrompt } from "./actions";
 
@@ -139,7 +139,10 @@ export function MissionImagePanel({ asset, seasonId, chapterId, activityId }: Pr
       </div>
 
       {asset.storage_path ? (
-        <div className="overflow-hidden rounded-lg bg-stone-100 aspect-video">
+        <div
+          className="overflow-hidden rounded-lg bg-stone-100"
+          style={imageAspectStyle(MISSION_MEDIA_ASPECT)}
+        >
           <img
             src={asset.storage_path}
             alt=""
@@ -147,7 +150,10 @@ export function MissionImagePanel({ asset, seasonId, chapterId, activityId }: Pr
           />
         </div>
       ) : (
-        <div className="flex aspect-video w-full items-center justify-center rounded-lg border-2 border-dashed border-stone-200 bg-stone-50">
+        <div
+          className="flex w-full items-center justify-center rounded-lg border-2 border-dashed border-stone-200 bg-stone-50"
+          style={imageAspectStyle(MISSION_MEDIA_ASPECT)}
+        >
           <span className="text-xs text-stone-400">
             {isPending ? "Working…" : "No image yet"}
           </span>

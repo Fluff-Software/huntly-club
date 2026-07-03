@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
+import { MissionThumb } from "./CampfirePickerModals";
 import type { ActivityOption } from "../types";
 
 type Props = {
@@ -135,7 +136,7 @@ export function SessionMissionsModal({
                     <li key={a.id}>
                       <label
                         htmlFor={inputId}
-                        className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+                        className={`flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
                           checked
                             ? "bg-huntly-forest/15 text-stone-100"
                             : "text-stone-300 hover:bg-stone-800/60"
@@ -148,8 +149,18 @@ export function SessionMissionsModal({
                           onChange={() => toggle(a.id)}
                           className="size-4 shrink-0 rounded border-stone-600 bg-stone-900 text-huntly-forest focus:ring-huntly-sage/40 focus:ring-offset-0"
                         />
+                        <MissionThumb image={a.image} title={a.title} />
                         <span className="min-w-0 flex-1 leading-snug">
                           {a.title}
+                          {a.release_date ? (
+                            <span className="block text-[11px] text-stone-500">
+                              Releases {formatReleaseDate(a.release_date)}
+                            </span>
+                          ) : (
+                            <span className="block text-[11px] text-amber-600/90">
+                              No release date set
+                            </span>
+                          )}
                         </span>
                       </label>
                     </li>
@@ -172,4 +183,13 @@ export function SessionMissionsModal({
       </div>
     </div>
   );
+}
+
+function formatReleaseDate(isoDate: string): string {
+  const parts = isoDate.split("-");
+  if (parts.length === 3) {
+    const [yyyy, mm, dd] = parts;
+    return `${dd}/${mm}/${yyyy.slice(-2)}`;
+  }
+  return isoDate;
 }

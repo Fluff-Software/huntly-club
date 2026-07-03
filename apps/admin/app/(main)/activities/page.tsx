@@ -1,8 +1,11 @@
+import Link from "next/link";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { Button } from "@/components/Button";
 
-/** `unlock_date` from DB is YYYY-MM-DD; format without timezone shifts. */
-function formatChapterUnlockDate(isoDate: string): string {
+type SessionRef = { id: number; title: string };
+
+/** `release_date` from DB is YYYY-MM-DD; format without timezone shifts. */
+function formatReleaseDate(isoDate: string): string {
   const parts = isoDate.split("-");
   if (parts.length === 3) {
     const [yyyy, mm, dd] = parts;
@@ -11,59 +14,89 @@ function formatChapterUnlockDate(isoDate: string): string {
   return isoDate;
 }
 
-type ChapterEmbed = { unlock_date: string } | { unlock_date: string }[] | null;
-
-type RawChapterActivityRow = {
-  activity_id: number;
-  chapter_id: number;
-  chapters: ChapterEmbed;
-};
-
-function chapterUnlockDateFromRow(chapters: ChapterEmbed): string | null {
-  if (!chapters) return null;
-  const row = Array.isArray(chapters) ? chapters[0] : chapters;
-  return row?.unlock_date ?? null;
-}
-
-function buildUnlockDatesByActivityId(rows: RawChapterActivityRow[]): Record<number, string[]> {
-  const map = new Map<number, Set<string>>();
-  for (const row of rows) {
-    const date = chapterUnlockDateFromRow(row.chapters);
-    if (!date) continue;
-    let set = map.get(row.activity_id);
-    if (!set) {
-      set = new Set();
-      map.set(row.activity_id, set);
+function buildSessionsByActivityId(
+  sessions: { id: number; title: string; missions: number[] | null }[]
+): Record<number, SessionRef[]> {
+  const map = new Map<number, SessionRef[]>();
+  for (const session of sessions) {
+    for (const missionId of session.missions ?? []) {
+      const activityId = Number(missionId);
+      if (!Number.isFinite(activityId)) continue;
+      const list = map.get(activityId) ?? [];
+      list.push({ id: session.id, title: session.title });
+      map.set(activityId, list);
     }
-    set.add(date);
   }
-  const out: Record<number, string[]> = {};
-  for (const [activityId, dates] of map) {
-    out[activityId] = [...dates].sort();
+  const out: Record<number, SessionRef[]> = {};
+  for (const [activityId, list] of map) {
+    out[activityId] = [...list].sort((a, b) => a.title.localeCompare(b.title));
   }
   return out;
+}
+
+function CampfireCell({ sessions }: { sessions: SessionRef[] | undefined }) {
+  if (!sessions?.length) {
+    return (
+      <span className="text-sm italic text-stone-400">Not in a session</span>
+    );
+  }
+  if (sessions.length === 1) {
+    const s = sessions[0];
+    return (
+      <Link
+        href={`/campfire-sessions/${s.id}`}
+        className="text-sm font-medium text-huntly-forest hover:underline"
+      >
+        {s.title}
+      </Link>
+    );
+  }
+  return (
+    <ul className="space-y-0.5 text-sm text-stone-700">
+      {sessions.map((s) => (
+        <li key={s.id}>
+          <Link
+            href={`/campfire-sessions/${s.id}`}
+            className="font-medium text-huntly-forest hover:underline"
+          >
+            {s.title}
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ReleaseDateCell({ releaseDate }: { releaseDate: string | null }) {
+  if (!releaseDate) {
+    return (
+      <span className="text-sm italic text-amber-700">
+        Not set
+      </span>
+    );
+  }
+  return (
+    <span className="text-sm text-stone-700">{formatReleaseDate(releaseDate)}</span>
+  );
 }
 
 async function getActivitiesWithProfilesPlayed() {
   const supabase = createServerSupabaseClient();
 
-  const [activitiesRes, profilesCountRes, progressRes, chapterLinksRes] =
-    await Promise.all([
-      supabase
-        .from("activities")
-        .select("id, name, title, xp, created_at")
-        .order("id"),
-      supabase.from("profiles").select("id", { count: "exact", head: true }),
-      supabase.from("user_activity_progress").select("activity_id"),
-      supabase
-        .from("chapter_activities")
-        .select("activity_id, chapter_id, chapters(unlock_date)"),
-    ]);
+  const [activitiesRes, profilesCountRes, progressRes, sessionsRes] = await Promise.all([
+    supabase
+      .from("activities")
+      .select("id, name, title, xp, created_at, release_date")
+      .order("id"),
+    supabase.from("profiles").select("id", { count: "exact", head: true }),
+    supabase.from("user_activity_progress").select("activity_id"),
+    supabase.from("campfire_sessions").select("id, title, missions").order("id"),
+  ]);
 
   if (activitiesRes.error) throw new Error(activitiesRes.error.message);
   if (profilesCountRes.error) throw new Error(profilesCountRes.error.message);
   if (progressRes.error) throw new Error(progressRes.error.message);
-  if (chapterLinksRes.error) throw new Error(chapterLinksRes.error.message);
+  if (sessionsRes.error) throw new Error(sessionsRes.error.message);
 
   const activities = activitiesRes.data ?? [];
   const totalProfiles = profilesCountRes.count ?? 0;
@@ -77,54 +110,21 @@ async function getActivitiesWithProfilesPlayed() {
     {}
   );
 
-  const unlockDatesByActivityId = buildUnlockDatesByActivityId(
-    (chapterLinksRes.data ?? []) as RawChapterActivityRow[]
+  const sessionsByActivityId = buildSessionsByActivityId(
+    (sessionsRes.data ?? []) as { id: number; title: string; missions: number[] | null }[]
   );
 
   return {
     activities,
     totalProfiles,
     progressCountByActivityId,
-    unlockDatesByActivityId,
+    sessionsByActivityId,
   };
 }
 
-function ChapterUnlockCell({
-  unlockDates,
-}: {
-  unlockDates: string[] | undefined;
-}) {
-  if (!unlockDates?.length) {
-    return (
-      <span className="text-sm italic text-stone-400">
-        Not connected to a chapter
-      </span>
-    );
-  }
-  if (unlockDates.length === 1) {
-    return (
-      <span className="text-sm text-stone-700">
-        {formatChapterUnlockDate(unlockDates[0])}
-      </span>
-    );
-  }
-  return (
-    <div className="text-sm text-stone-700">
-      <p className="font-medium text-amber-800">Multiple chapters</p>
-      <p className="mt-0.5 text-xs text-stone-500">
-        {unlockDates.map(formatChapterUnlockDate).join(" · ")}
-      </p>
-    </div>
-  );
-}
-
 export default async function ActivitiesPage() {
-  const {
-    activities,
-    totalProfiles,
-    progressCountByActivityId,
-    unlockDatesByActivityId,
-  } = await getActivitiesWithProfilesPlayed();
+  const { activities, totalProfiles, progressCountByActivityId, sessionsByActivityId } =
+    await getActivitiesWithProfilesPlayed();
 
   return (
     <div>
@@ -134,7 +134,8 @@ export default async function ActivitiesPage() {
             Missions
           </h1>
           <p className="mt-1 text-sm text-stone-500">
-            Missions can be assigned to chapters when editing a chapter.
+            Set a release date on each mission and add it to a campfire session&apos;s
+            missions in scope for the mobile app.
           </p>
         </div>
         <Button href="/activities/new" size="md" className="sm:shrink-0">
@@ -188,14 +189,19 @@ export default async function ActivitiesPage() {
                     </p>
                   </div>
 
-                  <div className="col-span-2 rounded-lg border border-stone-200 bg-stone-50/40 px-3 py-2">
+                  <div className="rounded-lg border border-stone-200 bg-stone-50/40 px-3 py-2">
                     <p className="text-xs font-medium text-stone-500">
-                      Chapter unlock date
+                      Release date
                     </p>
                     <div className="mt-0.5">
-                      <ChapterUnlockCell
-                        unlockDates={unlockDatesByActivityId[a.id]}
-                      />
+                      <ReleaseDateCell releaseDate={a.release_date} />
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-stone-200 bg-stone-50/40 px-3 py-2">
+                    <p className="text-xs font-medium text-stone-500">Campfire</p>
+                    <div className="mt-0.5">
+                      <CampfireCell sessions={sessionsByActivityId[a.id]} />
                     </div>
                   </div>
 
@@ -249,7 +255,13 @@ export default async function ActivitiesPage() {
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500"
                   >
-                    Chapter unlock date
+                    Release date
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500"
+                  >
+                    Campfire
                   </th>
                   <th
                     scope="col"
@@ -279,9 +291,10 @@ export default async function ActivitiesPage() {
                       {progressCountByActivityId[a.id] ?? 0} / {totalProfiles}
                     </td>
                     <td className="max-w-[12rem] px-6 py-4">
-                      <ChapterUnlockCell
-                        unlockDates={unlockDatesByActivityId[a.id]}
-                      />
+                      <ReleaseDateCell releaseDate={a.release_date} />
+                    </td>
+                    <td className="max-w-[14rem] px-6 py-4">
+                      <CampfireCell sessions={sessionsByActivityId[a.id]} />
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-stone-500">
                       {new Date(a.created_at).toLocaleDateString("en-GB")}

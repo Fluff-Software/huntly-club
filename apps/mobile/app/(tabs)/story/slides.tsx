@@ -27,6 +27,7 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useFirstSeason } from "@/hooks/useFirstSeason";
 import { useAllChapters } from "@/hooks/useAllChapters";
+import { ScreenBackBar } from "@/components/ChildScreenLayout";
 
 type StorySlide =
   | { type: "text"; value: string }
@@ -664,6 +665,7 @@ export default function StorySlidesScreen() {
   if (!storyReady) {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]} edges={["top", "left", "right"]}>
+        <ScreenBackBar variant="dark" />
         <StoryLoadingScreen scaleW={scaleW} />
         {/* Render images at 0 size so the RN image pipeline decodes them before display */}
         {imageUris.map((uri) => (
@@ -675,6 +677,7 @@ export default function StorySlidesScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+      <ScreenBackBar variant="dark" />
       <View style={styles.slidesWrapper}>
         <FlatList
           ref={flatListRef}

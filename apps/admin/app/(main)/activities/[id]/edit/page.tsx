@@ -50,7 +50,7 @@ export default async function EditActivityPage({
   }
 
   return (
-    <div>
+    <div className="max-w-2xl pb-4">
       <h1 className="mb-8 text-2xl font-semibold text-stone-900">
         Edit mission: {activity.title}
       </h1>
@@ -81,6 +81,7 @@ export default async function EditActivityPage({
           debrief_photo_label: activity.debrief_photo_label ?? null,
           debrief_question_1: activity.debrief_question_1 ?? null,
           debrief_question_2: activity.debrief_question_2 ?? null,
+          release_date: activity.release_date ?? null,
         }}
       />
       <div className="mt-4 flex items-center justify-between">

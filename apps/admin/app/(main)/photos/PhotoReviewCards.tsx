@@ -10,6 +10,7 @@ import { DenyReasonModal } from "./DenyReasonModal";
 import { ApprovePhotoModal } from "./ApprovePhotoModal";
 import { useSwipe } from "@/hooks/useSwipe";
 import { ImageCropModal, type ImageCropState } from "@/components/ImageCropModal";
+import { PHOTO_REVIEW_ASPECT } from "@/lib/image-aspects";
 import { EditedPhotoPreviewModal } from "./EditedPhotoPreviewModal";
 
 export type ReviewPhoto = {
@@ -232,7 +233,7 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
         open={editCropOpen}
         file={editPendingFile}
         title="Edit photo"
-        aspect={16 / 9}
+        aspect={PHOTO_REVIEW_ASPECT}
         enableBlur
         confirmLabel="Use edit"
         initialState={editDraftState ?? undefined}
@@ -256,7 +257,7 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
         <div
           style={cardStyle}
           {...pointerHandlers}
-          className="relative aspect-[3/4] overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-lg"
+          className="relative aspect-square overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-lg"
         >
           {/* Approve overlay (swipe right) */}
           {overlayDirection === "right" && (

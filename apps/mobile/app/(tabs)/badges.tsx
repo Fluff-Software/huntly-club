@@ -6,7 +6,6 @@ import {
   StyleSheet,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
 import { useFocusEffect } from "expo-router";
 import { useLocalSearchParams } from "expo-router";
@@ -19,6 +18,7 @@ import {
 import { BadgeDetailModal } from "@/components/BadgeDetailModal";
 import { BadgeImage } from "@/components/BadgeImage";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { ChildScreenLayout } from "@/components/ChildScreenLayout";
 import { prefetchBadgeImage, prefetchBadgeImages } from "@/utils/badgeImageCache";
 
 export default function BadgesScreen() {
@@ -131,15 +131,14 @@ export default function BadgesScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <ScrollView
+    <>
+      <ChildScreenLayout
+        variant="light"
+        backgroundColor="#F4F0EB"
         contentContainerStyle={[
           styles.content,
           {
             gap: scaleW(12),
-            paddingHorizontal: scaleW(isTablet ? 30 : 24),
-            paddingTop: scaleW(16),
-            paddingBottom: scaleW(40),
             width: "100%",
             maxWidth: isTablet ? scaleW(780) : undefined,
             alignSelf: "center",
@@ -257,7 +256,7 @@ export default function BadgesScreen() {
             </View>
           ))
         )}
-      </ScrollView>
+      </ChildScreenLayout>
 
       <BadgeDetailModal
         visible={selectedBadge != null}
@@ -279,7 +278,7 @@ export default function BadgesScreen() {
         earnedAt={selectedBadge?.earned_at ?? undefined}
         onClose={() => setSelectedBadge(null)}
       />
-    </SafeAreaView>
+    </>
   );
 }
 

@@ -688,24 +688,45 @@ function buildThumbnailUrl(originalUrl: string): string {
   return `${originalUrl}${separator}${params}`;
 }
 
-/**
- * Returns up to `count` random approved photos from the club (any activity).
- * Each item includes activity title and profile nickname for display.
- * status 1 = approved. Nicknames come from profile_public (id + nickname only).
- * Pass excludeIds when loading more to avoid duplicates.
- */
-export const getRandomClubPhotos = async (
+function mapClubPhotoRows(
+  rows: {
+    photo_id: number | string;
+    photo_url: string;
+    activity_title?: string;
+    nickname?: string;
+    team_name?: string;
+  }[]
+): ClubPhotoCardItem[] {
+  return rows.map((row) => {
+    const photoUrl = String(row.photo_url ?? "");
+    const teamName = row.team_name?.trim();
+    return {
+      id: String(row.photo_id),
+      thumb_url: buildThumbnailUrl(photoUrl),
+      photo_url: photoUrl,
+      title: row.activity_title ?? "",
+      author: row.nickname ?? "",
+      team_name: teamName ? teamName : undefined,
+    };
+  });
+}
+
+/** Client fallback when get_random_club_photos RPC is unavailable. */
+async function getRandomClubPhotosFallback(
   count: number,
-  excludeIds: string[] = []
-): Promise<ClubPhotoCardItem[]> => {
+  excludeIds: string[]
+): Promise<ClubPhotoCardItem[]> {
+  const poolSize = Math.max(count * 12, 72);
   const { data, error } = await supabase
     .from("user_activity_photos")
     .select("photo_id, photo_url, profile_id, activities(title)")
     .eq("status", 1)
-    .not("activity_id", "is", null);
+    .not("activity_id", "is", null)
+    .order("photo_id", { ascending: false })
+    .limit(poolSize);
 
   if (error) {
-    console.error("Error fetching club photos:", error);
+    console.error("Error fetching club photos (fallback):", error);
     throw new Error(`Failed to fetch club photos: ${error.message}`);
   }
 
@@ -752,6 +773,43 @@ export const getRandomClubPhotos = async (
       team_name: teamName || undefined,
     };
   });
+}
+
+/**
+ * Returns up to `count` random approved photos from the club (any activity).
+ * Uses bounded server RPC when available; falls back to a capped client query.
+ * Pass excludeIds when loading more to avoid duplicates.
+ */
+export const getRandomClubPhotos = async (
+  count: number,
+  excludeIds: string[] = []
+): Promise<ClubPhotoCardItem[]> => {
+  const excludeNumeric = excludeIds
+    .map((id) => Number(id))
+    .filter((id) => Number.isFinite(id));
+
+  const { data, error } = await supabase.rpc("get_random_club_photos", {
+    p_count: count,
+    p_exclude_ids: excludeNumeric,
+  });
+
+  if (!error && data != null) {
+    const rows = data as {
+      photo_id: number;
+      photo_url: string;
+      activity_title: string;
+      nickname: string;
+      team_name: string;
+    }[];
+    if (rows.length > 0) {
+      return mapClubPhotoRows(rows);
+    }
+    if (excludeNumeric.length === 0) return [];
+  } else if (error) {
+    console.warn("get_random_club_photos RPC failed, using fallback:", error.message);
+  }
+
+  return getRandomClubPhotosFallback(count, excludeIds);
 };
 
 export type EarliestAvailableMission = {
@@ -761,36 +819,38 @@ export type EarliestAvailableMission = {
   image: string | null;
 };
 
-/** Returns the earliest mission from unlocked chapters in the latest season. */
+/** Returns the earliest released mission in campfire session scope (oldest release_date first). */
 export const getEarliestAvailableMission = async (): Promise<EarliestAvailableMission | null> => {
   const today = ukTodayForChapterUnlockGate();
-  const { data: latestSeason, error: seasonError } = await supabase
-    .from("seasons")
-    .select("id")
-    .order("id", { ascending: false })
-    .limit(1)
-    .maybeSingle();
 
-  if (seasonError) {
-    throw new Error(`Failed to load latest season: ${seasonError.message}`);
+  const { data: sessionRows, error: sessionsError } = await supabase
+    .from("campfire_sessions")
+    .select("missions, scheduled_at, id");
+
+  if (sessionsError) {
+    throw new Error(`Failed to load campfire sessions: ${sessionsError.message}`);
   }
 
-  if (!latestSeason?.id) return null;
+  const missionIds = new Set<number>();
+  for (const row of sessionRows ?? []) {
+    const ids = (row.missions as number[] | null) ?? [];
+    for (const id of ids) {
+      if (Number.isFinite(id)) missionIds.add(Number(id));
+    }
+  }
+
+  if (missionIds.size === 0) return null;
 
   const { data, error } = await supabase
-    .from("chapter_activities")
-    .select(
-      `
-      order,
-      chapters!inner(unlock_date, season_id),
-      activities!inner(id, title, description, image, content_status)
-    `
-    )
-    .eq("chapters.season_id", latestSeason.id)
-    .lte("chapters.unlock_date", today)
-    .eq("activities.content_status", "published")
-    .order("unlock_date", { ascending: true, referencedTable: "chapters" })
-    .order("order", { ascending: true })
+    .from("activities")
+    .select("id, title, description, image, release_date, session_order")
+    .in("id", [...missionIds])
+    .eq("content_status", "published")
+    .not("release_date", "is", null)
+    .lte("release_date", today)
+    .order("release_date", { ascending: true })
+    .order("session_order", { ascending: true })
+    .order("id", { ascending: true })
     .limit(1)
     .maybeSingle();
 
@@ -798,14 +858,13 @@ export const getEarliestAvailableMission = async (): Promise<EarliestAvailableMi
     throw new Error(`Failed to load earliest available mission: ${error.message}`);
   }
 
-  const activity = Array.isArray(data?.activities) ? data.activities[0] : data?.activities;
-  if (!activity?.id) return null;
+  if (!data?.id) return null;
 
   return {
-    id: activity.id,
-    title: activity.title,
-    description: activity.description ?? null,
-    image: activity.image ?? null,
+    id: data.id,
+    title: data.title,
+    description: data.description ?? null,
+    image: data.image ?? null,
   };
 };
 

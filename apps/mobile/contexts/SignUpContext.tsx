@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useMemo } from "react";
 
 export type SignUpPlayer = {
   name: string;
@@ -30,8 +30,6 @@ type SignUpContextValue = {
   tutorialStep:
     | "intro"
     | "clubhouse"
-    | "click_story"
-    | "seasons"
     | "click_missions"
     | "missions"
     | "click_team"
@@ -44,8 +42,6 @@ type SignUpContextValue = {
     step:
       | "intro"
       | "clubhouse"
-      | "click_story"
-      | "seasons"
       | "click_missions"
       | "missions"
       | "click_team"
@@ -58,6 +54,8 @@ type SignUpContextValue = {
   /** When true, show tutorial even if user has completed it (e.g. "Show tutorial again" from Settings). */
   replayTutorialRequested: boolean;
   setReplayTutorialRequested: (value: boolean) => void;
+  /** True while the post-sign-up tutorial overlay is active (skip tab refetches). */
+  isTutorialActive: boolean;
 };
 
 const SignUpContext = createContext<SignUpContextValue | null>(null);
@@ -69,7 +67,7 @@ export function SignUpProvider({ children }: { children: React.ReactNode }) {
   const [selectedTeamName, setSelectedTeamName] = useState<string | null>(null);
   const [showPostSignUpWelcome, setShowPostSignUpWelcome] = useState(false);
   const [tutorialStep, setTutorialStep] = useState<
-    "intro" | "clubhouse" | "click_story" | "seasons" | "click_missions" | "missions" | "click_team" | "team" | "click_journal" | "journal" | "wrap_up" | "done"
+    "intro" | "clubhouse" | "click_missions" | "missions" | "click_team" | "team" | "click_journal" | "journal" | "wrap_up" | "done"
   >("intro");
   const [replayTutorialRequested, setReplayTutorialRequested] = useState(false);
 
@@ -108,6 +106,11 @@ export function SignUpProvider({ children }: { children: React.ReactNode }) {
     setSelectedTeamName(null);
   }, []);
 
+  const isTutorialActive = useMemo(
+    () => showPostSignUpWelcome && tutorialStep !== "done",
+    [showPostSignUpWelcome, tutorialStep]
+  );
+
   return (
     <SignUpContext.Provider
       value={{
@@ -129,6 +132,7 @@ export function SignUpProvider({ children }: { children: React.ReactNode }) {
         setTutorialStep,
         replayTutorialRequested,
         setReplayTutorialRequested,
+        isTutorialActive,
       }}
     >
       {children}

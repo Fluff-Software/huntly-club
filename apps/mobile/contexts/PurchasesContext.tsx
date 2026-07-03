@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
+import { getUserData } from '@/services/profileService';
 import {
   type CustomerInfo,
   type PurchasesOffering,
@@ -23,6 +24,10 @@ type PurchasesContextType = {
   offerings: PurchasesOffering | null;
   subscriptionInfo: UserSubscriptionInfo;
   isLoading: boolean;
+  /** True if this account is grandfathered in (existed before the subscription requirement). */
+  isGrandfathered: boolean;
+  /** Whether the user should be treated as having access: a real subscription OR grandfathered. */
+  hasAccess: boolean;
   purchasePackage: (pkg: PurchasesPackage) => Promise<CustomerInfo | null>;
   restorePurchases: () => Promise<CustomerInfo | null>;
   refreshSubscriptionStatus: () => Promise<void>;
@@ -40,6 +45,7 @@ export const PurchasesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const { user } = useAuth();
   const [offerings, setOfferings] = useState<PurchasesOffering | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isGrandfathered, setIsGrandfathered] = useState(false);
   const [subscriptionInfo, setSubscriptionInfo] = useState<UserSubscriptionInfo>({
     isSubscribed: false,
     status: 'unknown',
@@ -64,15 +70,18 @@ export const PurchasesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     void init();
   }, []);
 
-  // Update user ID on login/logout
+  // Update user ID on login/logout, and check whether this account is grandfathered in
   useEffect(() => {
     const handleUserChange = async () => {
       setIsLoading(true);
       try {
         if (user?.id) {
           await updatePurchasesUserId(user.id);
+          const userData = await getUserData(user.id);
+          setIsGrandfathered(userData?.subscription_exempt ?? false);
         } else {
           await resetPurchasesUser();
+          setIsGrandfathered(false);
         }
         await refreshSubscriptionStatus();
       } finally {
@@ -143,6 +152,8 @@ export const PurchasesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         offerings,
         subscriptionInfo,
         isLoading,
+        isGrandfathered,
+        hasAccess: subscriptionInfo.isSubscribed || isGrandfathered,
         purchasePackage: handlePurchasePackage,
         restorePurchases: handleRestorePurchases,
         refreshSubscriptionStatus,

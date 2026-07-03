@@ -38,7 +38,7 @@ type AuthGuardProps = {
 
 export function AuthGuard({ children }: AuthGuardProps) {
   const { user, session, loading } = useAuth();
-  const { subscriptionInfo, isLoading: purchasesLoading } = usePurchases();
+  const { hasAccess, isLoading: purchasesLoading } = usePurchases();
   const segments = useSegments();
   const router = useRouter();
   const signUpContext = useSignUpOptional();
@@ -143,21 +143,21 @@ export function AuthGuard({ children }: AuthGuardProps) {
       return;
     }
 
-    // Require active subscription for signed-in users to access the app
+    // Require active subscription (or grandfathered access) for signed-in users to access the app
     const inSubscriptionRequired = segments[0] === "subscription-required";
     if (
       user &&
       !inUnauthFlow &&
       !inSubscriptionRequired &&
       !purchasesLoading &&
-      !subscriptionInfo.isSubscribed
+      !hasAccess
     ) {
       router.replace("/subscription-required");
       return;
     }
 
     setCheckingProfiles(false);
-  }, [user, session, loading, segments, subscriptionInfo.isSubscribed, purchasesLoading]);
+  }, [user, session, loading, segments, hasAccess, purchasesLoading]);
 
   // We still validate profiles/userData during normal navigation, but we don't want a blocking
   // full-screen spinner during tab switches. Keep the UI responsive and only block during

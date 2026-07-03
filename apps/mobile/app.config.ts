@@ -111,11 +111,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     googleServicesFile: "./google-services.json",
     permissions: [
       "ACTIVITY_RECOGNITION",
-      "ACCESS_FINE_LOCATION",
-      "ACCESS_COARSE_LOCATION",
-      "ACCESS_BACKGROUND_LOCATION",
       "FOREGROUND_SERVICE",
-      "FOREGROUND_SERVICE_LOCATION",
     ],
     intentFilters: [
       {
@@ -160,11 +156,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         locationAlwaysAndWhenInUsePermission:
           "Huntly World uses your location while an adventure is active so your route can keep tracking when the app is in the background.",
         isIosBackgroundLocationEnabled: true,
-        isAndroidBackgroundLocationEnabled: true,
-        isAndroidForegroundServiceEnabled: true,
+        isAndroidBackgroundLocationEnabled: false,
+        isAndroidForegroundServiceEnabled: false,
       },
     ],
-    "./plugins/withAndroidLocationNotification.js",
     [
       "@maplibre/maplibre-react-native",
       {

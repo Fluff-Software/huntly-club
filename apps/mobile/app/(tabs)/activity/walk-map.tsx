@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { View, StyleSheet, Pressable, Modal, Animated, Easing } from "react-native";
+import { View, StyleSheet, Platform, Pressable, Modal, Animated, Easing } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -116,6 +116,10 @@ export default function WalkMapScreen() {
           return;
         }
         if (cancelled) return;
+        if (Platform.OS === "android") {
+          setStatus("ready");
+          return;
+        }
         const pos = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.High });
         if (cancelled) return;
@@ -177,6 +181,7 @@ export default function WalkMapScreen() {
 
   useEffect(() => {
     if (status !== "ready") return;
+    if (Platform.OS === "android") return;
     let cancelled = false;
     let subscription: Location.LocationSubscription | null = null;
 
@@ -430,7 +435,37 @@ export default function WalkMapScreen() {
           borderRadius: scaleW(28),
           paddingVertical: scaleW(14),
           alignItems: "center" },
-        modalSecondaryText: { fontSize: scaleW(16), fontWeight: "900", color: HUNTLY_GREEN } }),
+        modalSecondaryText: { fontSize: scaleW(16), fontWeight: "900", color: HUNTLY_GREEN },
+        androidStepBody: {
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          gap: scaleW(8),
+          paddingBottom: scaleW(104) + insets.bottom,
+          paddingHorizontal: scaleW(32) },
+        androidStepCount: {
+          fontSize: scaleW(80),
+          fontWeight: "900",
+          color: FOREST_DARK,
+          lineHeight: scaleW(88) },
+        androidStepLabel: {
+          fontSize: scaleW(22),
+          color: HUNTLY_GREEN,
+          fontWeight: "700",
+          marginBottom: scaleW(8) },
+        androidStatRow: {
+          flexDirection: "row" as const,
+          alignItems: "center",
+          gap: scaleW(6) },
+        androidStatText: {
+          fontSize: scaleW(18),
+          color: FOREST_DARK,
+          fontWeight: "600" },
+        androidStepHint: {
+          fontSize: scaleW(13),
+          color: "#5a5a5a",
+          textAlign: "center",
+          marginTop: scaleW(12) } }),
     [scaleW, insets.bottom, isTablet]
   );
 
@@ -552,7 +587,51 @@ export default function WalkMapScreen() {
       </View>
 
       <View style={styles.body}>
-        {status === "ready" && region ? (
+        {status === "ready" && Platform.OS === "android" ? (
+          <View style={styles.androidStepBody}>
+            <MaterialIcons name="directions-walk" size={scaleW(72)} color={HUNTLY_GREEN} />
+            <ThemedText type="heading" style={styles.androidStepCount}>
+              {stepsStatus === "ready" ? steps.toLocaleString() : "—"}
+            </ThemedText>
+            <ThemedText style={styles.androidStepLabel}>steps</ThemedText>
+            <View style={styles.androidStatRow}>
+              <MaterialIcons name="timer" size={scaleW(18)} color={FOREST_DARK} />
+              <ThemedText style={styles.androidStatText}>{formatDurationMs(durationMs)}</ThemedText>
+            </View>
+            {stepsStatus === "denied" && (
+              <ThemedText style={styles.androidStepHint}>
+                Enable motion & fitness permissions in Settings to count steps.
+              </ThemedText>
+            )}
+            {stepsStatus === "unavailable" && (
+              <ThemedText style={styles.androidStepHint}>
+                Step counting isn't available on this device.
+              </ThemedText>
+            )}
+            <View style={styles.footer}>
+              <View style={styles.footerActions}>
+                <Pressable
+                  style={styles.stopButton}
+                  onPress={() => setStopConfirmVisible(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Stop walk"
+                >
+                  <MaterialIcons name="stop" size={scaleW(24)} color="#FFF" />
+                </Pressable>
+                <Pressable
+                  style={styles.completeButton}
+                  onPress={openConfirm}
+                  accessibilityRole="button"
+                  accessibilityLabel="Complete walk"
+                >
+                  <ThemedText type="heading" style={styles.completeButtonText}>
+                    Complete
+                  </ThemedText>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        ) : status === "ready" && region ? (
           <View style={styles.map}>
             <ActivityMap
               ref={mapRef}

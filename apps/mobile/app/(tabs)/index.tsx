@@ -25,7 +25,6 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { AdventureTile } from "@/components/AdventureTile";
 import { PastAdventuresTile } from "@/components/PastAdventuresTile";
-import { CampfireTile } from "@/components/CampfireTile";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useNavigationReturn } from "@/contexts/NavigationReturnContext";
 import { useTutorialActive } from "@/hooks/useTutorialActive";

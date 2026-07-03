@@ -14,6 +14,7 @@ const nav = [
   { href: "/campfire-sessions", label: "Campfire Sessions" },
   { href: "/badges", label: "Badges" },
   { href: "/mission-completions", label: "Mission Completions" },
+  { href: "/simulated-activity", label: "Simulated Activity" },
   { href: "/categories", label: "Categories" },
   { href: "/resources", label: "Resources" },
   { href: "/photos", label: "Photos" },

@@ -16,17 +16,17 @@ export default function SubscriptionRequiredScreen() {
   const router = useRouter();
   const { signOut } = useAuth();
   const {
-    subscriptionInfo,
+    hasAccess,
     isLoading,
     presentPaywall,
     refreshSubscriptionStatus } = usePurchases();
 
-  // When they become subscribed (e.g. after purchase or restore), send them into the app
+  // When they gain access (e.g. after purchase or restore), send them into the app
   useEffect(() => {
-    if (!isLoading && subscriptionInfo.isSubscribed) {
+    if (!isLoading && hasAccess) {
       router.replace("/(tabs)");
     }
-  }, [isLoading, subscriptionInfo.isSubscribed, router]);
+  }, [isLoading, hasAccess, router]);
 
   const handleSubscribe = async () => {
     await presentPaywall();

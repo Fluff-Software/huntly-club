@@ -24,12 +24,10 @@ import Animated, {
 import { MaterialIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
-import { useNavigation } from "@react-navigation/native";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useFirstSeason } from "@/hooks/useFirstSeason";
 import { useAllChapters } from "@/hooks/useAllChapters";
-import { useUser } from "@/contexts/UserContext";
-import { START_MISSION_STEP } from "@/constants/startMissionOnboarding";
+import { ScreenBackBar } from "@/components/ChildScreenLayout";
 
 type StorySlide =
   | { type: "text"; value: string }
@@ -442,10 +440,7 @@ function StoryLoadingScreen({ scaleW }: { scaleW: (n: number) => number }) {
 
 export default function StorySlidesScreen() {
   const router = useRouter();
-  const navigation = useNavigation();
-  const params = useLocalSearchParams<{ source?: string; chapterId?: string; onboardingFlow?: string }>();
-  const onboardingFlow = params.onboardingFlow === "start-mission";
-  const { updateStartMissionStep } = useUser();
+  const params = useLocalSearchParams<{ source?: string; chapterId?: string }>();
   const { firstSeason, loading: seasonLoading } = useFirstSeason();
   const { chapters, loading: chaptersLoading } = useAllChapters();
   const dataLoading = seasonLoading || chaptersLoading;
@@ -554,17 +549,6 @@ export default function StorySlidesScreen() {
         animated: true });
     }
   }, [currentIndex, width, slides.length]);
-
-  useEffect(() => {
-    if (!onboardingFlow) return;
-    const unsubscribe = navigation.addListener("beforeRemove", (event) => {
-      const actionType = event.data.action.type;
-      if (actionType === "GO_BACK" || actionType === "POP") {
-        event.preventDefault();
-      }
-    });
-    return unsubscribe;
-  }, [onboardingFlow, navigation]);
 
   const viewabilityConfig = useMemo(
     () => ({ viewAreaCoveragePercentThreshold: 60 }),
@@ -681,6 +665,7 @@ export default function StorySlidesScreen() {
   if (!storyReady) {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]} edges={["top", "left", "right"]}>
+        <ScreenBackBar variant="dark" />
         <StoryLoadingScreen scaleW={scaleW} />
         {/* Render images at 0 size so the RN image pipeline decodes them before display */}
         {imageUris.map((uri) => (
@@ -692,6 +677,7 @@ export default function StorySlidesScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+      <ScreenBackBar variant="dark" />
       <View style={styles.slidesWrapper}>
         <FlatList
           ref={flatListRef}
@@ -742,22 +728,15 @@ export default function StorySlidesScreen() {
         {currentIndex === slides.length - 1 && (
           <Pressable
             onPress={() => {
-              if (onboardingFlow) {
-                void updateStartMissionStep(START_MISSION_STEP.MISSION_INTRO).catch((error) => {
-                  console.warn("Failed to persist onboarding step:", error);
-                });
-                router.replace("/onboarding/mission-intro");
-                return;
-              }
               router.push("/(tabs)/missions");
             }}
             style={styles.missionsCta}
             accessible
             accessibilityRole="button"
-            accessibilityLabel={onboardingFlow ? "Next" : "View missions"}
+            accessibilityLabel="View missions"
           >
             <Text style={styles.missionsCtaText}>
-              {onboardingFlow ? "Next" : "View missions →"}
+              View missions →
             </Text>
           </Pressable>
         )}

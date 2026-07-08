@@ -1,13 +1,11 @@
 import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
 import { useFocusEffect } from "expo-router";
 import { useLocalSearchParams } from "expo-router";
@@ -15,11 +13,13 @@ import { usePlayer } from "@/contexts/PlayerContext";
 import {
   Badge,
   BadgeProgressRow,
-  getBadgeDisplay,
   getBadgeProgressRows,
 } from "@/services/badgeService";
 import { BadgeDetailModal } from "@/components/BadgeDetailModal";
+import { BadgeImage } from "@/components/BadgeImage";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { ChildScreenLayout } from "@/components/ChildScreenLayout";
+import { prefetchBadgeImage, prefetchBadgeImages } from "@/utils/badgeImageCache";
 
 export default function BadgesScreen() {
   const { profiles } = usePlayer();
@@ -45,6 +45,9 @@ export default function BadgesScreen() {
         if (isMounted) {
           setRows(data);
           setLoading(false);
+          void prefetchBadgeImages(
+            data.map((row) => ({ image_url: row.image_url }))
+          );
         }
       };
       void load();
@@ -118,43 +121,24 @@ export default function BadgesScreen() {
   const renderBadgeIcon = (badge: BadgeProgressRow) => {
     const iconSize = scaleW(isTablet ? 64 : 44);
     const emojiSize = scaleW(isTablet ? 48 : 36);
-    const display = getBadgeDisplay({
-      id: badge.badge_id,
-      name: badge.name,
-      description: badge.description,
-      image_url: badge.image_url,
-      category: badge.category,
-      requirement_type: badge.requirement_type,
-      requirement_value: badge.requirement_value,
-      requirement_category: badge.requirement_category ?? undefined,
-    } as Badge);
-    if (display.type === "image") {
-      return (
-        <Image
-          source={{ uri: display.content }}
-          style={[styles.badgeImage, { width: iconSize, height: iconSize }]}
-        />
-      );
-    }
     return (
-      <ThemedText
-        style={[styles.badgeEmoji, { fontSize: emojiSize, lineHeight: emojiSize + scaleW(4) }]}
-      >
-        {display.content}
-      </ThemedText>
+      <BadgeImage
+        badge={{ image_url: badge.image_url }}
+        size={iconSize}
+        emojiFontSize={emojiSize}
+      />
     );
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <ScrollView
+    <>
+      <ChildScreenLayout
+        variant="light"
+        backgroundColor="#F4F0EB"
         contentContainerStyle={[
           styles.content,
           {
             gap: scaleW(12),
-            paddingHorizontal: scaleW(isTablet ? 30 : 24),
-            paddingTop: scaleW(16),
-            paddingBottom: scaleW(40),
             width: "100%",
             maxWidth: isTablet ? scaleW(780) : undefined,
             alignSelf: "center",
@@ -236,7 +220,10 @@ export default function BadgesScreen() {
                       },
                       !badge.earned ? styles.badgeTileLocked : undefined,
                     ]}
-                    onPress={() => setSelectedBadge(badge)}
+                    onPress={() => {
+                      prefetchBadgeImage({ image_url: badge.image_url });
+                      setSelectedBadge(badge);
+                    }}
                   >
                     {renderBadgeIcon(badge)}
                     <ThemedText
@@ -269,7 +256,7 @@ export default function BadgesScreen() {
             </View>
           ))
         )}
-      </ScrollView>
+      </ChildScreenLayout>
 
       <BadgeDetailModal
         visible={selectedBadge != null}
@@ -291,7 +278,7 @@ export default function BadgesScreen() {
         earnedAt={selectedBadge?.earned_at ?? undefined}
         onClose={() => setSelectedBadge(null)}
       />
-    </SafeAreaView>
+    </>
   );
 }
 

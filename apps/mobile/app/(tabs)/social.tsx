@@ -5,12 +5,11 @@ import {
   RefreshControl,
   Image,
   StyleSheet,
-  ActivityIndicator } from "react-native";
+  ActivityIndicator,
+  Animated,
+  Easing,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import AnimatedReanimated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring } from "react-native-reanimated";
 import { useFocusEffect } from "expo-router";
 import { BaseLayout } from "@/components/layout/BaseLayout";
 import { ThemedText } from "@/components/ThemedText";
@@ -24,6 +23,8 @@ import {
   TeamInfo,
   TeamMonthlyWinner } from "@/services/teamActivityService";
 import { useUser } from "@/contexts/UserContext";
+import { useTutorialActive } from "@/hooks/useTutorialActive";
+import { useRefreshWhenTutorialEnds } from "@/hooks/useRefreshWhenTutorialEnds";
 import { getTeamCardConfig } from "@/utils/teamUtils";
 
 const CELEBRATE_IMAGE = require("@/assets/images/celebrate.png");
@@ -70,8 +71,9 @@ export default function SocialScreen() {
   const [visibleAchievementsCount, setVisibleAchievementsCount] = useState(ACHIEVEMENTS_INITIAL);
   const [lastMonthWinner, setLastMonthWinner] = useState<TeamMonthlyWinner | null>(null);
 
-  const chartProgress = useSharedValue(0);
+  const chartProgress = useRef(new Animated.Value(0)).current;
   const scrollRef = useRef<ScrollView>(null);
+  const isTutorialActive = useTutorialActive();
 
   const sortedTeamsForChart = useMemo(() => {
     const teamIdByName = Object.fromEntries(allTeams.map((t) => [t.name.toLowerCase(), t.id]));
@@ -98,13 +100,15 @@ export default function SocialScreen() {
 
   const leaderboardTotalsKey = sortedTeamsForChart.map((t) => t.total).join(",");
 
-  const bar1Style = useAnimatedStyle(() => ({ height: chartProgress.value * barHeights[0] }));
-  const bar2Style = useAnimatedStyle(() => ({ height: chartProgress.value * barHeights[1] }));
-  const bar3Style = useAnimatedStyle(() => ({ height: chartProgress.value * barHeights[2] }));
-
   useEffect(() => {
-    chartProgress.value = 0;
-    chartProgress.value = withSpring(1, { damping: 18, stiffness: 80 });
+    chartProgress.stopAnimation();
+    chartProgress.setValue(0);
+    Animated.timing(chartProgress, {
+      toValue: 1,
+      duration: 520,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
   }, [chartProgress, leaderboardTotalsKey]);
 
   const fetchTeamActivities = useCallback(async () => {
@@ -130,12 +134,19 @@ export default function SocialScreen() {
     }
   }, [teamId]);
 
-  useEffect(() => { fetchTeamActivities(); }, [fetchTeamActivities]);
+  useFocusEffect(
+    useCallback(() => {
+      if (isTutorialActive) {
+        setLoading(false);
+        scrollRef.current?.scrollTo({ y: 0, animated: false });
+        return;
+      }
+      void fetchTeamActivities();
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, [fetchTeamActivities, isTutorialActive])
+  );
 
-  useFocusEffect(useCallback(() => {
-    fetchTeamActivities();
-    scrollRef.current?.scrollTo({ y: 0, animated: false });
-  }, [fetchTeamActivities]));
+  useRefreshWhenTutorialEnds(fetchTeamActivities);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -280,26 +291,32 @@ export default function SocialScreen() {
             </ThemedText>
             <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "center", gap: scaleW(16) }}>
               {sortedTeamsForChart.map((bar, index) => {
-                const barStyle = index === 0 ? bar1Style : index === 1 ? bar2Style : bar3Style;
+                const targetHeight = barHeights[index] ?? scaleW(LEADERBOARD_BAR_MIN);
                 const isUserTeam = bar.name === teamInfo?.name?.toLowerCase();
                 return (
                   <View key={bar.name} style={{ alignItems: "center", gap: scaleW(6) }}>
-                    <AnimatedReanimated.View style={[{
-                      width: scaleW(72),
-                      backgroundColor: bar.config.backgroundColor,
-                      borderRadius: scaleW(12),
-                      alignItems: "center",
-                      justifyContent: "flex-start",
-                      paddingTop: scaleW(10),
-                      borderWidth: isUserTeam ? 3 : 1,
-                      borderColor: isUserTeam ? bar.config.accentColor : "rgba(0,0,0,0.06)" },
-                    barStyle]}>
+                    <Animated.View
+                      style={{
+                        width: scaleW(72),
+                        height: chartProgress.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, targetHeight],
+                        }),
+                        backgroundColor: bar.config.backgroundColor,
+                        borderRadius: scaleW(12),
+                        alignItems: "center",
+                        justifyContent: "flex-start",
+                        paddingTop: scaleW(10),
+                        borderWidth: isUserTeam ? 3 : 1,
+                        borderColor: isUserTeam ? bar.config.accentColor : "rgba(0,0,0,0.06)",
+                      }}
+                    >
                       <Image
                         source={bar.config.badgeImage}
                         resizeMode="contain"
                         style={{ width: scaleW(40), height: scaleW(40) }}
                       />
-                    </AnimatedReanimated.View>
+                    </Animated.View>
                     <ThemedText style={{ fontSize: scaleW(12), fontWeight: "600", color: "#555" }}>
                       {bar.name.charAt(0).toUpperCase() + bar.name.slice(1)}
                     </ThemedText>

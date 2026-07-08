@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Image, Pressable, StyleSheet } from "react-native";
+import { View, Image, Platform, Pressable, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -93,8 +93,8 @@ export default function PickActivityScreen() {
               </View>
             </Pressable>
 
-            {/* Cycle */}
-            <Pressable
+            {/* Cycle — requires background GPS, not available on Android */}
+            {Platform.OS !== "android" && <Pressable
               onPress={() => router.push("/(tabs)/activity/cycle-prep")}
               style={({ pressed }) => [
                 styles.card,
@@ -131,7 +131,7 @@ export default function PickActivityScreen() {
                 </View>
                 <MaterialIcons name="chevron-right" size={scaleW(26)} color="rgba(255,255,255,0.5)" />
               </View>
-            </Pressable>
+            </Pressable>}
 
             {/* Mission */}
             <Pressable

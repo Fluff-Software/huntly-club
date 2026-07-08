@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useMemo, useCallback } from "react";
+import React, { useRef, useState, useEffect, useLayoutEffect, useMemo, useCallback } from "react";
 import {
   View,
   ScrollView,
@@ -18,7 +18,7 @@ import AnimatedReanimated, {
   withSpring,
   withTiming,
   Easing,
-  FadeIn } from "react-native-reanimated";
+} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -26,10 +26,30 @@ import { ThemedText } from "@/components/ThemedText";
 import { AdventureTile } from "@/components/AdventureTile";
 import { PastAdventuresTile } from "@/components/PastAdventuresTile";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
-import { useCurrentChapterActivities } from "@/hooks/useCurrentChapterActivities";
+import { useNavigationReturn } from "@/contexts/NavigationReturnContext";
+import { useTutorialActive } from "@/hooks/useTutorialActive";
+import { useRefreshWhenTutorialEnds } from "@/hooks/useRefreshWhenTutorialEnds";
+import {
+  useCurrentSessionMissions,
+  useSessionsWithMissions,
+  type SessionWithActivities,
+} from "@/hooks/useSessionsWithMissions";
+import { usePlayer } from "@/contexts/PlayerContext";
+import { useProfileDashboard } from "@/contexts/ProfileDashboardContext";
 import { useUser } from "@/contexts/UserContext";
-import { getRandomClubPhotos, type ClubPhotoCardItem } from "@/services/activityProgressService";
+import { useHomeBootstrap } from "@/contexts/HomeBootstrapContext";
+import {
+  getRandomClubPhotos,
+  type ClubPhotoCardItem,
+  type EarliestAvailableMission,
+} from "@/services/activityProgressService";
+import { getActivityById } from "@/services/packService";
 import { getTeamCardConfig } from "@/utils/teamUtils";
+import {
+  prefetchClubPhotoImages,
+  prefetchTeamCardAssets,
+} from "@/utils/homeActivityPreload";
+import type { ImageSourcePropType } from "react-native";
 
 type HomeMode = "profile" | "activity" | "missions";
 const HOME_MODES: HomeMode[] = ["profile", "activity", "missions"];
@@ -41,8 +61,6 @@ const HUNTLY_GREEN = "#4F6F52";
 
 const CLUB_CARDS_PAGE_SIZE = 6;
 const CLUB_CARDS_MAX = 24;
-
-const TEAM_CARD_SLIDE_DURATION_MS = 420;
 
 /** Pastel/bright author badge colors (white text) for club cards */
 const CLUB_CARD_AUTHOR_COLORS = [
@@ -84,20 +102,105 @@ const SPEECH_BUBBLE_MESSAGES = (leaderName: string) => [
   `Let's get out there and do something brilliant.`,
 ];
 
+function missionImageToUrl(image: ImageSourcePropType): string | null {
+  if (typeof image === "object" && image != null && "uri" in image && typeof image.uri === "string") {
+    return image.uri;
+  }
+  return null;
+}
+
+/** Earliest unlocked mission across sessions (oldest session first, then mission order). */
+function pickEarliestAvailableMission(
+  sessions: SessionWithActivities[],
+  completedActivityIds: Set<string>
+): EarliestAvailableMission | null {
+  if (sessions.length === 0) return null;
+
+  for (let sessionIndex = sessions.length - 1; sessionIndex >= 0; sessionIndex -= 1) {
+    for (const card of sessions[sessionIndex].activities) {
+      if (!completedActivityIds.has(card.id)) {
+        return {
+          id: parseInt(card.id, 10),
+          title: card.title,
+          description: card.description || null,
+          image: missionImageToUrl(card.image),
+        };
+      }
+    }
+  }
+
+  const fallback = sessions[sessions.length - 1]?.activities[0];
+  if (!fallback) return null;
+  return {
+    id: parseInt(fallback.id, 10),
+    title: fallback.title,
+    description: fallback.description || null,
+    image: missionImageToUrl(fallback.image),
+  };
+}
+
 export default function HomeScreen() {
   const { scaleW, width, height } = useLayoutScale();
-  const { team, teamId, daysPlayed, pointsEarned } = useUser();
+  const { clubhouseActivityReady, requireClubhouseActivityReady, markClubhouseActivityReady } =
+    useHomeBootstrap();
+  const { pushWithReturn } = useNavigationReturn();
+  const { profiles, loading: profilesLoading } = usePlayer();
+  const { preload: preloadProfileDashboard } = useProfileDashboard();
+  const {
+    userData,
+    team,
+    teamId,
+    daysPlayed,
+    pointsEarned,
+    loading: userLoading,
+    updateFirstMissionActivityId,
+  } = useUser();
+  const firstProfileId = profiles[0]?.id ?? null;
+  const allProfileIds = useMemo(() => profiles.map((profile) => profile.id), [profiles]);
+  const extraMissionActivityIds = useMemo(
+    () =>
+      userData?.first_mission_activity_id != null
+        ? [userData.first_mission_activity_id]
+        : [],
+    [userData?.first_mission_activity_id]
+  );
+  const {
+    sessions,
+    completedActivityIds,
+    completedByAnyProfileActivityIds,
+    loading: sessionsLoading,
+    refetch: refetchSessions,
+  } = useSessionsWithMissions(firstProfileId, {
+    allProfileIds,
+    extraActivityIds: extraMissionActivityIds,
+  });
   const {
     latestMission,
     latestUnfinishedMission,
     loading: missionLoading,
-    refetch: refetchMissions } = useCurrentChapterActivities(null);
+    refetch: refetchMissions } = useCurrentSessionMissions(null);
   const [clubCards, setClubCards] = useState<ClubPhotoCardItem[]>([]);
   const [clubCardsLoading, setClubCardsLoading] = useState(true);
   const [loadingMoreClubCards, setLoadingMoreClubCards] = useState(false);
   const loadingMoreClubCardsRef = useRef(false);
-  const [clubImageStatus, setClubImageStatus] = useState<Record<string, "loading" | "loaded" | "error">>({});
+  const [clubMediaReady, setClubMediaReady] = useState(false);
+  const [teamAssetsReady, setTeamAssetsReady] = useState(false);
+  const [campfireTileReady, setCampfireTileReady] = useState(false);
+  const hasRevealedActivityTilesRef = useRef(false);
   const [missionsTab, setMissionsTab] = useState<"missions" | "adventures">("missions");
+  const [firstMissionCard, setFirstMissionCard] =
+    useState<EarliestAvailableMission | null>(null);
+  const [firstMissionCardLoading, setFirstMissionCardLoading] = useState(false);
+  /** Once the saved first-mission target is completed, never show the loading shell again this session. */
+  const [firstMissionCardHidden, setFirstMissionCardHidden] = useState(false);
+  const savedFirstMissionId = userData?.first_mission_activity_id ?? null;
+  const savedFirstMissionCompleteInSessionData = useMemo(
+    () =>
+      savedFirstMissionId != null &&
+      completedActivityIds.has(String(savedFirstMissionId)),
+    [savedFirstMissionId, completedActivityIds]
+  );
+  const isTutorialActive = useTutorialActive();
   const initialIndex = 1; // activity (Welcome back)
   const [currentIndex, setCurrentIndex] = useState<number>(initialIndex);
   const currentMode = HOME_MODES[currentIndex] ?? "activity";
@@ -109,8 +212,15 @@ export default function HomeScreen() {
   }, [teamCardConfig?.leaderName]);
 
   useEffect(() => {
+    if (!profilesLoading && profiles.length > 0) {
+      preloadProfileDashboard();
+    }
+  }, [profilesLoading, profiles.length, preloadProfileDashboard]);
+
+  useEffect(() => {
     let cancelled = false;
     setClubCardsLoading(true);
+    setClubMediaReady(false);
     getRandomClubPhotos(CLUB_CARDS_PAGE_SIZE).then((cards) => {
       if (!cancelled) setClubCards(cards);
     }).catch(() => {
@@ -120,6 +230,156 @@ export default function HomeScreen() {
     });
     return () => { cancelled = true; };
   }, []);
+
+  const initialClubCardSignature = useMemo(
+    () => clubCards.slice(0, CLUB_CARDS_PAGE_SIZE).map((card) => card.id).join(","),
+    [clubCards]
+  );
+
+  useEffect(() => {
+    if (clubCardsLoading) {
+      setClubMediaReady(false);
+      return;
+    }
+    if (clubCards.length === 0) {
+      setClubMediaReady(true);
+      return;
+    }
+    let cancelled = false;
+    setClubMediaReady(false);
+    void prefetchClubPhotoImages(clubCards.slice(0, CLUB_CARDS_PAGE_SIZE))
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setClubMediaReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [clubCardsLoading, initialClubCardSignature]);
+
+  useEffect(() => {
+    if (!teamCardConfig) {
+      setTeamAssetsReady(true);
+      return;
+    }
+    let cancelled = false;
+    setTeamAssetsReady(false);
+    void prefetchTeamCardAssets(teamCardConfig)
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setTeamAssetsReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [teamCardConfig]);
+
+  useEffect(() => {
+    setFirstMissionCardHidden(false);
+  }, [userData?.user_id]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const syncFirstMissionCard = async () => {
+      if (userLoading || sessionsLoading || !userData?.user_id || profiles.length === 0) {
+        if (!userLoading && !sessionsLoading && !firstMissionCardHidden) {
+          setFirstMissionCard(null);
+        }
+        return;
+      }
+
+      if (firstMissionCardHidden || savedFirstMissionCompleteInSessionData) {
+        if (!cancelled) {
+          setFirstMissionCard(null);
+          setFirstMissionCardLoading(false);
+          if (savedFirstMissionCompleteInSessionData) {
+            setFirstMissionCardHidden(true);
+          }
+        }
+        return;
+      }
+
+      setFirstMissionCardLoading(true);
+      try {
+        let mission: EarliestAvailableMission | null = null;
+        let targetMissionId = userData.first_mission_activity_id;
+
+        if (targetMissionId == null) {
+          mission = pickEarliestAvailableMission(sessions, completedActivityIds);
+          if (!mission?.id) {
+            if (!cancelled) setFirstMissionCard(null);
+            return;
+          }
+          targetMissionId = mission.id;
+          void updateFirstMissionActivityId(targetMissionId);
+        }
+
+        const isCompleted = completedByAnyProfileActivityIds.has(
+          String(targetMissionId)
+        );
+        if (isCompleted) {
+          if (!cancelled) {
+            setFirstMissionCard(null);
+            setFirstMissionCardHidden(true);
+          }
+          return;
+        }
+
+        if (!mission) {
+          const fromSessions = sessions
+            .flatMap((session) => session.activities)
+            .find((card) => parseInt(card.id, 10) === targetMissionId);
+          if (fromSessions) {
+            mission = {
+              id: targetMissionId,
+              title: fromSessions.title,
+              description: fromSessions.description || null,
+              image: missionImageToUrl(fromSessions.image),
+            };
+          } else {
+            const activity = await getActivityById(targetMissionId);
+            if (!activity) {
+              if (!cancelled) setFirstMissionCard(null);
+              return;
+            }
+            mission = {
+              id: activity.id,
+              title: activity.title,
+              description: activity.description ?? null,
+              image: activity.image ?? null,
+            };
+          }
+        }
+
+        if (!cancelled) {
+          setFirstMissionCard(mission);
+        }
+      } catch (error) {
+        console.error("Error resolving first mission card:", error);
+        if (!cancelled) setFirstMissionCard(null);
+      } finally {
+        if (!cancelled) setFirstMissionCardLoading(false);
+      }
+    };
+
+    void syncFirstMissionCard();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    userLoading,
+    sessionsLoading,
+    userData?.user_id,
+    userData?.first_mission_activity_id,
+    profiles,
+    sessions,
+    completedActivityIds,
+    firstMissionCardHidden,
+    savedFirstMissionCompleteInSessionData,
+    completedByAnyProfileActivityIds,
+    updateFirstMissionActivityId,
+  ]);
 
   const loadMoreClubCards = async () => {
     if (loadingMoreClubCardsRef.current || clubCards.length === 0 || clubCards.length >= CLUB_CARDS_MAX) return;
@@ -164,27 +424,59 @@ export default function HomeScreen() {
   const profileButtonScale = useSharedValue(1);
   const missionsButtonScale = useSharedValue(1);
   const navScale = useSharedValue(1);
-  const teamCardTranslateX = useSharedValue(240);
-  const teamCardOpacity = useSharedValue(0);
   const missionsButtonStyle = useAnimatedStyle(() => ({ transform: [{ scale: missionsButtonScale.value }] }));
   const navButtonStyle = useAnimatedStyle(() => ({ transform: [{ scale: navScale.value }] }));
-  const teamCardStyle = useAnimatedStyle(() => ({
-    opacity: teamCardOpacity.value,
-    transform: [{ translateX: teamCardTranslateX.value }] }));
 
-  // Slide the team card in after a short fixed delay — no image-load dependency.
+  const showFirstMissionTile =
+    !firstMissionCardHidden &&
+    !savedFirstMissionCompleteInSessionData &&
+    (firstMissionCardLoading || firstMissionCard != null);
+  const firstMissionTileReady = !showFirstMissionTile || !firstMissionCardLoading;
+  const showClubTile = clubCards.length > 0;
+  const clubTileReady = !clubCardsLoading && (!showClubTile || clubMediaReady);
+  const teamTileReady = !teamCardConfig || teamAssetsReady;
+  const activityTilesReady =
+    firstMissionTileReady &&
+    campfireTileReady &&
+    clubTileReady &&
+    teamTileReady;
+
+  const handleCampfireReadyChange = useCallback((ready: boolean) => {
+    setCampfireTileReady(ready);
+  }, []);
+
+  useLayoutEffect(() => {
+    requireClubhouseActivityReady();
+  }, [requireClubhouseActivityReady]);
+
   useEffect(() => {
-    teamCardTranslateX.value = 240;
-    teamCardOpacity.value = 0;
-    if (!teamCardConfig) return;
-    let cancelled = false;
-    const timer = setTimeout(() => {
-      if (cancelled) return;
-      teamCardTranslateX.value = withTiming(0, { duration: TEAM_CARD_SLIDE_DURATION_MS, easing: Easing.out(Easing.cubic) });
-      teamCardOpacity.value = withTiming(1, { duration: 300, easing: Easing.out(Easing.cubic) });
-    }, 150);
-    return () => { cancelled = true; clearTimeout(timer); };
-  }, [teamCardConfig, teamCardOpacity, teamCardTranslateX]);
+    if (activityTilesReady) {
+      markClubhouseActivityReady();
+    }
+  }, [activityTilesReady, markClubhouseActivityReady]);
+
+  const activityTilesOpacity = useSharedValue(0);
+  const activityTilesTranslateY = useSharedValue(30);
+  const activityTilesGroupStyle = useAnimatedStyle(() => ({
+    opacity: activityTilesOpacity.value,
+    transform: [{ translateY: activityTilesTranslateY.value }],
+  }));
+
+  useEffect(() => {
+    if (!activityTilesReady) {
+      if (!hasRevealedActivityTilesRef.current) {
+        activityTilesOpacity.value = 0;
+        activityTilesTranslateY.value = 30;
+      }
+      return;
+    }
+    hasRevealedActivityTilesRef.current = true;
+    activityTilesOpacity.value = withTiming(1, {
+      duration: 420,
+      easing: Easing.out(Easing.cubic),
+    });
+    activityTilesTranslateY.value = withSpring(0, { damping: 28, stiffness: 220 });
+  }, [activityTilesReady, activityTilesOpacity, activityTilesTranslateY]);
 
   const resetToActivityPage = useCallback(() => {
     if (width <= 0) return;
@@ -199,12 +491,21 @@ export default function HomeScreen() {
     return () => clearTimeout(timer);
   }, [resetToActivityPage]);
 
+  const refreshHomeData = useCallback(() => {
+    refetchMissions();
+    void refetchSessions();
+  }, [refetchMissions, refetchSessions]);
+
   useFocusEffect(
     useCallback(() => {
-      refetchMissions();
+      if (!isTutorialActive) {
+        refreshHomeData();
+      }
       resetToActivityPage();
-    }, [refetchMissions, resetToActivityPage])
+    }, [isTutorialActive, refreshHomeData, resetToActivityPage])
   );
+
+  useRefreshWhenTutorialEnds(refreshHomeData);
 
   const pageAnimatedStyles = useMemo(() => {
     if (width <= 0) return [];
@@ -531,7 +832,7 @@ export default function HomeScreen() {
         {/* Profile button */}
         <View>
           <Pressable
-            onPress={() => router.push("/(tabs)/profile")}
+            onPress={() => pushWithReturn("/(tabs)/profile")}
             onPressIn={() => { profileButtonScale.value = withSpring(0.96, buttonSpring); }}
             onPressOut={() => { profileButtonScale.value = withSpring(1, buttonSpring); }}
             style={[styles.creamButton]}
@@ -585,9 +886,69 @@ export default function HomeScreen() {
           </ThemedText>
         </View>
 
+        <View style={{ position: "relative" }}>
+          <AnimatedReanimated.View
+            style={[
+              { gap: scaleW(16) },
+              activityTilesGroupStyle,
+              !activityTilesReady && {
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                opacity: 0,
+              },
+            ]}
+            pointerEvents={activityTilesReady ? "auto" : "none"}
+          >
+        {showFirstMissionTile && firstMissionCard ? (
+          <View
+            style={{
+              backgroundColor: "rgba(255,255,255,0.95)",
+              borderRadius: scaleW(18),
+              borderWidth: 2,
+              borderColor: "#7FAF8A",
+              padding: scaleW(16),
+              gap: scaleW(10),
+            }}
+          >
+            <ThemedText
+              type="heading"
+              style={{ fontSize: scaleW(20), fontWeight: "800", color: HUNTLY_GREEN }}
+            >
+              Complete your first mission
+            </ThemedText>
+            <ThemedText style={{ fontSize: scaleW(15), color: "#3D3D3D" }}>
+              Start with {firstMissionCard.title} and earn your first points.
+            </ThemedText>
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: "/(tabs)/activity/mission",
+                  params: { id: String(firstMissionCard.id) },
+                } as Parameters<typeof router.push>[0])
+              }
+              style={{
+                alignSelf: "flex-start",
+                backgroundColor: HUNTLY_GREEN,
+                borderRadius: scaleW(24),
+                paddingVertical: scaleW(10),
+                paddingHorizontal: scaleW(16),
+                flexDirection: "row",
+                alignItems: "center",
+                gap: scaleW(4),
+              }}
+            >
+              <ThemedText lightColor="#FFF" darkColor="#FFF" style={{ fontSize: scaleW(14), fontWeight: "700" }}>
+                Start first mission
+              </ThemedText>
+              <MaterialIcons name="chevron-right" size={scaleW(16)} color="#FFF" />
+            </Pressable>
+          </View>
+        ) : null}
+
         {/* Character + speech bubble */}
         {teamCardConfig && (
-          <AnimatedReanimated.View style={teamCardStyle}>
             <View style={{
               backgroundColor: teamCardConfig.backgroundColor,
               borderRadius: scaleW(20),
@@ -665,14 +1026,16 @@ export default function HomeScreen() {
                 </View>
               </View>
             </View>
-          </AnimatedReanimated.View>
         )}
 
+        {/* Campfire tile */}
+        <CampfireTile
+          coordinatedEntrance
+          onReadyChange={handleCampfireReadyChange}
+        />
+
         {/* Club photos */}
-        {clubCards.length > 0 && (
-          <AnimatedReanimated.View
-            entering={FadeIn.duration(420).easing(Easing.out(Easing.cubic))}
-          >
+        {showClubTile && (
             <View
               style={{
                 backgroundColor: "#BBE5EB",
@@ -714,7 +1077,6 @@ export default function HomeScreen() {
                 decelerationRate="fast"
               >
                 {clubCards.map((card, index) => {
-                  const status = clubImageStatus[card.id] ?? "loading";
                   const centerScrollX = index === 0 ? 0 : getCenterScrollX(index);
                   const rotation = clubCardsScrollX.interpolate({
                     inputRange: [
@@ -735,18 +1097,8 @@ export default function HomeScreen() {
                             source={{ uri: card.thumb_url || card.photo_url }}
                             style={styles.clubCardImage}
                             contentFit="cover"
-                            onLoadEnd={() => {
-                              setClubImageStatus((prev) => ({ ...prev, [card.id]: "loaded" }));
-                            }}
-                            onError={() => {
-                              setClubImageStatus((prev) => ({ ...prev, [card.id]: "error" }));
-                            }}
+                            cachePolicy="memory-disk"
                           />
-                          {status !== "loaded" && (
-                            <View style={styles.clubCardPlaceholder}>
-                              <ActivityIndicator size="small" color="#FFFFFF" />
-                            </View>
-                          )}
                           {card.team_name && (() => {
                             const cfg = getTeamCardConfig(card.team_name);
                             return (
@@ -799,8 +1151,9 @@ export default function HomeScreen() {
                 )}
               </Animated.ScrollView>
             </View>
-          </AnimatedReanimated.View>
         )}
+          </AnimatedReanimated.View>
+        </View>
       </View>
     </ScrollView>
   );
@@ -978,7 +1331,26 @@ export default function HomeScreen() {
           <View style={styles.backgroundOverlay} />
         </ImageBackground>
       </Animated.View>
-      <SafeAreaView edges={["top", "left", "right"]} style={styles.container}>
+      {!clubhouseActivityReady ? (
+        <View
+          style={{
+            ...StyleSheet.absoluteFillObject,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+          pointerEvents="none"
+        >
+          <ActivityIndicator size="large" color="#F4F0EB" />
+        </View>
+      ) : null}
+      <SafeAreaView
+        edges={["top", "left", "right"]}
+        style={[
+          styles.container,
+          !clubhouseActivityReady && { opacity: 0 },
+        ]}
+        pointerEvents={clubhouseActivityReady ? "auto" : "none"}
+      >
         <View className="flex-1" style={styles.container}>
         <View className="flex-1">
         {renderNavigationButtons()}

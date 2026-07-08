@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { View, StyleSheet, Image, Pressable } from "react-native";
 import { useSegments } from "expo-router";
 
-const TUTORIAL_CHARACTER = require("@/assets/images/bear-wave.png");
+const TUTORIAL_CHARACTER = require("@/assets/images/bella-waving.png");
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useSignUpOptional } from "@/contexts/SignUpContext";
@@ -14,8 +14,6 @@ const HUNTLY_CHARCOAL = "#3D3D3D";
 export type TutorialStep =
   | "intro"
   | "clubhouse"
-  | "click_story"
-  | "seasons"
   | "click_missions"
   | "missions"
   | "click_team"
@@ -43,8 +41,6 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
     if (tutorialStep === "intro") {
       setTutorialStep?.("clubhouse");
     } else if (tutorialStep === "clubhouse") {
-      setTutorialStep?.("click_story");
-    } else if (tutorialStep === "seasons") {
       setTutorialStep?.("click_missions");
     } else if (tutorialStep === "missions") {
       setTutorialStep?.("click_team");
@@ -53,43 +49,40 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
     } else if (tutorialStep === "journal") {
       setTutorialStep?.("wrap_up");
     } else if (tutorialStep === "wrap_up") {
-      setTutorialStep?.("done");
       onDismiss();
     }
   };
-
-  // When on "click_story" and user navigates to story tab, advance to seasons
-  useEffect(() => {
-    if (!visible || tutorialStep !== "click_story" || !setTutorialStep) return;
-    const inStoryTab = segments[0] === "(tabs)" && segments[1] === "story";
-    if (inStoryTab) setTutorialStep("seasons");
-  }, [visible, tutorialStep, segments, setTutorialStep]);
 
   // When on "click_journal" and user navigates to journal tab, advance to journal card
   useEffect(() => {
     if (!visible || tutorialStep !== "click_journal" || !setTutorialStep) return;
     const inJournalTab = segments[0] === "(tabs)" && segments[1] === "journal";
-    if (inJournalTab) setTutorialStep("journal");
+    if (!inJournalTab) return;
+    const timer = setTimeout(() => setTutorialStep("journal"), 0);
+    return () => clearTimeout(timer);
   }, [visible, tutorialStep, segments, setTutorialStep]);
 
   // When on "click_missions" and user navigates to missions tab, advance to missions card
   useEffect(() => {
     if (!visible || tutorialStep !== "click_missions" || !setTutorialStep) return;
     const inMissionsTab = segments[0] === "(tabs)" && segments[1] === "missions";
-    if (inMissionsTab) setTutorialStep("missions");
+    if (!inMissionsTab) return;
+    const timer = setTimeout(() => setTutorialStep("missions"), 0);
+    return () => clearTimeout(timer);
   }, [visible, tutorialStep, segments, setTutorialStep]);
 
   // When on "click_team" and user navigates to team tab, advance to team card
   useEffect(() => {
     if (!visible || tutorialStep !== "click_team" || !setTutorialStep) return;
     const inTeamTab = segments[0] === "(tabs)" && segments[1] === "social";
-    if (inTeamTab) setTutorialStep("team");
+    if (!inTeamTab) return;
+    const timer = setTimeout(() => setTutorialStep("team"), 0);
+    return () => clearTimeout(timer);
   }, [visible, tutorialStep, segments, setTutorialStep]);
 
   if (!visible || tutorialStep === "done") return null;
 
   const isTabBarVisibleStep =
-    tutorialStep === "click_story" ||
     tutorialStep === "click_missions" ||
     tutorialStep === "click_team" ||
     tutorialStep === "click_journal";
@@ -109,7 +102,6 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
         {/* Centered cards: intro, clubhouse, seasons, missions, team, wrap_up */}
         {(tutorialStep === "intro" ||
           tutorialStep === "clubhouse" ||
-          tutorialStep === "seasons" ||
           tutorialStep === "missions" ||
           tutorialStep === "team" ||
           tutorialStep === "journal" ||
@@ -117,7 +109,7 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
           <View style={styles.centeredCardWrapper}>
             {tutorialStep === "intro" && (
               <View style={[styles.card, styles.cardWithImage, { padding: scaleW(24), borderRadius: scaleW(16), maxWidth: cardMaxWidth }]}>
-                <Image source={TUTORIAL_CHARACTER} style={[styles.characterImage, { width: scaleW(100), height: scaleW(80), marginBottom: scaleW(12) }]} resizeMode="contain" />
+                <Image source={TUTORIAL_CHARACTER} style={[styles.characterImage, { width: scaleW(150), height: scaleW(120), marginBottom: scaleW(12) }]} resizeMode="contain" />
                 <ThemedText type="subtitle" style={{ fontSize: scaleW(22), fontWeight: "600", marginBottom: scaleW(8) }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
                   Welcome to Huntly World
                 </ThemedText>
@@ -184,47 +176,13 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
               </View>
             )}
 
-            {tutorialStep === "seasons" && (
-              <View style={[styles.card, { padding: scaleW(24), borderRadius: scaleW(16), maxWidth: cardMaxWidth }]}>
-                <ThemedText type="subtitle" style={{ fontSize: scaleW(22), fontWeight: "600", marginBottom: scaleW(12) }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
-                  Seasons and chapters
-                </ThemedText>
-                <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(24), marginBottom: scaleW(24) }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
-                  Each season has chapters that unlock by date. Every chapter has part of the story and missions to complete. Start by reading the story here, then choose some fun activities to take part in on the Missions screen.
-                </ThemedText>
-                <Pressable
-                  onPress={handleNext}
-                  style={{
-                    alignSelf: "center",
-                    minWidth: scaleW(200),
-                    minHeight: scaleW(52),
-                    paddingVertical: scaleW(14),
-                    paddingHorizontal: scaleW(28),
-                    borderRadius: scaleW(14),
-                    backgroundColor: HUNTLY_GREEN,
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                  accessibilityRole="button"
-                >
-                  <ThemedText
-                    style={{ fontSize: scaleW(18), fontWeight: "600" }}
-                    lightColor={CREAM}
-                    darkColor={CREAM}
-                  >
-                    Next
-                  </ThemedText>
-                </Pressable>
-              </View>
-            )}
-
             {tutorialStep === "missions" && (
               <View style={[styles.card, { padding: scaleW(24), borderRadius: scaleW(16), maxWidth: cardMaxWidth }]}>
                 <ThemedText type="subtitle" style={{ fontSize: scaleW(22), fontWeight: "600", marginBottom: scaleW(12) }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
                   Missions
                 </ThemedText>
                 <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(24), marginBottom: scaleW(24) }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
-                  Your weekly activities live here. Tap one to see what to do and earn points. You can also go back and complete missions from earlier chapters if you've missed any.
+                  Your adventures live here, grouped by campfire session. Tap a mission to see what to do and earn points. You can also go back and complete missions from earlier sessions if you have missed any.
                 </ThemedText>
                 <Pressable
                   onPress={handleNext}
@@ -289,10 +247,10 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
             {tutorialStep === "journal" && (
               <View style={[styles.card, { padding: scaleW(24), borderRadius: scaleW(16), maxWidth: cardMaxWidth }]}>
                 <ThemedText type="subtitle" style={{ fontSize: scaleW(22), fontWeight: "600", marginBottom: scaleW(12) }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
-                  Your journal
+                  Your backpack
                 </ThemedText>
                 <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(24), marginBottom: scaleW(24) }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
-                  Use Journal to look back at your adventures, photos, and mission moments all in one place.
+                  Your Backpack stores your badges, mission memories, and journal entries so you can look back on every adventure.
                 </ThemedText>
                 <Pressable
                   onPress={handleNext}
@@ -322,12 +280,12 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
 
             {tutorialStep === "wrap_up" && (
               <View style={[styles.card, styles.cardWithImage, { padding: scaleW(24), borderRadius: scaleW(16), maxWidth: cardMaxWidth }]}>
-                <Image source={TUTORIAL_CHARACTER} style={[styles.characterImage, { width: scaleW(100), height: scaleW(80), marginBottom: scaleW(12) }]} resizeMode="contain" />
+                <Image source={TUTORIAL_CHARACTER} style={[styles.characterImage, { width: scaleW(150), height: scaleW(120), marginBottom: scaleW(12) }]} resizeMode="contain" />
                 <ThemedText type="subtitle" style={{ fontSize: scaleW(22), fontWeight: "600", marginBottom: scaleW(12) }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
                   What to do next
                 </ThemedText>
                 <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(24), marginBottom: scaleW(24) }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
-                  Go to Story and read the latest. Then complete missions in the latest chapter. Have fun!
+                  Head to Missions and try your next challenge. Join a campfire when one is live. Have fun!
                 </ThemedText>
                 <Pressable
                   onPress={handleNext}
@@ -358,19 +316,6 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
         )}
 
         {/* Tap-tab hint cards above tab bar */}
-        {tutorialStep === "click_story" && (
-          <View style={[styles.tapTabStepContainer, { bottom: scaleW(24) }]}>
-            <View style={[styles.card, styles.tapTabCard, { padding: scaleW(20), borderRadius: scaleW(16), maxWidth: scaleW(320) }]}>
-              <ThemedText type="subtitle" style={{ fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(4), textAlign: "center" }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
-                Tap Story below
-              </ThemedText>
-              <ThemedText style={{ fontSize: scaleW(14), lineHeight: scaleW(20), textAlign: "center" }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
-                to read the season's story.
-              </ThemedText>
-            </View>
-          </View>
-        )}
-
         {tutorialStep === "click_missions" && (
           <View style={[styles.tapTabStepContainer, { bottom: scaleW(24) }]}>
             <View style={[styles.card, styles.tapTabCard, { padding: scaleW(20), borderRadius: scaleW(16), maxWidth: scaleW(320) }]}>
@@ -401,10 +346,10 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
           <View style={[styles.tapTabStepContainer, { bottom: scaleW(24) }]}>
             <View style={[styles.card, styles.tapTabCard, { padding: scaleW(20), borderRadius: scaleW(16), maxWidth: scaleW(320) }]}>
               <ThemedText type="subtitle" style={{ fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(4), textAlign: "center" }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
-                Tap Journal below
+                Tap Backpack below
               </ThemedText>
               <ThemedText style={{ fontSize: scaleW(14), lineHeight: scaleW(20), textAlign: "center" }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
-                to revisit your adventures.
+                to view your saved adventures.
               </ThemedText>
             </View>
           </View>

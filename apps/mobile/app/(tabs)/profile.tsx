@@ -14,7 +14,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring } from "react-native-reanimated";
-import { useRouter, useFocusEffect } from "expo-router";
+import { Redirect, useRouter, useFocusEffect } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useUser } from "@/contexts/UserContext";
@@ -31,11 +31,10 @@ import {
 import { generateNickname } from "@/services/nicknameGenerator";
 import { getTeamImageSource } from "@/utils/teamUtils";
 import { ColorPicker } from "@/components/ui/ColorPicker";
-import {
-  getRecentCompletedActivities,
-  type RecentCompletedActivity } from "@/services/activityProgressService";
-import { getXpByProfileIds } from "@/services/teamActivityService";
+import { useProfileDashboard } from "@/contexts/ProfileDashboardContext";
 import { MaterialIcons } from "@expo/vector-icons";
+import { ChildScreenLayout } from "@/components/ChildScreenLayout";
+import { useNavigationReturn } from "@/contexts/NavigationReturnContext";
 
 // Design colors from reference
 const COLORS = {
@@ -67,15 +66,17 @@ export default function ProfileScreen() {
   const [showAddExplorer, setShowAddExplorer] = useState(false);
   const [profileToDelete, setProfileToDelete] = useState<Profile | null>(null);
   const [deleting, setDeleting] = useState(false);
-  type RecentActivityWithProfile = RecentCompletedActivity & { profileName: string };
-  const [recentActivities, setRecentActivities] = useState<
-    RecentActivityWithProfile[]
-  >([]);
-  const [xpByProfileId, setXpByProfileId] = useState<Record<number, number>>({});
-  const { user, signOut } = useAuth();
+  const { user, signOut, loading: authLoading } = useAuth();
   const { teamId } = useUser();
-  const { profiles, refreshProfiles } = usePlayer();
+  const { profiles, refreshProfiles, loading: profilesLoading } = usePlayer();
+  const {
+    recentActivities,
+    xpByProfileId,
+    recentActivitiesLoading,
+    refresh: refreshProfileDashboard,
+  } = useProfileDashboard();
   const router = useRouter();
+  const { pushWithReturn } = useNavigationReturn();
   const { scaleW } = useLayoutScale();
 
   const sortedProfiles = useMemo(
@@ -104,13 +105,15 @@ export default function ProfileScreen() {
     React.useCallback(() => {
       let isMounted = true;
       const refresh = async () => {
-        if (isMounted) await refreshProfiles();
+        if (!isMounted) return;
+        await refreshProfiles();
+        if (isMounted) await refreshProfileDashboard();
       };
       refresh();
       return () => {
         isMounted = false;
       };
-    }, [refreshProfiles]),
+    }, [refreshProfiles, refreshProfileDashboard]),
   );
 
   useEffect(() => {
@@ -132,43 +135,6 @@ export default function ProfileScreen() {
       isMounted = false;
     };
   }, []);
-
-  useEffect(() => {
-    if (!user || profiles.length === 0) {
-      setRecentActivities([]);
-      return;
-    }
-    const limitPerProfile = 8;
-    Promise.all(
-      profiles.map((p) => getRecentCompletedActivities(p.id, limitPerProfile))
-    )
-      .then((results) => {
-        const withProfile: RecentActivityWithProfile[] = results.flatMap(
-          (activities, i) =>
-            activities.map((a) => ({
-              ...a,
-              profileName: profiles[i].name }))
-        );
-        const sorted = withProfile.sort(
-          (a, b) =>
-            new Date(b.completed_at ?? 0).getTime() -
-            new Date(a.completed_at ?? 0).getTime()
-        );
-        setRecentActivities(sorted.slice(0, 5));
-      })
-      .catch(() => setRecentActivities([]));
-  }, [profiles, user?.id]);
-
-  useEffect(() => {
-    const ids = profiles.map((p) => p.id);
-    if (ids.length === 0) {
-      setXpByProfileId({});
-      return;
-    }
-    getXpByProfileIds(ids)
-      .then(setXpByProfileId)
-      .catch(() => setXpByProfileId({}));
-  }, [profiles]);
 
   useEffect(() => {
     const profile =
@@ -339,10 +305,7 @@ export default function ProfileScreen() {
           backgroundColor: COLORS.darkGreen },
         scrollView: {
           flex: 1 },
-        scrollContent: {
-          paddingHorizontal: scaleW(20),
-          paddingTop: scaleW(8),
-          paddingBottom: scaleW(32) },
+        scrollContent: {},
         section: {
           marginBottom: scaleW(24) },
         sectionHeader: {
@@ -607,14 +570,15 @@ export default function ProfileScreen() {
     [scaleW],
   );
 
+  if (!authLoading && !user) {
+    return <Redirect href="/auth" />;
+  }
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-      <ScrollView
-        style={styles.scrollView}
+    <>
+      <ChildScreenLayout
+        backgroundColor={COLORS.darkGreen}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-        overScrollMode="never"
       >
         {/* Your players */}
         <Animated.View
@@ -662,7 +626,13 @@ export default function ProfileScreen() {
             )}
           </View>
 
-          {!isEditing && profiles.length === 0 && (
+          {!isEditing && profilesLoading && profiles.length === 0 && (
+            <View style={[styles.cardCream, { alignItems: "center", paddingVertical: scaleW(24) }]}>
+              <ActivityIndicator size="small" color={COLORS.darkGreen} />
+            </View>
+          )}
+
+          {!isEditing && !profilesLoading && profiles.length === 0 && (
             <View style={styles.cardCream}>
               <ThemedText style={styles.cardTextPrimary}>
                 No players yet
@@ -1014,7 +984,11 @@ export default function ProfileScreen() {
           <ThemedText type="heading" style={styles.sectionTitle}>
             Recent activities
           </ThemedText>
-          {recentActivities.length === 0 ? (
+          {recentActivitiesLoading && recentActivities.length === 0 ? (
+            <View style={[styles.activityCard, { justifyContent: "center", minHeight: scaleW(72) }]}>
+              <ActivityIndicator size="small" color={COLORS.darkGreen} />
+            </View>
+          ) : recentActivities.length === 0 ? (
             <View style={styles.activityCard}>
               <View style={styles.activityCardContent}>
                 <ThemedText type="heading" style={styles.activityName}>
@@ -1061,7 +1035,7 @@ export default function ProfileScreen() {
         >
           <Pressable
             style={styles.parentZoneButton}
-            onPress={() => router.push("/(tabs)/parents")}
+            onPress={() => pushWithReturn("/(tabs)/parents")}
             onPressIn={() => {
               parentZoneScale.value = withSpring(0.96, {
                 damping: 15,
@@ -1085,7 +1059,7 @@ export default function ProfileScreen() {
         >
           <Pressable
             style={styles.parentZoneButton}
-            onPress={() => router.push("/(tabs)/settings")}
+            onPress={() => pushWithReturn("/(tabs)/settings")}
             onPressIn={() => {
               settingsScale.value = withSpring(0.96, {
                 damping: 15,
@@ -1118,7 +1092,6 @@ export default function ProfileScreen() {
                   onPress: async () => {
                     try {
                       await signOut();
-                      router.replace("/auth");
                     } catch {
                       Alert.alert("Error", "Failed to log out");
                     }
@@ -1141,7 +1114,7 @@ export default function ProfileScreen() {
             </ThemedText>
           </Pressable>
         </Animated.View>
-      </ScrollView>
+      </ChildScreenLayout>
 
       {/* Delete profile confirmation modal */}
       <Modal
@@ -1286,6 +1259,6 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </>
   );
 }

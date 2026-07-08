@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { updateImagePrompt, generateImageForAsset, approveImageAsset } from "./actions";
+import { getAssetPreviewAspect, imageAspectStyle } from "@/lib/image-aspects";
 
 type Asset = {
   id: number;
@@ -57,6 +58,7 @@ export function ImageAssetCard({ asset, seasonId, chapterLabel }: Props) {
 
   const canGenerate = !!asset.prompt && asset.status !== "approved";
   const canApprove = asset.status === "image_uploaded";
+  const previewAspect = getAssetPreviewAspect(asset.entity_type, asset.slot_key);
 
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
@@ -75,7 +77,10 @@ export function ImageAssetCard({ asset, seasonId, chapterLabel }: Props) {
 
       {/* Image preview */}
       {asset.storage_path ? (
-        <div className="overflow-hidden rounded-lg bg-stone-100 aspect-video">
+        <div
+          className="overflow-hidden rounded-lg bg-stone-100"
+          style={imageAspectStyle(previewAspect)}
+        >
           <img
             src={asset.storage_path}
             alt=""
@@ -83,7 +88,10 @@ export function ImageAssetCard({ asset, seasonId, chapterLabel }: Props) {
           />
         </div>
       ) : (
-        <div className="flex aspect-video w-full items-center justify-center rounded-lg border-2 border-dashed border-stone-200 bg-stone-50">
+        <div
+          className="flex w-full items-center justify-center rounded-lg border-2 border-dashed border-stone-200 bg-stone-50"
+          style={imageAspectStyle(previewAspect)}
+        >
           {isPending ? (
             <div className="flex flex-col items-center gap-2">
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-huntly-forest border-t-transparent" />

@@ -17,8 +17,6 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { getActivityById, getActivityImageSource } from "@/services/packService";
-import { useUser } from "@/contexts/UserContext";
-import { isStartMissionOnboardingActive } from "@/constants/startMissionOnboarding";
 import type { Activity } from "@/types/activity";
 import type { MissionStep } from "@/types/activity";
 
@@ -36,8 +34,6 @@ export default function StepsScreen() {
   const { id, step } = useLocalSearchParams<{ id?: string; step?: string }>();
   const { scaleW, isTablet } = useLayoutScale();
   const insets = useSafeAreaInsets();
-  const { userData } = useUser();
-  const onboardingActive = isStartMissionOnboardingActive(userData?.start_mission_step);
   const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -175,9 +171,9 @@ export default function StepsScreen() {
           paddingHorizontal: scaleW(20),
           paddingBottom:
             insets.bottom +
-            (onboardingActive ? scaleW(20) : scaleW(12)) +
+            scaleW(12) +
             (isTablet ? scaleW(36) : 0),
-          marginBottom: onboardingActive ? 0 : scaleW(24) },
+          marginBottom: scaleW(24) },
         backButton: {
           flex: 1,
           backgroundColor: "rgba(255,255,255,0.15)",
@@ -193,7 +189,7 @@ export default function StepsScreen() {
           alignItems: "center",
           justifyContent: "center" },
         buttonText: { fontSize: scaleW(16), fontWeight: "700", color: "#FFF", lineHeight: scaleW(20) } }),
-    [scaleW, insets.bottom, onboardingActive, isTablet]
+    [scaleW, insets.bottom, isTablet]
   );
 
   if (loading) {

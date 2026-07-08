@@ -1,14 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
-import * as Notifications from "expo-notifications";
 import { Pedometer } from "expo-sensors";
-import { Alert, Platform } from "react-native";
+import { Platform } from "react-native";
 import { syncActivityLiveSurface, endActivityLiveSurface } from "@/services/activityLiveSurfaceService";
 import { ACTIVITY_LIVE_HUNTLY_GREEN } from "@/constants/activityLiveSurfaceColors";
-import {
-  TrackingPermissionError,
-  getBackgroundTrackingPermissionAlertCopy,
-} from "@/utils/trackingLocationPermission";
+import { TrackingPermissionError } from "@/utils/trackingLocationPermission";
 
 export const TRACKING_LOCATION_TASK = "huntly-active-adventure-location";
 
@@ -99,13 +95,6 @@ function notify(session: ActiveTrackingSession | null) {
   listeners.forEach((listener) => listener(session));
 }
 
-function explainBackgroundTrackingPermission(): Promise<void> {
-  const { title, message } = getBackgroundTrackingPermissionAlertCopy();
-  return new Promise((resolve) => {
-    Alert.alert(title, message, [{ text: "Continue", onPress: () => resolve() }]);
-  });
-}
-
 export function subscribeActiveTrackingSession(listener: (session: ActiveTrackingSession | null) => void) {
   listeners.add(listener);
   return () => listeners.delete(listener);
@@ -151,6 +140,8 @@ export async function clearActiveTrackingSession(): Promise<void> {
 }
 
 export async function ensureTrackingPermissions(): Promise<void> {
+  if (Platform.OS === "android") return;
+
   const servicesEnabled = await Location.hasServicesEnabledAsync();
   if (!servicesEnabled) {
     throw new TrackingPermissionError("location_services_disabled");
@@ -159,15 +150,6 @@ export async function ensureTrackingPermissions(): Promise<void> {
   const foreground = await Location.requestForegroundPermissionsAsync();
   if (foreground.status !== "granted") {
     throw new TrackingPermissionError("foreground_denied");
-  }
-
-  if (Platform.OS === "android") {
-    await Notifications.requestPermissionsAsync();
-  }
-
-  const existingBackground = await Location.getBackgroundPermissionsAsync();
-  if (existingBackground.status !== "granted") {
-    await explainBackgroundTrackingPermission();
   }
 
   const background = await Location.requestBackgroundPermissionsAsync();
@@ -212,6 +194,7 @@ function trackingForegroundServiceCopy(type: TrackingActivityType): {
 }
 
 export async function startTrackingLocationUpdates(type: TrackingActivityType): Promise<void> {
+  if (Platform.OS === "android") return;
   const alreadyStarted = await Location.hasStartedLocationUpdatesAsync(TRACKING_LOCATION_TASK);
   if (alreadyStarted) return;
   const fg = trackingForegroundServiceCopy(type);
@@ -231,6 +214,7 @@ export async function startTrackingLocationUpdates(type: TrackingActivityType): 
 }
 
 export async function stopTrackingLocationUpdates(): Promise<void> {
+  if (Platform.OS === "android") return;
   const started = await Location.hasStartedLocationUpdatesAsync(TRACKING_LOCATION_TASK);
   if (started) await Location.stopLocationUpdatesAsync(TRACKING_LOCATION_TASK);
 }

@@ -87,28 +87,62 @@ export const getTeams = async (): Promise<Team[]> => {
   return data || [];
 };
 
-/** Get user_data for the given user (team may be null). */
-export const getUserData = async (
-  userId: string
-): Promise<{
+export type UserDataRow = {
   user_id: string;
   team: number | null;
   weekly_email: boolean;
   last_seen_season_id: number | null;
   start_mission_step: number;
-} | null> => {
+  first_mission_activity_id: number | null;
+  /** True for accounts grandfathered in before the subscription requirement launched. */
+  subscription_exempt: boolean;
+};
+
+const USER_DATA_SELECT_FULL =
+  "user_id, team, weekly_email, last_seen_season_id, start_mission_step, first_mission_activity_id, subscription_exempt";
+const USER_DATA_SELECT_BASE =
+  "user_id, team, weekly_email, last_seen_season_id, start_mission_step";
+
+// first_mission_activity_id and subscription_exempt are newer columns that may not exist yet in
+// every environment; fall back to the base columns rather than breaking user_data reads entirely.
+function isMissingOptionalColumnError(error: { message?: string }): boolean {
+  const message = error.message ?? "";
+  return message.includes("first_mission_activity_id") || message.includes("subscription_exempt");
+}
+
+/** Get user_data for the given user (team may be null). */
+export const getUserData = async (userId: string): Promise<UserDataRow | null> => {
   const { data, error } = await supabase
     .from("user_data")
-    .select("user_id, team, weekly_email, last_seen_season_id, start_mission_step")
+    .select(USER_DATA_SELECT_FULL)
     .eq("user_id", userId)
     .single();
 
-  if (error) {
-    if (error.code === "PGRST116") return null; // no row
-    console.error("Error fetching user_data:", error);
-    throw new Error(`Failed to fetch user data: ${error.message}`);
+  if (!error) {
+    return data;
   }
-  return data;
+
+  if (error.code === "PGRST116") return null; // no row
+
+  if (isMissingOptionalColumnError(error)) {
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from("user_data")
+      .select(USER_DATA_SELECT_BASE)
+      .eq("user_id", userId)
+      .single();
+
+    if (!fallbackError) {
+      // subscription_exempt defaults to false (not grandfathered) when we can't confirm it,
+      // so a schema hiccup never accidentally grants free access.
+      return { ...fallbackData, first_mission_activity_id: null, subscription_exempt: false };
+    }
+    if (fallbackError.code === "PGRST116") return null;
+    console.error("Error fetching user_data (fallback):", fallbackError);
+    throw new Error(`Failed to fetch user data: ${fallbackError.message}`);
+  }
+
+  console.error("Error fetching user_data:", error);
+  throw new Error(`Failed to fetch user data: ${error.message}`);
 };
 
 /** Update the authenticated user's team in user_data (e.g. when they choose a team at sign-up). */
@@ -166,6 +200,28 @@ export const updateUserDataStartMissionStep = async (
   if (error) {
     console.error("Error updating user_data start_mission_step:", error);
     throw new Error(`Failed to update onboarding step: ${error.message}`);
+  }
+};
+
+/** Persist the user's first-mission target activity id in user_data. */
+export const updateUserDataFirstMissionActivityId = async (
+  userId: string,
+  activityId: number | null
+): Promise<void> => {
+  const { error } = await supabase
+    .from("user_data")
+    .update({ first_mission_activity_id: activityId })
+    .eq("user_id", userId);
+
+  if (error) {
+    if (isMissingOptionalColumnError(error)) {
+      console.warn(
+        "first_mission_activity_id column missing; run migration 20260621120000 on this Supabase project"
+      );
+      return;
+    }
+    console.error("Error updating user_data first_mission_activity_id:", error);
+    throw new Error(`Failed to update first mission target: ${error.message}`);
   }
 };
 

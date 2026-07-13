@@ -122,8 +122,12 @@ export function AuthGuard({ children }: AuthGuardProps) {
             router.replace("/sign-up/team");
             return;
           }
-          // No mission-first onboarding redirects. Signed-in users with complete setup
-          // can continue navigating normally.
+          // Require active subscription (or grandfathered access) for signed-in users
+          // with complete setup to access the app.
+          const inSubscriptionRequired = segments[0] === "subscription-required";
+          if (!inSubscriptionRequired && !purchasesLoading && !hasAccess) {
+            router.replace("/subscription-required");
+          }
         })
         .catch((error) => {
           console.error("Error checking profiles/user data:", error);
@@ -140,19 +144,6 @@ export function AuthGuard({ children }: AuthGuardProps) {
             });
         })
         .finally(() => setCheckingProfiles(false));
-      return;
-    }
-
-    // Require active subscription (or grandfathered access) for signed-in users to access the app
-    const inSubscriptionRequired = segments[0] === "subscription-required";
-    if (
-      user &&
-      !inUnauthFlow &&
-      !inSubscriptionRequired &&
-      !purchasesLoading &&
-      !hasAccess
-    ) {
-      router.replace("/subscription-required");
       return;
     }
 

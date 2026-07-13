@@ -26,31 +26,9 @@ type SignUpContextValue = {
   /** True only once after completing sign-up; used to show welcome modal then dismiss. */
   showPostSignUpWelcome: boolean;
   setShowPostSignUpWelcome: (value: boolean) => void;
-  /** Tutorial step: intro → ... → team → wrap_up → done */
-  tutorialStep:
-    | "intro"
-    | "clubhouse"
-    | "click_missions"
-    | "missions"
-    | "click_team"
-    | "team"
-    | "click_journal"
-    | "journal"
-    | "wrap_up"
-    | "done";
-  setTutorialStep: (
-    step:
-      | "intro"
-      | "clubhouse"
-      | "click_missions"
-      | "missions"
-      | "click_team"
-      | "team"
-      | "click_journal"
-      | "journal"
-      | "wrap_up"
-      | "done"
-  ) => void;
+  /** Tutorial step: welcome → missions → team → journal → done */
+  tutorialStep: "welcome" | "missions" | "team" | "journal" | "done";
+  setTutorialStep: (step: "welcome" | "missions" | "team" | "journal" | "done") => void;
   /** When true, show tutorial even if user has completed it (e.g. "Show tutorial again" from Settings). */
   replayTutorialRequested: boolean;
   setReplayTutorialRequested: (value: boolean) => void;
@@ -67,8 +45,8 @@ export function SignUpProvider({ children }: { children: React.ReactNode }) {
   const [selectedTeamName, setSelectedTeamName] = useState<string | null>(null);
   const [showPostSignUpWelcome, setShowPostSignUpWelcome] = useState(false);
   const [tutorialStep, setTutorialStep] = useState<
-    "intro" | "clubhouse" | "click_missions" | "missions" | "click_team" | "team" | "click_journal" | "journal" | "wrap_up" | "done"
-  >("intro");
+    "welcome" | "missions" | "team" | "journal" | "done"
+  >("welcome");
   const [replayTutorialRequested, setReplayTutorialRequested] = useState(false);
 
   const addPlayer = useCallback((player: SignUpPlayer) => {

@@ -24,6 +24,7 @@ import { router, useFocusEffect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { AdventureTile } from "@/components/AdventureTile";
+import { CampfireTile } from "@/components/CampfireTile";
 import { PastAdventuresTile } from "@/components/PastAdventuresTile";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useNavigationReturn } from "@/contexts/NavigationReturnContext";

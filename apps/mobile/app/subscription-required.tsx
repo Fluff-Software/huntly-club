@@ -1,7 +1,8 @@
-import React, { useEffect } from "react";
-import { View, ActivityIndicator, Alert } from "react-native";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, Alert, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import RevenueCatUI from "react-native-purchases-ui";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/ui/Button";
@@ -10,16 +11,18 @@ import { usePurchases } from "@/contexts/PurchasesContext";
 
 /**
  * Blocking screen shown when a signed-in user does not have an active subscription.
- * They must subscribe, restore purchases, or sign out to proceed.
+ * Renders the RevenueCat paywall directly; if the user closes it without subscribing,
+ * they land on a fallback with a way to reopen the paywall or sign out.
  */
 export default function SubscriptionRequiredScreen() {
   const router = useRouter();
   const { signOut } = useAuth();
   const {
+    offerings,
     hasAccess,
     isLoading,
-    presentPaywall,
     refreshSubscriptionStatus } = usePurchases();
+  const [paywallDismissed, setPaywallDismissed] = useState(false);
 
   // When they gain access (e.g. after purchase or restore), send them into the app
   useEffect(() => {
@@ -27,11 +30,6 @@ export default function SubscriptionRequiredScreen() {
       router.replace("/(tabs)");
     }
   }, [isLoading, hasAccess, router]);
-
-  const handleSubscribe = async () => {
-    await presentPaywall();
-    await refreshSubscriptionStatus();
-  };
 
   const handleSignOut = () => {
     Alert.alert(
@@ -54,6 +52,23 @@ export default function SubscriptionRequiredScreen() {
           </ThemedText>
         </ThemedView>
       </SafeAreaView>
+    );
+  }
+
+  // Show the RevenueCat paywall directly as the screen content. Falls through to the
+  // manual fallback below if there's nothing to sell or the user closes it.
+  if (!paywallDismissed && offerings) {
+    return (
+      <RevenueCatUI.Paywall
+        style={styles.paywall}
+        onPurchaseCompleted={() => {
+          void refreshSubscriptionStatus();
+        }}
+        onRestoreCompleted={() => {
+          void refreshSubscriptionStatus();
+        }}
+        onDismiss={() => setPaywallDismissed(true)}
+      />
     );
   }
 
@@ -81,7 +96,7 @@ export default function SubscriptionRequiredScreen() {
           <Button
             variant="secondary"
             size="large"
-            onPress={handleSubscribe}
+            onPress={() => setPaywallDismissed(false)}
             className="w-full"
           >
             Subscribe to unlock
@@ -100,3 +115,9 @@ export default function SubscriptionRequiredScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  paywall: {
+    flex: 1,
+  },
+});

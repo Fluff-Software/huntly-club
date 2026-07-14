@@ -817,6 +817,7 @@ export type EarliestAvailableMission = {
   title: string;
   description: string | null;
   image: string | null;
+  xp: number | null;
 };
 
 /** Returns the earliest released mission in campfire session scope (oldest release_date first). */
@@ -843,7 +844,7 @@ export const getEarliestAvailableMission = async (): Promise<EarliestAvailableMi
 
   const { data, error } = await supabase
     .from("activities")
-    .select("id, title, description, image, release_date, session_order")
+    .select("id, title, description, image, xp, release_date, session_order")
     .in("id", [...missionIds])
     .eq("content_status", "published")
     .not("release_date", "is", null)
@@ -865,6 +866,7 @@ export const getEarliestAvailableMission = async (): Promise<EarliestAvailableMi
     title: data.title,
     description: data.description ?? null,
     image: data.image ?? null,
+    xp: data.xp ?? null,
   };
 };
 

@@ -40,6 +40,7 @@ const TAB_BAR_COLORS: Record<string, string> = {
   missions: "#D2684B",
   social: "#C3A4FF",
   journal: "#B07D3E",
+  profile: "#5B7FA6",
   testing: "#5B8A9E" };
 
 const CREAM = "#F4F0EB";
@@ -404,7 +405,11 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          href: null }}
+          title: "Profile",
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons name="person" size={scaleW(24)} color={color} />
+          ),
+          href: profiles.length > 0 ? undefined : null }}
       />
       <Tabs.Screen
         name="parents"

@@ -28,6 +28,8 @@ import { CampfireTile } from "@/components/CampfireTile";
 import { CaptainQuoteCard } from "@/components/CaptainQuoteCard";
 import { TeamRaceCard } from "@/components/clubhouse/TeamRaceCard";
 import { ThingsToDoRow } from "@/components/clubhouse/ThingsToDoRow";
+import { AdventureTile } from "@/components/AdventureTile";
+import { PastAdventuresTile } from "@/components/PastAdventuresTile";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useTutorialActive } from "@/hooks/useTutorialActive";
 import { useRefreshWhenTutorialEnds } from "@/hooks/useRefreshWhenTutorialEnds";

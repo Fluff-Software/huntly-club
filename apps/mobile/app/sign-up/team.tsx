@@ -130,7 +130,7 @@ export default function SignUpTeamScreen() {
       }
       await refreshProfiles();
       clearSignUpData();
-      setTutorialStep("intro");
+      setTutorialStep("welcome");
       setShowPostSignUpWelcome(true);
       router.replace("/(tabs)");
     } catch (error) {

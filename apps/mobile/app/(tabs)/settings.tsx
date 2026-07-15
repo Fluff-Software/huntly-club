@@ -173,7 +173,7 @@ export default function SettingsScreen() {
 
   // const handleShowTutorialAgain = async () => {
   //   setReplayTutorialRequested?.(true);
-  //   setTutorialStep?.("intro");
+  //   setTutorialStep?.("welcome");
   //   setShowPostSignUpWelcome?.(true);
   //   await updateStartMissionStep(0);
   //   router.replace("/onboarding/welcome");

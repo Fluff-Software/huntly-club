@@ -1,8 +1,6 @@
-import React, { useEffect } from "react";
-import { View, StyleSheet, Image, Pressable } from "react-native";
-import { useSegments } from "expo-router";
+import React from "react";
+import { View, StyleSheet, Pressable } from "react-native";
 
-const TUTORIAL_CHARACTER = require("@/assets/images/bella-waving.png");
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useSignUpOptional } from "@/contexts/SignUpContext";
@@ -11,17 +9,7 @@ const CREAM = "#F4F0EB";
 const HUNTLY_GREEN = "#4F6F52";
 const HUNTLY_CHARCOAL = "#3D3D3D";
 
-export type TutorialStep =
-  | "intro"
-  | "clubhouse"
-  | "click_missions"
-  | "missions"
-  | "click_team"
-  | "team"
-  | "click_journal"
-  | "journal"
-  | "wrap_up"
-  | "done";
+export type TutorialStep = "welcome" | "missions" | "team" | "journal" | "done";
 
 interface NewPlayerTutorialProps {
   visible: boolean;
@@ -33,328 +21,177 @@ export function NewPlayerTutorial({ visible, onDismiss, tabBarHeight }: NewPlaye
   const { scaleW, width, isTablet } = useLayoutScale();
   const cardMaxWidth = isTablet ? Math.min(scaleW(420), width * 0.85) : scaleW(360);
   const signUpContext = useSignUpOptional();
-  const tutorialStep = signUpContext?.tutorialStep ?? "intro";
+  const tutorialStep = signUpContext?.tutorialStep ?? "welcome";
   const setTutorialStep = signUpContext?.setTutorialStep;
-  const segments = useSegments();
 
   const handleNext = () => {
-    if (tutorialStep === "intro") {
-      setTutorialStep?.("clubhouse");
-    } else if (tutorialStep === "clubhouse") {
-      setTutorialStep?.("click_missions");
+    if (tutorialStep === "welcome") {
+      setTutorialStep?.("missions");
     } else if (tutorialStep === "missions") {
-      setTutorialStep?.("click_team");
+      setTutorialStep?.("team");
     } else if (tutorialStep === "team") {
-      setTutorialStep?.("click_journal");
+      setTutorialStep?.("journal");
     } else if (tutorialStep === "journal") {
-      setTutorialStep?.("wrap_up");
-    } else if (tutorialStep === "wrap_up") {
       onDismiss();
     }
   };
 
-  // When on "click_journal" and user navigates to journal tab, advance to journal card
-  useEffect(() => {
-    if (!visible || tutorialStep !== "click_journal" || !setTutorialStep) return;
-    const inJournalTab = segments[0] === "(tabs)" && segments[1] === "journal";
-    if (!inJournalTab) return;
-    const timer = setTimeout(() => setTutorialStep("journal"), 0);
-    return () => clearTimeout(timer);
-  }, [visible, tutorialStep, segments, setTutorialStep]);
-
-  // When on "click_missions" and user navigates to missions tab, advance to missions card
-  useEffect(() => {
-    if (!visible || tutorialStep !== "click_missions" || !setTutorialStep) return;
-    const inMissionsTab = segments[0] === "(tabs)" && segments[1] === "missions";
-    if (!inMissionsTab) return;
-    const timer = setTimeout(() => setTutorialStep("missions"), 0);
-    return () => clearTimeout(timer);
-  }, [visible, tutorialStep, segments, setTutorialStep]);
-
-  // When on "click_team" and user navigates to team tab, advance to team card
-  useEffect(() => {
-    if (!visible || tutorialStep !== "click_team" || !setTutorialStep) return;
-    const inTeamTab = segments[0] === "(tabs)" && segments[1] === "social";
-    if (!inTeamTab) return;
-    const timer = setTimeout(() => setTutorialStep("team"), 0);
-    return () => clearTimeout(timer);
-  }, [visible, tutorialStep, segments, setTutorialStep]);
-
   if (!visible || tutorialStep === "done") return null;
 
-  const isTabBarVisibleStep =
-    tutorialStep === "click_missions" ||
-    tutorialStep === "click_team" ||
-    tutorialStep === "click_journal";
+  const isTabHintStep =
+    tutorialStep === "missions" || tutorialStep === "team" || tutorialStep === "journal";
 
   // Rendered as absolute overlay (not Modal) so the tab bar stays in the same
-  // view hierarchy and remains tappable when overlay has bottom: tabBarHeight.
+  // view hierarchy and remains tappable at all times.
   return (
     <View style={styles.overlayRoot} pointerEvents="box-none">
-      {/* Overlay only above tab bar on click_story so tab bar is not covered */}
       <View
         style={[
           styles.overlay,
           { padding: scaleW(24) },
-          isTabBarVisibleStep && { bottom: tabBarHeight },
+          isTabHintStep && { bottom: tabBarHeight },
         ]}
+        pointerEvents="box-none"
       >
-        {/* Centered cards: intro, clubhouse, seasons, missions, team, wrap_up */}
-        {(tutorialStep === "intro" ||
-          tutorialStep === "clubhouse" ||
-          tutorialStep === "missions" ||
-          tutorialStep === "team" ||
-          tutorialStep === "journal" ||
-          tutorialStep === "wrap_up") && (
-          <View style={styles.centeredCardWrapper}>
-            {tutorialStep === "intro" && (
-              <View style={[styles.card, styles.cardWithImage, { padding: scaleW(24), borderRadius: scaleW(16), maxWidth: cardMaxWidth }]}>
-                <Image source={TUTORIAL_CHARACTER} style={[styles.characterImage, { width: scaleW(150), height: scaleW(120), marginBottom: scaleW(12) }]} resizeMode="contain" />
-                <ThemedText type="subtitle" style={{ fontSize: scaleW(22), fontWeight: "600", marginBottom: scaleW(8) }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
-                  Welcome to Huntly World
-                </ThemedText>
-                <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(24), marginBottom: scaleW(24) }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
-                  Let's have a quick look around.
-                </ThemedText>
-                <Pressable
-                  onPress={handleNext}
-                  style={{
-                    alignSelf: "center",
-                    minWidth: scaleW(200),
-                    minHeight: scaleW(52),
-                    paddingVertical: scaleW(14),
-                    paddingHorizontal: scaleW(28),
-                    borderRadius: scaleW(14),
-                    backgroundColor: HUNTLY_GREEN,
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                  accessibilityRole="button"
-                >
-                  <ThemedText
-                    style={{ fontSize: scaleW(18), fontWeight: "600" }}
-                    lightColor={CREAM}
-                    darkColor={CREAM}
-                  >
-                    Next
-                  </ThemedText>
-                </Pressable>
-              </View>
-            )}
+        <Pressable
+          onPress={onDismiss}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="Skip tour"
+          style={[styles.skipButton, { top: scaleW(8), right: scaleW(8) }]}
+        >
+          <ThemedText style={{ fontSize: scaleW(15), fontWeight: "600" }} lightColor={CREAM} darkColor={CREAM}>
+            Skip
+          </ThemedText>
+        </Pressable>
 
-            {tutorialStep === "clubhouse" && (
-              <View style={[styles.card, { padding: scaleW(24), borderRadius: scaleW(16), maxWidth: cardMaxWidth }]}>
-                <ThemedText type="subtitle" style={{ fontSize: scaleW(22), fontWeight: "600", marginBottom: scaleW(12) }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
-                  The Clubhouse
-                </ThemedText>
-                <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(24), marginBottom: scaleW(24) }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
-                  This is your home base. Scroll to see photos from around the club. Swipe to go to your profile or recommended mission, or tap the Profile and Missions buttons at the top corners.
-                </ThemedText>
-                <Pressable
-                  onPress={handleNext}
-                  style={{
-                    alignSelf: "center",
-                    minWidth: scaleW(200),
-                    minHeight: scaleW(52),
-                    paddingVertical: scaleW(14),
-                    paddingHorizontal: scaleW(28),
-                    borderRadius: scaleW(14),
-                    backgroundColor: HUNTLY_GREEN,
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                  accessibilityRole="button"
-                >
-                  <ThemedText
-                    style={{ fontSize: scaleW(18), fontWeight: "600" }}
-                    lightColor={CREAM}
-                    darkColor={CREAM}
-                  >
-                    Next
-                  </ThemedText>
-                </Pressable>
-              </View>
-            )}
-
-            {tutorialStep === "missions" && (
-              <View style={[styles.card, { padding: scaleW(24), borderRadius: scaleW(16), maxWidth: cardMaxWidth }]}>
-                <ThemedText type="subtitle" style={{ fontSize: scaleW(22), fontWeight: "600", marginBottom: scaleW(12) }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
-                  Missions
-                </ThemedText>
-                <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(24), marginBottom: scaleW(24) }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
-                  Your adventures live here, grouped by campfire session. Tap a mission to see what to do and earn points. You can also go back and complete missions from earlier sessions if you have missed any.
-                </ThemedText>
-                <Pressable
-                  onPress={handleNext}
-                  style={{
-                    alignSelf: "center",
-                    minWidth: scaleW(200),
-                    minHeight: scaleW(52),
-                    paddingVertical: scaleW(14),
-                    paddingHorizontal: scaleW(28),
-                    borderRadius: scaleW(14),
-                    backgroundColor: HUNTLY_GREEN,
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                  accessibilityRole="button"
-                >
-                  <ThemedText
-                    style={{ fontSize: scaleW(18), fontWeight: "600" }}
-                    lightColor={CREAM}
-                    darkColor={CREAM}
-                  >
-                    Next
-                  </ThemedText>
-                </Pressable>
-              </View>
-            )}
-
-            {tutorialStep === "team" && (
-              <View style={[styles.card, { padding: scaleW(24), borderRadius: scaleW(16), maxWidth: cardMaxWidth }]}>
-                <ThemedText type="subtitle" style={{ fontSize: scaleW(22), fontWeight: "600", marginBottom: scaleW(12) }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
-                  Your team
-                </ThemedText>
-                <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(24), marginBottom: scaleW(24) }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
-                  See how your team's doing - compare points, see recent achievements and celebrate together.
-                </ThemedText>
-                <Pressable
-                  onPress={handleNext}
-                  style={{
-                    alignSelf: "center",
-                    minWidth: scaleW(200),
-                    minHeight: scaleW(52),
-                    paddingVertical: scaleW(14),
-                    paddingHorizontal: scaleW(28),
-                    borderRadius: scaleW(14),
-                    backgroundColor: HUNTLY_GREEN,
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                  accessibilityRole="button"
-                >
-                  <ThemedText
-                    style={{ fontSize: scaleW(18), fontWeight: "600" }}
-                    lightColor={CREAM}
-                    darkColor={CREAM}
-                  >
-                    Next
-                  </ThemedText>
-                </Pressable>
-              </View>
-            )}
-
-            {tutorialStep === "journal" && (
-              <View style={[styles.card, { padding: scaleW(24), borderRadius: scaleW(16), maxWidth: cardMaxWidth }]}>
-                <ThemedText type="subtitle" style={{ fontSize: scaleW(22), fontWeight: "600", marginBottom: scaleW(12) }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
-                  Your backpack
-                </ThemedText>
-                <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(24), marginBottom: scaleW(24) }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
-                  Your Backpack stores your badges, mission memories, and journal entries so you can look back on every adventure.
-                </ThemedText>
-                <Pressable
-                  onPress={handleNext}
-                  style={{
-                    alignSelf: "center",
-                    minWidth: scaleW(200),
-                    minHeight: scaleW(52),
-                    paddingVertical: scaleW(14),
-                    paddingHorizontal: scaleW(28),
-                    borderRadius: scaleW(14),
-                    backgroundColor: HUNTLY_GREEN,
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                  accessibilityRole="button"
-                >
-                  <ThemedText
-                    style={{ fontSize: scaleW(18), fontWeight: "600" }}
-                    lightColor={CREAM}
-                    darkColor={CREAM}
-                  >
-                    Next
-                  </ThemedText>
-                </Pressable>
-              </View>
-            )}
-
-            {tutorialStep === "wrap_up" && (
-              <View style={[styles.card, styles.cardWithImage, { padding: scaleW(24), borderRadius: scaleW(16), maxWidth: cardMaxWidth }]}>
-                <Image source={TUTORIAL_CHARACTER} style={[styles.characterImage, { width: scaleW(150), height: scaleW(120), marginBottom: scaleW(12) }]} resizeMode="contain" />
-                <ThemedText type="subtitle" style={{ fontSize: scaleW(22), fontWeight: "600", marginBottom: scaleW(12) }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
-                  What to do next
-                </ThemedText>
-                <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(24), marginBottom: scaleW(24) }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
-                  Head to Missions and try your next challenge. Join a campfire when one is live. Have fun!
-                </ThemedText>
-                <Pressable
-                  onPress={handleNext}
-                  style={{
-                    alignSelf: "center",
-                    minWidth: scaleW(200),
-                    minHeight: scaleW(52),
-                    paddingVertical: scaleW(14),
-                    paddingHorizontal: scaleW(28),
-                    borderRadius: scaleW(14),
-                    backgroundColor: HUNTLY_GREEN,
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                  accessibilityRole="button"
-                >
-                  <ThemedText
-                    style={{ fontSize: scaleW(18), fontWeight: "600" }}
-                    lightColor={CREAM}
-                    darkColor={CREAM}
-                  >
-                    Get started
-                  </ThemedText>
-                </Pressable>
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* Tap-tab hint cards above tab bar */}
-        {tutorialStep === "click_missions" && (
-          <View style={[styles.tapTabStepContainer, { bottom: scaleW(24) }]}>
-            <View style={[styles.card, styles.tapTabCard, { padding: scaleW(20), borderRadius: scaleW(16), maxWidth: scaleW(320) }]}>
-              <ThemedText type="subtitle" style={{ fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(4), textAlign: "center" }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
-                Tap Missions below
+        {tutorialStep === "welcome" && (
+          <View style={styles.centeredCardWrapper} pointerEvents="box-none">
+            <View style={[styles.card, styles.cardCentered, { padding: scaleW(24), borderRadius: scaleW(16), maxWidth: cardMaxWidth }]}>
+              <ThemedText type="subtitle" style={{ fontSize: scaleW(22), fontWeight: "600", marginBottom: scaleW(8) }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
+                Welcome to Huntly World
               </ThemedText>
-              <ThemedText style={{ fontSize: scaleW(14), lineHeight: scaleW(20), textAlign: "center" }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
-                for your next adventure.
+              <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(24), marginBottom: scaleW(24) }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
+                This is your Clubhouse - your home base. Here's a quick look at where everything lives.
               </ThemedText>
+              <Pressable
+                onPress={handleNext}
+                style={{
+                  alignSelf: "center",
+                  minWidth: scaleW(200),
+                  minHeight: scaleW(52),
+                  paddingVertical: scaleW(14),
+                  paddingHorizontal: scaleW(28),
+                  borderRadius: scaleW(14),
+                  backgroundColor: HUNTLY_GREEN,
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+                accessibilityRole="button"
+              >
+                <ThemedText style={{ fontSize: scaleW(18), fontWeight: "600" }} lightColor={CREAM} darkColor={CREAM}>
+                  Next
+                </ThemedText>
+              </Pressable>
             </View>
           </View>
         )}
 
-        {tutorialStep === "click_team" && (
+        {tutorialStep === "missions" && (
           <View style={[styles.tapTabStepContainer, { bottom: scaleW(24) }]}>
             <View style={[styles.card, styles.tapTabCard, { padding: scaleW(20), borderRadius: scaleW(16), maxWidth: scaleW(320) }]}>
               <ThemedText type="subtitle" style={{ fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(4), textAlign: "center" }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
-                Tap Team below
+                Missions
               </ThemedText>
-              <ThemedText style={{ fontSize: scaleW(14), lineHeight: scaleW(20), textAlign: "center" }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
-                to see how you're doing.
+              <ThemedText style={{ fontSize: scaleW(14), lineHeight: scaleW(20), textAlign: "center", marginBottom: scaleW(16) }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
+                Your adventures live here. Tap here anytime to start one and earn points.
               </ThemedText>
+              <Pressable
+                onPress={handleNext}
+                style={{
+                  alignSelf: "center",
+                  minWidth: scaleW(160),
+                  minHeight: scaleW(44),
+                  paddingVertical: scaleW(10),
+                  paddingHorizontal: scaleW(24),
+                  borderRadius: scaleW(14),
+                  backgroundColor: HUNTLY_GREEN,
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+                accessibilityRole="button"
+              >
+                <ThemedText style={{ fontSize: scaleW(16), fontWeight: "600" }} lightColor={CREAM} darkColor={CREAM}>
+                  Next
+                </ThemedText>
+              </Pressable>
             </View>
           </View>
         )}
 
-        {tutorialStep === "click_journal" && (
+        {tutorialStep === "team" && (
           <View style={[styles.tapTabStepContainer, { bottom: scaleW(24) }]}>
             <View style={[styles.card, styles.tapTabCard, { padding: scaleW(20), borderRadius: scaleW(16), maxWidth: scaleW(320) }]}>
               <ThemedText type="subtitle" style={{ fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(4), textAlign: "center" }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
-                Tap Backpack below
+                Your team
               </ThemedText>
-              <ThemedText style={{ fontSize: scaleW(14), lineHeight: scaleW(20), textAlign: "center" }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
-                to view your saved adventures.
+              <ThemedText style={{ fontSize: scaleW(14), lineHeight: scaleW(20), textAlign: "center", marginBottom: scaleW(16) }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
+                See how your team's doing - compare points and celebrate together.
               </ThemedText>
+              <Pressable
+                onPress={handleNext}
+                style={{
+                  alignSelf: "center",
+                  minWidth: scaleW(160),
+                  minHeight: scaleW(44),
+                  paddingVertical: scaleW(10),
+                  paddingHorizontal: scaleW(24),
+                  borderRadius: scaleW(14),
+                  backgroundColor: HUNTLY_GREEN,
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+                accessibilityRole="button"
+              >
+                <ThemedText style={{ fontSize: scaleW(16), fontWeight: "600" }} lightColor={CREAM} darkColor={CREAM}>
+                  Next
+                </ThemedText>
+              </Pressable>
             </View>
           </View>
         )}
 
+        {tutorialStep === "journal" && (
+          <View style={[styles.tapTabStepContainer, { bottom: scaleW(24) }]}>
+            <View style={[styles.card, styles.tapTabCard, { padding: scaleW(20), borderRadius: scaleW(16), maxWidth: scaleW(320) }]}>
+              <ThemedText type="subtitle" style={{ fontSize: scaleW(20), fontWeight: "600", marginBottom: scaleW(4), textAlign: "center" }} lightColor={HUNTLY_GREEN} darkColor={HUNTLY_GREEN}>
+                Your backpack
+              </ThemedText>
+              <ThemedText style={{ fontSize: scaleW(14), lineHeight: scaleW(20), textAlign: "center", marginBottom: scaleW(16) }} lightColor={HUNTLY_CHARCOAL} darkColor={HUNTLY_CHARCOAL}>
+                Badges, mission memories, and journal entries live here.
+              </ThemedText>
+              <Pressable
+                onPress={handleNext}
+                style={{
+                  alignSelf: "center",
+                  minWidth: scaleW(160),
+                  minHeight: scaleW(44),
+                  paddingVertical: scaleW(10),
+                  paddingHorizontal: scaleW(24),
+                  borderRadius: scaleW(14),
+                  backgroundColor: HUNTLY_GREEN,
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+                accessibilityRole="button"
+              >
+                <ThemedText style={{ fontSize: scaleW(16), fontWeight: "600" }} lightColor={CREAM} darkColor={CREAM}>
+                  Got it
+                </ThemedText>
+              </Pressable>
+            </View>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -371,9 +208,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.45)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  skipButton: {
+    position: "absolute",
+    zIndex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
   },
   centeredCardWrapper: {
     flex: 1,
@@ -385,10 +227,9 @@ const styles = StyleSheet.create({
     backgroundColor: CREAM,
     width: "100%",
   },
-  cardWithImage: {
+  cardCentered: {
     alignItems: "center",
   },
-  characterImage: {},
   tapTabStepContainer: {
     position: "absolute",
     left: 0,

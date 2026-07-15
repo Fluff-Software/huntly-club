@@ -1,4 +1,4 @@
-import { Tabs, router, usePathname } from "expo-router";
+import { Tabs, router, usePathname, useSegments } from "expo-router";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Image, Platform, Pressable, StyleSheet, View } from "react-native";
 import { BottomTabBar, type BottomTabBarProps } from "@react-navigation/bottom-tabs";
@@ -40,6 +40,7 @@ const TAB_BAR_COLORS: Record<string, string> = {
   missions: "#D2684B",
   social: "#C3A4FF",
   journal: "#B07D3E",
+  profile: "#5B7FA6",
   testing: "#5B8A9E" };
 
 const CREAM = "#F4F0EB";
@@ -63,7 +64,7 @@ function TabIcon({
   );
 }
 
-function StoryTabPulse({ size }: { size: number }) {
+function TutorialTabPulse({ size }: { size: number }) {
   const scale = useSharedValue(1);
   const opacity = useSharedValue(0.6);
   useEffect(() => {
@@ -99,6 +100,7 @@ function StoryTabPulse({ size }: { size: number }) {
 
 export default function TabLayout() {
   const pathname = usePathname();
+  const segments = useSegments();
   const { user } = useAuth();
   const { profiles, loading: profilesLoading } = usePlayer();
   const { userData, loading: userLoading } = useUser();
@@ -156,7 +158,7 @@ export default function TabLayout() {
         setShowPostSignUpWelcome?.(false);
       } else {
         setShowPostSignUpWelcome?.(true);
-        setTutorialStep?.("intro");
+        setTutorialStep?.("welcome");
       }
     });
     return () => {
@@ -250,15 +252,6 @@ export default function TabLayout() {
     activeTrackingTitle != null &&
     !pathname.endsWith(activeTrackingRoute);
 
-  const isTabDisabled = (routeName: string) => {
-    if (!tutorialVisible) return false;
-    const step = tutorialStep as string;
-    if (step === "click_missions") return routeName !== "missions";
-    if (step === "click_team") return routeName !== "social";
-    if (step === "click_journal") return routeName !== "journal";
-    return false;
-  };
-
   const handleTutorialDismiss = () => {
     setReplayTutorialRequested?.(false);
     setTutorialStep?.("done");
@@ -270,14 +263,20 @@ export default function TabLayout() {
         }
       });
     }
-    // Tutorial ends on Backpack; send the player back to Clubhouse (index route is `/(tabs)`, not `/(tabs)/index`).
-    requestAnimationFrame(() => {
-      router.replace("/(tabs)");
-    });
     setTimeout(() => {
       void maybeRequestPushPermission();
     }, POST_MODAL_DELAY_MS);
   };
+
+  // Tabs are always tappable during the tour; if the player navigates away
+  // from the Clubhouse tab on their own, treat that as skipping the tour.
+  const isOnClubhouseTab = segments[0] === "(tabs)" && segments[1] == null;
+  useEffect(() => {
+    if (tutorialVisible && !isOnClubhouseTab) {
+      handleTutorialDismiss();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tutorialVisible, isOnClubhouseTab]);
 
   const renderTabBar = useCallback(
     (props: BottomTabBarProps) => {
@@ -316,9 +315,7 @@ export default function TabLayout() {
         headerShown: false,
         tabBarButton: (props) => {
           const { ref: _ref, ...rest } = props;
-          return (
-            <Pressable {...rest} disabled={isTabDisabled(route.name)} />
-          );
+          return <Pressable {...rest} disabled={tutorialVisible} />;
         } })}
     >
       <Tabs.Screen
@@ -340,10 +337,10 @@ export default function TabLayout() {
         options={{
           title: "Missions",
           tabBarIcon: ({ color }) => (
-            <View style={[styles.storyIconWrapper, { width: scaleW(44), height: scaleW(44) }]}>
-              {tutorialStep === "click_missions" && (
+            <View style={[styles.tutorialIconWrapper, { width: scaleW(44), height: scaleW(44) }]}>
+              {tutorialVisible && tutorialStep === "missions" && (
                 <View style={[styles.tutorialPulseContainer, { width: scaleW(44), height: scaleW(44) }]}>
-                  <StoryTabPulse size={scaleW(44)} />
+                  <TutorialTabPulse size={scaleW(44)} />
                 </View>
               )}
               <TabIcon source={TAB_BAR_MISSIONS_ICON} color={color} size={scaleW(24)} />
@@ -356,10 +353,10 @@ export default function TabLayout() {
         options={{
           title: "Team",
           tabBarIcon: ({ color }) => (
-            <View style={[styles.storyIconWrapper, { width: scaleW(44), height: scaleW(44) }]}>
-              {tutorialStep === "click_team" && (
+            <View style={[styles.tutorialIconWrapper, { width: scaleW(44), height: scaleW(44) }]}>
+              {tutorialVisible && tutorialStep === "team" && (
                 <View style={[styles.tutorialPulseContainer, { width: scaleW(44), height: scaleW(44) }]}>
-                  <StoryTabPulse size={scaleW(44)} />
+                  <TutorialTabPulse size={scaleW(44)} />
                 </View>
               )}
               <TabTrophyIcon color={color} size={scaleW(24)} />
@@ -374,10 +371,10 @@ export default function TabLayout() {
         options={{
           title: "Backpack",
           tabBarIcon: ({ color }) => (
-            <View style={[styles.storyIconWrapper, { width: scaleW(44), height: scaleW(44) }]}>
-              {tutorialStep === "click_journal" && (
+            <View style={[styles.tutorialIconWrapper, { width: scaleW(44), height: scaleW(44) }]}>
+              {tutorialVisible && tutorialStep === "journal" && (
                 <View style={[styles.tutorialPulseContainer, { width: scaleW(44), height: scaleW(44) }]}>
-                  <StoryTabPulse size={scaleW(44)} />
+                  <TutorialTabPulse size={scaleW(44)} />
                 </View>
               )}
               <MaterialIcons name="workspace-premium" size={scaleW(24)} color={color} />
@@ -408,7 +405,11 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          href: null }}
+          title: "Profile",
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons name="person" size={scaleW(24)} color={color} />
+          ),
+          href: profiles.length > 0 ? undefined : null }}
       />
       <Tabs.Screen
         name="parents"
@@ -469,7 +470,7 @@ const styles = StyleSheet.create({
   layoutWrapper: {
     flex: 1 },
   tabIcon: {},
-  storyIconWrapper: {
+  tutorialIconWrapper: {
     position: "relative",
     alignItems: "center",
     justifyContent: "center" },

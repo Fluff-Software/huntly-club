@@ -12,6 +12,7 @@ import {
   type NativeSyntheticEvent,
   type NativeScrollEvent } from "react-native";
 import { Image as ExpoImage } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import AnimatedReanimated, {
   useAnimatedStyle,
   useSharedValue,
@@ -23,15 +24,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
-import { AdventureTile } from "@/components/AdventureTile";
 import { CampfireTile } from "@/components/CampfireTile";
+import { CaptainQuoteCard } from "@/components/CaptainQuoteCard";
+import { TeamRaceCard } from "@/components/clubhouse/TeamRaceCard";
+import { ThingsToDoRow } from "@/components/clubhouse/ThingsToDoRow";
+import { AdventureTile } from "@/components/AdventureTile";
 import { PastAdventuresTile } from "@/components/PastAdventuresTile";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
-import { useNavigationReturn } from "@/contexts/NavigationReturnContext";
 import { useTutorialActive } from "@/hooks/useTutorialActive";
 import { useRefreshWhenTutorialEnds } from "@/hooks/useRefreshWhenTutorialEnds";
 import {
-  useCurrentSessionMissions,
   useSessionsWithMissions,
   type SessionWithActivities,
 } from "@/hooks/useSessionsWithMissions";
@@ -44,7 +46,6 @@ import {
   type ClubPhotoCardItem,
   type EarliestAvailableMission,
 } from "@/services/activityProgressService";
-import { getActivityById } from "@/services/packService";
 import { getTeamCardConfig } from "@/utils/teamUtils";
 import {
   prefetchClubPhotoImages,
@@ -52,13 +53,10 @@ import {
 } from "@/utils/homeActivityPreload";
 import type { ImageSourcePropType } from "react-native";
 
-type HomeMode = "profile" | "activity" | "missions";
-const HOME_MODES: HomeMode[] = ["profile", "activity", "missions"];
-
-const BG_IMAGE = require("@/assets/images/bg.png");
-
-const CREAM = "#F4F0EB";
+const CREAM = "#FFF8DC";
 const HUNTLY_GREEN = "#4F6F52";
+const DEFAULT_HEADER_GRADIENT = ["#4F6F52", "#7FB069"] as const;
+const DEFAULT_MISSION_IMAGE = require("@/assets/images/laser-fortress.jpg");
 
 const CLUB_CARDS_PAGE_SIZE = 6;
 const CLUB_CARDS_MAX = 24;
@@ -72,37 +70,6 @@ const CLUB_CARD_AUTHOR_COLORS = [
   "#C97B6C", // dusty coral
 ];
 
-const TEAM_CARD_MESSAGES = [
-  "We're doing great helping test the wind clues this week!",
-  "We're making progress on the challenges this week!",
-  "We're doing well with the nature clues and teamwork!",
-  "We're having fun exploring and solving puzzles together!",
-  "We're doing great with the outdoor missions!",
-];
-
-const SPEECH_BUBBLE_MESSAGES = (leaderName: string) => [
-  `Welcome back, explorer! What will you do today?`,
-  `Ready for adventure? ${leaderName} is cheering you on.`,
-  `Time to get going, explorer.`,
-  `What kind of adventure are you in the mood for today?`,
-  `Your next mission starts when you do.`,
-  `Let's see where today takes you.`,
-  `Ready to explore something new today?`,
-  `Another day, another adventure.`,
-  `Let's make today an adventure.`,
-  `Where will you wander today?`,
-  `Boots on? Let's go.`,
-  `What will you discover today?`,
-  `Go on — pick something fun to do.`,
-  `The outdoors is waiting for you.`,
-  `A good day for an adventure, don't you think?`,
-  `Start small or go big — just get out there.`,
-  `What's your plan for today, explorer?`,
-  `Choose your path and let's get moving.`,
-  `Your adventure is waiting.`,
-  `Let's get out there and do something brilliant.`,
-];
-
 function missionImageToUrl(image: ImageSourcePropType): string | null {
   if (typeof image === "object" && image != null && "uri" in image && typeof image.uri === "string") {
     return image.uri;
@@ -110,8 +77,8 @@ function missionImageToUrl(image: ImageSourcePropType): string | null {
   return null;
 }
 
-/** Earliest unlocked mission across sessions (oldest session first, then mission order). */
-function pickEarliestAvailableMission(
+/** Next uncompleted mission across sessions (oldest session first, then mission order); falls back to the last mission once everything is complete. */
+function pickNextMission(
   sessions: SessionWithActivities[],
   completedActivityIds: Set<string>
 ): EarliestAvailableMission | null {
@@ -125,6 +92,7 @@ function pickEarliestAvailableMission(
           title: card.title,
           description: card.description || null,
           image: missionImageToUrl(card.image),
+          xp: card.xp,
         };
       }
     }
@@ -137,49 +105,29 @@ function pickEarliestAvailableMission(
     title: fallback.title,
     description: fallback.description || null,
     image: missionImageToUrl(fallback.image),
+    xp: fallback.xp,
   };
 }
 
 export default function HomeScreen() {
-  const { scaleW, width, height } = useLayoutScale();
+  const { scaleW, width } = useLayoutScale();
   const { clubhouseActivityReady, requireClubhouseActivityReady, markClubhouseActivityReady } =
     useHomeBootstrap();
-  const { pushWithReturn } = useNavigationReturn();
   const { profiles, loading: profilesLoading } = usePlayer();
   const { preload: preloadProfileDashboard } = useProfileDashboard();
-  const {
-    userData,
-    team,
-    teamId,
-    daysPlayed,
-    pointsEarned,
-    loading: userLoading,
-    updateFirstMissionActivityId,
-  } = useUser();
+  const { team } = useUser();
   const firstProfileId = profiles[0]?.id ?? null;
   const allProfileIds = useMemo(() => profiles.map((profile) => profile.id), [profiles]);
-  const extraMissionActivityIds = useMemo(
-    () =>
-      userData?.first_mission_activity_id != null
-        ? [userData.first_mission_activity_id]
-        : [],
-    [userData?.first_mission_activity_id]
-  );
   const {
     sessions,
     completedActivityIds,
-    completedByAnyProfileActivityIds,
     loading: sessionsLoading,
     refetch: refetchSessions,
-  } = useSessionsWithMissions(firstProfileId, {
-    allProfileIds,
-    extraActivityIds: extraMissionActivityIds,
-  });
-  const {
-    latestMission,
-    latestUnfinishedMission,
-    loading: missionLoading,
-    refetch: refetchMissions } = useCurrentSessionMissions(null);
+  } = useSessionsWithMissions(firstProfileId, { allProfileIds });
+  const nextMission = useMemo(
+    () => pickNextMission(sessions, completedActivityIds),
+    [sessions, completedActivityIds]
+  );
   const [clubCards, setClubCards] = useState<ClubPhotoCardItem[]>([]);
   const [clubCardsLoading, setClubCardsLoading] = useState(true);
   const [loadingMoreClubCards, setLoadingMoreClubCards] = useState(false);
@@ -188,29 +136,8 @@ export default function HomeScreen() {
   const [teamAssetsReady, setTeamAssetsReady] = useState(false);
   const [campfireTileReady, setCampfireTileReady] = useState(false);
   const hasRevealedActivityTilesRef = useRef(false);
-  const [missionsTab, setMissionsTab] = useState<"missions" | "adventures">("missions");
-  const [firstMissionCard, setFirstMissionCard] =
-    useState<EarliestAvailableMission | null>(null);
-  const [firstMissionCardLoading, setFirstMissionCardLoading] = useState(false);
-  /** Once the saved first-mission target is completed, never show the loading shell again this session. */
-  const [firstMissionCardHidden, setFirstMissionCardHidden] = useState(false);
-  const savedFirstMissionId = userData?.first_mission_activity_id ?? null;
-  const savedFirstMissionCompleteInSessionData = useMemo(
-    () =>
-      savedFirstMissionId != null &&
-      completedActivityIds.has(String(savedFirstMissionId)),
-    [savedFirstMissionId, completedActivityIds]
-  );
   const isTutorialActive = useTutorialActive();
-  const initialIndex = 1; // activity (Welcome back)
-  const [currentIndex, setCurrentIndex] = useState<number>(initialIndex);
-  const currentMode = HOME_MODES[currentIndex] ?? "activity";
   const teamCardConfig = team ? getTeamCardConfig(team.name) : null;
-  const teamCardMessage = useMemo(() => TEAM_CARD_MESSAGES[Math.floor(Math.random() * TEAM_CARD_MESSAGES.length)], []);
-  const speechBubbleMessage = useMemo(() => {
-    const msgs = SPEECH_BUBBLE_MESSAGES(teamCardConfig?.leaderName ?? "");
-    return msgs[Math.floor(Math.random() * msgs.length)];
-  }, [teamCardConfig?.leaderName]);
 
   useEffect(() => {
     if (!profilesLoading && profiles.length > 0) {
@@ -275,113 +202,6 @@ export default function HomeScreen() {
     };
   }, [teamCardConfig]);
 
-  useEffect(() => {
-    setFirstMissionCardHidden(false);
-  }, [userData?.user_id]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const syncFirstMissionCard = async () => {
-      if (userLoading || sessionsLoading || !userData?.user_id || profiles.length === 0) {
-        if (!userLoading && !sessionsLoading && !firstMissionCardHidden) {
-          setFirstMissionCard(null);
-        }
-        return;
-      }
-
-      if (firstMissionCardHidden || savedFirstMissionCompleteInSessionData) {
-        if (!cancelled) {
-          setFirstMissionCard(null);
-          setFirstMissionCardLoading(false);
-          if (savedFirstMissionCompleteInSessionData) {
-            setFirstMissionCardHidden(true);
-          }
-        }
-        return;
-      }
-
-      setFirstMissionCardLoading(true);
-      try {
-        let mission: EarliestAvailableMission | null = null;
-        let targetMissionId = userData.first_mission_activity_id;
-
-        if (targetMissionId == null) {
-          mission = pickEarliestAvailableMission(sessions, completedActivityIds);
-          if (!mission?.id) {
-            if (!cancelled) setFirstMissionCard(null);
-            return;
-          }
-          targetMissionId = mission.id;
-          void updateFirstMissionActivityId(targetMissionId);
-        }
-
-        const isCompleted = completedByAnyProfileActivityIds.has(
-          String(targetMissionId)
-        );
-        if (isCompleted) {
-          if (!cancelled) {
-            setFirstMissionCard(null);
-            setFirstMissionCardHidden(true);
-          }
-          return;
-        }
-
-        if (!mission) {
-          const fromSessions = sessions
-            .flatMap((session) => session.activities)
-            .find((card) => parseInt(card.id, 10) === targetMissionId);
-          if (fromSessions) {
-            mission = {
-              id: targetMissionId,
-              title: fromSessions.title,
-              description: fromSessions.description || null,
-              image: missionImageToUrl(fromSessions.image),
-            };
-          } else {
-            const activity = await getActivityById(targetMissionId);
-            if (!activity) {
-              if (!cancelled) setFirstMissionCard(null);
-              return;
-            }
-            mission = {
-              id: activity.id,
-              title: activity.title,
-              description: activity.description ?? null,
-              image: activity.image ?? null,
-            };
-          }
-        }
-
-        if (!cancelled) {
-          setFirstMissionCard(mission);
-        }
-      } catch (error) {
-        console.error("Error resolving first mission card:", error);
-        if (!cancelled) setFirstMissionCard(null);
-      } finally {
-        if (!cancelled) setFirstMissionCardLoading(false);
-      }
-    };
-
-    void syncFirstMissionCard();
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    userLoading,
-    sessionsLoading,
-    userData?.user_id,
-    userData?.first_mission_activity_id,
-    profiles,
-    sessions,
-    completedActivityIds,
-    firstMissionCardHidden,
-    savedFirstMissionCompleteInSessionData,
-    completedByAnyProfileActivityIds,
-    updateFirstMissionActivityId,
-  ]);
-
   const loadMoreClubCards = async () => {
     if (loadingMoreClubCardsRef.current || clubCards.length === 0 || clubCards.length >= CLUB_CARDS_MAX) return;
     loadingMoreClubCardsRef.current = true;
@@ -404,40 +224,21 @@ export default function HomeScreen() {
     }
   };
 
-  const pagerRef = useRef<ScrollView>(null);
-  const pagerX = useRef(new Animated.Value(width * initialIndex)).current;
-  const backgroundTranslateX = Animated.multiply(pagerX, -1);
-
+  const scrollRef = useRef<ScrollView>(null);
   const clubCardsScrollX = useRef(new Animated.Value(0)).current;
   const cardWidth = scaleW(250);
-  const cardBorderWidth = 2;
   const cardGap = scaleW(12);
   const clubCardStep = cardWidth + cardGap;
   const clubViewportWidth = width - scaleW(48);
   const clubCardsPaddingHorizontal = Math.max(0, Math.round((clubViewportWidth - cardWidth) / 2));
   const getCenterScrollX = (index: number) => index * clubCardStep;
 
-  const missionCardWidth = scaleW(270);
-  const missionViewportWidth = width - scaleW(48);
-  const missionCardsPaddingHorizontal = Math.max(0, Math.round((missionViewportWidth - missionCardWidth) / 2));
-
-  const buttonSpring = { damping: 15, stiffness: 400 };
-  const profileButtonScale = useSharedValue(1);
-  const missionsButtonScale = useSharedValue(1);
-  const navScale = useSharedValue(1);
-  const missionsButtonStyle = useAnimatedStyle(() => ({ transform: [{ scale: missionsButtonScale.value }] }));
-  const navButtonStyle = useAnimatedStyle(() => ({ transform: [{ scale: navScale.value }] }));
-
-  const showFirstMissionTile =
-    !firstMissionCardHidden &&
-    !savedFirstMissionCompleteInSessionData &&
-    (firstMissionCardLoading || firstMissionCard != null);
-  const firstMissionTileReady = !showFirstMissionTile || !firstMissionCardLoading;
+  const missionTileReady = !sessionsLoading;
   const showClubTile = clubCards.length > 0;
   const clubTileReady = !clubCardsLoading && (!showClubTile || clubMediaReady);
   const teamTileReady = !teamCardConfig || teamAssetsReady;
   const activityTilesReady =
-    firstMissionTileReady &&
+    missionTileReady &&
     campfireTileReady &&
     clubTileReady &&
     teamTileReady;
@@ -479,138 +280,25 @@ export default function HomeScreen() {
     activityTilesTranslateY.value = withSpring(0, { damping: 28, stiffness: 220 });
   }, [activityTilesReady, activityTilesOpacity, activityTilesTranslateY]);
 
-  const resetToActivityPage = useCallback(() => {
-    if (width <= 0) return;
-    pagerRef.current?.scrollTo({ x: width * initialIndex, animated: false });
-    setCurrentIndex(initialIndex);
-  }, [width, initialIndex]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      resetToActivityPage();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [resetToActivityPage]);
-
   const refreshHomeData = useCallback(() => {
-    refetchMissions();
     void refetchSessions();
-  }, [refetchMissions, refetchSessions]);
+  }, [refetchSessions]);
 
   useFocusEffect(
     useCallback(() => {
       if (!isTutorialActive) {
         refreshHomeData();
       }
-      resetToActivityPage();
-    }, [isTutorialActive, refreshHomeData, resetToActivityPage])
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, [isTutorialActive, refreshHomeData])
   );
 
   useRefreshWhenTutorialEnds(refreshHomeData);
 
-  const pageAnimatedStyles = useMemo(() => {
-    if (width <= 0) return [];
-    const w = width;
-    const inactiveOpacity = 0;
-    const inactiveOffset = 36;
-    const fadeEdge = w * 0.25;
-    return [
-      {
-        opacity: pagerX.interpolate({
-          inputRange: [0, fadeEdge, w],
-          outputRange: [1, 0.6, inactiveOpacity],
-          extrapolate: "clamp" }),
-        transform: [
-          {
-            translateY: pagerX.interpolate({
-              inputRange: [0, w],
-              outputRange: [0, inactiveOffset],
-              extrapolate: "clamp" }) },
-        ] },
-      {
-        opacity: pagerX.interpolate({
-          inputRange: [0, w - fadeEdge, w, w + fadeEdge, w * 2],
-          outputRange: [inactiveOpacity, 0.6, 1, 0.6, inactiveOpacity],
-          extrapolate: "clamp" }),
-        transform: [
-          {
-            translateY: pagerX.interpolate({
-              inputRange: [0, w, w * 2],
-              outputRange: [inactiveOffset, 0, inactiveOffset],
-              extrapolate: "clamp" }) },
-        ] },
-      {
-        opacity: pagerX.interpolate({
-          inputRange: [w, w * 2 - fadeEdge, w * 2],
-          outputRange: [inactiveOpacity, 0.6, 1],
-          extrapolate: "clamp" }),
-        transform: [
-          {
-            translateY: pagerX.interpolate({
-              inputRange: [w, w * 2],
-              outputRange: [inactiveOffset, 0],
-              extrapolate: "clamp" }) },
-        ] },
-    ] as const;
-  }, [width, pagerX]);
-
-  const switchMode = (mode: HomeMode) => {
-    const nextIndex = HOME_MODES.indexOf(mode);
-    if (nextIndex < 0) return;
-
-    pagerRef.current?.scrollTo({ x: width * nextIndex, animated: true });
-    setCurrentIndex(nextIndex);
-  };
-
   const styles = useMemo(
     () =>
       StyleSheet.create({
-        container: { flex: 1, overflow: "hidden" as const },
-        backgroundContainer: {
-          position: "absolute" as const,
-          width: width * 3,
-          height,
-          left: 0,
-          top: 0 },
-        backgroundImage: { width: width * 3, height },
-        backgroundOverlay: {
-          flex: 1,
-          backgroundColor: "rgba(0, 0, 0, 0.1)" },
         contentContainer: { paddingBottom: scaleW(40) },
-        pager: { flex: 1 },
-        pagerContent: { width: width * HOME_MODES.length },
-        pagerPage: { width, flex: 1 },
-        creamButton: {
-          backgroundColor: CREAM,
-          width: scaleW(220),
-          alignSelf: "center",
-          borderRadius: scaleW(50),
-          paddingVertical: scaleW(16),
-          paddingHorizontal: scaleW(24),
-          alignItems: "center",
-          justifyContent: "center",
-          shadowColor: "#000",
-          shadowOpacity: 0.3,
-          shadowRadius: 2,
-          shadowOffset: { width: 0, height: 2 },
-          elevation: 2 },
-        bearsCard: {
-          borderRadius: scaleW(15),
-          marginBottom: scaleW(20),
-          minHeight: scaleW(160),
-          width: "100%",
-          overflow: "hidden" as const,
-          shadowColor: "#000",
-          shadowOpacity: 0.3,
-          shadowRadius: 2,
-          shadowOffset: { width: 0, height: 2 },
-          elevation: 2 },
-        bearImage: {
-          position: "absolute",
-          width: scaleW(150),
-          height: scaleW(200),
-          right: 0,
-          bottom: 0 },
         horizontalCardsContainer: {
           paddingLeft: clubCardsPaddingHorizontal,
           paddingRight: clubCardsPaddingHorizontal,
@@ -630,770 +318,331 @@ export default function HomeScreen() {
           shadowOffset: { width: 0, height: 2 },
           elevation: 2 },
         clubCardImage: { width: "100%", height: "100%" },
-        clubCardPlaceholder: {
-          ...StyleSheet.absoluteFillObject,
-          backgroundColor: HUNTLY_GREEN,
-          justifyContent: "center",
-          alignItems: "center" },
-        horizontalMissionCardsContainer: {
-          paddingLeft: missionCardsPaddingHorizontal,
-          paddingRight: missionCardsPaddingHorizontal,
-          paddingBottom: scaleW(8) } }),
-    [
-      scaleW,
-      width,
-      height,
-      clubCardsPaddingHorizontal,
-      missionCardsPaddingHorizontal,
-    ]
+      }),
+    [scaleW, clubCardsPaddingHorizontal]
   );
 
-  const wrapNavPressable = (onPress: () => void, children: React.ReactNode) => (
-    <AnimatedReanimated.View style={navButtonStyle}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={() => { navScale.value = withSpring(0.96, buttonSpring); }}
-        onPressOut={() => { navScale.value = withSpring(1, buttonSpring); }}
-        style={{
-          backgroundColor: "rgba(255, 255, 255, 0.9)",
-          borderRadius: scaleW(25),
-          paddingHorizontal: scaleW(16),
-          paddingVertical: scaleW(10),
-          flexDirection: "row",
-          alignItems: "center" }}
-      >
-        {children}
-      </Pressable>
-    </AnimatedReanimated.View>
-  );
-
-  const navArrowColor = "#4F6F52";
-  const navArrowSize = scaleW(20);
-
-  const renderNavigationButtons = () => {
-    const navTextStyle = { fontSize: scaleW(14), color: "#4F6F52", fontWeight: "600" as const };
-
-    if (currentMode === "profile") {
-      return (
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: scaleW(24), paddingTop: scaleW(16) }}>
-          <View style={{ width: scaleW(100) }} />
-          {wrapNavPressable(() => switchMode("activity"), (
-            <>
-              <ThemedText type="body" style={navTextStyle}>
-                Activity
-              </ThemedText>
-              <MaterialIcons name="chevron-right" size={navArrowSize} color={navArrowColor} style={{ marginLeft: scaleW(4) }} />
-            </>
-          ))}
-        </View>
-      );
-    } else if (currentMode === "activity") {
-      return (
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: scaleW(24), paddingTop: scaleW(16) }}>
-          {wrapNavPressable(() => switchMode("profile"), (
-            <>
-              <MaterialIcons name="chevron-left" size={navArrowSize} color={navArrowColor} style={{ marginRight: scaleW(4) }} />
-              <ThemedText type="body" style={navTextStyle}>
-                Profile
-              </ThemedText>
-            </>
-          ))}
-
-          {wrapNavPressable(() => switchMode("missions"), (
-            <>
-              <ThemedText type="body" style={navTextStyle}>
-                Missions
-              </ThemedText>
-              <MaterialIcons name="chevron-right" size={navArrowSize} color={navArrowColor} style={{ marginLeft: scaleW(4) }} />
-            </>
-          ))}
-        </View>
-      );
-    } else {
-      return (
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: scaleW(24), paddingTop: scaleW(16) }}>
-          {wrapNavPressable(() => switchMode("activity"), (
-            <>
-              <MaterialIcons name="chevron-left" size={navArrowSize} color={navArrowColor} style={{ marginRight: scaleW(4) }} />
-              <ThemedText type="body" style={navTextStyle}>
-                Activity
-              </ThemedText>
-            </>
-          ))}
-          <View style={{ width: scaleW(100) }} />
-        </View>
-      );
-    }
-  };
-
-  const renderProfileContent = () => (
-    <ScrollView
-      className="flex-1"
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator={false}
-      nestedScrollEnabled
-      bounces={false}
-      overScrollMode="never"
-    >
-      <View style={{ paddingHorizontal: scaleW(24), paddingTop: scaleW(20), paddingBottom: scaleW(24), gap: scaleW(16) }}>
-        <AdventureTile />
-
-        {/* Stats row */}
-        <View style={{ flexDirection: "row", gap: scaleW(12) }}>
-          <View style={{
-            flex: 1,
-            backgroundColor: "rgba(255,255,255,0.9)",
-            borderRadius: scaleW(16),
-            borderWidth: 3,
-            borderColor: '#E07B20',
-            padding: scaleW(16),
-            alignItems: "center",
-            gap: scaleW(6),
-            shadowColor: "#000",
-            shadowOpacity: 0.12,
-            shadowRadius: 3,
-            shadowOffset: { width: 0, height: 1 },
-            elevation: 2 }}>
-            <View style={{ backgroundColor: "#FFF3E0", borderRadius: scaleW(12), padding: scaleW(8) }}>
-              <MaterialIcons name="star" size={scaleW(22)} color="#E07B20" />
-            </View>
-            <ThemedText type="heading" style={{ fontSize: scaleW(26), fontWeight: "800", color: "#E07B20" }}>
-              {pointsEarned}
-            </ThemedText>
-            <ThemedText style={{ fontSize: scaleW(12), fontWeight: "600", color: "#888", textAlign: "center" }}>
-              Points earned
-            </ThemedText>
-          </View>
-          <View style={{
-            flex: 1,
-            backgroundColor: "rgba(255,255,255,0.9)",
-            borderRadius: scaleW(16),
-            borderWidth: 3,
-            borderColor: '#4F6F52',
-            padding: scaleW(16),
-            alignItems: "center",
-            gap: scaleW(6),
-            shadowColor: "#000",
-            shadowOpacity: 0.12,
-            shadowRadius: 3,
-            shadowOffset: { width: 0, height: 1 },
-            elevation: 2 }}>
-            <View style={{ backgroundColor: "#E8F5E9", borderRadius: scaleW(12), padding: scaleW(8) }}>
-              <MaterialIcons name="eco" size={scaleW(22)} color="#4F6F52" />
-            </View>
-            <ThemedText type="heading" style={{ fontSize: scaleW(26), fontWeight: "800", color: "#4F6F52" }}>
-              {daysPlayed}
-            </ThemedText>
-            <ThemedText style={{ fontSize: scaleW(12), fontWeight: "600", color: "#888", textAlign: "center" }}>
-              Days exploring
-            </ThemedText>
-          </View>
-        </View>
-
-        {/* Your team compact card */}
-        {teamCardConfig && (
-          <View style={{
-            backgroundColor: teamCardConfig.backgroundColor,
-            borderRadius: scaleW(16),
-            padding: scaleW(16),
-            borderWidth: 3,
-            borderColor: '#FFF',
-            flexDirection: "row",
-            alignItems: "center",
-            gap: scaleW(14),
-            shadowColor: "#000",
-            shadowOpacity: 0.12,
-            shadowRadius: 3,
-            shadowOffset: { width: 0, height: 1 },
-            elevation: 2 }}>
-            <Image
-              source={teamCardConfig.badgeImage}
-              resizeMode="contain"
-              style={{ width: scaleW(52), height: scaleW(52) }}
-            />
-            <View style={{ flex: 1 }}>
-              <ThemedText
-                type="heading"
-                style={{ fontSize: scaleW(18), fontWeight: "800", color: teamCardConfig.accentColor }}
-              >
-                {teamCardConfig.title}
-              </ThemedText>
-              <ThemedText style={{ fontSize: scaleW(13), fontWeight: "600", color: teamCardConfig.leaderColor }}>
-                {teamCardConfig.leaderPossessive} team
-              </ThemedText>
-            </View>
-            <Image
-              source={teamCardConfig.characterImage}
-              resizeMode="contain"
-              style={{ width: scaleW(52), height: scaleW(52) }}
-            />
-          </View>
-        )}
-
-        {/* Profile button */}
-        <View>
-          <Pressable
-            onPress={() => pushWithReturn("/(tabs)/profile")}
-            onPressIn={() => { profileButtonScale.value = withSpring(0.96, buttonSpring); }}
-            onPressOut={() => { profileButtonScale.value = withSpring(1, buttonSpring); }}
-            style={[styles.creamButton]}
-          >
-            <ThemedText
-              type="heading"
-              style={{ textAlign: "center", fontSize: scaleW(16), fontWeight: "600" }}
-            >
-              Your profile
-            </ThemedText>
-          </Pressable>
-        </View>
-      </View>
-    </ScrollView>
-  );
-
-  const renderActivityContent = () => (
-    <ScrollView
-      className="flex-1"
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator={false}
-      nestedScrollEnabled
-      bounces={false}
-      overScrollMode="never"
-    >
-      <View style={{ paddingHorizontal: scaleW(24), paddingTop: scaleW(8), paddingBottom: scaleW(24), gap: scaleW(16) }}>
-
-        {/* Header */}
-        <View style={{
-          alignSelf: "flex-start",
-          marginTop: scaleW(16),
-          backgroundColor: "rgba(0,0,0,0.45)",
-          borderRadius: scaleW(16),
-          paddingVertical: scaleW(10),
-          paddingHorizontal: scaleW(14),
-          gap: scaleW(3) }}>
-          <ThemedText
-            type="heading"
-            lightColor="#FFFFFF"
-            darkColor="#FFFFFF"
-            style={{ fontSize: scaleW(22), fontWeight: "800" }}
-          >
-            Welcome back, Explorer!
-          </ThemedText>
-          <ThemedText
-            lightColor="rgba(255,255,255,0.85)"
-            darkColor="rgba(255,255,255,0.85)"
-            style={{ fontSize: scaleW(16), fontWeight: "500" }}
-          >
-            Here's what's happening
-          </ThemedText>
-        </View>
-
-        <View style={{ position: "relative" }}>
-          <AnimatedReanimated.View
-            style={[
-              { gap: scaleW(16) },
-              activityTilesGroupStyle,
-              !activityTilesReady && {
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                opacity: 0,
-              },
-            ]}
-            pointerEvents={activityTilesReady ? "auto" : "none"}
-          >
-        {showFirstMissionTile && firstMissionCard ? (
-          <View
-            style={{
-              backgroundColor: "rgba(255,255,255,0.95)",
-              borderRadius: scaleW(18),
-              borderWidth: 2,
-              borderColor: "#7FAF8A",
-              padding: scaleW(16),
-              gap: scaleW(10),
-            }}
-          >
-            <ThemedText
-              type="heading"
-              style={{ fontSize: scaleW(20), fontWeight: "800", color: HUNTLY_GREEN }}
-            >
-              Complete your first mission
-            </ThemedText>
-            <ThemedText style={{ fontSize: scaleW(15), color: "#3D3D3D" }}>
-              Start with {firstMissionCard.title} and earn your first points.
-            </ThemedText>
-            <Pressable
-              onPress={() =>
-                router.push({
-                  pathname: "/(tabs)/activity/mission",
-                  params: { id: String(firstMissionCard.id) },
-                } as Parameters<typeof router.push>[0])
-              }
-              style={{
-                alignSelf: "flex-start",
-                backgroundColor: HUNTLY_GREEN,
-                borderRadius: scaleW(24),
-                paddingVertical: scaleW(10),
-                paddingHorizontal: scaleW(16),
-                flexDirection: "row",
-                alignItems: "center",
-                gap: scaleW(4),
-              }}
-            >
-              <ThemedText lightColor="#FFF" darkColor="#FFF" style={{ fontSize: scaleW(14), fontWeight: "700" }}>
-                Start first mission
-              </ThemedText>
-              <MaterialIcons name="chevron-right" size={scaleW(16)} color="#FFF" />
-            </Pressable>
-          </View>
-        ) : null}
-
-        {/* Character + speech bubble */}
-        {teamCardConfig && (
-            <View style={{
-              backgroundColor: teamCardConfig.backgroundColor,
-              borderRadius: scaleW(20),
-              borderWidth: 3,
-              borderColor: "#FFF",
-              overflow: "hidden",
-              minHeight: scaleW(200),
-              shadowColor: "#000",
-              shadowOpacity: 0.2,
-              shadowRadius: 4,
-              shadowOffset: { width: 0, height: 2 },
-              elevation: 3 }}>
-              {/* Background scene */}
-              <Image
-                source={teamCardConfig.bgImage}
-                resizeMode="cover"
-                style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
-              />
-              {/* Standing character — right side, slightly overflowing top */}
-              <Image
-                source={teamCardConfig.standingImage}
-                resizeMode="contain"
-                style={{
-                  position: "absolute",
-                  bottom: 0,
-                  right: scaleW(-8),
-                  width: scaleW(170),
-                  height: scaleW(210) }}
-              />
-              {/* Left content */}
-              <View style={{ marginRight: scaleW(150), padding: scaleW(16), gap: scaleW(12) }}>
-                {/* Badge + name row */}
-                <View style={{ flexDirection: "row", alignItems: "center", gap: scaleW(8) }}>
-                  <Image
-                    source={teamCardConfig.badgeImage}
-                    resizeMode="contain"
-                    style={{ width: scaleW(36), height: scaleW(36) }}
-                  />
-                  <ThemedText
-                    type="heading"
-                    style={{ color: teamCardConfig.accentColor, fontSize: scaleW(18), fontWeight: "800" }}
-                  >
-                    {teamCardConfig.title}
-                  </ThemedText>
-                </View>
-                {/* Speech bubble with tail */}
-                <View style={{ position: "relative" }}>
-                  <View style={{
-                    backgroundColor: "#FFFFFF",
-                    borderRadius: scaleW(14),
-                    padding: scaleW(12),
-                    shadowColor: "#000",
-                    shadowOpacity: 0.12,
-                    shadowRadius: 6,
-                    shadowOffset: { width: 0, height: 2 },
-                    elevation: 3 }}>
-                    <ThemedText style={{ fontSize: scaleW(16), lineHeight: scaleW(20), color: "#333", fontStyle: "italic" }}>
-                      "{speechBubbleMessage}"
-                    </ThemedText>
-                  </View>
-                  {/* Tail pointing right toward character */}
-                  <View style={{
-                    position: "absolute",
-                    right: scaleW(-10),
-                    top: scaleW(14),
-                    width: 0,
-                    height: 0,
-                    borderTopWidth: scaleW(8),
-                    borderBottomWidth: scaleW(8),
-                    borderLeftWidth: scaleW(10),
-                    borderTopColor: "transparent",
-                    borderBottomColor: "transparent",
-                    borderLeftColor: "#FFFFFF" }}
-                  />
-                </View>
-              </View>
-            </View>
-        )}
-
-        {/* Campfire tile */}
-        <CampfireTile
-          coordinatedEntrance
-          onReadyChange={handleCampfireReadyChange}
-        />
-
-        {/* Club photos */}
-        {showClubTile && (
-            <View
-              style={{
-                backgroundColor: "#BBE5EB",
-                borderRadius: scaleW(16),
-                paddingTop: scaleW(16),
-                paddingBottom: scaleW(20),
-                borderWidth: 3,
-                borderColor: "#FFF",
-                shadowColor: "#000",
-                shadowOpacity: 0.15,
-                shadowRadius: 3,
-                shadowOffset: { width: 0, height: 2 },
-                elevation: 2,
-                overflow: Platform.OS === "android" ? "visible" : undefined }}
-              collapsable={Platform.OS !== "android"}
-            >
-              <ThemedText type="heading" style={{ color: "#1A5C6B", fontSize: scaleW(18), fontWeight: "700", marginBottom: scaleW(14), textAlign: "center" }}>
-                From around the club
-              </ThemedText>
-              <Animated.ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.horizontalCardsContainer}
-                style={{ overflow: "visible" }}
-                nestedScrollEnabled={Platform.OS === "android"}
-                removeClippedSubviews={false}
-                overScrollMode="never"
-                scrollEventThrottle={16}
-                onScroll={Animated.event(
-                  [{ nativeEvent: { contentOffset: { x: clubCardsScrollX } } }],
-                  { useNativeDriver: true, listener: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-                    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
-                    const nearEnd = contentOffset.x + layoutMeasurement.width >= contentSize.width - scaleW(150);
-                    if (nearEnd) loadMoreClubCards();
-                  } }
-                )}
-                snapToInterval={clubCardStep}
-                snapToAlignment="start"
-                decelerationRate="fast"
-              >
-                {clubCards.map((card, index) => {
-                  const centerScrollX = index === 0 ? 0 : getCenterScrollX(index);
-                  const rotation = clubCardsScrollX.interpolate({
-                    inputRange: [
-                      centerScrollX - 120,
-                      centerScrollX,
-                      centerScrollX + 120,
-                    ],
-                    outputRange: ["-4deg", "0deg", "4deg"],
-                    extrapolate: "clamp" });
-                  return (
-                    <Animated.View
-                      key={card.id}
-                      style={[styles.clubCard, { transform: [{ rotate: rotation }] }]}
-                    >
-                      <Pressable style={{ flex: 1 }}>
-                        <View style={styles.clubCardImageWrap}>
-                          <ExpoImage
-                            source={{ uri: card.thumb_url || card.photo_url }}
-                            style={styles.clubCardImage}
-                            contentFit="cover"
-                            cachePolicy="memory-disk"
-                          />
-                          {card.team_name && (() => {
-                            const cfg = getTeamCardConfig(card.team_name);
-                            return (
-                              <Image
-                                source={cfg.badgeImage}
-                                resizeMode="contain"
-                                style={{
-                                  position: "absolute",
-                                  bottom: scaleW(8),
-                                  right: scaleW(8),
-                                  width: scaleW(36),
-                                  height: scaleW(36) }}
-                              />
-                            );
-                          })()}
-                          <ThemedText type="heading" style={{
-                            position: "absolute",
-                            bottom: scaleW(40),
-                            left: scaleW(10),
-                            fontSize: scaleW(18),
-                            textAlign: "center",
-                            fontWeight: "600",
-                            backgroundColor: "#FFF",
-                            borderRadius: scaleW(20),
-                            paddingHorizontal: scaleW(5) }}>
-                            {card.title}
-                          </ThemedText>
-                          <ThemedText type="heading" style={{
-                            position: "absolute",
-                            bottom: scaleW(10),
-                            left: scaleW(10),
-                            fontSize: scaleW(16),
-                            textAlign: "center",
-                            fontWeight: "600",
-                            backgroundColor: CLUB_CARD_AUTHOR_COLORS[index % CLUB_CARD_AUTHOR_COLORS.length],
-                            color: "#FFF",
-                            borderRadius: scaleW(20),
-                            paddingHorizontal: scaleW(5) }}>
-                            by {card.author}
-                          </ThemedText>
-                        </View>
-                      </Pressable>
-                    </Animated.View>
-                  );
-                })}
-                {loadingMoreClubCards && (
-                  <View style={[styles.clubCard, { justifyContent: "center", alignItems: "center", minWidth: scaleW(100) }]}>
-                    <ActivityIndicator size="small" color="#5B8A9E" />
-                  </View>
-                )}
-              </Animated.ScrollView>
-            </View>
-        )}
-          </AnimatedReanimated.View>
-        </View>
-      </View>
-    </ScrollView>
-  );
-
-  const renderMissionsContent = () => (
-    <ScrollView
-      className="flex-1"
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator={false}
-      nestedScrollEnabled
-      bounces={false}
-      overScrollMode="never"
-    >
-      <View style={{ paddingHorizontal: scaleW(24), paddingTop: scaleW(8), paddingBottom: scaleW(24), gap: scaleW(16) }}>
-        {/* Header */}
-        <View style={{
-          alignSelf: "flex-start",
-          marginTop: scaleW(16),
-          backgroundColor: "rgba(0,0,0,0.45)",
-          borderRadius: scaleW(16),
-          paddingVertical: scaleW(10),
-          paddingHorizontal: scaleW(14),
-          gap: scaleW(3) }}>
-          <ThemedText
-            type="heading"
-            lightColor="#FFFFFF"
-            darkColor="#FFFFFF"
-            style={{ fontSize: scaleW(22), fontWeight: "800" }}
-          >
-            Your help is needed!
-          </ThemedText>
-          <ThemedText
-            lightColor="rgba(255,255,255,0.85)"
-            darkColor="rgba(255,255,255,0.85)"
-            style={{ fontSize: scaleW(16), fontWeight: "500" }}
-          >
-            Choose a mission or adventure
-          </ThemedText>
-        </View>
-
-        {/* Missions / Adventures tabs */}
-        {/* <View style={{
-          flexDirection: "row",
-          backgroundColor: "rgba(0,0,0,0.25)",
-          borderRadius: scaleW(14),
-          padding: scaleW(4),
-          gap: scaleW(4) }}>
-          <Pressable
-            onPress={() => setMissionsTab("missions")}
-            style={{
-              flex: 1,
-              paddingVertical: scaleW(10),
-              borderRadius: scaleW(10),
-              alignItems: "center",
-              backgroundColor: missionsTab === "missions" ? CREAM : "transparent",
-              flexDirection: "row",
-              justifyContent: "center",
-              gap: scaleW(6) }}
-          >
-            <ThemedText style={{ fontSize: scaleW(14), fontWeight: "700", color: missionsTab === "missions" ? HUNTLY_GREEN : "rgba(255,255,255,0.8)" }}>
-              Missions
-            </ThemedText>
-            <View style={{ backgroundColor: "#E07B20", borderRadius: scaleW(8), paddingHorizontal: scaleW(6), paddingVertical: scaleW(1) }}>
-              <ThemedText style={{ fontSize: scaleW(10), fontWeight: "800", color: "#FFF" }}>New!</ThemedText>
-            </View>
-          </Pressable>
-          <Pressable
-            onPress={() => setMissionsTab("adventures")}
-            style={{
-              flex: 1,
-              paddingVertical: scaleW(10),
-              borderRadius: scaleW(10),
-              alignItems: "center",
-              backgroundColor: missionsTab === "adventures" ? CREAM : "transparent" }}
-          >
-            <ThemedText style={{ fontSize: scaleW(14), fontWeight: "700", color: missionsTab === "adventures" ? HUNTLY_GREEN : "rgba(255,255,255,0.8)" }}>
-              Adventures
-            </ThemedText>
-          </Pressable>
-        </View> */}
-
-        {/* Mission card — horizontal layout */}
-        {missionLoading ? (
-          <View style={{ paddingVertical: scaleW(32), alignItems: "center" }}>
-            <ActivityIndicator size="large" color="#FFF" />
-          </View>
-        ) : latestMission ? (
-          <Pressable
-            onPress={() => router.push({ pathname: "/(tabs)/activity/mission", params: { id: latestMission.id } } as Parameters<typeof router.push>[0])}
-            style={({ pressed }) => [{
-              borderRadius: scaleW(20),
-              shadowColor: "#000",
-              shadowOpacity: 0.22,
-              shadowRadius: 6,
-              shadowOffset: { width: 0, height: 3 },
-              elevation: 4 },
-            pressed && { opacity: 0.88 }]}
-          >
-            <View style={{
-              backgroundColor: "#FFF",
-              borderRadius: scaleW(20),
-              borderWidth: 3,
-              borderColor: "#7FAF8A",
-              overflow: "hidden",
-              flexDirection: "row",
-              minHeight: scaleW(130) }}>
-              <Image
-                source={latestMission.image}
-                resizeMode="cover"
-                style={{ width: scaleW(110), alignSelf: "stretch" }}
-              />
-              <View style={{ flex: 1, padding: scaleW(14), justifyContent: "space-between" }}>
-                <View style={{ gap: scaleW(4) }}>
-                  <ThemedText type="heading" style={{ fontSize: scaleW(18), fontWeight: "700", color: "#1a1a1a" }} numberOfLines={2}>
-                    {latestMission.title}
-                  </ThemedText>
-                  <ThemedText style={{ fontSize: scaleW(16), color: "#555", lineHeight: scaleW(17) }} numberOfLines={3}>
-                    {latestMission.description}
-                  </ThemedText>
-                </View>
-                <View style={{
-                  alignSelf: "flex-start",
-                  backgroundColor: "#7FAF8A",
-                  borderRadius: scaleW(20),
-                  paddingVertical: scaleW(6),
-                  paddingHorizontal: scaleW(14),
-                  marginTop: scaleW(8),
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: scaleW(4) }}>
-                  <ThemedText lightColor="#FFF" darkColor="#FFF" style={{ fontSize: scaleW(16), fontWeight: "700" }}>
-                    Start mission
-                  </ThemedText>
-                  <MaterialIcons name="chevron-right" size={scaleW(14)} color="#FFF" />
-                </View>
-              </View>
-            </View>
-          </Pressable>
-        ) : null}
-
-        {/* OR divider */}
-        <View style={{ alignItems: "center" }}>
-          <View style={{
-            backgroundColor: "rgba(0,0,0,0.45)",
-            borderRadius: scaleW(20),
-            paddingVertical: scaleW(5),
-            paddingHorizontal: scaleW(18) }}>
-            <ThemedText lightColor="#FFFFFF" darkColor="#FFFFFF" style={{ fontSize: scaleW(13), fontWeight: "700" }}>
-              OR
-            </ThemedText>
-          </View>
-        </View>
-
-        <AdventureTile />
-
-        <PastAdventuresTile />
-      </View>
-    </ScrollView>
-  );
+  const eyebrowText = teamCardConfig ? `${teamCardConfig.title.toUpperCase()} DEN` : "THE DEN";
 
   return (
-    <View style={styles.container}>
-      <Animated.View
-        style={[
-          styles.backgroundContainer,
-          {
-            transform: [{ translateX: backgroundTranslateX }] },
-        ]}
-      >
-        <ImageBackground
-          source={BG_IMAGE}
-          style={styles.backgroundImage}
-          resizeMode="cover"
-        >
-          <View style={styles.backgroundOverlay} />
-        </ImageBackground>
-      </Animated.View>
+    <View style={{ flex: 1, backgroundColor: CREAM }}>
       {!clubhouseActivityReady ? (
         <View
           style={{
             ...StyleSheet.absoluteFillObject,
             justifyContent: "center",
             alignItems: "center",
+            backgroundColor: CREAM,
           }}
           pointerEvents="none"
         >
-          <ActivityIndicator size="large" color="#F4F0EB" />
+          <ActivityIndicator size="large" color={HUNTLY_GREEN} />
         </View>
       ) : null}
       <SafeAreaView
         edges={["top", "left", "right"]}
-        style={[
-          styles.container,
-          !clubhouseActivityReady && { opacity: 0 },
-        ]}
+        style={[{ flex: 1 }, !clubhouseActivityReady && { opacity: 0 }]}
         pointerEvents={clubhouseActivityReady ? "auto" : "none"}
       >
-        <View className="flex-1" style={styles.container}>
-        <View className="flex-1">
-        {renderNavigationButtons()}
-        <Animated.ScrollView
-          ref={pagerRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
+        <ScrollView
+          ref={scrollRef}
+          showsVerticalScrollIndicator={false}
           bounces={false}
-          directionalLockEnabled
-          scrollEventThrottle={16}
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { x: pagerX } } }],
-            { useNativeDriver: true }
-          )}
-          onMomentumScrollEnd={(e) => {
-            const x = e.nativeEvent.contentOffset.x;
-            const next = Math.round(x / width);
-            setCurrentIndex(next);
-          }}
-          onScrollEndDrag={(e) => {
-            const x = e.nativeEvent.contentOffset.x;
-            const next = Math.round(x / width);
-            setCurrentIndex(next);
-          }}
-          style={styles.pager}
-          contentContainerStyle={styles.pagerContent}
+          overScrollMode="never"
+          contentContainerStyle={styles.contentContainer}
         >
-          <Animated.View style={[styles.pagerPage, pageAnimatedStyles[0] ?? {}]}>
-            {renderProfileContent()}
-          </Animated.View>
-          <Animated.View style={[styles.pagerPage, pageAnimatedStyles[1] ?? {}]}>
-            {renderActivityContent()}
-          </Animated.View>
-          <Animated.View style={[styles.pagerPage, pageAnimatedStyles[2] ?? {}]}>
-            {renderMissionsContent()}
-          </Animated.View>
-        </Animated.ScrollView>
-        </View>
-        </View>
-      </SafeAreaView>
+          {/* Header */}
+          <LinearGradient
+            colors={
+              teamCardConfig
+                ? ([teamCardConfig.accentColor, teamCardConfig.backgroundColor] as const)
+                : DEFAULT_HEADER_GRADIENT
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              paddingHorizontal: scaleW(24),
+              paddingTop: scaleW(20),
+              paddingBottom: scaleW(48),
+              gap: scaleW(10),
+              overflow: "hidden",
+              position: "relative",
+            }}
+          >
+            {teamCardConfig && (
+              <Image
+                source={teamCardConfig.standingImage}
+                resizeMode="contain"
+                style={{
+                  position: "absolute",
+                  right: scaleW(-14),
+                  bottom: scaleW(-16),
+                  width: scaleW(130),
+                  height: scaleW(160),
+                  opacity: 0.9,
+                }}
+              />
+            )}
+            <View style={{ gap: scaleW(4), maxWidth: "72%" }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: scaleW(6) }}>
+                {teamCardConfig && (
+                  <Image
+                    source={teamCardConfig.badgeImage}
+                    resizeMode="contain"
+                    style={{ width: scaleW(18), height: scaleW(18) }}
+                  />
+                )}
+                <ThemedText lightColor="rgba(255,255,255,0.85)" darkColor="rgba(255,255,255,0.85)" style={{ fontSize: scaleW(13), fontWeight: "800", letterSpacing: 1 }}>
+                  {eyebrowText}
+                </ThemedText>
+              </View>
+              <ThemedText
+                type="heading"
+                lightColor="#FFFFFF"
+                darkColor="#FFFFFF"
+                style={{ fontSize: scaleW(28), fontWeight: "800", lineHeight: scaleW(32) }}
+              >
+                Welcome back, Explorer!
+              </ThemedText>
+            </View>
+          </LinearGradient>
 
+          <View style={{ position: "relative", marginTop: -scaleW(32), paddingHorizontal: scaleW(24) }}>
+            <AnimatedReanimated.View
+              style={[
+                { gap: scaleW(16) },
+                activityTilesGroupStyle,
+                !activityTilesReady && {
+                  position: "absolute",
+                  top: 0,
+                  left: scaleW(24),
+                  right: scaleW(24),
+                  opacity: 0,
+                },
+              ]}
+              pointerEvents={activityTilesReady ? "auto" : "none"}
+            >
+              <TeamRaceCard userTeamName={team?.name} />
+
+              {sessionsLoading ? (
+                <View style={{ paddingVertical: scaleW(24), alignItems: "center" }}>
+                  <ActivityIndicator size="large" color={HUNTLY_GREEN} />
+                </View>
+              ) : nextMission ? (
+                <View
+                  style={{
+                    borderRadius: scaleW(22),
+                    borderWidth: 3,
+                    borderColor: "#FFF",
+                    overflow: "hidden",
+                    transform: [{ rotate: "-0.6deg" }],
+                    shadowColor: "#000",
+                    shadowOpacity: 0.25,
+                    shadowRadius: 6,
+                    shadowOffset: { width: 0, height: 3 },
+                    elevation: 4,
+                  }}
+                >
+                <Pressable
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(tabs)/activity/mission",
+                      params: { id: String(nextMission.id) },
+                    } as Parameters<typeof router.push>[0])
+                  }
+                  style={({ pressed }) => pressed ? { opacity: 0.9 } : undefined}
+                >
+                  <ImageBackground
+                    source={
+                      nextMission.image
+                        ? { uri: nextMission.image }
+                        : DEFAULT_MISSION_IMAGE
+                    }
+                    resizeMode="cover"
+                    imageStyle={{ borderRadius: scaleW(19) }}
+                    style={{ minHeight: scaleW(230), justifyContent: "space-between", borderRadius: scaleW(19) }}
+                  >
+                    <View style={{ padding: scaleW(16) }}>
+                      <View
+                        style={{
+                          alignSelf: "flex-start",
+                          backgroundColor: "#E07B20",
+                          borderRadius: scaleW(14),
+                          paddingHorizontal: scaleW(12),
+                          paddingVertical: scaleW(6),
+                        }}
+                      >
+                        <ThemedText style={{ color: "#FFF", fontSize: scaleW(11), fontWeight: "800", letterSpacing: 0.5 }}>
+                          NEXT MISSION
+                        </ThemedText>
+                      </View>
+                    </View>
+                    <LinearGradient
+                      colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.75)"]}
+                      style={{ paddingHorizontal: scaleW(18), paddingTop: scaleW(40), paddingBottom: scaleW(20), gap: scaleW(4) }}
+                    >
+                      <ThemedText type="heading" lightColor="#FFF" darkColor="#FFF" style={{ fontSize: scaleW(22), fontWeight: "800" }}>
+                        {nextMission.title}
+                      </ThemedText>
+                      {nextMission.xp != null && (
+                        <ThemedText lightColor="rgba(255,255,255,0.9)" darkColor="rgba(255,255,255,0.9)" style={{ fontSize: scaleW(14), fontWeight: "700" }}>
+                          +{nextMission.xp} team pts
+                        </ThemedText>
+                      )}
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          alignSelf: "flex-start",
+                          backgroundColor: "#FFF",
+                          borderRadius: scaleW(24),
+                          paddingVertical: scaleW(10),
+                          paddingHorizontal: scaleW(20),
+                          marginTop: scaleW(10),
+                          gap: scaleW(4),
+                        }}
+                      >
+                        <ThemedText style={{ color: HUNTLY_GREEN, fontWeight: "800", fontSize: scaleW(15) }}>
+                          Start mission
+                        </ThemedText>
+                        <MaterialIcons name="chevron-right" size={scaleW(16)} color={HUNTLY_GREEN} />
+                      </View>
+                    </LinearGradient>
+                  </ImageBackground>
+                </Pressable>
+                </View>
+              ) : null}
+
+              <ThingsToDoRow />
+
+              {teamCardConfig && <CaptainQuoteCard teamName={team?.name} />}
+
+              <CampfireTile
+                coordinatedEntrance
+                onReadyChange={handleCampfireReadyChange}
+              />
+
+              {showClubTile && (
+                <View
+                  style={{
+                    backgroundColor: "#BBE5EB",
+                    borderRadius: scaleW(16),
+                    paddingTop: scaleW(16),
+                    paddingBottom: scaleW(20),
+                    borderWidth: 3,
+                    borderColor: "#FFF",
+                    shadowColor: "#000",
+                    shadowOpacity: 0.15,
+                    shadowRadius: 3,
+                    shadowOffset: { width: 0, height: 2 },
+                    elevation: 2,
+                    overflow: Platform.OS === "android" ? "visible" : undefined }}
+                  collapsable={Platform.OS !== "android"}
+                >
+                  <ThemedText type="heading" style={{ color: "#1A5C6B", fontSize: scaleW(18), fontWeight: "700", marginBottom: scaleW(14), textAlign: "center" }}>
+                    From around the club
+                  </ThemedText>
+                  <Animated.ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.horizontalCardsContainer}
+                    style={{ overflow: "visible" }}
+                    nestedScrollEnabled={Platform.OS === "android"}
+                    removeClippedSubviews={false}
+                    overScrollMode="never"
+                    scrollEventThrottle={16}
+                    onScroll={Animated.event(
+                      [{ nativeEvent: { contentOffset: { x: clubCardsScrollX } } }],
+                      { useNativeDriver: true, listener: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+                        const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+                        const nearEnd = contentOffset.x + layoutMeasurement.width >= contentSize.width - scaleW(150);
+                        if (nearEnd) loadMoreClubCards();
+                      } }
+                    )}
+                    snapToInterval={clubCardStep}
+                    snapToAlignment="start"
+                    decelerationRate="fast"
+                  >
+                    {clubCards.map((card, index) => {
+                      const centerScrollX = index === 0 ? 0 : getCenterScrollX(index);
+                      const rotation = clubCardsScrollX.interpolate({
+                        inputRange: [
+                          centerScrollX - 120,
+                          centerScrollX,
+                          centerScrollX + 120,
+                        ],
+                        outputRange: ["-4deg", "0deg", "4deg"],
+                        extrapolate: "clamp" });
+                      return (
+                        <Animated.View
+                          key={card.id}
+                          style={[styles.clubCard, { transform: [{ rotate: rotation }] }]}
+                        >
+                          <Pressable style={{ flex: 1 }}>
+                            <View style={styles.clubCardImageWrap}>
+                              <ExpoImage
+                                source={{ uri: card.thumb_url || card.photo_url }}
+                                style={styles.clubCardImage}
+                                contentFit="cover"
+                                cachePolicy="memory-disk"
+                              />
+                              {card.team_name && (() => {
+                                const cfg = getTeamCardConfig(card.team_name);
+                                return (
+                                  <Image
+                                    source={cfg.badgeImage}
+                                    resizeMode="contain"
+                                    style={{
+                                      position: "absolute",
+                                      bottom: scaleW(8),
+                                      right: scaleW(8),
+                                      width: scaleW(36),
+                                      height: scaleW(36) }}
+                                  />
+                                );
+                              })()}
+                              <ThemedText type="heading" style={{
+                                position: "absolute",
+                                bottom: scaleW(40),
+                                left: scaleW(10),
+                                fontSize: scaleW(18),
+                                textAlign: "center",
+                                fontWeight: "600",
+                                backgroundColor: "#FFF",
+                                borderRadius: scaleW(20),
+                                paddingHorizontal: scaleW(5) }}>
+                                {card.title}
+                              </ThemedText>
+                              <ThemedText type="heading" style={{
+                                position: "absolute",
+                                bottom: scaleW(10),
+                                left: scaleW(10),
+                                fontSize: scaleW(16),
+                                textAlign: "center",
+                                fontWeight: "600",
+                                backgroundColor: CLUB_CARD_AUTHOR_COLORS[index % CLUB_CARD_AUTHOR_COLORS.length],
+                                color: "#FFF",
+                                borderRadius: scaleW(20),
+                                paddingHorizontal: scaleW(5) }}>
+                                by {card.author}
+                              </ThemedText>
+                            </View>
+                          </Pressable>
+                        </Animated.View>
+                      );
+                    })}
+                    {loadingMoreClubCards && (
+                      <View style={[styles.clubCard, { justifyContent: "center", alignItems: "center", minWidth: scaleW(100) }]}>
+                        <ActivityIndicator size="small" color="#5B8A9E" />
+                      </View>
+                    )}
+                  </Animated.ScrollView>
+                </View>
+              )}
+            </AnimatedReanimated.View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
     </View>
   );
 }

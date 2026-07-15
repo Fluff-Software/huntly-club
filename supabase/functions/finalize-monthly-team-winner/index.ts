@@ -148,8 +148,23 @@ deno.serve(async (req) => {
       return jsonResponse({ error: "Could not load achievements." }, 500);
     }
 
+    const { data: tempRows, error: tempError } = await admin
+      .from("temporary_submissions")
+      .select("team_id, xp")
+      .gte("submitted_at", from)
+      .lt("submitted_at", to);
+
+    if (tempError) {
+      console.error("finalize-monthly-team-winner: temporary_submissions", tempError.message);
+      return jsonResponse({ error: "Could not load temporary submissions." }, 500);
+    }
+
     const byTeam: Record<number, number> = {};
     for (const row of rows ?? []) {
+      const teamId = row.team_id as number;
+      byTeam[teamId] = (byTeam[teamId] ?? 0) + (row.xp ?? 0);
+    }
+    for (const row of tempRows ?? []) {
       const teamId = row.team_id as number;
       byTeam[teamId] = (byTeam[teamId] ?? 0) + (row.xp ?? 0);
     }

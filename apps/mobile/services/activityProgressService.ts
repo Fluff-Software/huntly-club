@@ -490,27 +490,47 @@ export interface ActivityPhotoItem {
 
 /**
  * Returns up to `count` random approved photos for the given activity.
- * status 1 = approved. If fewer than count exist, returns all available.
+ * status 1 = approved. Includes temporary submission photos.
+ * If fewer than count exist, returns all available.
  */
 export const getRandomActivityPhotos = async (
   count: number,
   activityId: number
 ): Promise<ActivityPhotoItem[]> => {
-  const { data, error } = await supabase
-    .from("user_activity_photos")
-    .select("photo_url")
-    .eq("activity_id", activityId)
-    .eq("status", 1);
+  const [realResult, tempResult] = await Promise.all([
+    supabase
+      .from("user_activity_photos")
+      .select("photo_url")
+      .eq("activity_id", activityId)
+      .eq("status", 1),
+    supabase
+      .from("temporary_submissions")
+      .select("temporary_submission_photos(photo_url)")
+      .eq("activity_id", activityId),
+  ]);
 
-  if (error) {
-    console.error("Error fetching activity photos:", error);
-    throw new Error(`Failed to fetch activity photos: ${error.message}`);
+  if (realResult.error) {
+    console.error("Error fetching activity photos:", realResult.error);
+    throw new Error(`Failed to fetch activity photos: ${realResult.error.message}`);
   }
 
-  const list = data ?? [];
+  const list: ActivityPhotoItem[] = (realResult.data ?? [])
+    .map((r) => ({ photo_url: r.photo_url as string }))
+    .filter((r) => !!r.photo_url);
+
+  for (const row of tempResult.data ?? []) {
+    const photos = row.temporary_submission_photos as
+      | { photo_url: string }[]
+      | { photo_url: string }
+      | null;
+    const arr = Array.isArray(photos) ? photos : photos ? [photos] : [];
+    for (const p of arr) {
+      if (p?.photo_url) list.push({ photo_url: p.photo_url });
+    }
+  }
+
   if (list.length === 0) return [];
 
-  // Shuffle and take up to `count`
   const shuffled = [...list].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, count);
 };
@@ -521,10 +541,27 @@ function buildNotInFilter(values: number[]): string | null {
   return `(${values.join(",")})`;
 }
 
+async function hasTemporarySubmissionsForActivity(
+  activityId: number
+): Promise<boolean> {
+  const { count, error } = await supabase
+    .from("temporary_submissions")
+    .select("id", { head: true, count: "exact" })
+    .eq("activity_id", activityId)
+    .limit(1);
+  if (error) {
+    console.error("Error checking temporary submissions:", error);
+    return false;
+  }
+  return (count ?? 0) > 0;
+}
+
 export const hasOtherApprovedMissionPhotos = async (
   activityId: number,
   excludeProfileIds: number[]
 ): Promise<boolean> => {
+  if (await hasTemporarySubmissionsForActivity(activityId)) return true;
+
   // If we don't know who "self" is yet, do not risk showing the button based on our own photos.
   if (excludeProfileIds.length === 0) return false;
 
@@ -573,18 +610,33 @@ export const getRandomMissionPhotoGroups = async (
     query = query.not("profile_id", "in", notIn);
   }
 
-  const { data, error } = await query;
-  if (error) {
-    console.error("Error fetching mission photo groups:", error);
-    throw new Error(`Failed to fetch mission photo groups: ${error.message}`);
+  const [realResult, tempResult] = await Promise.all([
+    query,
+    supabase
+      .from("temporary_submissions")
+      .select(
+        `
+        id,
+        display_name,
+        teams(name),
+        temporary_submission_photos(photo_url, sort_order)
+      `
+      )
+      .eq("activity_id", activityId),
+  ]);
+
+  if (realResult.error) {
+    console.error("Error fetching mission photo groups:", realResult.error);
+    throw new Error(
+      `Failed to fetch mission photo groups: ${realResult.error.message}`
+    );
   }
 
-  const rows = (data ?? []) as Array<{
+  const rows = (realResult.data ?? []) as Array<{
     user_activity_id: number | null;
     profile_id: number | null;
     photo_url: string | null;
   }>;
-  if (rows.length === 0) return [];
 
   const byProgressId = new Map<number, MissionPhotoGroup>();
   for (const r of rows) {
@@ -606,14 +658,9 @@ export const getRandomMissionPhotoGroups = async (
   }
 
   const groups = [...byProgressId.values()].filter((g) => g.photos.length > 0);
-  if (groups.length === 0) return [];
-
-  // Randomly pick up to `groupCount` groups.
-  const shuffled = [...groups].sort(() => Math.random() - 0.5);
-  const picked = shuffled.slice(0, Math.max(0, groupCount));
 
   // Best-effort: attach public nickname + team for display (no RLS).
-  const profileIds = [...new Set(picked.map((g) => g.profile_id))];
+  const profileIds = [...new Set(groups.map((g) => g.profile_id))];
   if (profileIds.length > 0) {
     const { data: profilesData } = await supabase
       .from("profile_public")
@@ -627,7 +674,7 @@ export const getRandomMissionPhotoGroups = async (
       teamById[p.id] = ((p.team_name as string | null) ?? "").toLowerCase();
     }
 
-    for (const g of picked) {
+    for (const g of groups) {
       const nick = nickById[g.profile_id];
       const team = teamById[g.profile_id];
       if (nick) g.author = nick;
@@ -635,7 +682,32 @@ export const getRandomMissionPhotoGroups = async (
     }
   }
 
-  return picked;
+  for (const row of tempResult.data ?? []) {
+    const photosRaw = row.temporary_submission_photos as
+      | { photo_url: string; sort_order: number }[]
+      | null;
+    const photos = [...(photosRaw ?? [])]
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((p) => p.photo_url)
+      .filter(Boolean);
+    if (photos.length === 0) continue;
+
+    const teamRow = row.teams as { name: string } | { name: string }[] | null;
+    const teamName = Array.isArray(teamRow) ? teamRow[0]?.name : teamRow?.name;
+
+    groups.push({
+      user_activity_id: -Number(row.id),
+      profile_id: -Number(row.id),
+      photos,
+      author: (row.display_name as string)?.trim() || "Explorer",
+      team_name: teamName ? teamName.toLowerCase() : undefined,
+    });
+  }
+
+  if (groups.length === 0) return [];
+
+  const shuffled = [...groups].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, Math.max(0, groupCount));
 };
 
 export interface ClubPhotoCardItem {
@@ -717,24 +789,56 @@ async function getRandomClubPhotosFallback(
   excludeIds: string[]
 ): Promise<ClubPhotoCardItem[]> {
   const poolSize = Math.max(count * 12, 72);
-  const { data, error } = await supabase
-    .from("user_activity_photos")
-    .select("photo_id, photo_url, profile_id, activities(title)")
-    .eq("status", 1)
-    .not("activity_id", "is", null)
-    .order("photo_id", { ascending: false })
-    .limit(poolSize);
+  const [realResult, tempResult] = await Promise.all([
+    supabase
+      .from("user_activity_photos")
+      .select("photo_id, photo_url, profile_id, activities(title)")
+      .eq("status", 1)
+      .not("activity_id", "is", null)
+      .order("photo_id", { ascending: false })
+      .limit(poolSize),
+    supabase
+      .from("temporary_submission_photos")
+      .select(
+        `
+        id,
+        photo_url,
+        temporary_submissions(
+          display_name,
+          activities(title),
+          teams(name)
+        )
+      `
+      )
+      .order("id", { ascending: false })
+      .limit(poolSize),
+  ]);
 
-  if (error) {
-    console.error("Error fetching club photos (fallback):", error);
-    throw new Error(`Failed to fetch club photos: ${error.message}`);
+  if (realResult.error) {
+    console.error("Error fetching club photos (fallback):", realResult.error);
+    throw new Error(`Failed to fetch club photos: ${realResult.error.message}`);
   }
 
-  const list = data ?? [];
-  if (list.length === 0) return [];
+  type PoolRow = {
+    photo_id: number;
+    photo_url: string;
+    score: number;
+    title: string;
+    author: string;
+    team_name?: string;
+  };
 
   const excludeSet = new Set(excludeIds);
-  const profileIds = [...new Set((list as { profile_id?: number }[]).map((r) => r.profile_id).filter((id): id is number => id != null))];
+  const pool: PoolRow[] = [];
+
+  const list = realResult.data ?? [];
+  const profileIds = [
+    ...new Set(
+      (list as { profile_id?: number }[])
+        .map((r) => r.profile_id)
+        .filter((id): id is number => id != null)
+    ),
+  ];
   const nicknamesByProfileId: Record<number, string> = {};
   const teamNameByProfileId: Record<number, string> = {};
   if (profileIds.length > 0) {
@@ -748,31 +852,68 @@ async function getRandomClubPhotosFallback(
     }
   }
 
-  const shuffled = weightedRecencyShuffleByScore(
-    list,
-    (row) => Number((row as { photo_id?: number | string }).photo_id ?? 0)
-  );
-  const filtered = excludeSet.size > 0
-    ? shuffled.filter((row: Record<string, unknown>) => !excludeSet.has(String(row.photo_id ?? "")))
-    : shuffled;
-  const taken = filtered.slice(0, count);
-
-  return taken.map((row: Record<string, unknown>) => {
+  for (const row of list as Record<string, unknown>[]) {
+    const photoId = Number(row.photo_id);
+    if (excludeSet.has(String(photoId))) continue;
     const activity = row.activities;
-    const title = Array.isArray(activity) ? activity[0]?.title : (activity as { title?: string } | null)?.title;
+    const title = Array.isArray(activity)
+      ? activity[0]?.title
+      : (activity as { title?: string } | null)?.title;
     const profileId = row.profile_id as number | undefined;
-    const nickname = profileId != null ? nicknamesByProfileId[profileId] ?? "" : "";
-    const teamName = profileId != null ? teamNameByProfileId[profileId] ?? "" : "";
-    const photoUrl = String(row.photo_url ?? "");
-    return {
-      id: String(row.photo_id ?? Math.random()),
-      thumb_url: buildThumbnailUrl(photoUrl),
-      photo_url: photoUrl,
+    pool.push({
+      photo_id: photoId,
+      photo_url: String(row.photo_url ?? ""),
+      score: photoId,
       title: typeof title === "string" ? title : "",
-      author: typeof nickname === "string" ? nickname : "",
-      team_name: teamName || undefined,
-    };
-  });
+      author: profileId != null ? nicknamesByProfileId[profileId] ?? "" : "",
+      team_name:
+        profileId != null ? teamNameByProfileId[profileId] || undefined : undefined,
+    });
+  }
+
+  for (const row of tempResult.data ?? []) {
+    const photoId = -Number(row.id);
+    if (excludeSet.has(String(photoId))) continue;
+    const submission = row.temporary_submissions as
+      | {
+          display_name?: string;
+          activities?: { title?: string } | { title?: string }[] | null;
+          teams?: { name?: string } | { name?: string }[] | null;
+        }
+      | {
+          display_name?: string;
+          activities?: { title?: string } | { title?: string }[] | null;
+          teams?: { name?: string } | { name?: string }[] | null;
+        }[]
+      | null;
+    const sub = Array.isArray(submission) ? submission[0] : submission;
+    const activity = sub?.activities;
+    const title = Array.isArray(activity)
+      ? activity[0]?.title
+      : activity?.title;
+    const team = sub?.teams;
+    const teamName = Array.isArray(team) ? team[0]?.name : team?.name;
+    pool.push({
+      photo_id: photoId,
+      photo_url: String(row.photo_url ?? ""),
+      score: Math.abs(photoId),
+      title: typeof title === "string" ? title : "",
+      author: (sub?.display_name ?? "").trim(),
+      team_name: teamName ? teamName.toLowerCase() : undefined,
+    });
+  }
+
+  if (pool.length === 0) return [];
+
+  const shuffled = weightedRecencyShuffleByScore(pool, (row) => row.score);
+  return shuffled.slice(0, count).map((row) => ({
+    id: String(row.photo_id),
+    thumb_url: buildThumbnailUrl(row.photo_url),
+    photo_url: row.photo_url,
+    title: row.title,
+    author: row.author,
+    team_name: row.team_name,
+  }));
 }
 
 /**

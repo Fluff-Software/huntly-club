@@ -12,6 +12,7 @@ export const ACTIVITY_TAGS = [
   "Walk",
   "Cycle",
   "Mission",
+  "Hunt",
   "Nature spotting",
   "Den building",
   "Water",
@@ -119,6 +120,21 @@ export type CycleJournalMeta = {
   distanceMeters: number;
   route: { latitude: number; longitude: number }[];
   selectedProfiles: { id: number; nickname: string }[];
+  photoUrls: string[];
+};
+
+export type HuntJournalMeta = {
+  type: "hunt";
+  questId: string;
+  questName: string;
+  itemsFoundThisSession: number;
+  /** Names of items found in this session only. */
+  foundItemNames?: string[];
+  xp: number;
+  complete: boolean;
+  endedAt: string;
+  selectedProfiles: { id: number; nickname: string }[];
+  /** Photos taken for items found in this session only. */
   photoUrls: string[];
 };
 
@@ -295,6 +311,55 @@ export async function createCycleJournalEntry(input: {
 
   if (xpError) {
     console.error("Failed to award cycle journal XP:", xpError);
+  }
+
+  return newEntry as JournalEntry;
+}
+
+/** Logs a scavenger hunt session to the journal. XP is awarded by scavenger_end_session, not here. */
+export async function createHuntJournalEntry(input: {
+  userId: string;
+  profileId: number;
+  questId: string;
+  questName: string;
+  itemsFoundThisSession: number;
+  foundItemNames: string[];
+  xp: number;
+  complete: boolean;
+  endedAt: string;
+  entryDate: string;
+  selectedProfiles: { id: number; nickname: string }[];
+  photoUrls: string[];
+}): Promise<JournalEntry> {
+  const meta: HuntJournalMeta = {
+    type: "hunt",
+    questId: input.questId,
+    questName: input.questName,
+    itemsFoundThisSession: input.itemsFoundThisSession,
+    foundItemNames: input.foundItemNames,
+    xp: input.xp,
+    complete: input.complete,
+    endedAt: input.endedAt,
+    selectedProfiles: input.selectedProfiles,
+    photoUrls: input.photoUrls,
+  };
+
+  const { data: newEntry, error: insertError } = await supabase
+    .from("journal_entries")
+    .insert({
+      user_id: input.userId,
+      profile_id: input.profileId,
+      title: input.questName,
+      notes: JSON.stringify(meta),
+      photo_url: input.photoUrls[0] ?? null,
+      activity_tag: "Hunt",
+      entry_date: input.entryDate,
+    })
+    .select("*, profile:profiles!inner(nickname)")
+    .single();
+
+  if (insertError) {
+    throw new Error(`Failed to create hunt journal entry: ${insertError.message}`);
   }
 
   return newEntry as JournalEntry;

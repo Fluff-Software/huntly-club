@@ -28,6 +28,10 @@ import {
   startTrackingSession,
   updateActiveTrackingSession,
 } from "@/services/trackingSessionService";
+import {
+  getBlockingAdventure,
+  routeForBlockingAdventure,
+} from "@/utils/adventureSessionGuard";
 
 const FOREST_DARK = "#2D4A35";
 const LIGHT_GREEN_BG = "#EEF5EE";
@@ -90,6 +94,12 @@ export default function CycleMapScreen() {
     let cancelled = false;
     (async () => {
       try {
+        const blocking = await getBlockingAdventure("cycle");
+        if (cancelled) return;
+        if (blocking) {
+          router.replace(routeForBlockingAdventure(blocking));
+          return;
+        }
         const trackingSession = await startTrackingSession("cycle");
         if (trackingSession.type !== "cycle") {
           router.replace("/(tabs)/activity/walk-map");
@@ -477,8 +487,16 @@ export default function CycleMapScreen() {
               setCoords(null);
               setErrorMessage(null);
               setAccessIssue(null);
-              startTrackingSession("cycle")
+              getBlockingAdventure("cycle")
+                .then((blocking) => {
+                  if (blocking) {
+                    router.replace(routeForBlockingAdventure(blocking));
+                    return null;
+                  }
+                  return startTrackingSession("cycle");
+                })
                 .then((trackingSession) => {
+                  if (!trackingSession) return null;
                   if (trackingSession.type !== "cycle") {
                     router.replace("/(tabs)/activity/walk-map");
                     return null;

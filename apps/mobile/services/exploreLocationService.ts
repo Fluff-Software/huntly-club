@@ -5,19 +5,30 @@ export type ExploreLocation = Tables<"explore_locations">;
 export type ExploreCollectible = Tables<"explore_collectibles">;
 export type ExploreProfileCollectible = Tables<"explore_profile_collectibles">;
 
-/** Locations are evergreen (always-on world map), so callers fetch once per session rather than polling. */
-export const getActiveLocations = async (): Promise<ExploreLocation[]> => {
-  const { data, error } = await supabase
-    .from("explore_locations")
-    .select("*")
-    .eq("is_active", true);
+/**
+ * Fetch active locations within `radiusMeters` of a point, nearest first.
+ *
+ * This is the scalable read path: it delegates to the `get_explore_locations_near` RPC, which uses
+ * a PostGIS GiST spatial index (ST_DWithin) so the query stays O(nearby) no matter how many
+ * locations exist worldwide. The map re-fetches as the player moves rather than loading the planet.
+ */
+export const getLocationsNear = async (
+  latitude: number,
+  longitude: number,
+  radiusMeters = 5000
+): Promise<ExploreLocation[]> => {
+  const { data, error } = await supabase.rpc("get_explore_locations_near", {
+    p_latitude: latitude,
+    p_longitude: longitude,
+    p_radius_meters: radiusMeters,
+  });
 
   if (error) {
-    console.error("Error fetching explore locations:", error);
-    throw new Error(`Failed to fetch explore locations: ${error.message}`);
+    console.error("Error fetching nearby explore locations:", error);
+    throw new Error(`Failed to fetch nearby explore locations: ${error.message}`);
   }
 
-  return data || [];
+  return (data as ExploreLocation[]) || [];
 };
 
 export const getCollectibleCatalog = async (): Promise<ExploreCollectible[]> => {

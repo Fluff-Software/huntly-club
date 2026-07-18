@@ -8,7 +8,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { TrackingLocationAccessPrompt } from "@/components/TrackingLocationAccessPrompt";
 import { describeTrackingLocationFailure, type TrackingLocationIssue } from "@/utils/trackingLocationPermission";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
-import { metersBetween } from "@/utils/geo";
+import { metersBetween, type GeoPoint } from "@/utils/geo";
 import {
   ensureExploreLocationPermission,
   getCurrentExploreLocation,
@@ -16,7 +16,7 @@ import {
   type ExploreLocationFix,
 } from "@/services/exploreForegroundLocationService";
 import {
-  getActiveLocations,
+  getLocationsNear,
   getVisitedLocationIds,
   type ExploreLocation,
 } from "@/services/exploreLocationService";
@@ -28,6 +28,12 @@ const EXPLORE_BLUE = "#3E63C9";
 const SHEET_BG = "#FFF";
 
 const CHECK_IN_SEARCH_DELAY_MS = 700;
+
+// Fetch spots within this radius of the player, and re-fetch once they've moved far enough that the
+// previous fetch could be going stale near its edge. The overlap (radius > threshold) means markers
+// never pop in late as you walk toward them.
+const NEARBY_FETCH_RADIUS_M = 5000;
+const REFETCH_MOVE_THRESHOLD_M = 2000;
 
 const FAILURE_MESSAGES: Record<ExploreCheckInFailureReason, string> = {
   not_authorized: "Something went wrong. Please try again.",
@@ -55,6 +61,7 @@ export default function ExploreMapScreen() {
   const [coords, setCoords] = useState<ExploreLocationFix | null>(null);
   const [locations, setLocations] = useState<ExploreLocation[]>([]);
   const [visitedIds, setVisitedIds] = useState<Set<number>>(new Set());
+  const [fetchAnchor, setFetchAnchor] = useState<GeoPoint | null>(null);
   const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
   const [checkInState, setCheckInState] = useState<"idle" | "searching">("idle");
   const [checkInError, setCheckInError] = useState<string | null>(null);
@@ -97,22 +104,49 @@ export default function ExploreMapScreen() {
     };
   }, [status]);
 
+  // Visited markers depend only on the profile, so fetch them once.
   useEffect(() => {
     if (!profileId) return;
     let cancelled = false;
-    Promise.all([getActiveLocations(), getVisitedLocationIds(profileId)])
-      .then(([locs, visited]) => {
-        if (cancelled) return;
-        setLocations(locs);
-        setVisitedIds(visited);
+    getVisitedLocationIds(profileId)
+      .then((visited) => {
+        if (!cancelled) setVisitedIds(visited);
       })
       .catch(() => {
-        // Non-fatal: the map still works with GPS, just without markers until retried.
+        // Non-fatal: markers just won't be dimmed until retried.
       });
     return () => {
       cancelled = true;
     };
   }, [profileId]);
+
+  // Advance the fetch anchor on the first fix, then only after the player moves far enough.
+  // Returning the previous anchor unchanged when within threshold keeps its identity stable, so the
+  // location fetch below doesn't re-run (or abort its network call) on every GPS tick.
+  useEffect(() => {
+    if (!coords) return;
+    setFetchAnchor((prev) =>
+      prev && metersBetween(prev, coords) < REFETCH_MOVE_THRESHOLD_M
+        ? prev
+        : { latitude: coords.latitude, longitude: coords.longitude }
+    );
+  }, [coords]);
+
+  // Fetch only the spots near the anchor. O(nearby), not O(world).
+  useEffect(() => {
+    if (!profileId || !fetchAnchor) return;
+    let cancelled = false;
+    getLocationsNear(fetchAnchor.latitude, fetchAnchor.longitude, NEARBY_FETCH_RADIUS_M)
+      .then((locs) => {
+        if (!cancelled) setLocations(locs);
+      })
+      .catch(() => {
+        // Non-fatal: the map still works with GPS, just without markers until the next move.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [profileId, fetchAnchor]);
 
   const pois: ActivityMapPoi[] = useMemo(
     () =>

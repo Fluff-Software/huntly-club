@@ -3046,6 +3046,26 @@ export type Database = {
         Args: { p_session_id: number }
         Returns: number
       }
+      get_explore_locations_near: {
+        Args: {
+          p_latitude: number
+          p_longitude: number
+          p_radius_meters?: number
+        }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: number
+          image_url: string | null
+          is_active: boolean
+          latitude: number
+          longitude: number
+          name: string
+          radius_meters: number
+          updated_at: string
+        }[]
+      }
       get_profile_badge_progress: {
         Args: { p_profile_id: number }
         Returns: {

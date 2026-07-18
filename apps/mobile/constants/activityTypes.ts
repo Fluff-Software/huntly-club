@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react";
 import type { MaterialIcons } from "@expo/vector-icons";
 
-export type ActivityTypeKey = "walk" | "cycle" | "mission";
+export type ActivityTypeKey = "walk" | "cycle" | "mission" | "explore";
 
 export type ActivityTypeMeta = {
   key: ActivityTypeKey;
@@ -45,6 +45,15 @@ export const ACTIVITY_TYPES: ActivityTypeMeta[] = [
     route: "/(tabs)/missions",
     color: "#C97B20",
     tint: "#FBEBDD",
+  },
+  {
+    key: "explore",
+    label: "Explore",
+    description: "Discover collectibles hidden across the map",
+    icon: "explore",
+    route: "/(tabs)/activity/explore-prep",
+    color: "#3E63C9",
+    tint: "#E5EAFB",
   },
 ];
 

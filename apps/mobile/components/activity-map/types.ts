@@ -18,6 +18,16 @@ export type ActivityMapRegion = {
   longitudeDelta: number;
 };
 
+export type ActivityMapPoi = {
+  id: number;
+  latitude: number;
+  longitude: number;
+  radiusMeters: number;
+  imageUrl?: string | null;
+  /** Dims/greys the marker for POIs the profile has already discovered. */
+  isDiscovered?: boolean;
+};
+
 export type ActivityMapProps = {
   style?: StyleProp<ViewStyle>;
   route: ActivityCoordinate[];
@@ -32,6 +42,9 @@ export type ActivityMapProps = {
   /** When true and route has 2+ points, camera uses geographic bounds instead of center + delta. */
   fitRoute?: boolean;
   onRegionChange?: (region: ActivityMapRegion) => void;
+  /** World-map points of interest (e.g. Explore locations), rendered as markers + radius circles. */
+  pois?: ActivityMapPoi[];
+  onPoiPress?: (poiId: number) => void;
 };
 
 export type ActivityMapRecenterOptions = {

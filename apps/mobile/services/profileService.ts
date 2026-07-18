@@ -269,6 +269,7 @@ export const updateProfile = async (
 /**
  * Deletes a profile and all related data:
  * - user_activity_progress, user_activity_photos, user_achievements, user_badges
+ * - explore_visits, explore_profile_collectibles
  * - profile row in profiles (profile_public is a view, so no direct delete)
  * - All photos in user-activity-photos storage linked via user_activity_photos
  */
@@ -303,6 +304,8 @@ export const deleteProfile = async (profileId: number): Promise<void> => {
   await supabase.from("user_activity_progress").delete().eq("profile_id", profileId);
   await supabase.from("user_achievements").delete().eq("profile_id", profileId);
   await supabase.from("user_badges").delete().eq("profile_id", profileId);
+  await supabase.from("explore_visits").delete().eq("profile_id", profileId);
+  await supabase.from("explore_profile_collectibles").delete().eq("profile_id", profileId);
   const { error: profileError } = await supabase
     .from("profiles")
     .delete()

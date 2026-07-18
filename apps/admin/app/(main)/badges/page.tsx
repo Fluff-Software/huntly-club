@@ -18,6 +18,10 @@ const requirementOptions = [
   { value: "activities_completed", label: "Missions completed" },
   { value: "activities_by_category", label: "Missions completed by category" },
   { value: "team_contribution", label: "Individual team contribution" },
+  { value: "locations_discovered", label: "World Explorer locations discovered" },
+  { value: "collectibles_discovered", label: "World Explorer collectibles discovered" },
+  { value: "collectibles_by_rarity", label: "World Explorer collectibles by rarity" },
+  { value: "collectible_duplicates", label: "World Explorer duplicate collectibles found" },
 ];
 
 export default async function BadgesAdminPage() {

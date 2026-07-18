@@ -75,6 +75,32 @@ export default function ActivityLayout() {
           title: "Activity",
           headerShown: false }}
       />
+      <Stack.Screen
+        name="explore-prep"
+        options={{
+          title: "Explore",
+          headerShown: false,
+          gestureEnabled: false }}
+      />
+      <Stack.Screen
+        name="explore-map"
+        options={{
+          title: "Explore map",
+          headerShown: false }}
+      />
+      <Stack.Screen
+        name="explore-reveal"
+        options={{
+          title: "Discovery",
+          headerShown: false,
+          gestureEnabled: false }}
+      />
+      <Stack.Screen
+        name="explore-collection"
+        options={{
+          title: "Collection",
+          headerShown: false }}
+      />
     </Stack>
   );
 }

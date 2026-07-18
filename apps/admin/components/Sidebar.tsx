@@ -12,6 +12,7 @@ const nav = [
   { href: "/seasons", label: "Seasons" },
   { href: "/activities", label: "Missions" },
   { href: "/campfire-sessions", label: "Campfire Sessions" },
+  { href: "/explore", label: "World Explorer" },
   { href: "/badges", label: "Badges" },
   { href: "/mission-completions", label: "Mission Completions" },
   { href: "/categories", label: "Categories" },

@@ -5,6 +5,7 @@ import { Platform } from "react-native";
 import { syncActivityLiveSurface, endActivityLiveSurface } from "@/services/activityLiveSurfaceService";
 import { ACTIVITY_LIVE_HUNTLY_GREEN } from "@/constants/activityLiveSurfaceColors";
 import { TrackingPermissionError } from "@/utils/trackingLocationPermission";
+import { metersBetween } from "@/utils/geo";
 
 export const TRACKING_LOCATION_TASK = "huntly-active-adventure-location";
 
@@ -56,18 +57,7 @@ export function formatTrackingDistance(meters: number) {
   return `${(meters / 1000).toFixed(2)} km`;
 }
 
-export function metersBetween(a: TrackingRoutePoint, b: TrackingRoutePoint): number {
-  const earthRadius = 6371000;
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const dLat = toRad(b.latitude - a.latitude);
-  const dLon = toRad(b.longitude - a.longitude);
-  const lat1 = toRad(a.latitude);
-  const lat2 = toRad(b.latitude);
-  const sinDLat = Math.sin(dLat / 2);
-  const sinDLon = Math.sin(dLon / 2);
-  const h = sinDLat * sinDLat + Math.cos(lat1) * Math.cos(lat2) * (sinDLon * sinDLon);
-  return 2 * earthRadius * Math.asin(Math.min(1, Math.sqrt(h)));
-}
+export { metersBetween };
 
 function isReliableRoutePoint(
   type: TrackingActivityType,

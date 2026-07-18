@@ -1,7 +1,8 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { StyleSheet } from "react-native";
 /** Default provider is Apple MapKit — no Google Maps API key on iOS. */
-import MapView, { Polyline } from "react-native-maps";
+import MapView, { Circle, Marker, Polyline } from "react-native-maps";
+import { EXPLORE_POI_DISCOVERED_COLOR, EXPLORE_POI_UNDISCOVERED_COLOR } from "@/constants/exploreColors";
 import {
   ACTIVITY_MAP_RECENTER_DURATION_MS,
   ACTIVITY_MAP_ROUTE_FIT_PADDING,
@@ -24,6 +25,8 @@ export const ActivityMap = forwardRef<ActivityMapRef, ActivityMapProps>(function
     pointerEvents,
     fitRoute = false,
     onRegionChange,
+    pois = [],
+    onPoiPress,
   },
   ref
 ) {
@@ -77,6 +80,25 @@ export const ActivityMap = forwardRef<ActivityMapRef, ActivityMapProps>(function
           strokeWidth={routeStrokeWidth}
         />
       )}
+      {pois.map((poi) => {
+        const color = poi.isDiscovered ? EXPLORE_POI_DISCOVERED_COLOR : EXPLORE_POI_UNDISCOVERED_COLOR;
+        return (
+          <React.Fragment key={poi.id}>
+            <Circle
+              center={{ latitude: poi.latitude, longitude: poi.longitude }}
+              radius={poi.radiusMeters}
+              strokeColor={color}
+              strokeWidth={2}
+              fillColor={`${color}26`}
+            />
+            <Marker
+              coordinate={{ latitude: poi.latitude, longitude: poi.longitude }}
+              pinColor={color}
+              onPress={() => onPoiPress?.(poi.id)}
+            />
+          </React.Fragment>
+        );
+      })}
     </MapView>
   );
 });

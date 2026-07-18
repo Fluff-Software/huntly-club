@@ -6,6 +6,7 @@ export {
   ACTIVITY_MAP_ROUTE_FIT_PADDING,
   ACTIVITY_ROUTE_STROKE_COLOR,
   type ActivityCoordinate,
+  type ActivityMapPoi,
   type ActivityMapProps,
   type ActivityMapRecenterOptions,
   type ActivityMapRef,

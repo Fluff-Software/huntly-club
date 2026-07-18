@@ -9,6 +9,7 @@ import {
   type CameraRef,
 } from "@maplibre/maplibre-react-native";
 import { getMapTilerMapStyleUrl } from "@/constants/maptiler";
+import { EXPLORE_POI_DISCOVERED_COLOR, EXPLORE_POI_UNDISCOVERED_COLOR } from "@/constants/exploreColors";
 import {
   buildInitialViewState,
   buildRecenterCameraStop,
@@ -25,6 +26,8 @@ import {
 
 const ROUTE_SOURCE_ID = "activity-route-source";
 const ROUTE_LAYER_ID = "activity-route-layer";
+const POI_SOURCE_ID = "activity-poi-source";
+const POI_CIRCLE_LAYER_ID = "activity-poi-circle-layer";
 const DEV_MAP_STYLE = "https://demotiles.maplibre.org/style.json";
 
 export const ActivityMap = forwardRef<ActivityMapRef, ActivityMapProps>(function ActivityMap(
@@ -41,6 +44,8 @@ export const ActivityMap = forwardRef<ActivityMapRef, ActivityMapProps>(function
     pointerEvents,
     fitRoute = false,
     onRegionChange,
+    pois = [],
+    onPoiPress,
   },
   ref
 ) {
@@ -75,6 +80,21 @@ export const ActivityMap = forwardRef<ActivityMapRef, ActivityMapProps>(function
     () => buildInitialViewState(initialRegion, route, shouldFitRoute),
     [initialRegion, route, shouldFitRoute]
   );
+
+  const poiGeoJson = useMemo((): GeoJSON.FeatureCollection => ({
+    type: "FeatureCollection",
+    features: pois.map((poi) => ({
+      type: "Feature",
+      properties: {
+        id: poi.id,
+        color: poi.isDiscovered ? EXPLORE_POI_DISCOVERED_COLOR : EXPLORE_POI_UNDISCOVERED_COLOR,
+      },
+      geometry: {
+        type: "Point",
+        coordinates: [poi.longitude, poi.latitude],
+      },
+    })),
+  }), [pois]);
 
   useEffect(() => {
     if (!shouldFitRoute) return;
@@ -140,6 +160,32 @@ export const ActivityMap = forwardRef<ActivityMapRef, ActivityMapProps>(function
               paint={{
                 "line-color": ACTIVITY_ROUTE_STROKE_COLOR,
                 "line-width": routeStrokeWidth,
+              }}
+            />
+          </GeoJSONSource>
+        ) : null}
+        {pois.length > 0 ? (
+          // MapLibre circle layers are pixel-radius, not metric, so this renders a fixed-size
+          // marker dot only -- no metric-accurate radius ring (unlike react-native-maps' <Circle>
+          // on iOS). Acceptable for a "you're close" visual indicator.
+          <GeoJSONSource
+            id={POI_SOURCE_ID}
+            data={poiGeoJson}
+            onPress={(event) => {
+              const feature = event.nativeEvent.features[0];
+              const id = feature?.properties?.id;
+              if (typeof id === "number") onPoiPress?.(id);
+            }}
+          >
+            <Layer
+              id={POI_CIRCLE_LAYER_ID}
+              type="circle"
+              source={POI_SOURCE_ID}
+              paint={{
+                "circle-radius": 10,
+                "circle-color": ["get", "color"],
+                "circle-stroke-width": 2,
+                "circle-stroke-color": "#FFFFFF",
               }}
             />
           </GeoJSONSource>

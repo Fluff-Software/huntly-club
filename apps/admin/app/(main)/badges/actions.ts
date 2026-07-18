@@ -9,7 +9,11 @@ type BadgeRequirementType =
   | "activities_completed"
   | "team_xp"
   | "team_contribution"
-  | "activities_by_category";
+  | "activities_by_category"
+  | "locations_discovered"
+  | "collectibles_discovered"
+  | "collectibles_by_rarity"
+  | "collectible_duplicates";
 
 const REQUIREMENT_TYPES: BadgeRequirementType[] = [
   "xp_gained",
@@ -18,6 +22,10 @@ const REQUIREMENT_TYPES: BadgeRequirementType[] = [
   "team_xp",
   "team_contribution",
   "activities_by_category",
+  "locations_discovered",
+  "collectibles_discovered",
+  "collectibles_by_rarity",
+  "collectible_duplicates",
 ];
 
 async function uploadBadgeImageFile(file: File): Promise<string> {
@@ -114,7 +122,7 @@ export async function createBadge(formData: FormData): Promise<{ error?: string 
       ) || 0
     );
     const requirement_category =
-      requirement_type === "activities_by_category"
+      requirement_type === "activities_by_category" || requirement_type === "collectibles_by_rarity"
         ? String(formData.get("requirement_category") ?? "").trim() || null
         : null;
     const badge_type = String(formData.get("badge_type") ?? "milestone");
@@ -169,7 +177,8 @@ export async function updateBadge(formData: FormData): Promise<{ error?: string 
       requirement_value:
         Number.parseInt(String(formData.get("requirement_value") ?? "0"), 10) || 0,
       requirement_category:
-        String(formData.get("requirement_type") ?? "") === "activities_by_category"
+        String(formData.get("requirement_type") ?? "") === "activities_by_category" ||
+        String(formData.get("requirement_type") ?? "") === "collectibles_by_rarity"
           ? String(formData.get("requirement_category") ?? "").trim() || null
           : null,
       badge_type: String(formData.get("badge_type") ?? "milestone"),

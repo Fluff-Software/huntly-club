@@ -15,6 +15,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { MaterialIcons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import * as Location from "expo-location";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
@@ -33,6 +34,7 @@ import {
   fetchQuestState,
   isPlayUnlocked,
   unlockWithCode,
+  unlockWithLocation,
   type ScavengerQuest,
   type ScavengerQuestItem,
   type ScavengerQuestState,
@@ -96,13 +98,44 @@ export default function ScavengerQuestOverviewScreen() {
       setItems(itemRows);
       setState(s);
 
+      let playOk = true;
+      let lockRequiresCode = false;
+      let lockRequiresLocation = false;
+
       if (q?.lockable && q.lock_id) {
-        const [playOk, lock] = await Promise.all([
+        const [unlockedPlay, lock] = await Promise.all([
           isPlayUnlocked("quest", questId),
           fetchLockById(q.lock_id),
         ]);
+        playOk = unlockedPlay;
+        lockRequiresCode = Boolean(lock?.requires_code);
+        lockRequiresLocation = Boolean(lock?.requires_location);
+
+        // Re-check location unlock on overview (OG Huntly parity)
+        if (!playOk && lockRequiresLocation) {
+          try {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status === "granted") {
+              const pos = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Balanced,
+              });
+              const result = await unlockWithLocation(
+                "quest",
+                questId,
+                pos.coords.latitude,
+                pos.coords.longitude
+              );
+              if (result.ok) {
+                playOk = await isPlayUnlocked("quest", questId);
+              }
+            }
+          } catch {
+            // Keep prior unlock state if GPS/unlock fails
+          }
+        }
+
         setUnlocked(playOk);
-        setNeedsCode(Boolean(lock?.requires_code) && !playOk);
+        setNeedsCode(lockRequiresCode && !playOk);
       } else {
         setUnlocked(true);
         setNeedsCode(false);

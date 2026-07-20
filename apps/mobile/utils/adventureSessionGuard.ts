@@ -1,3 +1,4 @@
+import { type Href } from "expo-router";
 import { getActiveHuntSession } from "@/services/activeHuntSessionService";
 import { getActiveTrackingSession } from "@/services/trackingSessionService";
 
@@ -29,9 +30,9 @@ export async function getBlockingAdventure(
   return null;
 }
 
-export function routeForBlockingAdventure(blocking: BlockingAdventure): string {
+export function routeForBlockingAdventure(blocking: BlockingAdventure): Href {
   if (blocking.kind === "hunt") {
-    return `/(tabs)/activity/scavenger/quest/${blocking.questId}/active?profileId=${blocking.profileId}`;
+    return `/(tabs)/activity/scavenger/quest/${blocking.questId}/active?profileId=${blocking.profileId}` as Href;
   }
   if (blocking.kind === "cycle") {
     return "/(tabs)/activity/cycle-map";

@@ -12,11 +12,17 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ThemedText } from "@/components/ThemedText";
+import { QuestItemsMap } from "@/components/scavenger/QuestItemsMap";
+import {
+  QuestViewSwitcher,
+  type QuestView,
+} from "@/components/scavenger/QuestViewSwitcher";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
@@ -73,6 +79,11 @@ export default function ScavengerActiveScreen() {
   const [triviaOpen, setTriviaOpen] = useState(false);
   const [answer, setAnswer] = useState("");
   const [triviaError, setTriviaError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<QuestView>("list");
+  const [userCoords, setUserCoords] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
 
   useEffect(() => {
     if (profileId) return;
@@ -108,7 +119,7 @@ export default function ScavengerActiveScreen() {
       try {
         const blocking = await getBlockingAdventure("hunt");
         if (blocking) {
-          router.replace(routeForBlockingAdventure(blocking));
+          router.replace(routeForBlockingAdventure(blocking) as Href);
           return;
         }
         await ensureQuestState(profileId, questId);
@@ -138,6 +149,38 @@ export default function ScavengerActiveScreen() {
   const found = foundIds.size;
   const total = items.length;
   const ratio = total > 0 ? Math.min(1, found / total) : 0;
+  const hasMap = useMemo(
+    () => items.some((item) => item.lat != null && item.lng != null),
+    [items]
+  );
+
+  useEffect(() => {
+    if (!hasMap) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted" || cancelled) return;
+        const pos = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        if (cancelled) return;
+        setUserCoords({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        });
+      } catch {
+        // Map still works centered on item pins
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [hasMap]);
+
+  useEffect(() => {
+    if (!hasMap && viewMode === "map") setViewMode("list");
+  }, [hasMap, viewMode]);
 
   const endSession = () => {
     if (!questId || !profileId || !quest) return;
@@ -262,6 +305,18 @@ export default function ScavengerActiveScreen() {
 
         {loading ? (
           <ActivityIndicator color={SCAVENGER_GREEN} style={{ marginTop: scaleW(40) }} />
+        ) : viewMode === "map" && hasMap ? (
+          <View style={{ flex: 1 }}>
+            <QuestItemsMap
+              items={items}
+              foundIds={foundIds}
+              userCoords={userCoords}
+              onMarkerPress={(item) => {
+                setSelected(item);
+                setShowHint(false);
+              }}
+            />
+          </View>
         ) : (
           <FlatList
             data={items}
@@ -269,7 +324,7 @@ export default function ScavengerActiveScreen() {
             numColumns={numColumns}
             contentContainerStyle={{
               padding: scaleW(12),
-              paddingBottom: insets.bottom + scaleW(24),
+              paddingBottom: insets.bottom + scaleW(hasMap ? 88 : 24),
               gap: scaleW(12),
             }}
             columnWrapperStyle={{
@@ -316,6 +371,18 @@ export default function ScavengerActiveScreen() {
             }}
           />
         )}
+
+        {hasMap && !loading ? (
+          <View
+            pointerEvents="box-none"
+            style={[
+              styles.switcherWrap,
+              { bottom: insets.bottom + scaleW(12), paddingHorizontal: scaleW(20) },
+            ]}
+          >
+            <QuestViewSwitcher value={viewMode} onChange={setViewMode} />
+          </View>
+        ) : null}
       </SafeAreaView>
 
       <Modal visible={!!selected && !triviaOpen} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
@@ -445,6 +512,13 @@ const styles = StyleSheet.create({
   progressFill: { height: "100%", backgroundColor: SCAVENGER_ACCENT },
   tile: { backgroundColor: "#fff" },
   checkBadge: { position: "absolute", top: 8, right: 8 },
+  switcherWrap: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    zIndex: 20,
+    alignItems: "center",
+  },
   modalBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.45)" },
   modalBackdropCenter: { flex: 1, justifyContent: "center", backgroundColor: "rgba(0,0,0,0.45)" },
   sheet: { backgroundColor: "#fff", maxHeight: "88%" },

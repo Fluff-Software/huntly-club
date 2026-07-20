@@ -37,8 +37,17 @@ import {
   type ScavengerQuestGroup,
   type ScavengerQuestState,
 } from "@/services/scavengerService";
+import { distanceKm as haversineKm, formatDistanceKm } from "@/utils/geo";
 
 const PROFILE_KEY = "scavenger_selected_profile_id";
+const NEARBY_RADIUS_KM = 8;
+
+type Coords = { lat: number; lng: number };
+
+type ListRow =
+  | { kind: "header"; id: string; title: string }
+  | { kind: "group"; id: string; group: ScavengerQuestGroup }
+  | { kind: "quest"; id: string; quest: ScavengerQuest; distanceKm?: number };
 
 export default function ScavengerBrowseScreen() {
   const router = useRouter();
@@ -51,6 +60,7 @@ export default function ScavengerBrowseScreen() {
   const [states, setStates] = useState<ScavengerQuestState[]>([]);
   const [unlockedQuestIds, setUnlockedQuestIds] = useState<Set<string>>(new Set());
   const [unlockedGroupIds, setUnlockedGroupIds] = useState<Set<string>>(new Set());
+  const [coords, setCoords] = useState<Coords | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [codeOpen, setCodeOpen] = useState(false);
@@ -102,7 +112,6 @@ export default function ScavengerBrowseScreen() {
       setUnlockedQuestIds(new Set(questUnlocks.filter(([, ok]) => ok).map(([id]) => id)));
       setUnlockedGroupIds(new Set(groupUnlocks.filter(([, ok]) => ok).map(([id]) => id)));
 
-      // Location unlock pass for nearby lockable content
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === "granted") {
         const pos = await Location.getCurrentPositionAsync({
@@ -110,6 +119,7 @@ export default function ScavengerBrowseScreen() {
         });
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
+        setCoords({ lat, lng });
         const nextQuestUnlocks = new Set(
           questUnlocks.filter(([, ok]) => ok).map(([id]) => id)
         );
@@ -138,6 +148,8 @@ export default function ScavengerBrowseScreen() {
         }
         setUnlockedQuestIds(nextQuestUnlocks);
         setUnlockedGroupIds(nextGroupUnlocks);
+      } else {
+        setCoords(null);
       }
     } catch (e) {
       Alert.alert("Couldn’t load hunts", e instanceof Error ? e.message : "Please try again.");
@@ -171,6 +183,63 @@ export default function ScavengerBrowseScreen() {
       groups.filter((group) => !group.lockable || unlockedGroupIds.has(group.id)),
     [groups, unlockedGroupIds]
   );
+
+  const nearbyQuests = useMemo(() => {
+    if (!coords) return [] as { quest: ScavengerQuest; distanceKm: number }[];
+    return visibleQuests
+      .filter((q) => q.attraction_lat != null && q.attraction_lng != null)
+      .map((quest) => ({
+        quest,
+        distanceKm: haversineKm(coords, {
+          lat: quest.attraction_lat!,
+          lng: quest.attraction_lng!,
+        }),
+      }))
+      .filter((item) => item.distanceKm <= NEARBY_RADIUS_KM)
+      .sort((a, b) => a.distanceKm - b.distanceKm);
+  }, [visibleQuests, coords]);
+
+  const nearbyQuestIds = useMemo(
+    () => new Set(nearbyQuests.map((item) => item.quest.id)),
+    [nearbyQuests]
+  );
+
+  const otherQuests = useMemo(
+    () => visibleQuests.filter((quest) => !nearbyQuestIds.has(quest.id)),
+    [visibleQuests, nearbyQuestIds]
+  );
+
+  const listData = useMemo((): ListRow[] => {
+    const rows: ListRow[] = [];
+    if (nearbyQuests.length) {
+      rows.push({ kind: "header", id: "nearby-h", title: "Nearby" });
+      for (const item of nearbyQuests) {
+        rows.push({
+          kind: "quest",
+          id: `nearby-${item.quest.id}`,
+          quest: item.quest,
+          distanceKm: item.distanceKm,
+        });
+      }
+    }
+    if (visibleGroups.length) {
+      rows.push({ kind: "header", id: "groups-h", title: "Quest groups" });
+      for (const g of visibleGroups) {
+        rows.push({ kind: "group", id: g.id, group: g });
+      }
+    }
+    if (otherQuests.length) {
+      rows.push({
+        kind: "header",
+        id: "quests-h",
+        title: nearbyQuests.length ? "More hunts" : "Hunts",
+      });
+      for (const q of otherQuests) {
+        rows.push({ kind: "quest", id: q.id, quest: q });
+      }
+    }
+    return rows;
+  }, [nearbyQuests, visibleGroups, otherQuests]);
 
   const submitCode = async () => {
     if (!code.trim()) return;
@@ -259,16 +328,7 @@ export default function ScavengerBrowseScreen() {
           <ActivityIndicator color="#fff" style={{ marginTop: scaleW(40) }} />
         ) : (
           <FlatList
-            data={[
-              ...(visibleGroups.length
-                ? [{ kind: "header" as const, id: "groups-h", title: "Quest groups" }]
-                : []),
-              ...visibleGroups.map((g) => ({ kind: "group" as const, id: g.id, group: g })),
-              ...(visibleQuests.length
-                ? [{ kind: "header" as const, id: "quests-h", title: "More hunts" }]
-                : []),
-              ...visibleQuests.map((q) => ({ kind: "quest" as const, id: q.id, quest: q })),
-            ]}
+            data={listData}
             keyExtractor={(item) => item.id}
             contentContainerStyle={{ paddingHorizontal: scaleW(20), paddingBottom: scaleW(40), gap: scaleW(12) }}
             refreshControl={
@@ -342,13 +402,22 @@ export default function ScavengerBrowseScreen() {
                     <ThemedText lightColor="#fff" darkColor="#fff" style={{ fontSize: scaleW(16), fontWeight: "800" }}>
                       {quest.name}
                     </ThemedText>
-                    {!!label && (
-                      <View style={[styles.pill, { marginTop: scaleW(6), paddingHorizontal: scaleW(8), paddingVertical: scaleW(3), borderRadius: scaleW(10), alignSelf: "flex-start" }]}>
-                        <ThemedText lightColor={SCAVENGER_ACCENT} darkColor={SCAVENGER_ACCENT} style={{ fontSize: scaleW(11), fontWeight: "700" }}>
-                          {label}
-                        </ThemedText>
-                      </View>
-                    )}
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: scaleW(6), marginTop: scaleW(6) }}>
+                      {item.distanceKm != null && (
+                        <View style={[styles.pill, { paddingHorizontal: scaleW(8), paddingVertical: scaleW(3), borderRadius: scaleW(10) }]}>
+                          <ThemedText lightColor={SCAVENGER_ACCENT} darkColor={SCAVENGER_ACCENT} style={{ fontSize: scaleW(11), fontWeight: "700" }}>
+                            {formatDistanceKm(item.distanceKm)}
+                          </ThemedText>
+                        </View>
+                      )}
+                      {!!label && (
+                        <View style={[styles.pill, { paddingHorizontal: scaleW(8), paddingVertical: scaleW(3), borderRadius: scaleW(10) }]}>
+                          <ThemedText lightColor={SCAVENGER_ACCENT} darkColor={SCAVENGER_ACCENT} style={{ fontSize: scaleW(11), fontWeight: "700" }}>
+                            {label}
+                          </ThemedText>
+                        </View>
+                      )}
+                    </View>
                   </View>
                   <MaterialIcons name="chevron-right" size={scaleW(24)} color="rgba(255,255,255,0.45)" style={{ alignSelf: "center", marginRight: scaleW(8) }} />
                 </Pressable>
@@ -411,7 +480,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   card: { backgroundColor: SCAVENGER_CARD },
-  pill: { backgroundColor: "rgba(98,169,79,0.18)" },
+  pill: { backgroundColor: "rgba(98,169,79,0.18)", alignSelf: "flex-start" },
   modalBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.45)" },
   modalSheet: { backgroundColor: "#fff" },
   input: { backgroundColor: "#F3F5F3", color: "#1A2E1E" },

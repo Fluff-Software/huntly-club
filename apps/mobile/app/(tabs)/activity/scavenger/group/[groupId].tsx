@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import * as Location from "expo-location";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
@@ -25,10 +26,12 @@ import {
 } from "@/constants/scavengerTheme";
 import {
   fetchGroupCompletionStatus,
+  fetchLockById,
   fetchQuestGroupById,
   fetchQuestStatesForProfile,
   fetchQuestsInGroup,
   isPlayUnlocked,
+  unlockWithLocation,
   type ScavengerQuest,
   type ScavengerQuestGroup,
   type ScavengerQuestState,
@@ -66,7 +69,7 @@ export default function ScavengerGroupScreen() {
     if (!groupId || !profileId) return;
     setLoading(true);
     try {
-      const [g, q, s, playOk] = await Promise.all([
+      const [g, q, s, playUnlocked] = await Promise.all([
         fetchQuestGroupById(groupId),
         fetchQuestsInGroup(groupId),
         fetchQuestStatesForProfile(profileId),
@@ -75,6 +78,40 @@ export default function ScavengerGroupScreen() {
       setGroup(g);
       setQuests(q);
       setStates(s);
+
+      let playOk = playUnlocked;
+      if (g?.lockable && !playOk) {
+        let requiresLocation = false;
+        if (g.lock_id) {
+          const lock = await fetchLockById(g.lock_id);
+          requiresLocation = Boolean(lock?.requires_location);
+        } else {
+          requiresLocation = true;
+        }
+
+        if (requiresLocation) {
+          try {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status === "granted") {
+              const pos = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Balanced,
+              });
+              const result = await unlockWithLocation(
+                "questGroup",
+                groupId,
+                pos.coords.latitude,
+                pos.coords.longitude
+              );
+              if (result.ok) {
+                playOk = await isPlayUnlocked("questGroup", groupId);
+              }
+            }
+          } catch {
+            // Keep prior unlock state if GPS/unlock fails
+          }
+        }
+      }
+
       setUnlocked(!g?.lockable || playOk);
       if (g) {
         const completion = await fetchGroupCompletionStatus(profileId, groupId);

@@ -49,6 +49,7 @@ import {
 import { startActiveHuntSession } from "@/services/activeHuntSessionService";
 import {
   getBlockingAdventure,
+  getConflictingHuntSession,
   routeForBlockingAdventure,
 } from "@/utils/adventureSessionGuard";
 
@@ -122,17 +123,32 @@ export default function ScavengerActiveScreen() {
           router.replace(routeForBlockingAdventure(blocking) as Href);
           return;
         }
+        const conflictingHunt = await getConflictingHuntSession(questId, profileId);
+        if (conflictingHunt) {
+          router.replace(routeForBlockingAdventure(conflictingHunt) as Href);
+          return;
+        }
         await ensureQuestState(profileId, questId);
         const [q] = await Promise.all([
           fetchQuestById(questId),
           refresh(),
         ]);
         if (q) {
-          await startActiveHuntSession({
+          const session = await startActiveHuntSession({
             questId,
             profileId,
             questName: q.name,
           });
+          if (session.questId !== questId || session.profileId !== profileId) {
+            router.replace(
+              routeForBlockingAdventure({
+                kind: "hunt",
+                questId: session.questId,
+                profileId: session.profileId,
+              }) as Href
+            );
+            return;
+          }
         }
       } catch (e) {
         Alert.alert("Couldn’t open hunt", e instanceof Error ? e.message : "Try again");

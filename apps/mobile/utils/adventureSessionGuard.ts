@@ -39,3 +39,22 @@ export function routeForBlockingAdventure(blocking: BlockingAdventure): Href {
   }
   return "/(tabs)/activity/walk-map";
 }
+
+/** Active hunt for a different quest/profile — redirect instead of starting a second hunt. */
+export async function getConflictingHuntSession(
+  questId: string,
+  profileId: number
+): Promise<(BlockingAdventure & { kind: "hunt" }) | null> {
+  const hunt = await getActiveHuntSession();
+  if (
+    hunt?.status === "active" &&
+    (hunt.questId !== questId || hunt.profileId !== profileId)
+  ) {
+    return {
+      kind: "hunt",
+      questId: hunt.questId,
+      profileId: hunt.profileId,
+    };
+  }
+  return null;
+}

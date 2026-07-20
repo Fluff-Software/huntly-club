@@ -42,6 +42,7 @@ import {
 import { startActiveHuntSession } from "@/services/activeHuntSessionService";
 import {
   getBlockingAdventure,
+  getConflictingHuntSession,
   routeForBlockingAdventure,
 } from "@/utils/adventureSessionGuard";
 
@@ -180,13 +181,28 @@ export default function ScavengerQuestOverviewScreen() {
         router.replace(routeForBlockingAdventure(blocking));
         return;
       }
+      const conflictingHunt = await getConflictingHuntSession(questId, profileId);
+      if (conflictingHunt) {
+        router.replace(routeForBlockingAdventure(conflictingHunt));
+        return;
+      }
       await ensureQuestState(profileId, questId);
       if (quest) {
-        await startActiveHuntSession({
+        const session = await startActiveHuntSession({
           questId,
           profileId,
           questName: quest.name,
         });
+        if (session.questId !== questId || session.profileId !== profileId) {
+          router.replace(
+            routeForBlockingAdventure({
+              kind: "hunt",
+              questId: session.questId,
+              profileId: session.profileId,
+            })
+          );
+          return;
+        }
       }
       router.push(
         `/(tabs)/activity/scavenger/quest/${questId}/active?profileId=${profileId}`

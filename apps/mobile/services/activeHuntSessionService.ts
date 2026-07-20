@@ -46,14 +46,9 @@ export async function startActiveHuntSession(input: {
     );
   }
 
+  // Same as walk/cycle: one active hunt at a time — return existing, don't replace.
   const existing = await getActiveHuntSession();
-  if (
-    existing?.status === "active" &&
-    existing.questId === input.questId &&
-    existing.profileId === input.profileId
-  ) {
-    return existing;
-  }
+  if (existing?.status === "active") return existing;
 
   const session: ActiveHuntSession = {
     questId: input.questId,

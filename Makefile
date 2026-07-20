@@ -97,6 +97,8 @@ seed: supabase-up
 	$(call need,supabase)
 	echo "▶ Loading seed data (packs, activities, one season, chapters)…"
 	docker exec -i supabase_db_huntly-club psql -U postgres -d postgres < supabase/seed/initial_data.sql
+	echo "▶ Loading Explore card categories…"
+	docker exec -i supabase_db_huntly-club psql -U postgres -d postgres < supabase/seed/explore_categories.sql
 	echo "✓ Seed data loaded."
 
 restart: down supabase-up

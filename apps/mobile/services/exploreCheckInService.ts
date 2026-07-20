@@ -22,6 +22,8 @@ export type ExploreCheckInResult =
       newCount: number;
       xpAwarded: number;
       newProfileXp: number;
+      isShiny: boolean;
+      isFirstShiny: boolean;
     }
   | {
       success: false;
@@ -42,6 +44,8 @@ type CheckInRpcRow = {
   new_count: number | null;
   xp_awarded: number | null;
   new_profile_xp: number | null;
+  is_shiny: boolean | null;
+  is_first_shiny: boolean | null;
 };
 
 /**
@@ -94,5 +98,7 @@ export const checkInToLocation = async (params: {
     newCount: row.new_count!,
     xpAwarded: row.xp_awarded!,
     newProfileXp: row.new_profile_xp!,
+    isShiny: row.is_shiny ?? false,
+    isFirstShiny: row.is_first_shiny ?? false,
   };
 };

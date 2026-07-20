@@ -247,7 +247,7 @@ export default function ExploreMapScreen() {
         </Pressable>
         <View style={styles.headerTextWrap}>
           <ThemedText type="heading" style={styles.headerTitle}>
-            World Explorer
+            Card Hunt
           </ThemedText>
         </View>
         <Pressable
@@ -260,7 +260,7 @@ export default function ExploreMapScreen() {
           }
           style={styles.iconButton}
         >
-          <MaterialIcons name="collections-bookmark" size={scaleW(22)} color="#FFF" />
+          <MaterialIcons name="style" size={scaleW(22)} color="#FFF" />
         </Pressable>
       </View>
 
@@ -285,7 +285,7 @@ export default function ExploreMapScreen() {
                   {selectedLocation.name}
                 </ThemedText>
                 <ThemedText style={styles.sheetTease}>
-                  Something's here to discover — get close and check in to find out what.
+                  There's a pack waiting here — get close and check in to open it.
                 </ThemedText>
                 {distanceToSelected != null && (
                   <ThemedText style={styles.sheetDistance}>

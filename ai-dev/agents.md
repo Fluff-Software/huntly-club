@@ -91,7 +91,9 @@ huntly-club/
 2. Generate migration: `supabase db diff --local --file <name>`
 3. Reset database: `supabase db reset` (if needed)
 4. Regenerate types: `supabase gen types typescript --local > models/supabase.ts`
-5. Seed data: `docker exec -i supabase_db_huntly-club psql -U postgres -d postgres < supabase/seed/initial_data.sql`
+5. Seed data:
+   - `docker exec -i supabase_db_huntly-club psql -U postgres -d postgres < supabase/seed/initial_data.sql`
+   - `docker exec -i supabase_db_huntly-club psql -U postgres -d postgres < supabase/seed/explore_categories.sql`
 
 ## Design System
 

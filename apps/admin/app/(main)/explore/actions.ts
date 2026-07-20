@@ -27,13 +27,15 @@ async function uploadExploreImage(bucket: string, file: File): Promise<string> {
 
 export async function getExploreAdminData() {
   const supabase = createServerSupabaseClient();
-  const [locationsRes, collectiblesRes] = await Promise.all([
+  const [locationsRes, collectiblesRes, categoriesRes] = await Promise.all([
     supabase.from("explore_locations").select("*").order("created_at", { ascending: false }),
     supabase.from("explore_collectibles").select("*").order("rarity", { ascending: true }),
+    supabase.from("explore_collectible_categories").select("*").order("sort_order", { ascending: true }),
   ]);
   return {
     locations: locationsRes.data ?? [],
     collectibles: collectiblesRes.data ?? [],
+    categories: categoriesRes.data ?? [],
   };
 }
 
@@ -126,6 +128,15 @@ export async function deleteLocation(formData: FormData): Promise<void> {
   revalidatePath("/explore");
 }
 
+function parseCategoryId(value: FormDataEntryValue | null): number | null {
+  const raw = Number.parseInt(String(value ?? ""), 10);
+  return Number.isFinite(raw) && raw > 0 ? raw : null;
+}
+
+function parseWeight(value: FormDataEntryValue | null): number {
+  return Math.max(1, Number.parseInt(String(value ?? "100"), 10) || 100);
+}
+
 export async function createCollectible(formData: FormData): Promise<{ error?: string }> {
   try {
     const supabase = createServerSupabaseClient();
@@ -146,6 +157,8 @@ export async function createCollectible(formData: FormData): Promise<{ error?: s
       flavor_text: String(formData.get("flavor_text") ?? "").trim() || null,
       image_url,
       rarity: parseRarity(formData.get("rarity")),
+      category_id: parseCategoryId(formData.get("category_id")),
+      weight: parseWeight(formData.get("weight")),
       is_active: true,
     });
 
@@ -168,6 +181,8 @@ export async function updateCollectible(formData: FormData): Promise<{ error?: s
       description: String(formData.get("description") ?? "").trim() || null,
       flavor_text: String(formData.get("flavor_text") ?? "").trim() || null,
       rarity: parseRarity(formData.get("rarity")),
+      category_id: parseCategoryId(formData.get("category_id")),
+      weight: parseWeight(formData.get("weight")),
       is_active: formData.get("is_active") === "on",
       updated_at: new Date().toISOString(),
     };
@@ -198,65 +213,61 @@ export async function deleteCollectible(formData: FormData): Promise<void> {
   revalidatePath("/explore");
 }
 
-export async function getSpawnPoolData(locationId: number) {
-  const supabase = createServerSupabaseClient();
-  const [locationRes, collectiblesRes, poolRes] = await Promise.all([
-    supabase.from("explore_locations").select("*").eq("id", locationId).single(),
-    supabase.from("explore_collectibles").select("*").eq("is_active", true).order("rarity"),
-    supabase.from("explore_location_collectibles").select("*").eq("location_id", locationId),
-  ]);
-  return {
-    location: locationRes.data ?? null,
-    collectibles: collectiblesRes.data ?? [],
-    pool: poolRes.data ?? [],
-  };
-}
-
-export async function addToSpawnPool(formData: FormData): Promise<{ error?: string }> {
+export async function createCategory(formData: FormData): Promise<{ error?: string }> {
   try {
     const supabase = createServerSupabaseClient();
-    const locationId = Number.parseInt(String(formData.get("location_id") ?? "0"), 10);
-    const collectibleId = Number.parseInt(String(formData.get("collectible_id") ?? "0"), 10);
-    const weight = Math.max(1, Number.parseInt(String(formData.get("weight") ?? "100"), 10) || 100);
-    if (!locationId || !collectibleId) return { error: "Select a collectible to add." };
+    const key = String(formData.get("key") ?? "").trim();
+    const label = String(formData.get("label") ?? "").trim();
+    if (!key || !label) return { error: "Category key and label are required." };
 
-    const { error } = await supabase
-      .from("explore_location_collectibles")
-      .upsert(
-        { location_id: locationId, collectible_id: collectibleId, weight },
-        { onConflict: "location_id,collectible_id" }
-      );
+    const { error } = await supabase.from("explore_collectible_categories").insert({
+      key,
+      label,
+      icon: String(formData.get("icon") ?? "").trim() || null,
+      color: String(formData.get("color") ?? "").trim() || null,
+      sort_order: Number.parseInt(String(formData.get("sort_order") ?? "0"), 10) || 0,
+      is_active: true,
+    });
+
     if (error) return { error: error.message };
-    revalidatePath(`/explore/locations/${locationId}`);
+    revalidatePath("/explore");
     return {};
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Failed to add to spawn pool" };
+    return { error: e instanceof Error ? e.message : "Failed to create category" };
   }
 }
 
-export async function updateSpawnWeight(formData: FormData): Promise<{ error?: string }> {
+export async function updateCategory(formData: FormData): Promise<{ error?: string }> {
   try {
     const supabase = createServerSupabaseClient();
     const id = Number.parseInt(String(formData.get("id") ?? "0"), 10);
-    const locationId = Number.parseInt(String(formData.get("location_id") ?? "0"), 10);
-    const weight = Math.max(1, Number.parseInt(String(formData.get("weight") ?? "100"), 10) || 100);
-    if (!id) return { error: "Missing spawn pool row id." };
+    if (!id) return { error: "Missing category id." };
 
-    const { error } = await supabase.from("explore_location_collectibles").update({ weight }).eq("id", id);
+    const { error } = await supabase
+      .from("explore_collectible_categories")
+      .update({
+        key: String(formData.get("key") ?? "").trim(),
+        label: String(formData.get("label") ?? "").trim(),
+        icon: String(formData.get("icon") ?? "").trim() || null,
+        color: String(formData.get("color") ?? "").trim() || null,
+        sort_order: Number.parseInt(String(formData.get("sort_order") ?? "0"), 10) || 0,
+        is_active: formData.get("is_active") === "on",
+      })
+      .eq("id", id);
+
     if (error) return { error: error.message };
-    revalidatePath(`/explore/locations/${locationId}`);
+    revalidatePath("/explore");
     return {};
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Failed to update weight" };
+    return { error: e instanceof Error ? e.message : "Failed to update category" };
   }
 }
 
-export async function removeFromSpawnPool(formData: FormData): Promise<void> {
+export async function deleteCategory(formData: FormData): Promise<void> {
   const supabase = createServerSupabaseClient();
   const id = Number.parseInt(String(formData.get("id") ?? "0"), 10);
-  const locationId = Number.parseInt(String(formData.get("location_id") ?? "0"), 10);
-  if (!id) throw new Error("Missing spawn pool row id.");
-  const { error } = await supabase.from("explore_location_collectibles").delete().eq("id", id);
+  if (!id) throw new Error("Missing category id.");
+  const { error } = await supabase.from("explore_collectible_categories").delete().eq("id", id);
   if (error) throw new Error(error.message);
-  revalidatePath(`/explore/locations/${locationId}`);
+  revalidatePath("/explore");
 }

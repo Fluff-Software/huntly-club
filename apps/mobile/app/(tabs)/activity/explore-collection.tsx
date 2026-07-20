@@ -1,15 +1,19 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { View, FlatList, Image, Pressable, Modal, StyleSheet } from "react-native";
+import { View, FlatList, Pressable, Modal, StyleSheet } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
+import { ExploreCard } from "@/components/ExploreCard";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { usePlayer } from "@/contexts/PlayerContext";
 import { EXPLORE_RARITY_COLORS, EXPLORE_RARITY_LABELS } from "@/constants/exploreColors";
 import {
   getCollectibleCatalog,
+  getCollectibleCategories,
   getProfileInventory,
   type ExploreCollectible,
+  type ExploreCollectibleCategory,
   type ExploreProfileCollectible,
 } from "@/services/exploreLocationService";
 
@@ -17,6 +21,7 @@ const FOREST_DARK = "#2D4A35";
 const LIGHT_BG = "#EEF0F7";
 const CARD_BG = "#FFF";
 const UNDISCOVERED_BG = "#DADFE8";
+const ALL_CATEGORY_ID = -1;
 
 type GridEntry = {
   collectible: ExploreCollectible;
@@ -26,20 +31,45 @@ type GridEntry = {
 export default function ExploreCollectionScreen() {
   const router = useRouter();
   const { profileId: profileIdParam } = useLocalSearchParams<{ profileId?: string }>();
-  const profileId = profileIdParam ? Number(profileIdParam) : null;
+  const { profiles } = usePlayer();
   const { scaleW } = useLayoutScale();
 
+  const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null);
   const [catalog, setCatalog] = useState<ExploreCollectible[]>([]);
+  const [categories, setCategories] = useState<ExploreCollectibleCategory[]>([]);
   const [inventory, setInventory] = useState<ExploreProfileCollectible[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number>(ALL_CATEGORY_ID);
   const [selected, setSelected] = useState<GridEntry | null>(null);
 
+  // Resolves the active profile the same way badges.tsx does: prefer the ?profileId param when
+  // it names a real profile (arriving from explore-map, already in an activity), otherwise fall
+  // back to the previously-selected profile or the first one (arriving from the Backpack tile,
+  // which has no profile in flight).
   useEffect(() => {
-    if (!profileId) return;
+    if (profiles.length === 0) {
+      setSelectedProfileId(null);
+      return;
+    }
+    const requestedProfileId =
+      typeof profileIdParam === "string" ? Number(profileIdParam) : NaN;
+    if (!Number.isNaN(requestedProfileId) && profiles.some((p) => p.id === requestedProfileId)) {
+      setSelectedProfileId(requestedProfileId);
+      return;
+    }
+    setSelectedProfileId((prev) => {
+      if (prev != null && profiles.some((p) => p.id === prev)) return prev;
+      return profiles[0]?.id ?? null;
+    });
+  }, [profiles, profileIdParam]);
+
+  useEffect(() => {
+    if (!selectedProfileId) return;
     let cancelled = false;
-    Promise.all([getCollectibleCatalog(), getProfileInventory(profileId)])
-      .then(([c, inv]) => {
+    Promise.all([getCollectibleCatalog(), getCollectibleCategories(), getProfileInventory(selectedProfileId)])
+      .then(([c, cats, inv]) => {
         if (cancelled) return;
         setCatalog(c);
+        setCategories(cats);
         setInventory(inv);
       })
       .catch(() => {
@@ -48,7 +78,7 @@ export default function ExploreCollectionScreen() {
     return () => {
       cancelled = true;
     };
-  }, [profileId]);
+  }, [selectedProfileId]);
 
   const inventoryByCollectibleId = useMemo(() => {
     const map = new Map<number, ExploreProfileCollectible>();
@@ -57,8 +87,14 @@ export default function ExploreCollectionScreen() {
   }, [inventory]);
 
   const entries: GridEntry[] = useMemo(
-    () => catalog.map((collectible) => ({ collectible, owned: inventoryByCollectibleId.get(collectible.id) ?? null })),
-    [catalog, inventoryByCollectibleId]
+    () =>
+      catalog
+        .filter(
+          (collectible) =>
+            selectedCategoryId === ALL_CATEGORY_ID || collectible.category_id === selectedCategoryId
+        )
+        .map((collectible) => ({ collectible, owned: inventoryByCollectibleId.get(collectible.id) ?? null })),
+    [catalog, inventoryByCollectibleId, selectedCategoryId]
   );
 
   const discoveredCount = inventory.length;
@@ -88,16 +124,42 @@ export default function ExploreCollectionScreen() {
         headerSubtext: { marginTop: scaleW(2), fontSize: scaleW(13), color: "rgba(255,255,255,0.75)", textAlign: "center" },
         headerRightSpacer: { width: scaleW(42) },
         body: { flex: 1, backgroundColor: LIGHT_BG },
+        profileRow: {
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: scaleW(8),
+          paddingHorizontal: scaleW(12),
+          paddingTop: scaleW(12) },
+        categoryRow: {
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: scaleW(8),
+          paddingHorizontal: scaleW(12),
+          paddingTop: scaleW(10),
+          paddingBottom: scaleW(4) },
+        chip: {
+          paddingHorizontal: scaleW(12),
+          paddingVertical: scaleW(6),
+          borderRadius: scaleW(999),
+          borderWidth: 1,
+          borderColor: "#A7B0A5",
+          backgroundColor: "#FFFFFF" },
+        chipActive: { backgroundColor: "#3E63C9", borderColor: "#3E63C9" },
+        chipText: { fontSize: scaleW(12), fontWeight: "600", color: "#2B2B2B" },
+        chipTextActive: { color: "#FFFFFF" },
         gridContent: { padding: scaleW(10) },
         cell: {
           flex: 1,
           margin: scaleW(6),
-          aspectRatio: 1,
+          aspectRatio: 0.8,
           borderRadius: scaleW(16),
           alignItems: "center",
           justifyContent: "center",
-          overflow: "hidden" },
-        cellImage: { width: "70%", height: "70%" },
+          overflow: "hidden",
+          borderWidth: 2,
+          borderStyle: "dashed" },
+        cellOwned: { backgroundColor: CARD_BG, borderColor: "rgba(0,0,0,0.08)" },
+        cellUndiscoveredBg: { backgroundColor: UNDISCOVERED_BG, borderColor: "rgba(0,0,0,0.06)" },
         cellUndiscovered: { fontSize: scaleW(30), fontWeight: "900", color: "#8A93A6" },
         cellCount: {
           position: "absolute",
@@ -108,6 +170,15 @@ export default function ExploreCollectionScreen() {
           paddingHorizontal: scaleW(6),
           paddingVertical: scaleW(2) },
         cellCountText: { color: "#FFF", fontSize: scaleW(11), fontWeight: "800" },
+        cellShinyBadge: {
+          position: "absolute",
+          top: scaleW(6),
+          left: scaleW(6),
+          backgroundColor: "rgba(0,0,0,0.55)",
+          borderRadius: scaleW(10),
+          paddingHorizontal: scaleW(5),
+          paddingVertical: scaleW(2) },
+        cellShinyText: { fontSize: scaleW(11) },
         modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center" },
         modalCard: {
           width: "80%",
@@ -115,11 +186,11 @@ export default function ExploreCollectionScreen() {
           borderRadius: scaleW(20),
           padding: scaleW(20),
           alignItems: "center" },
-        modalImage: { width: scaleW(120), height: scaleW(120) },
         modalName: { fontSize: scaleW(18), fontWeight: "800", marginTop: scaleW(10), color: "#1A2333" },
         modalRarity: { fontSize: scaleW(13), fontWeight: "800", marginTop: scaleW(4) },
         modalFlavor: { fontSize: scaleW(13), color: "#555", textAlign: "center", marginTop: scaleW(8) },
         modalMeta: { fontSize: scaleW(12), color: "#888", marginTop: scaleW(10) },
+        modalShinyMeta: { fontSize: scaleW(12), color: "#B8860B", fontWeight: "700", marginTop: scaleW(4) },
         modalClose: {
           marginTop: scaleW(16),
           paddingVertical: scaleW(10),
@@ -138,7 +209,7 @@ export default function ExploreCollectionScreen() {
         </Pressable>
         <View style={styles.headerTextWrap}>
           <ThemedText type="heading" style={styles.headerTitle}>
-            Collection
+            Card Binder
           </ThemedText>
           <ThemedText style={styles.headerSubtext}>
             {discoveredCount} of {catalog.length} discovered
@@ -148,25 +219,71 @@ export default function ExploreCollectionScreen() {
       </View>
 
       <View style={styles.body}>
+        {profiles.length > 0 && (
+          <View style={styles.profileRow}>
+            {profiles.map((profile) => (
+              <Pressable
+                key={profile.id}
+                style={[styles.chip, selectedProfileId === profile.id ? styles.chipActive : undefined]}
+                onPress={() => setSelectedProfileId(profile.id)}
+              >
+                <ThemedText
+                  style={[styles.chipText, selectedProfileId === profile.id ? styles.chipTextActive : undefined]}
+                >
+                  {profile.nickname || profile.name}
+                </ThemedText>
+              </Pressable>
+            ))}
+          </View>
+        )}
+
+        <View style={styles.categoryRow}>
+          <Pressable
+            style={[styles.chip, selectedCategoryId === ALL_CATEGORY_ID ? styles.chipActive : undefined]}
+            onPress={() => setSelectedCategoryId(ALL_CATEGORY_ID)}
+          >
+            <ThemedText
+              style={[styles.chipText, selectedCategoryId === ALL_CATEGORY_ID ? styles.chipTextActive : undefined]}
+            >
+              All
+            </ThemedText>
+          </Pressable>
+          {categories.map((category) => (
+            <Pressable
+              key={category.id}
+              style={[styles.chip, selectedCategoryId === category.id ? styles.chipActive : undefined]}
+              onPress={() => setSelectedCategoryId(category.id)}
+            >
+              <ThemedText
+                style={[styles.chipText, selectedCategoryId === category.id ? styles.chipTextActive : undefined]}
+              >
+                {category.label}
+              </ThemedText>
+            </Pressable>
+          ))}
+        </View>
+
         <FlatList
           data={entries}
           keyExtractor={(item) => String(item.collectible.id)}
           numColumns={3}
           contentContainerStyle={styles.gridContent}
           renderItem={({ item }) => {
-            const rarityColor = EXPLORE_RARITY_COLORS[item.collectible.rarity];
             const owned = item.owned != null;
+            const isShiny = item.owned?.first_shiny_discovered_at != null;
             return (
               <Pressable
-                style={[
-                  styles.cell,
-                  { backgroundColor: owned ? CARD_BG : UNDISCOVERED_BG, borderWidth: 2, borderColor: owned ? rarityColor : "transparent" },
-                ]}
+                style={[styles.cell, owned ? styles.cellOwned : styles.cellUndiscoveredBg]}
                 onPress={() => owned && setSelected(item)}
               >
                 {owned ? (
                   <>
-                    <Image source={{ uri: item.collectible.image_url }} style={styles.cellImage} resizeMode="contain" />
+                    <ExploreCard collectible={item.collectible} isShiny={isShiny} size={72} showName={false} />
+                    {isShiny && (
+                      <View style={styles.cellShinyBadge}>
+                        <ThemedText style={styles.cellShinyText}>✨</ThemedText>
+                      </View>
+                    )}
                     {item.owned!.count > 1 && (
                       <View style={styles.cellCount}>
                         <ThemedText style={styles.cellCountText}>×{item.owned!.count}</ThemedText>
@@ -186,7 +303,13 @@ export default function ExploreCollectionScreen() {
         <Pressable style={styles.modalBackdrop} onPress={() => setSelected(null)}>
           {selected && (
             <View style={styles.modalCard}>
-              <Image source={{ uri: selected.collectible.image_url }} style={styles.modalImage} resizeMode="contain" />
+              <ExploreCard
+                collectible={selected.collectible}
+                isShiny={selected.owned?.first_shiny_discovered_at != null}
+                size={140}
+                interactiveTilt
+                showName={false}
+              />
               <ThemedText type="heading" style={styles.modalName}>
                 {selected.collectible.name}
               </ThemedText>
@@ -198,8 +321,12 @@ export default function ExploreCollectionScreen() {
               )}
               {selected.owned && (
                 <ThemedText style={styles.modalMeta}>
-                  First found {new Date(selected.owned.first_discovered_at).toLocaleDateString()} · Owned ×{selected.owned.count}
+                  First found {new Date(selected.owned.first_discovered_at).toLocaleDateString()} · Owned ×
+                  {selected.owned.count}
                 </ThemedText>
+              )}
+              {selected.owned?.first_shiny_discovered_at != null && (
+                <ThemedText style={styles.modalShinyMeta}>✨ Shiny found</ThemedText>
               )}
               <Pressable style={styles.modalClose} onPress={() => setSelected(null)}>
                 <ThemedText style={styles.modalCloseText}>Close</ThemedText>

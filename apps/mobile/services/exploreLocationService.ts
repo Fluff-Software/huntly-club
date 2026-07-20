@@ -3,6 +3,7 @@ import type { Tables } from "@/models/supabase";
 
 export type ExploreLocation = Tables<"explore_locations">;
 export type ExploreCollectible = Tables<"explore_collectibles">;
+export type ExploreCollectibleCategory = Tables<"explore_collectible_categories">;
 export type ExploreProfileCollectible = Tables<"explore_profile_collectibles">;
 
 /** Locations are evergreen (always-on world map), so callers fetch once per session rather than polling. */
@@ -30,6 +31,21 @@ export const getCollectibleCatalog = async (): Promise<ExploreCollectible[]> => 
   if (error) {
     console.error("Error fetching explore collectible catalog:", error);
     throw new Error(`Failed to fetch collectible catalog: ${error.message}`);
+  }
+
+  return data || [];
+};
+
+export const getCollectibleCategories = async (): Promise<ExploreCollectibleCategory[]> => {
+  const { data, error } = await supabase
+    .from("explore_collectible_categories")
+    .select("*")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching explore collectible categories:", error);
+    throw new Error(`Failed to fetch collectible categories: ${error.message}`);
   }
 
   return data || [];

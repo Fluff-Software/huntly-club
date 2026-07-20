@@ -71,6 +71,7 @@ This will:
 Load initial data:
 ```bash
 docker exec -i supabase_db_huntly-club psql -U postgres -d postgres < supabase/seed/initial_data.sql
+docker exec -i supabase_db_huntly-club psql -U postgres -d postgres < supabase/seed/explore_categories.sql
 ```
 
 ## Query Patterns

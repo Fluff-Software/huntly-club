@@ -1,11 +1,13 @@
-import Link from "next/link";
 import { ActionForm } from "./ActionForm";
 import {
+  createCategory,
   createCollectible,
   createLocation,
+  deleteCategory,
   deleteCollectible,
   deleteLocation,
   getExploreAdminData,
+  updateCategory,
   updateCollectible,
   updateLocation,
 } from "./actions";
@@ -15,16 +17,16 @@ export const dynamic = "force-dynamic";
 const RARITY_OPTIONS = ["common", "uncommon", "rare", "epic", "legendary"] as const;
 
 export default async function ExploreAdminPage() {
-  const { locations, collectibles } = await getExploreAdminData();
+  const { locations, collectibles, categories } = await getExploreAdminData();
 
   return (
     <div className="space-y-10">
       <div>
-        <h1 className="text-2xl font-semibold text-stone-900">World Explorer</h1>
+        <h1 className="text-2xl font-semibold text-stone-900">Card Collection</h1>
         <p className="mt-1 text-sm text-stone-500">
-          Seed the always-on world map: locations kids can visit, and the collectible catalog they
-          can discover there. Spawn pools (which collectibles appear at which location, and at what
-          odds) are managed per-location.
+          Seed the always-on world map: locations kids can visit, and the trading-card catalog they
+          can pull from at check-in. Every check-in draws randomly from the whole active catalog
+          (weighted by each card&apos;s Weight), regardless of which location it happened at.
         </p>
       </div>
 
@@ -144,12 +146,6 @@ export default async function ExploreAdminPage() {
                   >
                     Save
                   </button>
-                  <Link
-                    href={`/explore/locations/${location.id}`}
-                    className="rounded-lg border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50"
-                  >
-                    Manage spawn pool
-                  </Link>
                 </div>
               </ActionForm>
               <form action={deleteLocation} className="mt-2">
@@ -164,16 +160,121 @@ export default async function ExploreAdminPage() {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold text-stone-900">Collectibles</h2>
+        <h2 className="text-lg font-semibold text-stone-900">Categories</h2>
+        <p className="text-sm text-stone-500">
+          Group cards into themes (Animals, Habitats, Food, ...). Used for the binder&apos;s filter
+          chips in the app.
+        </p>
 
         <details className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
           <summary className="cursor-pointer text-sm font-semibold text-stone-900">
-            + Add a collectible
+            + Add a category
+          </summary>
+          <ActionForm action={createCategory} className="mt-4 grid gap-3 sm:grid-cols-2">
+            <input
+              name="key"
+              placeholder="Key (e.g. animals)"
+              required
+              className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
+            />
+            <input
+              name="label"
+              placeholder="Label (e.g. Animals)"
+              required
+              className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
+            />
+            <input
+              name="icon"
+              placeholder="Icon name (MaterialIcons)"
+              className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
+            />
+            <input
+              name="color"
+              placeholder="Color (hex, e.g. #C97B20)"
+              className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
+            />
+            <label className="flex flex-col gap-1 text-xs text-stone-500">
+              Sort order
+              <input
+                name="sort_order"
+                type="number"
+                defaultValue={0}
+                className="rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900"
+              />
+            </label>
+            <button
+              type="submit"
+              className="mt-2 rounded-lg bg-huntly-forest px-4 py-2 text-sm font-medium text-white hover:bg-huntly-leaf sm:col-span-2"
+            >
+              Create category
+            </button>
+          </ActionForm>
+        </details>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          {categories.map((category) => (
+            <div key={category.id} className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+              <ActionForm action={updateCategory} className="grid gap-2 sm:grid-cols-2">
+                <input type="hidden" name="id" value={category.id} />
+                <input
+                  name="key"
+                  defaultValue={category.key}
+                  className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                />
+                <input
+                  name="label"
+                  defaultValue={category.label}
+                  className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                />
+                <input
+                  name="icon"
+                  defaultValue={category.icon ?? ""}
+                  className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                />
+                <input
+                  name="color"
+                  defaultValue={category.color ?? ""}
+                  className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                />
+                <input
+                  name="sort_order"
+                  type="number"
+                  defaultValue={category.sort_order}
+                  className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                />
+                <label className="flex items-center gap-2 text-sm text-stone-700">
+                  <input type="checkbox" name="is_active" defaultChecked={category.is_active} />
+                  Active
+                </label>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-huntly-forest px-3 py-1.5 text-xs font-medium text-white hover:bg-huntly-leaf sm:col-span-2"
+                >
+                  Save
+                </button>
+              </ActionForm>
+              <form action={deleteCategory} className="mt-2">
+                <input type="hidden" name="id" value={category.id} />
+                <button type="submit" className="text-xs font-medium text-red-700 hover:underline">
+                  Delete category
+                </button>
+              </form>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold text-stone-900">Cards</h2>
+
+        <details className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+          <summary className="cursor-pointer text-sm font-semibold text-stone-900">
+            + Add a card
           </summary>
           <ActionForm action={createCollectible} className="mt-4 grid gap-3 sm:grid-cols-2">
             <input
               name="name"
-              placeholder="Collectible name"
+              placeholder="Card name"
               required
               className="rounded-lg border border-stone-300 px-3 py-2 text-sm sm:col-span-2"
             />
@@ -196,6 +297,24 @@ export default async function ExploreAdminPage() {
                 </option>
               ))}
             </select>
+            <select name="category_id" className="rounded-lg border border-stone-300 px-3 py-2 text-sm">
+              <option value="">Uncategorized</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.label}
+                </option>
+              ))}
+            </select>
+            <label className="flex flex-col gap-1 text-xs text-stone-500">
+              Draw weight (higher = more common)
+              <input
+                name="weight"
+                type="number"
+                min={1}
+                defaultValue={100}
+                className="rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900"
+              />
+            </label>
             <input
               name="image_url"
               placeholder="Image URL (or upload a file below)"
@@ -209,7 +328,7 @@ export default async function ExploreAdminPage() {
               type="submit"
               className="mt-2 rounded-lg bg-huntly-forest px-4 py-2 text-sm font-medium text-white hover:bg-huntly-leaf sm:col-span-2"
             >
-              Create collectible
+              Create card
             </button>
           </ActionForm>
         </details>
@@ -236,17 +355,41 @@ export default async function ExploreAdminPage() {
                   rows={2}
                   className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
                 />
-                <select
-                  name="rarity"
-                  defaultValue={collectible.rarity}
-                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
-                >
-                  {RARITY_OPTIONS.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <select
+                    name="rarity"
+                    defaultValue={collectible.rarity}
+                    className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                  >
+                    {RARITY_OPTIONS.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    name="category_id"
+                    defaultValue={collectible.category_id ?? ""}
+                    className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                  >
+                    <option value="">Uncategorized</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <label className="flex flex-col gap-1 text-xs text-stone-500">
+                  Draw weight (higher = more common)
+                  <input
+                    name="weight"
+                    type="number"
+                    min={1}
+                    defaultValue={collectible.weight}
+                    className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900"
+                  />
+                </label>
                 <input
                   name="image_url"
                   defaultValue={collectible.image_url}
@@ -267,7 +410,7 @@ export default async function ExploreAdminPage() {
               <form action={deleteCollectible} className="mt-2">
                 <input type="hidden" name="id" value={collectible.id} />
                 <button type="submit" className="text-xs font-medium text-red-700 hover:underline">
-                  Delete collectible
+                  Delete card
                 </button>
               </form>
             </div>

@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.1"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -90,10 +85,8 @@ export type Database = {
           optional_items: string | null
           prep_checklist: Json | null
           preparation_message: string | null
-          release_date: string | null
           reminder_message: string | null
           safety_notes: string | null
-          session_order: number | null
           steps: Json | null
           title: string
           updated_at: string
@@ -126,10 +119,8 @@ export type Database = {
           optional_items?: string | null
           prep_checklist?: Json | null
           preparation_message?: string | null
-          release_date?: string | null
           reminder_message?: string | null
           safety_notes?: string | null
-          session_order?: number | null
           steps?: Json | null
           title: string
           updated_at?: string
@@ -162,10 +153,8 @@ export type Database = {
           optional_items?: string | null
           prep_checklist?: Json | null
           preparation_message?: string | null
-          release_date?: string | null
           reminder_message?: string | null
           safety_notes?: string | null
-          session_order?: number | null
           steps?: Json | null
           title?: string
           updated_at?: string
@@ -529,11 +518,8 @@ export type Database = {
           description: string | null
           duration: number | null
           id: number
-          live_ended_at: string | null
-          live_started_at: string | null
           missions: number[]
           scheduled_at: string | null
-          show_viewer_count: boolean
           status: Database["public"]["Enums"]["campfire_session_status"]
           thumbnail_url: string | null
           title: string
@@ -544,11 +530,8 @@ export type Database = {
           description?: string | null
           duration?: number | null
           id?: number
-          live_ended_at?: string | null
-          live_started_at?: string | null
           missions?: number[]
           scheduled_at?: string | null
-          show_viewer_count?: boolean
           status?: Database["public"]["Enums"]["campfire_session_status"]
           thumbnail_url?: string | null
           title: string
@@ -559,11 +542,8 @@ export type Database = {
           description?: string | null
           duration?: number | null
           id?: number
-          live_ended_at?: string | null
-          live_started_at?: string | null
           missions?: number[]
           scheduled_at?: string | null
-          show_viewer_count?: boolean
           status?: Database["public"]["Enums"]["campfire_session_status"]
           thumbnail_url?: string | null
           title?: string
@@ -825,8 +805,42 @@ export type Database = {
         }
         Relationships: []
       }
+      explore_collectible_categories: {
+        Row: {
+          color: string | null
+          created_at: string
+          icon: string | null
+          id: number
+          is_active: boolean
+          key: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: number
+          is_active?: boolean
+          key: string
+          label: string
+          sort_order?: number
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: number
+          is_active?: boolean
+          key?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       explore_collectibles: {
         Row: {
+          category_id: number | null
           created_at: string
           description: string | null
           flavor_text: string | null
@@ -836,8 +850,10 @@ export type Database = {
           name: string
           rarity: Database["public"]["Enums"]["explore_collectible_rarity"]
           updated_at: string
+          weight: number
         }
         Insert: {
+          category_id?: number | null
           created_at?: string
           description?: string | null
           flavor_text?: string | null
@@ -847,8 +863,10 @@ export type Database = {
           name: string
           rarity?: Database["public"]["Enums"]["explore_collectible_rarity"]
           updated_at?: string
+          weight?: number
         }
         Update: {
+          category_id?: number | null
           created_at?: string
           description?: string | null
           flavor_text?: string | null
@@ -858,44 +876,14 @@ export type Database = {
           name?: string
           rarity?: Database["public"]["Enums"]["explore_collectible_rarity"]
           updated_at?: string
-        }
-        Relationships: []
-      }
-      explore_location_collectibles: {
-        Row: {
-          collectible_id: number
-          created_at: string
-          id: number
-          location_id: number
-          weight: number
-        }
-        Insert: {
-          collectible_id: number
-          created_at?: string
-          id?: number
-          location_id: number
-          weight?: number
-        }
-        Update: {
-          collectible_id?: number
-          created_at?: string
-          id?: number
-          location_id?: number
           weight?: number
         }
         Relationships: [
           {
-            foreignKeyName: "explore_location_collectibles_collectible_id_fkey"
-            columns: ["collectible_id"]
+            foreignKeyName: "explore_collectibles_category_id_fkey"
+            columns: ["category_id"]
             isOneToOne: false
-            referencedRelation: "explore_collectibles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "explore_location_collectibles_location_id_fkey"
-            columns: ["location_id"]
-            isOneToOne: false
-            referencedRelation: "explore_locations"
+            referencedRelation: "explore_collectible_categories"
             referencedColumns: ["id"]
           },
         ]
@@ -948,6 +936,7 @@ export type Database = {
           count: number
           first_discovered_at: string
           first_discovered_location_id: number | null
+          first_shiny_discovered_at: string | null
           id: number
           profile_id: number
           updated_at: string
@@ -957,6 +946,7 @@ export type Database = {
           count?: number
           first_discovered_at?: string
           first_discovered_location_id?: number | null
+          first_shiny_discovered_at?: string | null
           id?: number
           profile_id: number
           updated_at?: string
@@ -966,6 +956,7 @@ export type Database = {
           count?: number
           first_discovered_at?: string
           first_discovered_location_id?: number | null
+          first_shiny_discovered_at?: string | null
           id?: number
           profile_id?: number
           updated_at?: string
@@ -1001,6 +992,7 @@ export type Database = {
           distance_meters: number
           id: number
           is_new_collectible: boolean
+          is_shiny: boolean
           location_id: number
           profile_id: number
           submitted_accuracy_meters: number | null
@@ -1014,6 +1006,7 @@ export type Database = {
           distance_meters: number
           id?: number
           is_new_collectible: boolean
+          is_shiny?: boolean
           location_id: number
           profile_id: number
           submitted_accuracy_meters?: number | null
@@ -1027,6 +1020,7 @@ export type Database = {
           distance_meters?: number
           id?: number
           is_new_collectible?: boolean
+          is_shiny?: boolean
           location_id?: number
           profile_id?: number
           submitted_accuracy_meters?: number | null
@@ -1057,661 +1051,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      huntly_account_deletion_requests: {
-        Row: {
-          completed_at: string | null
-          email: string | null
-          firebase_user_id: string
-          id: string
-          requested_at: string
-          status: string
-        }
-        Insert: {
-          completed_at?: string | null
-          email?: string | null
-          firebase_user_id: string
-          id?: string
-          requested_at?: string
-          status?: string
-        }
-        Update: {
-          completed_at?: string | null
-          email?: string | null
-          firebase_user_id?: string
-          id?: string
-          requested_at?: string
-          status?: string
-        }
-        Relationships: []
-      }
-      huntly_activities: {
-        Row: {
-          activity_type: string
-          date_time: string
-          id: string
-          item_id: string | null
-          mongo_id: string | null
-          points_awarded: number
-          profile_id: string
-        }
-        Insert: {
-          activity_type: string
-          date_time?: string
-          id?: string
-          item_id?: string | null
-          mongo_id?: string | null
-          points_awarded?: number
-          profile_id: string
-        }
-        Update: {
-          activity_type?: string
-          date_time?: string
-          id?: string
-          item_id?: string | null
-          mongo_id?: string | null
-          points_awarded?: number
-          profile_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "huntly_activities_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "huntly_profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      huntly_badge_rules: {
-        Row: {
-          badge_id_ref: string
-          created_at: string
-          description: string | null
-          filter: Json | null
-          id: string
-          image_url: string | null
-          locked: boolean
-          mongo_id: string | null
-          name: string
-          property_match: string | null
-          quantity: number | null
-          type: string
-          updated_at: string
-        }
-        Insert: {
-          badge_id_ref: string
-          created_at?: string
-          description?: string | null
-          filter?: Json | null
-          id?: string
-          image_url?: string | null
-          locked?: boolean
-          mongo_id?: string | null
-          name: string
-          property_match?: string | null
-          quantity?: number | null
-          type: string
-          updated_at?: string
-        }
-        Update: {
-          badge_id_ref?: string
-          created_at?: string
-          description?: string | null
-          filter?: Json | null
-          id?: string
-          image_url?: string | null
-          locked?: boolean
-          mongo_id?: string | null
-          name?: string
-          property_match?: string | null
-          quantity?: number | null
-          type?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      huntly_badges: {
-        Row: {
-          badge_rule_id: string | null
-          created_at: string
-          date_earned_at: string | null
-          description: string | null
-          id: string
-          image_url: string | null
-          mongo_id: string | null
-          name: string
-          profile_id: string
-        }
-        Insert: {
-          badge_rule_id?: string | null
-          created_at?: string
-          date_earned_at?: string | null
-          description?: string | null
-          id?: string
-          image_url?: string | null
-          mongo_id?: string | null
-          name: string
-          profile_id: string
-        }
-        Update: {
-          badge_rule_id?: string | null
-          created_at?: string
-          date_earned_at?: string | null
-          description?: string | null
-          id?: string
-          image_url?: string | null
-          mongo_id?: string | null
-          name?: string
-          profile_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "huntly_badges_badge_rule_id_fkey"
-            columns: ["badge_rule_id"]
-            isOneToOne: false
-            referencedRelation: "huntly_badge_rules"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "huntly_badges_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "huntly_profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      huntly_notification_tokens: {
-        Row: {
-          firebase_user_id: string
-          id: string
-          token: string
-          updated_at: string
-        }
-        Insert: {
-          firebase_user_id: string
-          id?: string
-          token: string
-          updated_at?: string
-        }
-        Update: {
-          firebase_user_id?: string
-          id?: string
-          token?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      huntly_profile_states: {
-        Row: {
-          all_time_photo_count: number
-          created_at: string
-          id: string
-          mongo_id: string | null
-          profile_id: string
-          updated_at: string
-        }
-        Insert: {
-          all_time_photo_count?: number
-          created_at?: string
-          id?: string
-          mongo_id?: string | null
-          profile_id: string
-          updated_at?: string
-        }
-        Update: {
-          all_time_photo_count?: number
-          created_at?: string
-          id?: string
-          mongo_id?: string | null
-          profile_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "huntly_profile_states_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: true
-            referencedRelation: "huntly_profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      huntly_profiles: {
-        Row: {
-          area_code: string | null
-          created_at: string
-          firebase_user_id: string
-          id: string
-          mongo_id: string | null
-          name: string
-          updated_at: string
-        }
-        Insert: {
-          area_code?: string | null
-          created_at?: string
-          firebase_user_id: string
-          id?: string
-          mongo_id?: string | null
-          name: string
-          updated_at?: string
-        }
-        Update: {
-          area_code?: string | null
-          created_at?: string
-          firebase_user_id?: string
-          id?: string
-          mongo_id?: string | null
-          name?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      huntly_quest_groups: {
-        Row: {
-          cover_image_url: string | null
-          created_at: string
-          description: string | null
-          display_order: number | null
-          id: string
-          lock_id: string | null
-          lockable: boolean
-          mongo_id: string | null
-          name: string
-          on_completion: Json | null
-          published: boolean
-          tags: string[]
-          updated_at: string
-        }
-        Insert: {
-          cover_image_url?: string | null
-          created_at?: string
-          description?: string | null
-          display_order?: number | null
-          id?: string
-          lock_id?: string | null
-          lockable?: boolean
-          mongo_id?: string | null
-          name: string
-          on_completion?: Json | null
-          published?: boolean
-          tags?: string[]
-          updated_at?: string
-        }
-        Update: {
-          cover_image_url?: string | null
-          created_at?: string
-          description?: string | null
-          display_order?: number | null
-          id?: string
-          lock_id?: string | null
-          lockable?: boolean
-          mongo_id?: string | null
-          name?: string
-          on_completion?: Json | null
-          published?: boolean
-          tags?: string[]
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "huntly_quest_groups_lock_id_fkey"
-            columns: ["lock_id"]
-            isOneToOne: false
-            referencedRelation: "huntly_quest_locks"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "huntly_quest_groups_lock_id_fkey"
-            columns: ["lock_id"]
-            isOneToOne: false
-            referencedRelation: "scavenger_quest_locks_public"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      huntly_quest_items: {
-        Row: {
-          answer: string | null
-          branded: boolean
-          created_at: string
-          description: string | null
-          findable_mongo_id: string | null
-          hint: string | null
-          id: string
-          image_url: string | null
-          lat: number | null
-          lng: number | null
-          mongo_id: string | null
-          name: string
-          order: number | null
-          quest_id: string
-          question: string | null
-          tags: string[]
-          updated_at: string
-          warning: Json | null
-        }
-        Insert: {
-          answer?: string | null
-          branded?: boolean
-          created_at?: string
-          description?: string | null
-          findable_mongo_id?: string | null
-          hint?: string | null
-          id?: string
-          image_url?: string | null
-          lat?: number | null
-          lng?: number | null
-          mongo_id?: string | null
-          name: string
-          order?: number | null
-          quest_id: string
-          question?: string | null
-          tags?: string[]
-          updated_at?: string
-          warning?: Json | null
-        }
-        Update: {
-          answer?: string | null
-          branded?: boolean
-          created_at?: string
-          description?: string | null
-          findable_mongo_id?: string | null
-          hint?: string | null
-          id?: string
-          image_url?: string | null
-          lat?: number | null
-          lng?: number | null
-          mongo_id?: string | null
-          name?: string
-          order?: number | null
-          quest_id?: string
-          question?: string | null
-          tags?: string[]
-          updated_at?: string
-          warning?: Json | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "huntly_quest_items_quest_id_fkey"
-            columns: ["quest_id"]
-            isOneToOne: false
-            referencedRelation: "huntly_quests"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "huntly_quest_items_quest_id_fkey"
-            columns: ["quest_id"]
-            isOneToOne: false
-            referencedRelation: "scavenger_quests_public"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      huntly_quest_locks: {
-        Row: {
-          code: string | null
-          created_at: string
-          id: string
-          location_lat: number | null
-          location_lng: number | null
-          location_radius: number | null
-          mongo_id: string | null
-          permanent_unlock: boolean
-          types: string[]
-        }
-        Insert: {
-          code?: string | null
-          created_at?: string
-          id?: string
-          location_lat?: number | null
-          location_lng?: number | null
-          location_radius?: number | null
-          mongo_id?: string | null
-          permanent_unlock?: boolean
-          types?: string[]
-        }
-        Update: {
-          code?: string | null
-          created_at?: string
-          id?: string
-          location_lat?: number | null
-          location_lng?: number | null
-          location_radius?: number | null
-          mongo_id?: string | null
-          permanent_unlock?: boolean
-          types?: string[]
-        }
-        Relationships: []
-      }
-      huntly_quest_states: {
-        Row: {
-          complete: boolean
-          created_at: string
-          found_items: string[]
-          id: string
-          is_current: boolean
-          mongo_id: string | null
-          profile_id: string
-          quest_id: string
-          updated_at: string
-        }
-        Insert: {
-          complete?: boolean
-          created_at?: string
-          found_items?: string[]
-          id?: string
-          is_current?: boolean
-          mongo_id?: string | null
-          profile_id: string
-          quest_id: string
-          updated_at?: string
-        }
-        Update: {
-          complete?: boolean
-          created_at?: string
-          found_items?: string[]
-          id?: string
-          is_current?: boolean
-          mongo_id?: string | null
-          profile_id?: string
-          quest_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "huntly_quest_states_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "huntly_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "huntly_quest_states_quest_id_fkey"
-            columns: ["quest_id"]
-            isOneToOne: false
-            referencedRelation: "huntly_quests"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "huntly_quest_states_quest_id_fkey"
-            columns: ["quest_id"]
-            isOneToOne: false
-            referencedRelation: "scavenger_quests_public"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      huntly_quests: {
-        Row: {
-          attraction_address: string | null
-          attraction_bio: string | null
-          attraction_colour_hex: string | null
-          attraction_fun_facts: string[]
-          attraction_image_url: string | null
-          attraction_lat: number | null
-          attraction_lng: number | null
-          attraction_logo_url: string | null
-          attraction_name: string | null
-          attraction_website: string | null
-          attraction_website_label: string | null
-          cover_image_url: string | null
-          created_at: string
-          created_by: string | null
-          description: string | null
-          group_id: string | null
-          id: string
-          is_grouped: boolean
-          last_notified: string | null
-          lock_id: string | null
-          lockable: boolean
-          mongo_id: string | null
-          name: string
-          on_completion: Json | null
-          published: boolean
-          tags: string[]
-          tile_image_url: string | null
-          updated_at: string
-        }
-        Insert: {
-          attraction_address?: string | null
-          attraction_bio?: string | null
-          attraction_colour_hex?: string | null
-          attraction_fun_facts?: string[]
-          attraction_image_url?: string | null
-          attraction_lat?: number | null
-          attraction_lng?: number | null
-          attraction_logo_url?: string | null
-          attraction_name?: string | null
-          attraction_website?: string | null
-          attraction_website_label?: string | null
-          cover_image_url?: string | null
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          group_id?: string | null
-          id?: string
-          is_grouped?: boolean
-          last_notified?: string | null
-          lock_id?: string | null
-          lockable?: boolean
-          mongo_id?: string | null
-          name: string
-          on_completion?: Json | null
-          published?: boolean
-          tags?: string[]
-          tile_image_url?: string | null
-          updated_at?: string
-        }
-        Update: {
-          attraction_address?: string | null
-          attraction_bio?: string | null
-          attraction_colour_hex?: string | null
-          attraction_fun_facts?: string[]
-          attraction_image_url?: string | null
-          attraction_lat?: number | null
-          attraction_lng?: number | null
-          attraction_logo_url?: string | null
-          attraction_name?: string | null
-          attraction_website?: string | null
-          attraction_website_label?: string | null
-          cover_image_url?: string | null
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          group_id?: string | null
-          id?: string
-          is_grouped?: boolean
-          last_notified?: string | null
-          lock_id?: string | null
-          lockable?: boolean
-          mongo_id?: string | null
-          name?: string
-          on_completion?: Json | null
-          published?: boolean
-          tags?: string[]
-          tile_image_url?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "huntly_quests_group_id_fkey"
-            columns: ["group_id"]
-            isOneToOne: false
-            referencedRelation: "huntly_quest_groups"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "huntly_quests_group_id_fkey"
-            columns: ["group_id"]
-            isOneToOne: false
-            referencedRelation: "scavenger_quest_groups_public"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "huntly_quests_lock_id_fkey"
-            columns: ["lock_id"]
-            isOneToOne: false
-            referencedRelation: "huntly_quest_locks"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "huntly_quests_lock_id_fkey"
-            columns: ["lock_id"]
-            isOneToOne: false
-            referencedRelation: "scavenger_quest_locks_public"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      huntly_settings: {
-        Row: {
-          data: Json
-          id: string
-          updated_at: string
-        }
-        Insert: {
-          data?: Json
-          id?: string
-          updated_at?: string
-        }
-        Update: {
-          data?: Json
-          id?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      huntly_unlock_logs: {
-        Row: {
-          created_at: string
-          firebase_user_id: string
-          id: string
-          item_id: string
-          mongo_id: string | null
-          type: string
-          unlock_source: string | null
-        }
-        Insert: {
-          created_at?: string
-          firebase_user_id: string
-          id?: string
-          item_id: string
-          mongo_id?: string | null
-          type: string
-          unlock_source?: string | null
-        }
-        Update: {
-          created_at?: string
-          firebase_user_id?: string
-          id?: string
-          item_id?: string
-          mongo_id?: string | null
-          type?: string
-          unlock_source?: string | null
-        }
-        Relationships: []
       }
       image_assets: {
         Row: {
@@ -2000,160 +1339,6 @@ export type Database = {
         }
         Relationships: []
       }
-      scavenger_quest_states: {
-        Row: {
-          complete: boolean
-          created_at: string
-          found_items: string[]
-          id: number
-          is_current: boolean
-          items_rewarded: string[]
-          profile_id: number
-          quest_id: string
-          updated_at: string
-        }
-        Insert: {
-          complete?: boolean
-          created_at?: string
-          found_items?: string[]
-          id?: number
-          is_current?: boolean
-          items_rewarded?: string[]
-          profile_id: number
-          quest_id: string
-          updated_at?: string
-        }
-        Update: {
-          complete?: boolean
-          created_at?: string
-          found_items?: string[]
-          id?: number
-          is_current?: boolean
-          items_rewarded?: string[]
-          profile_id?: number
-          quest_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "scavenger_quest_states_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "scavenger_quest_states_quest_id_fkey"
-            columns: ["quest_id"]
-            isOneToOne: false
-            referencedRelation: "huntly_quests"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "scavenger_quest_states_quest_id_fkey"
-            columns: ["quest_id"]
-            isOneToOne: false
-            referencedRelation: "scavenger_quests_public"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      scavenger_session_photos: {
-        Row: {
-          created_at: string
-          id: number
-          item_name: string | null
-          photo_url: string
-          profile_id: number
-          quest_id: string
-          quest_item_id: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: number
-          item_name?: string | null
-          photo_url: string
-          profile_id: number
-          quest_id: string
-          quest_item_id?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: number
-          item_name?: string | null
-          photo_url?: string
-          profile_id?: number
-          quest_id?: string
-          quest_item_id?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "scavenger_session_photos_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "scavenger_session_photos_quest_id_fkey"
-            columns: ["quest_id"]
-            isOneToOne: false
-            referencedRelation: "huntly_quests"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "scavenger_session_photos_quest_id_fkey"
-            columns: ["quest_id"]
-            isOneToOne: false
-            referencedRelation: "scavenger_quests_public"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "scavenger_session_photos_quest_item_id_fkey"
-            columns: ["quest_item_id"]
-            isOneToOne: false
-            referencedRelation: "huntly_quest_items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "scavenger_session_photos_quest_item_id_fkey"
-            columns: ["quest_item_id"]
-            isOneToOne: false
-            referencedRelation: "scavenger_quest_items_public"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      scavenger_unlocks: {
-        Row: {
-          created_at: string
-          id: number
-          item_id: string
-          type: string
-          unlock_source: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: number
-          item_id: string
-          type: string
-          unlock_source?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: number
-          item_id?: string
-          type?: string
-          unlock_source?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
       seasons: {
         Row: {
           brief: string | null
@@ -2231,41 +1416,6 @@ export type Database = {
           },
         ]
       }
-      team_monthly_winners: {
-        Row: {
-          created_at: string
-          id: number
-          month: number
-          team_id: number
-          total_xp: number
-          year: number
-        }
-        Insert: {
-          created_at?: string
-          id?: number
-          month: number
-          team_id: number
-          total_xp?: number
-          year: number
-        }
-        Update: {
-          created_at?: string
-          id?: number
-          month?: number
-          team_id?: number
-          total_xp?: number
-          year?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "team_monthly_winners_team_id_fkey"
-            columns: ["team_id"]
-            isOneToOne: false
-            referencedRelation: "teams"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       teams: {
         Row: {
           colour: string | null
@@ -2292,86 +1442,6 @@ export type Database = {
           team_xp?: number
         }
         Relationships: []
-      }
-      temporary_submission_photos: {
-        Row: {
-          id: number
-          photo_url: string
-          sort_order: number
-          temporary_submission_id: number
-        }
-        Insert: {
-          id?: number
-          photo_url: string
-          sort_order?: number
-          temporary_submission_id: number
-        }
-        Update: {
-          id?: number
-          photo_url?: string
-          sort_order?: number
-          temporary_submission_id?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "temporary_submission_photos_temporary_submission_id_fkey"
-            columns: ["temporary_submission_id"]
-            isOneToOne: false
-            referencedRelation: "temporary_submissions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      temporary_submissions: {
-        Row: {
-          activity_id: number
-          created_at: string
-          display_name: string
-          id: number
-          submitted_at: string
-          team_id: number
-          team_xp_awarded: number
-          updated_at: string
-          xp: number
-        }
-        Insert: {
-          activity_id: number
-          created_at?: string
-          display_name: string
-          id?: number
-          submitted_at?: string
-          team_id: number
-          team_xp_awarded?: number
-          updated_at?: string
-          xp?: number
-        }
-        Update: {
-          activity_id?: number
-          created_at?: string
-          display_name?: string
-          id?: number
-          submitted_at?: string
-          team_id?: number
-          team_xp_awarded?: number
-          updated_at?: string
-          xp?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "temporary_submissions_activity_id_fkey"
-            columns: ["activity_id"]
-            isOneToOne: false
-            referencedRelation: "activities"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "temporary_submissions_team_id_fkey"
-            columns: ["team_id"]
-            isOneToOne: false
-            referencedRelation: "teams"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       user_achievements: {
         Row: {
@@ -2574,28 +1644,22 @@ export type Database = {
       }
       user_data: {
         Row: {
-          first_mission_activity_id: number | null
           last_seen_season_id: number | null
           start_mission_step: number
-          subscription_exempt: boolean
           team: number | null
           user_id: string
           weekly_email: boolean
         }
         Insert: {
-          first_mission_activity_id?: number | null
           last_seen_season_id?: number | null
           start_mission_step?: number
-          subscription_exempt?: boolean
           team?: number | null
           user_id: string
           weekly_email?: boolean
         }
         Update: {
-          first_mission_activity_id?: number | null
           last_seen_season_id?: number | null
           start_mission_step?: number
-          subscription_exempt?: boolean
           team?: number | null
           user_id?: string
           weekly_email?: boolean
@@ -2729,252 +1793,12 @@ export type Database = {
         }
         Relationships: []
       }
-      scavenger_quest_groups_public: {
-        Row: {
-          cover_image_url: string | null
-          created_at: string | null
-          description: string | null
-          display_order: number | null
-          id: string | null
-          lock_id: string | null
-          lockable: boolean | null
-          name: string | null
-          on_completion: Json | null
-          published: boolean | null
-          tags: string[] | null
-          updated_at: string | null
-        }
-        Insert: {
-          cover_image_url?: string | null
-          created_at?: string | null
-          description?: string | null
-          display_order?: number | null
-          id?: string | null
-          lock_id?: string | null
-          lockable?: boolean | null
-          name?: string | null
-          on_completion?: Json | null
-          published?: boolean | null
-          tags?: string[] | null
-          updated_at?: string | null
-        }
-        Update: {
-          cover_image_url?: string | null
-          created_at?: string | null
-          description?: string | null
-          display_order?: number | null
-          id?: string | null
-          lock_id?: string | null
-          lockable?: boolean | null
-          name?: string | null
-          on_completion?: Json | null
-          published?: boolean | null
-          tags?: string[] | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "huntly_quest_groups_lock_id_fkey"
-            columns: ["lock_id"]
-            isOneToOne: false
-            referencedRelation: "huntly_quest_locks"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "huntly_quest_groups_lock_id_fkey"
-            columns: ["lock_id"]
-            isOneToOne: false
-            referencedRelation: "scavenger_quest_locks_public"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      scavenger_quest_items_public: {
-        Row: {
-          branded: boolean | null
-          created_at: string | null
-          description: string | null
-          has_question: boolean | null
-          hint: string | null
-          id: string | null
-          image_url: string | null
-          lat: number | null
-          lng: number | null
-          name: string | null
-          order: number | null
-          quest_id: string | null
-          question: string | null
-          tags: string[] | null
-          updated_at: string | null
-          warning: Json | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "huntly_quest_items_quest_id_fkey"
-            columns: ["quest_id"]
-            isOneToOne: false
-            referencedRelation: "huntly_quests"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "huntly_quest_items_quest_id_fkey"
-            columns: ["quest_id"]
-            isOneToOne: false
-            referencedRelation: "scavenger_quests_public"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      scavenger_quest_locks_public: {
-        Row: {
-          id: string | null
-          location_lat: number | null
-          location_lng: number | null
-          location_radius: number | null
-          permanent_unlock: boolean | null
-          requires_code: boolean | null
-          requires_location: boolean | null
-          types: string[] | null
-        }
-        Insert: {
-          id?: string | null
-          location_lat?: number | null
-          location_lng?: number | null
-          location_radius?: number | null
-          permanent_unlock?: boolean | null
-          requires_code?: never
-          requires_location?: never
-          types?: string[] | null
-        }
-        Update: {
-          id?: string | null
-          location_lat?: number | null
-          location_lng?: number | null
-          location_radius?: number | null
-          permanent_unlock?: boolean | null
-          requires_code?: never
-          requires_location?: never
-          types?: string[] | null
-        }
-        Relationships: []
-      }
-      scavenger_quests_public: {
-        Row: {
-          attraction_address: string | null
-          attraction_bio: string | null
-          attraction_colour_hex: string | null
-          attraction_fun_facts: string[] | null
-          attraction_image_url: string | null
-          attraction_lat: number | null
-          attraction_lng: number | null
-          attraction_logo_url: string | null
-          attraction_name: string | null
-          attraction_website: string | null
-          cover_image_url: string | null
-          created_at: string | null
-          description: string | null
-          group_id: string | null
-          id: string | null
-          is_grouped: boolean | null
-          lock_id: string | null
-          lockable: boolean | null
-          name: string | null
-          on_completion: Json | null
-          published: boolean | null
-          tags: string[] | null
-          tile_image_url: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          attraction_address?: string | null
-          attraction_bio?: string | null
-          attraction_colour_hex?: string | null
-          attraction_fun_facts?: string[] | null
-          attraction_image_url?: string | null
-          attraction_lat?: number | null
-          attraction_lng?: number | null
-          attraction_logo_url?: string | null
-          attraction_name?: string | null
-          attraction_website?: string | null
-          cover_image_url?: string | null
-          created_at?: string | null
-          description?: string | null
-          group_id?: string | null
-          id?: string | null
-          is_grouped?: boolean | null
-          lock_id?: string | null
-          lockable?: boolean | null
-          name?: string | null
-          on_completion?: Json | null
-          published?: boolean | null
-          tags?: string[] | null
-          tile_image_url?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          attraction_address?: string | null
-          attraction_bio?: string | null
-          attraction_colour_hex?: string | null
-          attraction_fun_facts?: string[] | null
-          attraction_image_url?: string | null
-          attraction_lat?: number | null
-          attraction_lng?: number | null
-          attraction_logo_url?: string | null
-          attraction_name?: string | null
-          attraction_website?: string | null
-          cover_image_url?: string | null
-          created_at?: string | null
-          description?: string | null
-          group_id?: string | null
-          id?: string | null
-          is_grouped?: boolean | null
-          lock_id?: string | null
-          lockable?: boolean | null
-          name?: string | null
-          on_completion?: Json | null
-          published?: boolean | null
-          tags?: string[] | null
-          tile_image_url?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "huntly_quests_group_id_fkey"
-            columns: ["group_id"]
-            isOneToOne: false
-            referencedRelation: "huntly_quest_groups"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "huntly_quests_group_id_fkey"
-            columns: ["group_id"]
-            isOneToOne: false
-            referencedRelation: "scavenger_quest_groups_public"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "huntly_quests_lock_id_fkey"
-            columns: ["lock_id"]
-            isOneToOne: false
-            referencedRelation: "huntly_quest_locks"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "huntly_quests_lock_id_fkey"
-            columns: ["lock_id"]
-            isOneToOne: false
-            referencedRelation: "scavenger_quest_locks_public"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Functions: {
       add_team_xp: {
         Args: { team_id: number; xp_amount: number }
         Returns: undefined
       }
-      campfire_schedule_tick: { Args: never; Returns: undefined }
       can_access_campfire_topic: { Args: { topic: string }; Returns: boolean }
       can_send_campfire_reaction: {
         Args: { p_session_id: number }
@@ -2996,36 +1820,14 @@ export type Database = {
           collectible_rarity: Database["public"]["Enums"]["explore_collectible_rarity"]
           distance_meters: number
           failure_reason: string
+          is_first_shiny: boolean
           is_new_collectible: boolean
+          is_shiny: boolean
           new_count: number
           new_profile_xp: number
           success: boolean
           xp_awarded: number
         }[]
-      }
-      end_campfire_session_live: {
-        Args: { target_session_id: number }
-        Returns: {
-          created_at: string
-          description: string | null
-          duration: number | null
-          id: number
-          live_ended_at: string | null
-          live_started_at: string | null
-          missions: number[]
-          scheduled_at: string | null
-          show_viewer_count: boolean
-          status: Database["public"]["Enums"]["campfire_session_status"]
-          thumbnail_url: string | null
-          title: string
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "campfire_sessions"
-          isOneToOne: true
-          isSetofReturn: false
-        }
       }
       evaluate_and_award_badges: {
         Args: { p_profile_id: number }
@@ -3076,18 +1878,6 @@ export type Database = {
         Returns: number
       }
       get_push_enabled: { Args: { p_device_id: string }; Returns: boolean }
-      get_random_club_photos: {
-        Args: { p_count?: number; p_exclude_ids?: number[] }
-        Returns: {
-          activity_title: string
-          nickname: string
-          photo_id: number
-          photo_url: string
-          profile_id: number
-          team_name: string
-        }[]
-      }
-      get_server_now: { Args: never; Returns: string }
       get_team_xp: { Args: { team_id: number }; Returns: number }
       grant_badge_to_profile: {
         Args: { p_badge_id: number; p_profile_id: number; p_reason?: string }
@@ -3110,95 +1900,6 @@ export type Database = {
         Returns: boolean
       }
       revoke_user_sessions: { Args: { p_user_id: string }; Returns: undefined }
-      scavenger_assert_profile_owner: {
-        Args: { p_profile_id: number }
-        Returns: string
-      }
-      scavenger_discard_session_photos: {
-        Args: { p_profile_id: number; p_quest_id: string }
-        Returns: Json
-      }
-      scavenger_distance_meters: {
-        Args: { p_lat1: number; p_lat2: number; p_lng1: number; p_lng2: number }
-        Returns: number
-      }
-      scavenger_end_session: {
-        Args: { p_profile_id: number; p_quest_id: string }
-        Returns: Json
-      }
-      scavenger_ensure_quest_state: {
-        Args: { p_profile_id: number; p_quest_id: string }
-        Returns: {
-          complete: boolean
-          created_at: string
-          found_items: string[]
-          id: number
-          is_current: boolean
-          items_rewarded: string[]
-          profile_id: number
-          quest_id: string
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "scavenger_quest_states"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
-      scavenger_get_lock_for_target: {
-        Args: { p_item_id: string; p_type: string }
-        Returns: {
-          code: string | null
-          created_at: string
-          id: string
-          location_lat: number | null
-          location_lng: number | null
-          location_radius: number | null
-          mongo_id: string | null
-          permanent_unlock: boolean
-          types: string[]
-        }
-        SetofOptions: {
-          from: "*"
-          to: "huntly_quest_locks"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
-      scavenger_group_completion_status: {
-        Args: { p_group_id: string; p_profile_id: number }
-        Returns: Json
-      }
-      scavenger_is_play_unlocked: {
-        Args: { p_item_id: string; p_type: string }
-        Returns: boolean
-      }
-      scavenger_mark_item_found: {
-        Args: { p_item_id: string; p_profile_id: number }
-        Returns: Json
-      }
-      scavenger_record_unlock: {
-        Args: { p_item_id: string; p_source: string; p_type: string }
-        Returns: undefined
-      }
-      scavenger_unlock_with_code: {
-        Args: { p_code: string; p_item_id: string; p_type: string }
-        Returns: Json
-      }
-      scavenger_unlock_with_location: {
-        Args: {
-          p_item_id: string
-          p_lat: number
-          p_lng: number
-          p_type: string
-        }
-        Returns: Json
-      }
-      scavenger_validate_item_answer: {
-        Args: { p_answer: string; p_item_id: string; p_profile_id: number }
-        Returns: Json
-      }
       set_push_enabled: {
         Args: {
           p_device_id: string
@@ -3207,30 +1908,6 @@ export type Database = {
         }
         Returns: undefined
       }
-      start_campfire_session_live: {
-        Args: { target_session_id: number }
-        Returns: {
-          created_at: string
-          description: string | null
-          duration: number | null
-          id: number
-          live_ended_at: string | null
-          live_started_at: string | null
-          missions: number[]
-          scheduled_at: string | null
-          show_viewer_count: boolean
-          status: Database["public"]["Enums"]["campfire_session_status"]
-          thumbnail_url: string | null
-          title: string
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "campfire_sessions"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
     }
     Enums: {
       campfire_component_type:
@@ -3238,8 +1915,6 @@ export type Database = {
         | "subtitle"
         | "mission_card"
         | "submission"
-        | "captain"
-        | "video"
       campfire_session_status:
         | "draft"
         | "scheduled"
@@ -3395,8 +2070,6 @@ export const Constants = {
         "subtitle",
         "mission_card",
         "submission",
-        "captain",
-        "video",
       ],
       campfire_session_status: [
         "draft",
@@ -3424,3 +2097,4 @@ export const Constants = {
     },
   },
 } as const
+

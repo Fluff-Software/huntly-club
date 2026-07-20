@@ -112,9 +112,9 @@ export default function ExplorePrepScreen() {
         </Pressable>
         <View style={styles.headerTextWrap}>
           <ThemedText type="heading" style={styles.headerTitle}>
-            World Explorer
+            Card Hunt
           </ThemedText>
-          <ThemedText style={styles.headerSubtext}>Who's exploring today?</ThemedText>
+          <ThemedText style={styles.headerSubtext}>Who's opening packs today?</ThemedText>
         </View>
         <View style={styles.headerRightSpacer} />
       </View>
@@ -127,8 +127,8 @@ export default function ExplorePrepScreen() {
         overScrollMode="never"
       >
         <ThemedText style={styles.intro}>
-          Head out and explore the map — get close to a marker to check in and discover a
-          collectible for your collection.
+          Head out and explore the map — get close to a marker to check in and open a pack for
+          your card binder.
         </ThemedText>
         {profiles.map((profile) => {
           const selected = selectedProfileId === profile.id;

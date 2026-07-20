@@ -155,6 +155,15 @@ export default function BackpackScreen() {
             }}
             onPress={() => pushWithReturn("/(tabs)/resources")}
           />
+          <BackpackTile
+            title="Card Binder"
+            subtitle="See every card you've collected"
+            cta="Open binder"
+            bgColor="#3E63C9"
+            art={require("@/assets/images/backpack-binder.png")}
+            artStyle={{ width: scaleW(120), height: scaleW(108), right: -scaleW(18), bottom: -scaleW(6) }}
+            onPress={() => pushWithReturn("/(tabs)/activity/explore-collection")}
+          />
         </View>
       </ImageBackground>
     </SafeAreaView>

@@ -1,10 +1,20 @@
--- Fix: check_in_to_explore_location's RETURNS TABLE column `collectible_id` collided with the
--- table column of the same name inside `ON CONFLICT (profile_id, collectible_id) DO UPDATE`,
--- causing "column reference \"collectible_id\" is ambiguous" on every successful check-in.
--- `#variable_conflict use_column` tells plpgsql to prefer the table column whenever an
--- identifier could be either the OUT-parameter variable or a column -- the standard fix for
--- this exact class of ambiguity, and safe here since the function never needs to read back its
--- own OUT variables by bare name (it always assigns to explicit v_* locals).
+-- World Exploration check-in: the single write path for the whole feature.
+--
+-- Client-submitted GPS is never trusted for the actual award -- this SECURITY DEFINER function
+-- recomputes distance server-side (haversine, mirroring metersBetween() in
+-- apps/mobile/services/trackingSessionService.ts) and performs the weighted-random card draw and
+-- an independent shiny roll atomically, so drop odds are never observable or replayable from the
+-- client. The draw is global across the whole active catalog (not scoped to the checked-in
+-- location) -- any of the 100 cards can turn up anywhere.
+--
+-- Returns a typed row rather than raising for the common "not close enough" / "too soon" cases --
+-- those are expected outcomes the client renders gracefully, not exceptions.
+--
+-- `#variable_conflict use_column` tells plpgsql to prefer the table column whenever an identifier
+-- could be either an OUT-parameter/column name or a local variable -- needed because
+-- `collectible_id`/`count` are both RETURNS TABLE columns and explore_profile_collectibles
+-- columns referenced inside the ON CONFLICT DO UPDATE. Safe here since the function never reads
+-- back its own OUT variables by bare name (it always assigns to explicit v_* locals).
 
 CREATE OR REPLACE FUNCTION public.check_in_to_explore_location(
   p_profile_id bigint,
@@ -25,7 +35,9 @@ RETURNS TABLE (
   is_new_collectible boolean,
   new_count integer,
   xp_awarded integer,
-  new_profile_xp integer
+  new_profile_xp integer,
+  is_shiny boolean,
+  is_first_shiny boolean
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -46,12 +58,15 @@ DECLARE
   v_recent_visits integer;
   v_total_weight integer;
   v_roll double precision;
-  v_draw record;
+  v_collectible_id bigint;
   v_collectible record;
   v_is_new boolean;
   v_new_count integer;
   v_xp_awarded integer;
   v_new_profile_xp integer;
+  v_is_shiny boolean;
+  v_is_first_shiny boolean;
+  v_had_shiny_before boolean;
 BEGIN
   -- 1. Auth check
   SELECT p.user_id INTO v_profile_user_id
@@ -61,7 +76,7 @@ BEGIN
   IF v_profile_user_id IS NULL OR (v_auth_user_id IS NOT NULL AND v_auth_user_id <> v_profile_user_id) THEN
     RETURN QUERY SELECT false, 'not_authorized'::text, NULL::double precision, NULL::bigint,
       NULL::text, NULL::text, NULL::explore_collectible_rarity, NULL::text,
-      NULL::boolean, NULL::integer, NULL::integer, NULL::integer;
+      NULL::boolean, NULL::integer, NULL::integer, NULL::integer, NULL::boolean, NULL::boolean;
     RETURN;
   END IF;
 
@@ -74,7 +89,7 @@ BEGIN
   IF v_location IS NULL THEN
     RETURN QUERY SELECT false, 'location_inactive'::text, NULL::double precision, NULL::bigint,
       NULL::text, NULL::text, NULL::explore_collectible_rarity, NULL::text,
-      NULL::boolean, NULL::integer, NULL::integer, NULL::integer;
+      NULL::boolean, NULL::integer, NULL::integer, NULL::integer, NULL::boolean, NULL::boolean;
     RETURN;
   END IF;
 
@@ -82,7 +97,7 @@ BEGIN
   IF p_accuracy_meters IS NULL OR p_accuracy_meters > 65 THEN
     RETURN QUERY SELECT false, 'accuracy_too_poor'::text, NULL::double precision, NULL::bigint,
       NULL::text, NULL::text, NULL::explore_collectible_rarity, NULL::text,
-      NULL::boolean, NULL::integer, NULL::integer, NULL::integer;
+      NULL::boolean, NULL::integer, NULL::integer, NULL::integer, NULL::boolean, NULL::boolean;
     RETURN;
   END IF;
 
@@ -98,7 +113,7 @@ BEGIN
   IF v_distance > v_location.radius_meters + v_accuracy_grace THEN
     RETURN QUERY SELECT false, 'too_far'::text, v_distance, NULL::bigint,
       NULL::text, NULL::text, NULL::explore_collectible_rarity, NULL::text,
-      NULL::boolean, NULL::integer, NULL::integer, NULL::integer;
+      NULL::boolean, NULL::integer, NULL::integer, NULL::integer, NULL::boolean, NULL::boolean;
     RETURN;
   END IF;
 
@@ -111,33 +126,30 @@ BEGIN
   IF v_recent_visits > 0 THEN
     RETURN QUERY SELECT false, 'rate_limited'::text, v_distance, NULL::bigint,
       NULL::text, NULL::text, NULL::explore_collectible_rarity, NULL::text,
-      NULL::boolean, NULL::integer, NULL::integer, NULL::integer;
+      NULL::boolean, NULL::integer, NULL::integer, NULL::integer, NULL::boolean, NULL::boolean;
     RETURN;
   END IF;
 
-  -- 6. Weighted random draw from the location's spawn pool
-  SELECT sum(elc.weight) INTO v_total_weight
-  FROM public.explore_location_collectibles elc
-  JOIN public.explore_collectibles ec ON ec.id = elc.collectible_id AND ec.is_active = true
-  WHERE elc.location_id = p_location_id;
+  -- 6. Weighted random draw from the whole active catalog (global, not location-scoped --
+  -- any of the 100 cards can turn up at any location).
+  SELECT sum(weight) INTO v_total_weight
+  FROM public.explore_collectibles
+  WHERE is_active = true;
 
   IF v_total_weight IS NULL OR v_total_weight <= 0 THEN
     RETURN QUERY SELECT false, 'no_collectibles_configured'::text, v_distance, NULL::bigint,
       NULL::text, NULL::text, NULL::explore_collectible_rarity, NULL::text,
-      NULL::boolean, NULL::integer, NULL::integer, NULL::integer;
+      NULL::boolean, NULL::integer, NULL::integer, NULL::integer, NULL::boolean, NULL::boolean;
     RETURN;
   END IF;
 
   v_roll := random() * v_total_weight;
 
-  SELECT t.collectible_id INTO v_draw
+  SELECT t.id INTO v_collectible_id
   FROM (
-    SELECT
-      elc.collectible_id,
-      sum(elc.weight) OVER (ORDER BY elc.collectible_id) AS cum_weight
-    FROM public.explore_location_collectibles elc
-    JOIN public.explore_collectibles ec ON ec.id = elc.collectible_id AND ec.is_active = true
-    WHERE elc.location_id = p_location_id
+    SELECT id, sum(weight) OVER (ORDER BY id) AS cum_weight
+    FROM public.explore_collectibles
+    WHERE is_active = true
   ) t
   WHERE t.cum_weight >= v_roll
   ORDER BY t.cum_weight
@@ -145,15 +157,33 @@ BEGIN
 
   SELECT * INTO v_collectible
   FROM public.explore_collectibles
-  WHERE id = v_draw.collectible_id;
+  WHERE id = v_collectible_id;
+
+  -- 6b. Independent shiny (foil) roll -- orthogonal to which card was drawn and its rarity.
+  -- ~1-in-12.5; tune later once actual pull rates are observed.
+  v_is_shiny := random() < 0.08;
+
+  SELECT first_shiny_discovered_at IS NOT NULL INTO v_had_shiny_before
+  FROM public.explore_profile_collectibles
+  WHERE profile_id = p_profile_id AND collectible_id = v_collectible.id;
+
+  v_is_first_shiny := v_is_shiny AND NOT COALESCE(v_had_shiny_before, false);
 
   -- 7. Upsert inventory. `xmax = 0` distinguishes a fresh insert from an ON CONFLICT update.
   INSERT INTO public.explore_profile_collectibles (
-    profile_id, collectible_id, count, first_discovered_location_id
+    profile_id, collectible_id, count, first_discovered_location_id, first_shiny_discovered_at
   )
-  VALUES (p_profile_id, v_collectible.id, 1, p_location_id)
+  VALUES (
+    p_profile_id, v_collectible.id, 1, p_location_id,
+    CASE WHEN v_is_shiny THEN now() ELSE NULL END
+  )
   ON CONFLICT (profile_id, collectible_id) DO UPDATE
-  SET count = public.explore_profile_collectibles.count + 1, updated_at = now()
+  SET count = public.explore_profile_collectibles.count + 1,
+    updated_at = now(),
+    first_shiny_discovered_at = COALESCE(
+      public.explore_profile_collectibles.first_shiny_discovered_at,
+      CASE WHEN v_is_shiny THEN now() ELSE NULL END
+    )
   RETURNING count, (xmax = 0) INTO v_new_count, v_is_new;
 
   -- 8. XP award, fixed per-rarity table for v1
@@ -173,12 +203,12 @@ BEGIN
 
   -- 9. Visit log
   INSERT INTO public.explore_visits (
-    profile_id, location_id, collectible_id, is_new_collectible,
+    profile_id, location_id, collectible_id, is_new_collectible, is_shiny,
     submitted_latitude, submitted_longitude, submitted_accuracy_meters,
     distance_meters, xp_awarded
   )
   VALUES (
-    p_profile_id, p_location_id, v_collectible.id, v_is_new,
+    p_profile_id, p_location_id, v_collectible.id, v_is_new, v_is_shiny,
     p_latitude, p_longitude, p_accuracy_meters,
     v_distance, v_xp_awarded
   );
@@ -187,6 +217,10 @@ BEGIN
   RETURN QUERY SELECT
     true, NULL::text, v_distance, v_collectible.id,
     v_collectible.name, v_collectible.image_url, v_collectible.rarity, v_collectible.flavor_text,
-    v_is_new, v_new_count, v_xp_awarded, v_new_profile_xp;
+    v_is_new, v_new_count, v_xp_awarded, v_new_profile_xp,
+    v_is_shiny, v_is_first_shiny;
 END;
 $$;
+
+REVOKE ALL ON FUNCTION public.check_in_to_explore_location(bigint, bigint, double precision, double precision, double precision) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.check_in_to_explore_location(bigint, bigint, double precision, double precision, double precision) TO authenticated;

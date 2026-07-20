@@ -15,7 +15,8 @@ CHECK (requirement_type = ANY (ARRAY[
   'locations_discovered'::text,
   'collectibles_discovered'::text,
   'collectibles_by_rarity'::text,
-  'collectible_duplicates'::text
+  'collectible_duplicates'::text,
+  'shinies_discovered'::text
 ]));
 
 CREATE OR REPLACE FUNCTION public.get_profile_stat_value(
@@ -127,6 +128,14 @@ BEGIN
     SELECT COALESCE(SUM(count - 1), 0)::integer INTO v_value
     FROM public.explore_profile_collectibles
     WHERE profile_id = p_profile_id;
+    RETURN COALESCE(v_value, 0);
+  END IF;
+
+  IF p_requirement_type = 'shinies_discovered' THEN
+    SELECT COUNT(*)::integer INTO v_value
+    FROM public.explore_profile_collectibles
+    WHERE profile_id = p_profile_id
+      AND first_shiny_discovered_at IS NOT NULL;
     RETURN COALESCE(v_value, 0);
   END IF;
 

@@ -49,7 +49,7 @@ export const ACTIVITY_TYPES: ActivityTypeMeta[] = [
   {
     key: "explore",
     label: "Explore",
-    description: "Discover collectibles hidden across the map",
+    description: "Hunt for hidden card packs and grow your collection",
     icon: "explore",
     route: "/(tabs)/activity/explore-prep",
     color: "#3E63C9",

@@ -35,8 +35,9 @@ The core flow that we use to affect changes to the database and the associated t
 5. Set up initial data:
   ```bash
    docker exec -i supabase_db_huntly-club psql -U postgres -d postgres < supabase/seed/initial_data.sql
+   docker exec -i supabase_db_huntly-club psql -U postgres -d postgres < supabase/seed/explore_categories.sql
   ```
-   Or run `make seed` (starts Supabase if needed, then loads the same seed file).
+   Or run `make seed` (starts Supabase if needed, then loads the same seed files).
 
 ## Hosted Supabase and EAS device builds
 

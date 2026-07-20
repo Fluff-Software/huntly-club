@@ -62,7 +62,8 @@ export type ScavengerQuestItem = {
   description: string | null;
   hint: string | null;
   tags: string[];
-  warning: { message?: string; severity?: string } | null;
+  /** Normalized warning text (OG Alert `content`, `{ message }`, or plain string). */
+  warning: string | null;
   lat: number | null;
   lng: number | null;
   question: string | null;
@@ -110,6 +111,29 @@ export type UnlockTargetType = "quest" | "questGroup";
 
 function asArray<T>(value: T[] | null | undefined): T[] {
   return Array.isArray(value) ? value : [];
+}
+
+/**
+ * Mirrors OG Huntly `ItemWarningSchema`: plain string, `{ content }`, or `{ message }`.
+ */
+export function normalizeItemWarning(raw: unknown): string | null {
+  if (raw == null) return null;
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    return trimmed || null;
+  }
+  if (typeof raw === "object") {
+    const obj = raw as Record<string, unknown>;
+    if (typeof obj.content === "string") {
+      const trimmed = obj.content.trim();
+      if (trimmed) return trimmed;
+    }
+    if (typeof obj.message === "string") {
+      const trimmed = obj.message.trim();
+      if (trimmed) return trimmed;
+    }
+  }
+  return null;
 }
 
 export async function fetchPublishedQuests(): Promise<ScavengerQuest[]> {
@@ -198,6 +222,7 @@ export async function fetchQuestItems(questId: string): Promise<ScavengerQuestIt
     ...row,
     tags: asArray(row.tags),
     has_question: Boolean(row.has_question),
+    warning: normalizeItemWarning(row.warning),
   })) as ScavengerQuestItem[];
 }
 

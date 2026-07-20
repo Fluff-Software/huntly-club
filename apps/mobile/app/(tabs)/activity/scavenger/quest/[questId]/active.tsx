@@ -32,6 +32,7 @@ import {
   SCAVENGER_CHECK,
   SCAVENGER_GREEN,
   SCAVENGER_LIGHT,
+  SCAVENGER_WARNING,
 } from "@/constants/scavengerTheme";
 import {
   addSessionPhoto,
@@ -372,10 +373,27 @@ export default function ScavengerActiveScreen() {
                       <MaterialIcons name="image" size={scaleW(28)} color={SCAVENGER_GREEN} />
                     </View>
                   )}
-                  <View style={{ padding: scaleW(10) }}>
-                    <ThemedText style={{ fontWeight: "800", fontSize: scaleW(13), color: SCAVENGER_BG }} numberOfLines={2}>
+                  <View style={{ padding: scaleW(10), alignItems: "center" }}>
+                    <ThemedText style={{ fontWeight: "800", fontSize: scaleW(13), color: SCAVENGER_BG, textAlign: "center" }} numberOfLines={2}>
                       {item.name}
                     </ThemedText>
+                    {!!item.warning && (
+                      <View
+                        style={[
+                          styles.takeCarePill,
+                          {
+                            marginTop: scaleW(6),
+                            paddingHorizontal: scaleW(10),
+                            paddingVertical: scaleW(4),
+                            borderRadius: scaleW(999),
+                          },
+                        ]}
+                      >
+                        <ThemedText style={{ fontSize: scaleW(11), fontWeight: "700", color: SCAVENGER_WARNING }}>
+                          Take care
+                        </ThemedText>
+                      </View>
+                    )}
                   </View>
                   {isFound && (
                     <View style={styles.checkBadge}>
@@ -420,11 +438,6 @@ export default function ScavengerActiveScreen() {
                     {selected.description}
                   </ThemedText>
                 )}
-                {!!selected.warning?.message && (
-                  <View style={[styles.warning, { marginTop: scaleW(12), padding: scaleW(10), borderRadius: scaleW(10) }]}>
-                    <ThemedText style={{ color: "#8A4B08", fontSize: scaleW(13) }}>{selected.warning.message}</ThemedText>
-                  </View>
-                )}
                 {!!selected.hint && (
                   <Pressable onPress={() => setShowHint((v) => !v)} style={{ marginTop: scaleW(12) }}>
                     <ThemedText style={{ color: SCAVENGER_GREEN, fontWeight: "700" }}>
@@ -433,9 +446,31 @@ export default function ScavengerActiveScreen() {
                   </Pressable>
                 )}
                 {showHint && !!selected.hint && (
-                  <ThemedText style={{ marginTop: scaleW(6), color: "#5a5a5a", fontStyle: "italic" }}>
-                    {selected.hint}
-                  </ThemedText>
+                  <View style={[styles.hintBox, { marginTop: scaleW(8), padding: scaleW(14), borderRadius: scaleW(10) }]}>
+                    <ThemedText style={{ color: "#333", fontSize: scaleW(14), lineHeight: scaleW(20) }}>
+                      💡 {selected.hint}
+                    </ThemedText>
+                  </View>
+                )}
+                {!!selected.warning && (
+                  <View
+                    style={[
+                      styles.warning,
+                      {
+                        marginTop: scaleW(12),
+                        padding: scaleW(14),
+                        borderRadius: scaleW(10),
+                        flexDirection: "row",
+                        alignItems: "flex-start",
+                        gap: scaleW(8),
+                      },
+                    ]}
+                  >
+                    <MaterialIcons name="warning-amber" size={scaleW(24)} color={SCAVENGER_WARNING} />
+                    <ThemedText style={{ flex: 1, color: "#333", fontSize: scaleW(14), lineHeight: scaleW(20) }}>
+                      {selected.warning}
+                    </ThemedText>
+                  </View>
                 )}
                 <Pressable
                   onPress={onFoundPress}
@@ -528,6 +563,8 @@ const styles = StyleSheet.create({
   progressFill: { height: "100%", backgroundColor: SCAVENGER_ACCENT },
   tile: { backgroundColor: "#fff" },
   checkBadge: { position: "absolute", top: 8, right: 8 },
+  takeCarePill: { backgroundColor: "rgba(226,161,0,0.2)" },
+  hintBox: { backgroundColor: "rgba(98,169,79,0.15)" },
   switcherWrap: {
     position: "absolute",
     left: 0,
@@ -538,7 +575,7 @@ const styles = StyleSheet.create({
   modalBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.45)" },
   modalBackdropCenter: { flex: 1, justifyContent: "center", backgroundColor: "rgba(0,0,0,0.45)" },
   sheet: { backgroundColor: "#fff", maxHeight: "88%" },
-  warning: { backgroundColor: "#FFF4E5" },
+  warning: { backgroundColor: "rgba(226,161,0,0.15)" },
   cta: { backgroundColor: SCAVENGER_GREEN, alignItems: "center" },
   secondaryBtn: { backgroundColor: "#E8EEE8" },
   triviaCard: { backgroundColor: "#fff" },

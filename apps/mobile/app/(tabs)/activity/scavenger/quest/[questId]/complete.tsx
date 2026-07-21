@@ -12,6 +12,9 @@ import {
 } from "@/constants/scavengerTheme";
 import { fetchQuestById, type ScavengerQuest } from "@/services/scavengerService";
 
+const ATTRACTION_FG = "#1A2E1E";
+const ATTRACTION_MUTED = "rgba(26,46,30,0.75)";
+
 export default function ScavengerCompleteScreen() {
   const { questId } = useLocalSearchParams<{ questId: string }>();
   const router = useRouter();
@@ -24,22 +27,38 @@ export default function ScavengerCompleteScreen() {
   }, [questId]);
 
   const completion = quest?.on_completion;
+  const hasCustomBackground = Boolean(quest?.attraction_colour_hex);
+  const panelColor = quest?.attraction_colour_hex || SCAVENGER_BG;
+  const titleColor = hasCustomBackground ? ATTRACTION_FG : "#fff";
+  const bodyColor = hasCustomBackground ? ATTRACTION_MUTED : "rgba(255,255,255,0.85)";
+  const linkColor = hasCustomBackground ? SCAVENGER_GREEN : SCAVENGER_ACCENT;
 
   return (
     <>
-      <StatusBar style="light" />
+      <StatusBar style={hasCustomBackground ? "dark" : "light"} />
       <Stack.Screen options={{ headerShown: false }} />
-      {/* Temporarily ignore quest attraction colours for a consistent background. */}
-      <SafeAreaView style={[styles.safe, { backgroundColor: SCAVENGER_BG }]}>
+      <SafeAreaView style={[styles.safe, { backgroundColor: panelColor }]}>
         {!quest ? (
-          <ActivityIndicator color="#fff" style={{ marginTop: scaleW(60) }} />
+          <ActivityIndicator
+            color={hasCustomBackground ? SCAVENGER_GREEN : "#fff"}
+            style={{ marginTop: scaleW(60) }}
+          />
         ) : (
           <View style={{ flex: 1, padding: scaleW(24), justifyContent: "center" }}>
-            <ThemedText lightColor="#fff" darkColor="#fff" type="heading" style={{ fontSize: scaleW(32), fontWeight: "800", textAlign: "center" }}>
+            <ThemedText
+              lightColor={titleColor}
+              darkColor={titleColor}
+              type="heading"
+              style={{ fontSize: scaleW(32), fontWeight: "800", textAlign: "center" }}
+            >
               {completion?.cta || "Hunt complete!"}
             </ThemedText>
-            {!!(completion?.copy) && (
-              <ThemedText lightColor="rgba(255,255,255,0.85)" darkColor="rgba(255,255,255,0.85)" style={{ marginTop: scaleW(14), fontSize: scaleW(16), lineHeight: scaleW(24), textAlign: "center" }}>
+            {!!completion?.copy && (
+              <ThemedText
+                lightColor={bodyColor}
+                darkColor={bodyColor}
+                style={{ marginTop: scaleW(14), fontSize: scaleW(16), lineHeight: scaleW(24), textAlign: "center" }}
+              >
                 {completion.copy}
               </ThemedText>
             )}
@@ -48,7 +67,7 @@ export default function ScavengerCompleteScreen() {
                 onPress={() => Linking.openURL(completion.linkUrl!).catch(() => {})}
                 style={{ marginTop: scaleW(20), alignItems: "center" }}
               >
-                <ThemedText lightColor={SCAVENGER_ACCENT} darkColor={SCAVENGER_ACCENT} style={{ fontWeight: "800", fontSize: scaleW(16) }}>
+                <ThemedText lightColor={linkColor} darkColor={linkColor} style={{ fontWeight: "800", fontSize: scaleW(16) }}>
                   {completion.linkLabel}
                 </ThemedText>
               </Pressable>

@@ -16,6 +16,7 @@ import { useUser } from "@/contexts/UserContext";
 import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useActiveTrackingSession } from "@/hooks/useActiveTrackingSession";
+import { useActiveHuntSession } from "@/hooks/useActiveHuntSession";
 import { NewPlayerTutorial } from "@/components/NewPlayerTutorial";
 import { TabTrophyIcon } from "@/components/TabTrophyIcon";
 import { SlideUpTabBar } from "@/components/SlideUpTabBar";
@@ -107,6 +108,7 @@ export default function TabLayout() {
   const { scaleW, isTablet } = useLayoutScale();
   const insets = useSafeAreaInsets();
   const { session: activeTrackingSession } = useActiveTrackingSession();
+  const { session: activeHuntSession } = useActiveHuntSession();
   const signUpContext = useSignUpOptional();
   const showPostSignUpWelcome = signUpContext?.showPostSignUpWelcome ?? false;
   const setShowPostSignUpWelcome = signUpContext?.setShowPostSignUpWelcome;
@@ -251,6 +253,20 @@ export default function TabLayout() {
     activeTrackingSession?.status === "active" &&
     activeTrackingTitle != null &&
     !pathname.endsWith(activeTrackingRoute);
+
+  const activeHuntRoute = activeHuntSession
+    ? `/activity/scavenger/quest/${activeHuntSession.questId}/active`
+    : null;
+  const onActiveHuntScreen =
+    activeHuntSession != null &&
+    (pathname.includes(`/scavenger/quest/${activeHuntSession.questId}/active`) ||
+      pathname.includes(`/scavenger/quest/${activeHuntSession.questId}/end`) ||
+      pathname.includes(`/scavenger/quest/${activeHuntSession.questId}/complete`));
+  const showActiveHuntBanner =
+    !showActiveTrackingBanner &&
+    activeHuntSession?.status === "active" &&
+    activeHuntRoute != null &&
+    !onActiveHuntScreen;
 
   const handleTutorialDismiss = () => {
     setReplayTutorialRequested?.(false);
@@ -455,6 +471,28 @@ export default function TabLayout() {
             size={scaleW(26)}
             color="#FFFFFF"
           />
+        </Pressable>
+      ) : showActiveHuntBanner && activeHuntSession ? (
+        <Pressable
+          style={[
+            styles.activeSessionBanner,
+            {
+              right: scaleW(16),
+              bottom: tabBarHeight + scaleW(10),
+              width: scaleW(56),
+              height: scaleW(56),
+              borderRadius: scaleW(28),
+            },
+          ]}
+          onPress={() => {
+            router.push(
+              `/(tabs)/activity/scavenger/quest/${activeHuntSession.questId}/active?profileId=${activeHuntSession.profileId}`
+            );
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Return to active hunt"
+        >
+          <MaterialIcons name="travel-explore" size={scaleW(26)} color="#FFFFFF" />
         </Pressable>
       ) : null}
       <NewPlayerTutorial

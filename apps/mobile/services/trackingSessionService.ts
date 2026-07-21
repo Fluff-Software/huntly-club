@@ -5,6 +5,7 @@ import { Platform } from "react-native";
 import { syncActivityLiveSurface, endActivityLiveSurface } from "@/services/activityLiveSurfaceService";
 import { ACTIVITY_LIVE_HUNTLY_GREEN } from "@/constants/activityLiveSurfaceColors";
 import { TrackingPermissionError } from "@/utils/trackingLocationPermission";
+import { getActiveHuntSession } from "@/services/activeHuntSessionService";
 
 export const TRACKING_LOCATION_TASK = "huntly-active-adventure-location";
 
@@ -222,6 +223,11 @@ export async function stopTrackingLocationUpdates(): Promise<void> {
 export async function startTrackingSession(type: TrackingActivityType): Promise<ActiveTrackingSession> {
   const existing = await getActiveTrackingSession();
   if (existing?.status === "active") return existing;
+
+  const hunt = await getActiveHuntSession();
+  if (hunt?.status === "active") {
+    throw new Error("Finish your hunt before starting a walk or cycle.");
+  }
 
   await ensureTrackingPermissions();
   const now = new Date().toISOString();

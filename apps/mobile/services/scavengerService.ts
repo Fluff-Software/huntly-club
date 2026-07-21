@@ -390,6 +390,23 @@ export async function ensureQuestState(
   };
 }
 
+export async function restartQuest(
+  profileId: number,
+  questId: string
+): Promise<ScavengerQuestState> {
+  const { data, error } = await supabase.rpc("scavenger_restart_quest", {
+    p_profile_id: profileId,
+    p_quest_id: questId,
+  });
+  if (error) throw new Error(error.message);
+  const row = data as ScavengerQuestState;
+  return {
+    ...row,
+    found_items: asArray(row.found_items),
+    items_rewarded: asArray(row.items_rewarded),
+  };
+}
+
 export async function markItemFound(
   profileId: number,
   itemId: string

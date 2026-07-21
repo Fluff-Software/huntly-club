@@ -33,13 +33,14 @@ import {
   fetchQuestItems,
   fetchQuestState,
   isPlayUnlocked,
+  restartQuest,
   unlockWithCode,
   unlockWithLocation,
   type ScavengerQuest,
   type ScavengerQuestItem,
   type ScavengerQuestState,
 } from "@/services/scavengerService";
-import { startActiveHuntSession } from "@/services/activeHuntSessionService";
+import { clearActiveHuntSession, startActiveHuntSession } from "@/services/activeHuntSessionService";
 import {
   getBlockingAdventure,
   getConflictingHuntSession,
@@ -72,6 +73,7 @@ export default function ScavengerQuestOverviewScreen() {
   const [code, setCode] = useState("");
   const [codeBusy, setCodeBusy] = useState(false);
   const [codeError, setCodeError] = useState<string | null>(null);
+  const [restarting, setRestarting] = useState(false);
 
   useEffect(() => {
     if (profileId) return;
@@ -159,12 +161,12 @@ export default function ScavengerQuestOverviewScreen() {
   const ctaLabel = useMemo(() => {
     if (needsCode && !unlocked) return "Got a code?";
     if (!unlocked) return "Locked";
-    if (state?.complete) return "Open hunt";
+    if (state?.complete) return "Play again";
     if (found > 0) return "Continue exploring";
     return "Start hunt";
   }, [needsCode, unlocked, state?.complete, found]);
 
-  const start = async () => {
+  const beginHunt = useCallback(async () => {
     if (!questId || !profileId) return;
     if (needsCode && !unlocked) {
       setCodeOpen(true);
@@ -212,6 +214,45 @@ export default function ScavengerQuestOverviewScreen() {
     } finally {
       setStarting(false);
     }
+  }, [questId, profileId, needsCode, unlocked, quest, router]);
+
+  const confirmRestart = () => {
+    if (!questId || !profileId) return;
+    Alert.alert(
+      "Start over?",
+      "This clears your found items for this hunt so you can play again.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Restart",
+          style: "destructive",
+          onPress: () => {
+            void (async () => {
+              setRestarting(true);
+              try {
+                const nextState = await restartQuest(profileId, questId);
+                await clearActiveHuntSession();
+                setState(nextState);
+                await beginHunt();
+              } catch (e) {
+                Alert.alert("Couldn’t restart", e instanceof Error ? e.message : "Try again");
+              } finally {
+                setRestarting(false);
+              }
+            })();
+          },
+        },
+      ]
+    );
+  };
+
+  const start = async () => {
+    if (!questId || !profileId) return;
+    if (state?.complete) {
+      confirmRestart();
+      return;
+    }
+    await beginHunt();
   };
 
   const submitCode = async () => {
@@ -308,10 +349,10 @@ export default function ScavengerQuestOverviewScreen() {
               <View style={[styles.footer, { paddingBottom: insets.bottom + scaleW(12), paddingHorizontal: scaleW(20), paddingTop: scaleW(12) }]}>
                 <Pressable
                   onPress={start}
-                  disabled={starting || (!unlocked && !needsCode)}
-                  style={[styles.cta, { paddingVertical: scaleW(16), borderRadius: scaleW(28), opacity: starting ? 0.7 : 1 }]}
+                  disabled={starting || restarting || (!unlocked && !needsCode)}
+                  style={[styles.cta, { paddingVertical: scaleW(16), borderRadius: scaleW(28), opacity: starting || restarting ? 0.7 : 1 }]}
                 >
-                  {starting ? (
+                  {starting || restarting ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
                     <ThemedText lightColor="#fff" darkColor="#fff" style={{ fontWeight: "800", fontSize: scaleW(17) }}>

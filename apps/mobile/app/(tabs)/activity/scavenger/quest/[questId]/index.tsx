@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Linking,
   Modal,
   Pressable,
@@ -23,6 +22,10 @@ import {
   QuestToFindBadge,
   websiteVisitLabel,
 } from "@/components/scavenger/QuestToFindBadge";
+import {
+  prefetchScavengerImages,
+  ScavengerImage,
+} from "@/components/scavenger/ScavengerImage";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { usePlayer } from "@/contexts/PlayerContext";
 import {
@@ -151,6 +154,16 @@ export default function ScavengerQuestOverviewScreen() {
       } else {
         setUnlocked(true);
         setNeedsCode(false);
+      }
+
+      // Warm hero + preview images before leaving the page spinner.
+      if (q) {
+        await prefetchScavengerImages([
+          q.cover_image_url,
+          q.attraction_logo_url,
+          q.attraction_image_url,
+          ...itemRows.slice(0, 3).map((item) => item.image_url),
+        ]);
       }
     } catch (e) {
       Alert.alert("Couldn’t load hunt", e instanceof Error ? e.message : "Try again");
@@ -308,7 +321,11 @@ export default function ScavengerQuestOverviewScreen() {
             <>
               <ScrollView contentContainerStyle={{ paddingBottom: scaleW(140) }}>
                 {quest.cover_image_url ? (
-                  <Image source={{ uri: quest.cover_image_url }} style={{ width: "100%", height: scaleW(220) }} />
+                  <ScavengerImage
+                    uri={quest.cover_image_url}
+                    tint={hasCustomBackground ? SCAVENGER_GREEN : "#fff"}
+                    style={{ width: "100%", height: scaleW(220) }}
+                  />
                 ) : null}
                 <View
                   style={{
@@ -321,10 +338,11 @@ export default function ScavengerQuestOverviewScreen() {
                   }}
                 >
                   {!!quest.attraction_logo_url && (
-                    <Image
-                      source={{ uri: quest.attraction_logo_url }}
-                      resizeMode="contain"
-                      style={{ width: "50%", height: scaleW(72), marginBottom: scaleW(12) }}
+                    <ScavengerImage
+                      uri={quest.attraction_logo_url}
+                      contentFit="contain"
+                      tint={hasCustomBackground ? SCAVENGER_GREEN : "#fff"}
+                      style={{ width: "50%", height: scaleW(72), marginBottom: scaleW(12), backgroundColor: "transparent" }}
                     />
                   )}
 
@@ -379,8 +397,9 @@ export default function ScavengerQuestOverviewScreen() {
                   />
 
                   {!!quest.attraction_image_url && (
-                    <Image
-                      source={{ uri: quest.attraction_image_url }}
+                    <ScavengerImage
+                      uri={quest.attraction_image_url}
+                      tint={hasCustomBackground ? SCAVENGER_GREEN : "#fff"}
                       style={{
                         width: "100%",
                         height: scaleW(180),

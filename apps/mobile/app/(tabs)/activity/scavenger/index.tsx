@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Image,
   Modal,
   Pressable,
   RefreshControl,
@@ -26,6 +25,10 @@ import {
   SCAVENGER_CARD,
   SCAVENGER_GREEN,
 } from "@/constants/scavengerTheme";
+import {
+  prefetchScavengerImages,
+  ScavengerImage,
+} from "@/components/scavenger/ScavengerImage";
 import {
   fetchPublishedQuestGroups,
   fetchPublishedQuests,
@@ -151,6 +154,11 @@ export default function ScavengerBrowseScreen() {
       } else {
         setCoords(null);
       }
+
+      await prefetchScavengerImages([
+        ...g.slice(0, 4).map((group) => group.cover_image_url),
+        ...q.slice(0, 8).flatMap((quest) => [quest.tile_image_url, quest.cover_image_url]),
+      ]);
     } catch (e) {
       Alert.alert("Couldn’t load hunts", e instanceof Error ? e.message : "Please try again.");
     } finally {
@@ -362,7 +370,11 @@ export default function ScavengerBrowseScreen() {
                     style={[styles.card, { borderRadius: scaleW(16), overflow: "hidden" }]}
                   >
                     {group.cover_image_url ? (
-                      <Image source={{ uri: group.cover_image_url }} style={{ width: "100%", height: scaleW(120) }} />
+                      <ScavengerImage
+                        uri={group.cover_image_url}
+                        tint="#fff"
+                        style={{ width: "100%", height: scaleW(120) }}
+                      />
                     ) : (
                       <View style={{ height: scaleW(80), backgroundColor: SCAVENGER_GREEN, alignItems: "center", justifyContent: "center" }}>
                         <MaterialIcons name="collections" size={scaleW(32)} color="#fff" />
@@ -389,8 +401,9 @@ export default function ScavengerBrowseScreen() {
                   style={[styles.card, { borderRadius: scaleW(16), overflow: "hidden", flexDirection: "row" }]}
                 >
                   {quest.tile_image_url || quest.cover_image_url ? (
-                    <Image
-                      source={{ uri: quest.tile_image_url || quest.cover_image_url! }}
+                    <ScavengerImage
+                      uri={quest.tile_image_url || quest.cover_image_url}
+                      tint="#fff"
                       style={{ width: scaleW(88), height: scaleW(88) }}
                     />
                   ) : (

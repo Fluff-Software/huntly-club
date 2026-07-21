@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Image,
   Modal,
   Pressable,
   StyleSheet,
@@ -23,6 +22,10 @@ import {
   QuestViewSwitcher,
   type QuestView,
 } from "@/components/scavenger/QuestViewSwitcher";
+import {
+  prefetchScavengerImages,
+  ScavengerImage,
+} from "@/components/scavenger/ScavengerImage";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
@@ -112,6 +115,7 @@ export default function ScavengerActiveScreen() {
     setItems(itemRows);
     setState(s);
     setPhotoCount(photos.length);
+    return itemRows;
   }, [questId, profileId]);
 
   useEffect(() => {
@@ -130,7 +134,7 @@ export default function ScavengerActiveScreen() {
           return;
         }
         await ensureQuestState(profileId, questId);
-        const [q] = await Promise.all([
+        const [q, itemRows] = await Promise.all([
           fetchQuestById(questId),
           refresh(),
         ]);
@@ -151,6 +155,9 @@ export default function ScavengerActiveScreen() {
             return;
           }
         }
+        await prefetchScavengerImages(
+          (itemRows ?? []).slice(0, 8).map((item) => item.image_url)
+        );
       } catch (e) {
         Alert.alert("Couldn’t open hunt", e instanceof Error ? e.message : "Try again");
       } finally {
@@ -366,13 +373,15 @@ export default function ScavengerActiveScreen() {
                     },
                   ]}
                 >
-                  {item.image_url ? (
-                    <Image source={{ uri: item.image_url }} style={{ width: "100%", height: scaleW(110) }} />
-                  ) : (
-                    <View style={{ height: scaleW(110), backgroundColor: "#D7E4D7", alignItems: "center", justifyContent: "center" }}>
-                      <MaterialIcons name="image" size={scaleW(28)} color={SCAVENGER_GREEN} />
-                    </View>
-                  )}
+                  <ScavengerImage
+                    uri={item.image_url}
+                    style={{ width: "100%", height: scaleW(110) }}
+                    fallback={
+                      <View style={{ height: scaleW(110), backgroundColor: "#D7E4D7", alignItems: "center", justifyContent: "center" }}>
+                        <MaterialIcons name="image" size={scaleW(28)} color={SCAVENGER_GREEN} />
+                      </View>
+                    }
+                  />
                   <View style={{ padding: scaleW(10), alignItems: "center" }}>
                     <ThemedText style={{ fontWeight: "800", fontSize: scaleW(13), color: SCAVENGER_BG, textAlign: "center" }} numberOfLines={2}>
                       {item.name}
@@ -428,7 +437,10 @@ export default function ScavengerActiveScreen() {
             {selected && (
               <>
                 {selected.image_url ? (
-                  <Image source={{ uri: selected.image_url }} style={{ width: "100%", height: scaleW(180), borderRadius: scaleW(14) }} />
+                  <ScavengerImage
+                    uri={selected.image_url}
+                    style={{ width: "100%", height: scaleW(180), borderRadius: scaleW(14) }}
+                  />
                 ) : null}
                 <ThemedText type="heading" style={{ marginTop: scaleW(14), fontSize: scaleW(22), fontWeight: "800", color: SCAVENGER_BG }}>
                   {selected.name}

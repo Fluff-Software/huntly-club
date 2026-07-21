@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,6 +12,10 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ThemedText } from "@/components/ThemedText";
+import {
+  prefetchScavengerImages,
+  ScavengerImage,
+} from "@/components/scavenger/ScavengerImage";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
@@ -202,10 +205,13 @@ export default function ScavengerEndSessionScreen() {
         setTotal(items.length);
         setFound(state?.found_items.length ?? 0);
         setComplete(Boolean(state?.complete));
-        setPhotos(sessionPhotos);
         if (sessionPhotos.length === 0) {
+          setPhotos(sessionPhotos);
           await finish(false, q, Boolean(state?.complete), sessionPhotos);
+          return;
         }
+        await prefetchScavengerImages(sessionPhotos.map((photo) => photo.photo_url));
+        setPhotos(sessionPhotos);
       } catch (e) {
         Alert.alert(
           "Couldn’t end session",
@@ -289,8 +295,8 @@ export default function ScavengerEndSessionScreen() {
                   { borderRadius: scaleW(14), overflow: "hidden" },
                 ]}
               >
-                <Image
-                  source={{ uri: photo.photo_url }}
+                <ScavengerImage
+                  uri={photo.photo_url}
                   style={{ width: "100%", height: scaleW(220) }}
                 />
                 {!!photo.item_name && (

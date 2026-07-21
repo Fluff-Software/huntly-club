@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Linking,
   Pressable,
   ScrollView,
@@ -16,6 +15,10 @@ import { StatusBar } from "expo-status-bar";
 import * as Location from "expo-location";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ThemedText } from "@/components/ThemedText";
+import {
+  prefetchScavengerImages,
+  ScavengerImage,
+} from "@/components/scavenger/ScavengerImage";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { usePlayer } from "@/contexts/PlayerContext";
 import {
@@ -117,6 +120,10 @@ export default function ScavengerGroupScreen() {
         const completion = await fetchGroupCompletionStatus(profileId, groupId);
         setGroupComplete(completion.all_completed && completion.has_cta);
       }
+      await prefetchScavengerImages([
+        g?.cover_image_url,
+        ...q.slice(0, 8).flatMap((quest) => [quest.tile_image_url, quest.cover_image_url]),
+      ]);
     } catch (e) {
       Alert.alert("Couldn’t load group", e instanceof Error ? e.message : "Try again");
     } finally {
@@ -168,7 +175,11 @@ export default function ScavengerGroupScreen() {
         ) : (
           <ScrollView contentContainerStyle={{ paddingHorizontal: scaleW(20), paddingBottom: scaleW(40) }}>
             {group.cover_image_url ? (
-              <Image source={{ uri: group.cover_image_url }} style={{ width: "100%", height: scaleW(180), borderRadius: scaleW(16) }} />
+              <ScavengerImage
+                uri={group.cover_image_url}
+                tint="#fff"
+                style={{ width: "100%", height: scaleW(180), borderRadius: scaleW(16) }}
+              />
             ) : null}
             <ThemedText lightColor="#fff" darkColor="#fff" type="heading" style={{ marginTop: scaleW(16), fontSize: scaleW(26), fontWeight: "800" }}>
               {group.name}
@@ -216,8 +227,9 @@ export default function ScavengerGroupScreen() {
                   style={[styles.card, { borderRadius: scaleW(14), marginBottom: scaleW(10), flexDirection: "row", overflow: "hidden" }]}
                 >
                   {(quest.tile_image_url || quest.cover_image_url) && (
-                    <Image
-                      source={{ uri: quest.tile_image_url || quest.cover_image_url! }}
+                    <ScavengerImage
+                      uri={quest.tile_image_url || quest.cover_image_url}
+                      tint="#fff"
                       style={{ width: scaleW(72), height: scaleW(72) }}
                     />
                   )}

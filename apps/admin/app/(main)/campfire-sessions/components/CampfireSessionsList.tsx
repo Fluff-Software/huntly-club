@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/Button";
+import { setCampfireSessionShowViewerCount } from "../actions";
 import type { CampfireSessionRow } from "../types";
 import { CampfireStatusPill } from "./CampfireStatusPill";
 import { CreateCampfireSessionModal } from "./CreateCampfireSessionModal";
@@ -19,11 +20,42 @@ function formatScheduledAt(iso: string | null): string {
 }
 
 export function CampfireSessionsList({
-  sessions,
+  sessions: initialSessions,
 }: {
   sessions: CampfireSessionRow[];
 }) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [sessions, setSessions] = useState(initialSessions);
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
+
+  useEffect(() => {
+    setSessions(initialSessions);
+  }, [initialSessions]);
+
+  const toggleShowViewerCount = async (session: CampfireSessionRow) => {
+    if (updatingId !== null) return;
+    const current = session.show_viewer_count ?? true;
+    const next = !current;
+    setUpdatingId(session.id);
+    setSessions((prev) =>
+      prev.map((item) =>
+        item.id === session.id ? { ...item, show_viewer_count: next } : item
+      )
+    );
+    try {
+      await setCampfireSessionShowViewerCount(session.id, next);
+    } catch {
+      setSessions((prev) =>
+        prev.map((item) =>
+          item.id === session.id
+            ? { ...item, show_viewer_count: current }
+            : item
+        )
+      );
+    } finally {
+      setUpdatingId(null);
+    }
+  };
 
   return (
     <>
@@ -73,7 +105,12 @@ export function CampfireSessionsList({
                 <p className="mt-1 text-xs text-stone-500">
                   {s.missions?.length ?? 0} missions
                 </p>
-                <div className="mt-3">
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <ViewerCountToggle
+                    enabled={s.show_viewer_count ?? true}
+                    disabled={updatingId === s.id}
+                    onToggle={() => toggleShowViewerCount(s)}
+                  />
                   <Button
                     href={`/campfire-sessions/${s.id}`}
                     variant="primary"
@@ -97,6 +134,9 @@ export function CampfireSessionsList({
                   </th>
                   <th className="px-4 py-3 font-medium text-stone-700">
                     Status
+                  </th>
+                  <th className="px-4 py-3 font-medium text-stone-700">
+                    Viewer count
                   </th>
                   <th className="px-4 py-3 font-medium text-stone-700">
                     Actions
@@ -124,6 +164,13 @@ export function CampfireSessionsList({
                       <CampfireStatusPill status={s.status} />
                     </td>
                     <td className="px-4 py-3">
+                      <ViewerCountToggle
+                        enabled={s.show_viewer_count ?? true}
+                        disabled={updatingId === s.id}
+                        onToggle={() => toggleShowViewerCount(s)}
+                      />
+                    </td>
+                    <td className="px-4 py-3">
                       <Button
                         href={`/campfire-sessions/${s.id}`}
                         variant="primary"
@@ -145,5 +192,45 @@ export function CampfireSessionsList({
         onClose={() => setModalOpen(false)}
       />
     </>
+  );
+}
+
+function ViewerCountToggle({
+  enabled,
+  disabled,
+  onToggle,
+}: {
+  enabled: boolean;
+  disabled?: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={enabled}
+      aria-label={enabled ? "Viewer count visible" : "Viewer count hidden"}
+      disabled={disabled}
+      onClick={onToggle}
+      className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+        enabled
+          ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+          : "border-stone-200 bg-stone-100 text-stone-600 hover:bg-stone-200"
+      }`}
+    >
+      <span
+        className={`relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors ${
+          enabled ? "bg-emerald-500" : "bg-stone-300"
+        }`}
+        aria-hidden
+      >
+        <span
+          className={`inline-block size-3 rounded-full bg-white shadow-sm transition-transform ${
+            enabled ? "translate-x-3.5" : "translate-x-0.5"
+          }`}
+        />
+      </span>
+      {disabled ? "Saving…" : enabled ? "Visible" : "Hidden"}
+    </button>
   );
 }

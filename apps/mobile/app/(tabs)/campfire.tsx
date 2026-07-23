@@ -32,6 +32,7 @@ import {
   getNextScheduledSession,
   getServerNowIso,
   resolveCampfirePlaybackSession,
+  resolveCampfireShowViewerCount,
   sessionDurationMs,
   type CampfireSessionBundle,
   type CampfireSessionRow,
@@ -182,6 +183,49 @@ export default function CampfireScreen() {
     }
   }, [bundle?.session.id, bundle?.session.status, pinRealtimeSession]);
 
+  const trackedSessionId = bundle?.session.id ?? waitingSession?.id ?? null;
+
+  useEffect(() => {
+    if (trackedSessionId == null) return;
+
+    const channel = supabase
+      .channel(`campfire-session-settings:${trackedSessionId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "campfire_sessions",
+          filter: `id=eq.${trackedSessionId}`,
+        },
+        (payload) => {
+          const row = payload.new as CampfireSessionRow;
+          if (typeof row.show_viewer_count !== "boolean") return;
+          setWaitingSession((prev) =>
+            prev?.id === trackedSessionId
+              ? { ...prev, show_viewer_count: row.show_viewer_count }
+              : prev
+          );
+          setBundle((prev) =>
+            prev?.session.id === trackedSessionId
+              ? {
+                  ...prev,
+                  session: {
+                    ...prev.session,
+                    show_viewer_count: row.show_viewer_count,
+                  },
+                }
+              : prev
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [trackedSessionId]);
+
   const effectiveRealtimeSessionId =
     realtimeSessionId ?? realtimeSessionIdRef.current;
 
@@ -314,8 +358,12 @@ export default function CampfireScreen() {
                   session.live_started_at ??
                   data!.session.live_started_at ??
                   data!.session.scheduled_at,
+                show_viewer_count: session.show_viewer_count,
               }
-            : data!.session;
+            : {
+                ...data!.session,
+                show_viewer_count: session.show_viewer_count,
+              };
         setBundle({ ...data!, session: sessionRow });
         if (sessionRow.id != null) {
           pinRealtimeSession(sessionRow.id);
@@ -493,7 +541,15 @@ export default function CampfireScreen() {
         getCampfireLivePreload(sessionId) ??
         (await waitForCampfireLivePreload(sessionId));
       if (cancelled || !hit) return;
-      setBundle(hit.bundle);
+      setBundle({
+        ...hit.bundle,
+        session: {
+          ...hit.bundle.session,
+          show_viewer_count:
+            waitingSession?.show_viewer_count ??
+            hit.bundle.session.show_viewer_count,
+        },
+      });
       setMediaReady(true);
     };
 
@@ -672,6 +728,11 @@ export default function CampfireScreen() {
       (loadState === "ready" &&
         (isLiveRef.current || bundle?.session.status === "live")));
 
+  const showViewerCount = useMemo(
+    () => resolveCampfireShowViewerCount(bundle, waitingSession),
+    [bundle, waitingSession]
+  );
+
   const togglePlay = useCallback(() => {
     if (finished || isLiveRef.current) return;
     setIsPlaying((p) => !p);
@@ -721,10 +782,12 @@ export default function CampfireScreen() {
         height={height}
       />
       <SafeAreaView pointerEvents="box-none" style={styles.liveControls}>
-        <View style={styles.viewerPill}>
-          <View style={styles.viewerDot} />
-          <ThemedText style={styles.viewerText}>{viewerCount}</ThemedText>
-        </View>
+        {showViewerCount ? (
+          <View style={styles.viewerPill}>
+            <View style={styles.viewerDot} />
+            <ThemedText style={styles.viewerText}>{viewerCount}</ThemedText>
+          </View>
+        ) : null}
         <Pressable
           onPress={() => void sendReaction("🔥")}
           style={styles.reactionButton}

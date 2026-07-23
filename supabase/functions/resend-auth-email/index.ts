@@ -17,6 +17,14 @@ function jsonResponse(body: object, status: number, headers?: HeadersInit) {
 
 type AuthEmailType = "signup" | "recovery";
 
+/** App-owned link: token is only consumed when the page calls verifyOtp (POST), not on email prefetch GET. */
+function buildTokenHashLink(baseUrl: string, hashedToken: string, type: AuthEmailType): string {
+  const url = new URL(baseUrl);
+  url.searchParams.set("token_hash", hashedToken);
+  url.searchParams.set("type", type);
+  return url.toString();
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -54,11 +62,20 @@ Deno.serve(async (req) => {
       options: { redirectTo },
     });
 
+    const props = (linkData as { properties?: { action_link?: string; hashed_token?: string }; action_link?: string })
+      ?.properties;
+    const hashedToken = props?.hashed_token;
     const actionLink =
-      (linkData as { properties?: { action_link?: string }; action_link?: string })?.properties
-        ?.action_link ?? (linkData as { action_link?: string })?.action_link;
-    if (linkError || !actionLink) {
-      console.error("generateLink error:", linkError?.message ?? "no action_link");
+      props?.action_link ?? (linkData as { action_link?: string })?.action_link;
+
+    // Recovery: use token_hash landing page (prefetch-safe). Signup confirm still uses action_link for now.
+    const emailLink =
+      type === "recovery" && hashedToken
+        ? buildTokenHashLink(resetRedirect, hashedToken, type)
+        : actionLink;
+
+    if (linkError || !emailLink) {
+      console.error("generateLink error:", linkError?.message ?? "no link");
       return jsonResponse(
         { error: "Could not generate link. Check that this email is registered." },
         400
@@ -71,22 +88,22 @@ Deno.serve(async (req) => {
       const bodyHtml = `
         <p style="margin: 0 0 16px; color: #36454F;">Hi there,</p>
         <p style="margin: 0 0 16px; color: #36454F;">You asked to reset your Huntly World password. Use the button below to set a new password.</p>
-        ${ctaButton(actionLink, "Set new password")}
+        ${ctaButton(emailLink, "Set new password")}
         <p style="margin: 0; font-size: 14px; color: #36454F;">This link will expire in 1 hour. If you didn't request this, you can ignore this email.</p>
       `;
       const htmlPart = wrapEmailBody(bodyHtml);
-      const textPart = `Reset your Huntly World password: ${actionLink}\n\nIf you didn't request this, you can ignore this email.`;
+      const textPart = `Reset your Huntly World password: ${emailLink}\n\nIf you didn't request this, you can ignore this email.`;
       await sendEmail({ to: email, subject, htmlPart, textPart, ...(replyTo && { replyTo }) });
     } else {
       const subject = "Verify your email for Huntly World";
       const bodyHtml = `
         <p style="margin: 0 0 16px; color: #36454F;">Hi there,</p>
         <p style="margin: 0 0 16px; color: #36454F;">You signed up for Huntly World. To finish setting up your account, verify your email using the button below.</p>
-        ${ctaButton(actionLink, "Verify my email")}
+        ${ctaButton(emailLink!, "Verify my email")}
         <p style="margin: 0; font-size: 14px; color: #36454F;">This link will expire in 24 hours. If you didn't sign up, you can safely ignore this message.</p>
       `;
       const htmlPart = wrapEmailBody(bodyHtml);
-      const textPart = `You signed up for Huntly World. Verify your email by visiting: ${actionLink}\n\nIf you didn't sign up, you can ignore this email.`;
+      const textPart = `You signed up for Huntly World. Verify your email by visiting: ${emailLink}\n\nIf you didn't sign up, you can ignore this email.`;
       await sendEmail({ to: email, subject, htmlPart, textPart, ...(replyTo && { replyTo }) });
     }
   } catch (e) {

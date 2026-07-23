@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Image, Pressable, StyleSheet } from "react-native";
+import { View, Platform, Pressable, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -7,6 +7,7 @@ import { Stack } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { getAvailableActivityTypes } from "@/constants/activityTypes";
 
 const BG = "#2D4A35";
 const CARD_BG = "#3D5F45";
@@ -15,6 +16,7 @@ const ACCENT = "#62A94F";
 export default function PickActivityScreen() {
   const router = useRouter();
   const { scaleW } = useLayoutScale();
+  const activityTypes = getAvailableActivityTypes(Platform.OS);
 
   return (
     <>
@@ -53,125 +55,47 @@ export default function PickActivityScreen() {
 
           {/* Activity cards */}
           <View style={{ paddingHorizontal: scaleW(24), gap: scaleW(16) }}>
-            {/* Walk */}
-            <Pressable
-              onPress={() => router.push("/(tabs)/activity/walk-prep")}
-              style={({ pressed }) => [
-                styles.card,
-                { paddingHorizontal: scaleW(20), paddingVertical: scaleW(24), borderRadius: scaleW(20) },
-                pressed && { opacity: 0.88 },
-              ]}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: scaleW(16) }}>
-                <View style={{
-                  backgroundColor: "rgba(98,169,79,0.25)",
-                  borderRadius: scaleW(16),
-                  width: scaleW(60),
-                  height: scaleW(60),
-                  alignItems: "center",
-                  justifyContent: "center" }}>
-                  <MaterialIcons name="directions-walk" size={scaleW(32)} color={ACCENT} />
+            {activityTypes.map((type) => (
+              <Pressable
+                key={type.key}
+                onPress={() => router.push(type.route as Parameters<typeof router.push>[0])}
+                style={({ pressed }) => [
+                  styles.card,
+                  { paddingHorizontal: scaleW(20), paddingVertical: scaleW(24), borderRadius: scaleW(20) },
+                  pressed && { opacity: 0.88 },
+                ]}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: scaleW(16) }}>
+                  <View style={{
+                    backgroundColor: "rgba(98,169,79,0.25)",
+                    borderRadius: scaleW(16),
+                    width: scaleW(60),
+                    height: scaleW(60),
+                    alignItems: "center",
+                    justifyContent: "center" }}>
+                    <MaterialIcons name={type.icon} size={scaleW(32)} color={ACCENT} />
+                  </View>
+                  <View style={{ flex: 1, gap: scaleW(3) }}>
+                    <ThemedText
+                      type="heading"
+                      lightColor="#FFFFFF"
+                      darkColor="#FFFFFF"
+                      style={{ fontSize: scaleW(22), fontWeight: "800" }}
+                    >
+                      {type.label}
+                    </ThemedText>
+                    <ThemedText
+                      lightColor="rgba(255,255,255,0.65)"
+                      darkColor="rgba(255,255,255,0.65)"
+                      style={{ fontSize: scaleW(13), lineHeight: scaleW(19) }}
+                    >
+                      {type.description}
+                    </ThemedText>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={scaleW(26)} color="rgba(255,255,255,0.5)" />
                 </View>
-                <View style={{ flex: 1, gap: scaleW(3) }}>
-                  <ThemedText
-                    type="heading"
-                    lightColor="#FFFFFF"
-                    darkColor="#FFFFFF"
-                    style={{ fontSize: scaleW(22), fontWeight: "800" }}
-                  >
-                    Walk
-                  </ThemedText>
-                  <ThemedText
-                    lightColor="rgba(255,255,255,0.65)"
-                    darkColor="rgba(255,255,255,0.65)"
-                    style={{ fontSize: scaleW(13), lineHeight: scaleW(19) }}
-                  >
-                    Explore on foot and discover things along the way
-                  </ThemedText>
-                </View>
-                <MaterialIcons name="chevron-right" size={scaleW(26)} color="rgba(255,255,255,0.5)" />
-              </View>
-            </Pressable>
-
-            {/* Cycle */}
-            <Pressable
-              onPress={() => router.push("/(tabs)/activity/cycle-prep")}
-              style={({ pressed }) => [
-                styles.card,
-                { paddingHorizontal: scaleW(20), paddingVertical: scaleW(24), borderRadius: scaleW(20) },
-                pressed && { opacity: 0.88 },
-              ]}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: scaleW(16) }}>
-                <View style={{
-                  backgroundColor: "rgba(98,169,79,0.25)",
-                  borderRadius: scaleW(16),
-                  width: scaleW(60),
-                  height: scaleW(60),
-                  alignItems: "center",
-                  justifyContent: "center" }}>
-                  <MaterialIcons name="directions-bike" size={scaleW(32)} color={ACCENT} />
-                </View>
-                <View style={{ flex: 1, gap: scaleW(3) }}>
-                  <ThemedText
-                    type="heading"
-                    lightColor="#FFFFFF"
-                    darkColor="#FFFFFF"
-                    style={{ fontSize: scaleW(22), fontWeight: "800" }}
-                  >
-                    Cycle
-                  </ThemedText>
-                  <ThemedText
-                    lightColor="rgba(255,255,255,0.65)"
-                    darkColor="rgba(255,255,255,0.65)"
-                    style={{ fontSize: scaleW(13), lineHeight: scaleW(19) }}
-                  >
-                    Cover more ground and feel the wind as you ride
-                  </ThemedText>
-                </View>
-                <MaterialIcons name="chevron-right" size={scaleW(26)} color="rgba(255,255,255,0.5)" />
-              </View>
-            </Pressable>
-
-            {/* Mission */}
-            <Pressable
-              onPress={() => router.push("/(tabs)/missions")}
-              style={({ pressed }) => [
-                styles.card,
-                { paddingHorizontal: scaleW(20), paddingVertical: scaleW(24), borderRadius: scaleW(20) },
-                pressed && { opacity: 0.88 },
-              ]}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: scaleW(16) }}>
-                <View style={{
-                  backgroundColor: "rgba(98,169,79,0.25)",
-                  borderRadius: scaleW(16),
-                  width: scaleW(60),
-                  height: scaleW(60),
-                  alignItems: "center",
-                  justifyContent: "center" }}>
-                  <MaterialIcons name="flag" size={scaleW(32)} color={ACCENT} />
-                </View>
-                <View style={{ flex: 1, gap: scaleW(3) }}>
-                  <ThemedText
-                    type="heading"
-                    lightColor="#FFFFFF"
-                    darkColor="#FFFFFF"
-                    style={{ fontSize: scaleW(22), fontWeight: "800" }}
-                  >
-                    Mission
-                  </ThemedText>
-                  <ThemedText
-                    lightColor="rgba(255,255,255,0.65)"
-                    darkColor="rgba(255,255,255,0.65)"
-                    style={{ fontSize: scaleW(13), lineHeight: scaleW(19) }}
-                  >
-                    Complete a challenge and earn rewards
-                  </ThemedText>
-                </View>
-                <MaterialIcons name="chevron-right" size={scaleW(26)} color="rgba(255,255,255,0.5)" />
-              </View>
-            </Pressable>
+              </Pressable>
+            ))}
           </View>
         </View>
       </SafeAreaView>

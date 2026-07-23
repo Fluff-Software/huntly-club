@@ -19,7 +19,7 @@ import Purchases, {
 } from 'react-native-purchases';
 
 /** Set to true to temporarily disable RevenueCat (no SDK calls, everyone treated as subscribed). */
-export const REVENUECAT_DISABLED = true;
+export const REVENUECAT_DISABLED = false;
 
 /** Entitlement identifier used for club / premium access. */
 export const CLUB_ENTITLEMENT_ID = 'club';

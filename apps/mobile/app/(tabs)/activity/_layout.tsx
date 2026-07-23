@@ -75,6 +75,12 @@ export default function ActivityLayout() {
           title: "Activity",
           headerShown: false }}
       />
+      <Stack.Screen
+        name="scavenger"
+        options={{
+          title: "Hunt",
+          headerShown: false }}
+      />
     </Stack>
   );
 }

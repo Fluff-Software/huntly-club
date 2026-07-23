@@ -92,13 +92,16 @@ export function ProfileDashboardProvider({
   const loadedKeyRef = useRef<string | null>(null);
   const inFlightRef = useRef<Promise<void> | null>(null);
   const pendingRefreshRef = useRef(false);
+  // Tracks the latest `profiles` value without making loadDashboard's identity
+  // depend on the array reference, which changes on every fetch and would
+  // otherwise retrigger consumers' useFocusEffect callbacks in a loop.
   const profilesRef = useRef(profiles);
-  useEffect(() => { profilesRef.current = profiles; }, [profiles]);
+  profilesRef.current = profiles;
 
   const loadDashboard = useCallback(
     async (options?: { force?: boolean }) => {
-      const profiles = profilesRef.current;
-      if (!user?.id || profiles.length === 0) {
+      const currentProfiles = profilesRef.current;
+      if (!user?.id || currentProfiles.length === 0) {
         loadedKeyRef.current = null;
         setRecentActivities([]);
         setXpByProfileId({});
@@ -126,7 +129,7 @@ export function ProfileDashboardProvider({
           pendingRefreshRef.current = false;
           setRecentActivitiesLoading(true);
           try {
-            const data = await fetchProfileDashboardData(profiles);
+            const data = await fetchProfileDashboardData(currentProfiles);
             loadedKeyRef.current = key;
             setRecentActivities(data.recentActivities);
             setXpByProfileId(data.xpByProfileId);

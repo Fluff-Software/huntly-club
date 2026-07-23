@@ -222,72 +222,136 @@ export interface TeamAchievementEntry {
 }
 
 /**
- * Fetches user_achievements for a team (current month only). profile_name is resolved from profile_public (nickname).
+ * Fetches user_achievements for a team (current month only), merged with
+ * temporary submissions credited to that team. profile_name is resolved from
+ * profile_public (nickname) or temporary display_name.
  */
 export const getTeamAchievements = async (
   teamId: number,
   limit: number = 20
 ): Promise<TeamAchievementEntry[]> => {
   const { from, to } = getCurrentMonthRange();
-  const { data: achievements, error: achievementsError } = await supabase
-    .from("user_achievements")
-    .select("id, profile_id, team_id, source, source_id, message, xp, created_at")
-    .eq("team_id", teamId)
-    .gte("created_at", from)
-    .lte("created_at", to)
-    .order("created_at", { ascending: false, nullsFirst: false })
-    .order("id", { ascending: false })
-    .limit(limit);
+  const [achievementsResult, tempResult] = await Promise.all([
+    supabase
+      .from("user_achievements")
+      .select("id, profile_id, team_id, source, source_id, message, xp, created_at")
+      .eq("team_id", teamId)
+      .gte("created_at", from)
+      .lte("created_at", to)
+      .order("created_at", { ascending: false, nullsFirst: false })
+      .order("id", { ascending: false })
+      .limit(limit),
+    supabase
+      .from("temporary_submissions")
+      .select("id, display_name, team_id, xp, submitted_at")
+      .eq("team_id", teamId)
+      .gte("submitted_at", from)
+      .lte("submitted_at", to)
+      .order("submitted_at", { ascending: false })
+      .limit(limit),
+  ]);
 
-  if (achievementsError) {
-    console.error("Error fetching team achievements:", achievementsError);
-    throw new Error(`Failed to fetch team achievements: ${achievementsError.message}`);
+  if (achievementsResult.error) {
+    console.error("Error fetching team achievements:", achievementsResult.error);
+    throw new Error(
+      `Failed to fetch team achievements: ${achievementsResult.error.message}`
+    );
   }
 
-  const list = achievements ?? [];
-  if (list.length === 0) return [];
+  const list = achievementsResult.data ?? [];
+  const merged: TeamAchievementEntry[] = [];
 
-  const profileIds = [...new Set(list.map((a) => a.profile_id))];
-  const { data: profilesData, error: profilesError } = await supabase
-    .from("profile_public")
-    .select("id, nickname")
-    .in("id", profileIds);
+  if (list.length > 0) {
+    const profileIds = [...new Set(list.map((a) => a.profile_id))];
+    const { data: profilesData, error: profilesError } = await supabase
+      .from("profile_public")
+      .select("id, nickname")
+      .in("id", profileIds);
 
-  if (profilesError) {
-    console.error("Error fetching profile nicknames:", profilesError);
-    throw new Error(`Failed to fetch profile nicknames: ${profilesError.message}`);
+    if (profilesError) {
+      console.error("Error fetching profile nicknames:", profilesError);
+      throw new Error(
+        `Failed to fetch profile nicknames: ${profilesError.message}`
+      );
+    }
+
+    const nameByProfileId: Record<number, string> = {};
+    for (const p of profilesData ?? []) {
+      nameByProfileId[p.id] = p.nickname?.trim() || "Explorer";
+    }
+
+    for (const a of list) {
+      merged.push({
+        ...a,
+        profile_name: nameByProfileId[a.profile_id] ?? "Explorer",
+      });
+    }
   }
 
-  const nameByProfileId: Record<number, string> = {};
-  for (const p of profilesData ?? []) {
-    nameByProfileId[p.id] = p.nickname?.trim() || "Explorer";
+  if (!tempResult.error) {
+    for (const row of tempResult.data ?? []) {
+      merged.push({
+        id: -Number(row.id),
+        profile_id: -Number(row.id),
+        team_id: row.team_id,
+        source: "temporary_mission",
+        source_id: row.id,
+        message: "completed a mission",
+        xp: row.xp ?? 0,
+        created_at: row.submitted_at,
+        profile_name: (row.display_name as string)?.trim() || "Explorer",
+      });
+    }
+  } else {
+    console.error("Error fetching temporary team submissions:", tempResult.error);
   }
 
-  return list.map((a) => ({
-    ...a,
-    profile_name: nameByProfileId[a.profile_id] ?? "Explorer",
-  }));
+  merged.sort((a, b) => {
+    const timeDiff =
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    if (timeDiff !== 0) return timeDiff;
+    return b.id - a.id;
+  });
+
+  return merged.slice(0, limit);
 };
 
 /**
- * Returns total XP from user_achievements per team_id for the current month (for chart scaling).
+ * Returns total XP from user_achievements + temporary submissions per team_id
+ * for the current month (for chart scaling).
  */
 export const getTeamAchievementTotals = async (): Promise<Record<number, number>> => {
   const { from, to } = getCurrentMonthRange();
-  const { data, error } = await supabase
-    .from("user_achievements")
-    .select("team_id, xp")
-    .gte("created_at", from)
-    .lte("created_at", to);
+  const [achievementsResult, tempResult] = await Promise.all([
+    supabase
+      .from("user_achievements")
+      .select("team_id, xp")
+      .gte("created_at", from)
+      .lte("created_at", to),
+    supabase
+      .from("temporary_submissions")
+      .select("team_id, xp")
+      .gte("submitted_at", from)
+      .lte("submitted_at", to),
+  ]);
 
-  if (error) {
-    console.error("Error fetching team achievement totals:", error);
-    throw new Error(`Failed to fetch team achievement totals: ${error.message}`);
+  if (achievementsResult.error) {
+    console.error("Error fetching team achievement totals:", achievementsResult.error);
+    throw new Error(
+      `Failed to fetch team achievement totals: ${achievementsResult.error.message}`
+    );
   }
 
   const byTeam: Record<number, number> = {};
-  for (const row of data ?? []) {
+  for (const row of achievementsResult.data ?? []) {
     byTeam[row.team_id] = (byTeam[row.team_id] ?? 0) + (row.xp ?? 0);
+  }
+  if (!tempResult.error) {
+    for (const row of tempResult.data ?? []) {
+      byTeam[row.team_id] = (byTeam[row.team_id] ?? 0) + (row.xp ?? 0);
+    }
+  } else {
+    console.error("Error fetching temporary submission totals:", tempResult.error);
   }
   return byTeam;
 };

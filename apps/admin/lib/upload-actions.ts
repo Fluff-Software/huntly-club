@@ -56,6 +56,17 @@ export async function uploadActivityImage(
   return uploadImage(formData, "activity-images", "activities");
 }
 
+export async function uploadTemporarySubmissionPhoto(
+  formData: FormData
+): Promise<{ url?: string; error?: string }> {
+  const activityId = (formData.get("activityId") as string) || "misc";
+  return uploadImage(
+    formData,
+    "temporary-submission-photos",
+    `activities/${activityId}`
+  );
+}
+
 export async function uploadCategoryIcon(
   formData: FormData
 ): Promise<{ url?: string; error?: string }> {

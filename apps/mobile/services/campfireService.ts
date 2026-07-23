@@ -51,6 +51,7 @@ export type CampfireSessionRow = {
   duration: number | null;
   description: string | null;
   thumbnail_url: string | null;
+  show_viewer_count?: boolean;
 };
 
 export type CampfireTrackRow = {
@@ -111,7 +112,7 @@ export const CAMPFIRE_BUILTIN_CAPTAINS: CaptainOption[] = [
 ];
 
 const SESSION_COLUMNS =
-  "id, title, status, scheduled_at, live_started_at, live_ended_at, duration, description, thumbnail_url";
+  "id, title, status, scheduled_at, live_started_at, live_ended_at, duration, description, thumbnail_url, show_viewer_count";
 
 /** Device clock + offset from last successful `get_server_now` RPC. */
 let serverTimeOffsetMs: number | null = null;
@@ -222,6 +223,24 @@ export function isCampfireSessionBroadcasting(
   const startedMs = Date.parse(session.live_started_at);
   if (Number.isNaN(startedMs)) return true;
   return nowMs < startedMs + session.duration;
+}
+
+export function shouldShowCampfireViewerCount(
+  session: Pick<CampfireSessionRow, "show_viewer_count"> | null | undefined
+): boolean {
+  return session?.show_viewer_count ?? true;
+}
+
+export function resolveCampfireShowViewerCount(
+  bundle: CampfireSessionBundle | null,
+  waitingSession: CampfireSessionRow | null
+): boolean {
+  const sessionId = bundle?.session.id ?? waitingSession?.id ?? null;
+  if (sessionId == null) return true;
+  if (waitingSession?.id === sessionId) {
+    return shouldShowCampfireViewerCount(waitingSession);
+  }
+  return shouldShowCampfireViewerCount(bundle?.session);
 }
 
 /**
@@ -377,6 +396,8 @@ export type CampfireTileRefreshResult = {
   scheduledAtMs: number | null;
   countdownMs: number;
   preloadSession: CampfireSessionRow | null;
+  /** Most recent past session available to replay, or null if none exist yet. */
+  replaySession: CampfireSessionRow | null;
 };
 
 /**
@@ -391,13 +412,15 @@ export async function fetchCampfireTileRefresh(): Promise<CampfireTileRefreshRes
       scheduledAtMs: null,
       countdownMs: 0,
       preloadSession: live,
+      replaySession: null,
     };
   }
 
   const nowMs = await resolveServerNowMs();
-  const [next, starting] = await Promise.all([
+  const [next, starting, replaySession] = await Promise.all([
     getNextScheduledSession(nowMs),
     getStartingScheduledSession(nowMs),
+    getLatestReplaySession(),
   ]);
 
   if (next?.scheduled_at) {
@@ -409,6 +432,7 @@ export async function fetchCampfireTileRefresh(): Promise<CampfireTileRefreshRes
         scheduledAtMs: at,
         countdownMs: delta,
         preloadSession: next,
+        replaySession,
       };
     }
   }
@@ -420,6 +444,7 @@ export async function fetchCampfireTileRefresh(): Promise<CampfireTileRefreshRes
       scheduledAtMs: at,
       countdownMs: Math.max(0, at - nowMs),
       preloadSession: starting,
+      replaySession,
     };
   }
 
@@ -428,6 +453,7 @@ export async function fetchCampfireTileRefresh(): Promise<CampfireTileRefreshRes
     scheduledAtMs: null,
     countdownMs: 0,
     preloadSession: null,
+    replaySession,
   };
 }
 

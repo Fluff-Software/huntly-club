@@ -396,6 +396,8 @@ export type CampfireTileRefreshResult = {
   scheduledAtMs: number | null;
   countdownMs: number;
   preloadSession: CampfireSessionRow | null;
+  /** Most recent past session available to replay, or null if none exist yet. */
+  replaySession: CampfireSessionRow | null;
 };
 
 /**
@@ -410,13 +412,15 @@ export async function fetchCampfireTileRefresh(): Promise<CampfireTileRefreshRes
       scheduledAtMs: null,
       countdownMs: 0,
       preloadSession: live,
+      replaySession: null,
     };
   }
 
   const nowMs = await resolveServerNowMs();
-  const [next, starting] = await Promise.all([
+  const [next, starting, replaySession] = await Promise.all([
     getNextScheduledSession(nowMs),
     getStartingScheduledSession(nowMs),
+    getLatestReplaySession(),
   ]);
 
   if (next?.scheduled_at) {
@@ -428,6 +432,7 @@ export async function fetchCampfireTileRefresh(): Promise<CampfireTileRefreshRes
         scheduledAtMs: at,
         countdownMs: delta,
         preloadSession: next,
+        replaySession,
       };
     }
   }
@@ -439,6 +444,7 @@ export async function fetchCampfireTileRefresh(): Promise<CampfireTileRefreshRes
       scheduledAtMs: at,
       countdownMs: Math.max(0, at - nowMs),
       preloadSession: starting,
+      replaySession,
     };
   }
 
@@ -447,6 +453,7 @@ export async function fetchCampfireTileRefresh(): Promise<CampfireTileRefreshRes
     scheduledAtMs: null,
     countdownMs: 0,
     preloadSession: null,
+    replaySession,
   };
 }
 

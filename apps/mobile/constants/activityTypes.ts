@@ -3,6 +3,9 @@ import type { MaterialIcons } from "@expo/vector-icons";
 
 export type ActivityTypeKey = "walk" | "cycle" | "mission" | "hunt";
 
+/** Scavenger hunt catalog data hasn't been merged into production yet — keep the activity hidden from users until it has. */
+export const SCAVENGER_HUNTS_ENABLED = false;
+
 export type ActivityTypeMeta = {
   key: ActivityTypeKey;
   label: string;
@@ -58,7 +61,8 @@ export const ACTIVITY_TYPES: ActivityTypeMeta[] = [
 ];
 
 export function getAvailableActivityTypes(platformOS: string): ActivityTypeMeta[] {
-  return ACTIVITY_TYPES.filter(
-    (type) => !type.unavailableOn?.includes(platformOS as "ios" | "android")
-  );
+  return ACTIVITY_TYPES.filter((type) => {
+    if (type.key === "hunt" && !SCAVENGER_HUNTS_ENABLED) return false;
+    return !type.unavailableOn?.includes(platformOS as "ios" | "android");
+  });
 }

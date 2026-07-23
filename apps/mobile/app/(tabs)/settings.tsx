@@ -22,9 +22,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUser } from "@/contexts/UserContext";
 // import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { useRouter } from "expo-router";
+import { useNavigationReturn } from "@/contexts/NavigationReturnContext";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { MaterialIcons } from "@expo/vector-icons";
-import { BackHeader } from "@/components/BackHeader";
+import { ChildScreenLayout } from "@/components/ChildScreenLayout";
 import {
   requestAccountRemoval,
   getPendingRemovalRequest,
@@ -46,6 +47,7 @@ export default function SettingsScreen() {
   // const { userData, updateWeeklyEmail, updateStartMissionStep } = useUser();
   const { userData, updateWeeklyEmail } = useUser();
   const router = useRouter();
+  const { pushWithReturn } = useNavigationReturn();
   const { scaleW } = useLayoutScale();
   // const signUpContext = useSignUpOptional();
   // const setShowPostSignUpWelcome = signUpContext?.setShowPostSignUpWelcome;
@@ -171,7 +173,7 @@ export default function SettingsScreen() {
 
   // const handleShowTutorialAgain = async () => {
   //   setReplayTutorialRequested?.(true);
-  //   setTutorialStep?.("intro");
+  //   setTutorialStep?.("welcome");
   //   setShowPostSignUpWelcome?.(true);
   //   await updateStartMissionStep(0);
   //   router.replace("/onboarding/welcome");
@@ -215,10 +217,7 @@ export default function SettingsScreen() {
         headerBar: {
           backgroundColor: COLORS.darkGreen },
         scrollView: { flex: 1 },
-        scrollContent: {
-          paddingHorizontal: scaleW(24),
-          paddingTop: scaleW(8),
-          paddingBottom: scaleW(32) },
+        scrollContent: {},
         sectionTitle: {
           fontSize: scaleW(18),
           fontWeight: "600",
@@ -370,13 +369,10 @@ export default function SettingsScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-      <ScrollView
-        style={styles.scrollView}
+    <>
+      <ChildScreenLayout
+        backgroundColor={COLORS.darkGreen}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-        overScrollMode="never"
       >
         <Animated.View>
           <ThemedText type="heading" style={styles.sectionTitle}>Your account</ThemedText>
@@ -502,7 +498,7 @@ export default function SettingsScreen() {
           <Animated.View style={privacyAnimatedStyle}>
             <Pressable
               style={styles.privacyButton}
-              onPress={() => router.push("/privacy")}
+              onPress={() => pushWithReturn("/privacy")}
               onPressIn={() => {
                 privacyScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
               }}
@@ -536,7 +532,7 @@ export default function SettingsScreen() {
             )}
           </Pressable>
         </Animated.View>
-      </ScrollView>
+      </ChildScreenLayout>
 
       <Modal
         visible={showRemovalModal}
@@ -595,6 +591,6 @@ export default function SettingsScreen() {
           </Pressable>
         </KeyboardAvoidingView>
       </Modal>
-    </SafeAreaView>
+    </>
   );
 }

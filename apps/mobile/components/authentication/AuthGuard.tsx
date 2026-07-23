@@ -7,7 +7,6 @@ import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { getProfiles, getUserData } from "@/services/profileService";
 import type { Profile } from "@/services/profileService";
 import { REQUIRE_EMAIL_VERIFICATION } from "@/constants/auth";
-
 const LOADER_BACKGROUND = "#4F6F52";
 
 function routeAfterSignupCheck(
@@ -39,11 +38,12 @@ type AuthGuardProps = {
 
 export function AuthGuard({ children }: AuthGuardProps) {
   const { user, session, loading } = useAuth();
-  const { subscriptionInfo, isLoading: purchasesLoading } = usePurchases();
+  const { hasAccess, isLoading: purchasesLoading } = usePurchases();
   const segments = useSegments();
   const router = useRouter();
   const signUpContext = useSignUpOptional();
   const [checkingProfiles, setCheckingProfiles] = useState(true);
+  const onTabs = segments[0] === "(tabs)";
 
   useEffect(() => {
     const inAuthGroup = segments[0] === "auth";
@@ -122,8 +122,12 @@ export function AuthGuard({ children }: AuthGuardProps) {
             router.replace("/sign-up/team");
             return;
           }
-          // No mission-first onboarding redirects. Signed-in users with complete setup
-          // can continue navigating normally.
+          // Require active subscription (or grandfathered access) for signed-in users
+          // with complete setup to access the app.
+          const inSubscriptionRequired = segments[0] === "subscription-required";
+          if (!inSubscriptionRequired && !purchasesLoading && !hasAccess) {
+            router.replace("/subscription-required");
+          }
         })
         .catch((error) => {
           console.error("Error checking profiles/user data:", error);
@@ -143,32 +147,19 @@ export function AuthGuard({ children }: AuthGuardProps) {
       return;
     }
 
-    // Require active subscription for signed-in users to access the app
-    const inSubscriptionRequired = segments[0] === "subscription-required";
-    if (
-      user &&
-      !inUnauthFlow &&
-      !inSubscriptionRequired &&
-      !purchasesLoading &&
-      !subscriptionInfo.isSubscribed
-    ) {
-      router.replace("/subscription-required");
-      return;
-    }
-
     setCheckingProfiles(false);
-  }, [user, session, loading, segments, subscriptionInfo.isSubscribed, purchasesLoading]);
+  }, [user, session, loading, segments, hasAccess, purchasesLoading]);
 
   // We still validate profiles/userData during normal navigation, but we don't want a blocking
   // full-screen spinner during tab switches. Keep the UI responsive and only block during
   // the initial auth bootstrap / non-tab flows.
-  const showOverlay = loading || (checkingProfiles && segments[0] !== "(tabs)");
+  const showOverlay = loading || (checkingProfiles && !onTabs);
 
   return (
     <View style={styles.wrapper}>
       {children}
       {showOverlay && (
-        <View style={styles.overlay} pointerEvents="none">
+        <View style={styles.overlay} pointerEvents="auto">
           <ActivityIndicator size="large" color={LOADER_SPINNER} />
         </View>
       )}

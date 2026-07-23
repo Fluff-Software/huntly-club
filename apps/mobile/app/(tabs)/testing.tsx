@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { View, TextInput, StyleSheet, Alert, Platform, Image } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/ui/Button";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
@@ -8,6 +7,7 @@ import { usePlayer } from "@/contexts/PlayerContext";
 import { useUser } from "@/contexts/UserContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { submitFeedback } from "../../services/feedbackService";
+import { ChildScreenLayout } from "@/components/ChildScreenLayout";
 
 const TESTING_IMAGE = require("@/assets/images/testing.png");
 
@@ -48,20 +48,17 @@ export default function TestingScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+    <ChildScreenLayout variant="light" backgroundColor="#F4F0EB">
       <View
         style={[
-          styles.content,
-          { paddingHorizontal: scaleW(24), paddingTop: scaleW(2) },
+          styles.inner,
+          {
+            maxWidth: isTablet ? Math.min(scaleW(420), width * 0.85) : scaleW(360),
+            alignSelf: "center",
+            width: "100%",
+          },
         ]}
       >
-        <View
-          style={[
-            styles.inner,
-            {
-              maxWidth: isTablet ? Math.min(scaleW(420), width * 0.85) : scaleW(360) },
-          ]}
-        >
           <Image
             source={TESTING_IMAGE}
             style={{
@@ -127,8 +124,7 @@ export default function TestingScreen() {
             alongside your message so we can understand and fix issues.
           </ThemedText>
         </View>
-      </View>
-    </SafeAreaView>
+    </ChildScreenLayout>
   );
 }
 

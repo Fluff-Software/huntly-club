@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Pressable,
   ActivityIndicator,
-  Linking,
   Image } from "react-native";
 import Animated, {
   FadeInDown } from "react-native-reanimated";
@@ -15,12 +14,13 @@ import { StatCard } from "@/components/StatCard";
 import { ParentPinModal } from "@/components/ParentPinModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUser } from "@/contexts/UserContext";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
-import { useParentResources } from "@/hooks/useParentResources";
 import { supabase } from "@/services/supabase";
 import { getCategories } from "@/services/categoriesService";
 import { MaterialIcons } from "@expo/vector-icons";
+import { ChildScreenLayout } from "@/components/ChildScreenLayout";
+import { useNavigationReturn } from "@/contexts/NavigationReturnContext";
 
 const COLORS = {
   darkGreen: "#4F6F52",
@@ -42,7 +42,7 @@ interface CategoryAnalytics {
 export default function ParentsScreen() {
   const { user } = useAuth();
   const { daysPlayed, pointsEarned } = useUser();
-  const router = useRouter();
+  const { goBack } = useNavigationReturn();
   const { scaleW } = useLayoutScale();
   const [hasExplorers, setHasExplorers] = useState(false);
   const [categoryAnalytics, setCategoryAnalytics] = useState<
@@ -57,8 +57,6 @@ export default function ParentsScreen() {
   // const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(true);
-
-  const { resources, loading: resourcesLoading } = useParentResources();
 
   useEffect(() => {
     if (!user?.id) return;
@@ -177,7 +175,7 @@ export default function ParentsScreen() {
   const handlePinCancel = () => {
     setShowPinModal(false);
     setIsAuthenticated(false);
-    router.back();
+    goBack();
   };
 
   const styles = useMemo(
@@ -189,10 +187,7 @@ export default function ParentsScreen() {
         headerBar: {
           backgroundColor: COLORS.darkGreen },
         scrollView: { flex: 1 },
-        scrollContent: {
-          paddingHorizontal: scaleW(30),
-          paddingTop: scaleW(8),
-          paddingBottom: scaleW(32) },
+        scrollContent: {},
         sectionTitle: {
           fontSize: scaleW(18),
           fontWeight: "600",
@@ -251,32 +246,6 @@ export default function ParentsScreen() {
           fontSize: scaleW(15),
           fontWeight: "600",
           color: COLORS.white },
-        resourceCard: {
-          backgroundColor: COLORS.cardGray,
-          padding: scaleW(16),
-          marginBottom: scaleW(12) },
-        resourceTitle: {
-          fontSize: scaleW(16),
-          fontWeight: "600",
-          color: COLORS.charcoal,
-          marginBottom: scaleW(6) },
-        resourceDesc: {
-          fontSize: scaleW(14),
-          color: COLORS.charcoal,
-          marginBottom: scaleW(12) },
-        resourceButton: {
-          flexDirection: "row",
-          alignSelf: "flex-end",
-          alignItems: "center",
-          backgroundColor: COLORS.cream,
-          paddingVertical: scaleW(10),
-          paddingHorizontal: scaleW(16),
-          borderRadius: scaleW(24),
-          gap: scaleW(6) },
-        resourceButtonText: {
-          fontSize: scaleW(14),
-          fontWeight: "600",
-          color: COLORS.charcoal },
         loadingWrap: {
           flex: 1,
           justifyContent: "center",
@@ -318,9 +287,11 @@ export default function ParentsScreen() {
 
   if (loading && isAuthenticated) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-        <View style={[styles.scrollContent, { flex: 1 }]}>
-          <View style={styles.loadingWrap}>
+      <ChildScreenLayout
+        backgroundColor={COLORS.darkGreen}
+        contentContainerStyle={{ flex: 1 }}
+      >
+        <View style={styles.loadingWrap}>
           <ActivityIndicator
             size="large"
             color={COLORS.white}
@@ -330,16 +301,17 @@ export default function ParentsScreen() {
             Loading explorer insights...
           </ThemedText>
         </View>
-        </View>
-      </SafeAreaView>
+      </ChildScreenLayout>
     );
   }
 
   if (!user) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-        <View style={[styles.scrollContent, { flex: 1 }]}>
-          <View style={styles.emptyWrap}>
+      <ChildScreenLayout
+        backgroundColor={COLORS.darkGreen}
+        contentContainerStyle={{ flex: 1 }}
+      >
+        <View style={styles.emptyWrap}>
           <View style={styles.emptyIcon}>
             <ThemedText style={{ fontSize: scaleW(28) }}>🔒</ThemedText>
           </View>
@@ -348,36 +320,42 @@ export default function ParentsScreen() {
             Please sign in to view explorer insights
           </ThemedText>
         </View>
-        </View>
-      </SafeAreaView>
+      </ChildScreenLayout>
     );
   }
 
   if (showPinModal) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator
-            size="large"
-            color={COLORS.white}
-            style={styles.loadingSpinner}
-          />
-          <ThemedText style={styles.loadingText}>Loading...</ThemedText>
-        </View>
+      <>
+        <ChildScreenLayout
+          backgroundColor={COLORS.darkGreen}
+          contentContainerStyle={{ flex: 1 }}
+        >
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator
+              size="large"
+              color={COLORS.white}
+              style={styles.loadingSpinner}
+            />
+            <ThemedText style={styles.loadingText}>Loading...</ThemedText>
+          </View>
+        </ChildScreenLayout>
         <ParentPinModal
           visible={showPinModal}
           onSuccess={handlePinSuccess}
           onCancel={handlePinCancel}
         />
-      </SafeAreaView>
+      </>
     );
   }
 
   if (!hasExplorers) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-        <View style={[styles.scrollContent, { flex: 1 }]}>
-          <View style={styles.emptyWrap}>
+      <ChildScreenLayout
+        backgroundColor={COLORS.darkGreen}
+        contentContainerStyle={{ flex: 1 }}
+      >
+        <View style={styles.emptyWrap}>
           <View style={styles.emptyIcon}>
             <ThemedText style={{ fontSize: scaleW(28) }}>👥</ThemedText>
           </View>
@@ -386,8 +364,7 @@ export default function ParentsScreen() {
             Create some explorers to see their progress and insights
           </ThemedText>
         </View>
-        </View>
-      </SafeAreaView>
+      </ChildScreenLayout>
     );
   }
 
@@ -399,14 +376,10 @@ export default function ParentsScreen() {
   ];
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-        overScrollMode="never"
-      >
+    <ChildScreenLayout
+      backgroundColor={COLORS.darkGreen}
+      contentContainerStyle={styles.scrollContent}
+    >
         {/* Progress – summary stats */}
         <Animated.View entering={FadeInDown.duration(500).delay(0)}>
           <ThemedText type="heading" style={styles.sectionTitle}>Progress</ThemedText>
@@ -482,51 +455,6 @@ export default function ParentsScreen() {
             </>
           )}
         </Animated.View>
-
-        {/* Resources */}
-        <Animated.View entering={FadeInDown.duration(500).delay(280)}>
-          <ThemedText type="heading" style={[styles.sectionTitle, { marginTop: scaleW(24) }]}>
-            Resources
-          </ThemedText>
-          {resourcesLoading ? (
-            <View style={styles.resourceCard}>
-              <ActivityIndicator size="small" color={COLORS.charcoal} />
-              <ThemedText style={[styles.resourceDesc, { marginTop: scaleW(8) }]}>
-                Loading resources...
-              </ThemedText>
-            </View>
-          ) : resources.length === 0 ? (
-            <View style={styles.resourceCard}>
-              <ThemedText style={styles.resourceDesc}>No resources yet.</ThemedText>
-            </View>
-          ) : (
-            resources.map((resource) => (
-              <View key={resource.id} style={styles.resourceCard}>
-                <ThemedText type="heading" style={styles.resourceTitle}>
-                  {resource.title}
-                </ThemedText>
-                {resource.description ? (
-                  <ThemedText style={styles.resourceDesc}>{resource.description}</ThemedText>
-                ) : null}
-                <Pressable
-                  style={styles.resourceButton}
-                  onPress={() => {
-                    if (resource.file_url) {
-                      Linking.openURL(resource.file_url);
-                    }
-                  }}
-                >
-                  <ThemedText type="heading" style={styles.resourceButtonText}>
-                    Download
-                  </ThemedText>
-                  <MaterialIcons name="file-download" size={scaleW(18)} color={COLORS.charcoal} />
-                </Pressable>
-              </View>
-            ))
-          )}
-        </Animated.View>
-
-      </ScrollView>
-    </SafeAreaView>
+    </ChildScreenLayout>
   );
 }

@@ -1,6 +1,9 @@
 import * as FileSystem from "expo-file-system/legacy";
+import { Image as ExpoImage } from "expo-image";
 import { decode as decodeBase64 } from "base64-arraybuffer";
 import { supabase } from "./supabase";
+
+const JOURNAL_INITIAL_CARD_IMAGE_PRELOAD_COUNT = 3;
 
 export const JOURNAL_PHOTO_BUCKET = "journal-photos";
 export const JOURNAL_XP_PER_ENTRY = 5;
@@ -9,6 +12,7 @@ export const ACTIVITY_TAGS = [
   "Walk",
   "Cycle",
   "Mission",
+  "Hunt",
   "Nature spotting",
   "Den building",
   "Water",
@@ -116,6 +120,21 @@ export type CycleJournalMeta = {
   distanceMeters: number;
   route: { latitude: number; longitude: number }[];
   selectedProfiles: { id: number; nickname: string }[];
+  photoUrls: string[];
+};
+
+export type HuntJournalMeta = {
+  type: "hunt";
+  questId: string;
+  questName: string;
+  itemsFoundThisSession: number;
+  /** Names of items found in this session only. */
+  foundItemNames?: string[];
+  xp: number;
+  complete: boolean;
+  endedAt: string;
+  selectedProfiles: { id: number; nickname: string }[];
+  /** Photos taken for items found in this session only. */
   photoUrls: string[];
 };
 
@@ -295,6 +314,109 @@ export async function createCycleJournalEntry(input: {
   }
 
   return newEntry as JournalEntry;
+}
+
+/** Logs a scavenger hunt session to the journal. XP is awarded by scavenger_end_session, not here. */
+export async function createHuntJournalEntry(input: {
+  userId: string;
+  profileId: number;
+  questId: string;
+  questName: string;
+  itemsFoundThisSession: number;
+  foundItemNames: string[];
+  xp: number;
+  complete: boolean;
+  endedAt: string;
+  entryDate: string;
+  selectedProfiles: { id: number; nickname: string }[];
+  photoUrls: string[];
+}): Promise<JournalEntry> {
+  const meta: HuntJournalMeta = {
+    type: "hunt",
+    questId: input.questId,
+    questName: input.questName,
+    itemsFoundThisSession: input.itemsFoundThisSession,
+    foundItemNames: input.foundItemNames,
+    xp: input.xp,
+    complete: input.complete,
+    endedAt: input.endedAt,
+    selectedProfiles: input.selectedProfiles,
+    photoUrls: input.photoUrls,
+  };
+
+  const { data: newEntry, error: insertError } = await supabase
+    .from("journal_entries")
+    .insert({
+      user_id: input.userId,
+      profile_id: input.profileId,
+      title: input.questName,
+      notes: JSON.stringify(meta),
+      photo_url: input.photoUrls[0] ?? null,
+      activity_tag: "Hunt",
+      entry_date: input.entryDate,
+    })
+    .select("*, profile:profiles!inner(nickname)")
+    .single();
+
+  if (insertError) {
+    throw new Error(`Failed to create hunt journal entry: ${insertError.message}`);
+  }
+
+  return newEntry as JournalEntry;
+}
+
+function parseTrackedMetaFromNotes(
+  notes: string | null
+): WalkJournalMeta | CycleJournalMeta | null {
+  if (!notes?.trim().startsWith("{")) return null;
+  try {
+    const obj = JSON.parse(notes) as WalkJournalMeta | CycleJournalMeta;
+    if (
+      obj &&
+      (obj.type === "walk" || obj.type === "cycle") &&
+      Array.isArray(obj.route)
+    ) {
+      return obj;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/** First visible image for a timeline card (thumbnail or first mission polaroid). */
+export function getJournalTimelineItemPreviewImageUrl(
+  item: JournalTimelineItem
+): string | null {
+  if (item.type === "mission") {
+    return item.mission.photos[0] ?? null;
+  }
+  const tracked = parseTrackedMetaFromNotes(item.entry.notes);
+  if (tracked?.photoUrls[0]) return tracked.photoUrls[0];
+  return item.entry.photo_url;
+}
+
+/** Warm expo-image cache for the first N timeline cards before revealing the journal. */
+export async function preloadJournalTimelineCardImages(
+  items: JournalTimelineItem[],
+  cardCount: number = JOURNAL_INITIAL_CARD_IMAGE_PRELOAD_COUNT
+): Promise<void> {
+  const uris = [
+    ...new Set(
+      items
+        .slice(0, cardCount)
+        .map(getJournalTimelineItemPreviewImageUrl)
+        .filter(
+          (uri): uri is string => typeof uri === "string" && uri.length > 0
+        )
+    ),
+  ];
+  if (uris.length === 0) return;
+  await Promise.all(
+    uris.map((uri) =>
+      ExpoImage.prefetch(uri, "memory-disk").catch(() => undefined)
+    )
+  );
 }
 
 export async function getJournalTimeline(

@@ -72,7 +72,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         onNavigate={() => setSidebarOpen(false)}
       />
 
-      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-4 pt-14 md:p-8 md:pt-8">
+      <main
+        data-app-scroll
+        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-y-contain p-4 pt-14 md:p-8 md:pt-8"
+      >
         {children}
       </main>
     </div>

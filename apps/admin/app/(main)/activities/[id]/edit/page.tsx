@@ -5,6 +5,11 @@ import { getCategories } from "@/app/(main)/categories/actions";
 import { Button } from "@/components/Button";
 import { ActivityForm } from "../../ActivityForm";
 import { DeleteMissionButton } from "../../DeleteMissionButton";
+import { TemporarySubmissionsSection } from "../../TemporarySubmissionsSection";
+import {
+  listTeams,
+  listTemporarySubmissions,
+} from "../../temporary-submissions-actions";
 
 async function getActivity(id: number) {
   const supabase = createServerSupabaseClient();
@@ -32,10 +37,13 @@ export default async function EditActivityPage({
   const activityId = parseInt(id, 10);
   if (Number.isNaN(activityId)) notFound();
 
-  const [activity, categoriesList] = await Promise.all([
-    getActivity(activityId),
-    getCategories(),
-  ]);
+  const [activity, categoriesList, teams, temporarySubmissions] =
+    await Promise.all([
+      getActivity(activityId),
+      getCategories(),
+      listTeams(),
+      listTemporarySubmissions(activityId),
+    ]);
   if (!activity) notFound();
 
   const categoryOptions = categoriesList.map((c) => ({
@@ -50,7 +58,7 @@ export default async function EditActivityPage({
   }
 
   return (
-    <div>
+    <div className="max-w-2xl pb-4">
       <h1 className="mb-8 text-2xl font-semibold text-stone-900">
         Edit mission: {activity.title}
       </h1>
@@ -75,13 +83,21 @@ export default async function EditActivityPage({
           optional_items: activity.optional_items ?? null,
           preparation_message: activity.preparation_message ?? null,
           reminder_message: activity.reminder_message ?? null,
-          prep_checklist: Array.isArray(activity.prep_checklist) ? activity.prep_checklist : null,
+          prep_checklist: Array.isArray(activity.prep_checklist)
+            ? activity.prep_checklist
+            : null,
           steps: Array.isArray(activity.steps) ? activity.steps : null,
           debrief_heading: activity.debrief_heading ?? null,
           debrief_photo_label: activity.debrief_photo_label ?? null,
           debrief_question_1: activity.debrief_question_1 ?? null,
           debrief_question_2: activity.debrief_question_2 ?? null,
+          release_date: activity.release_date ?? null,
         }}
+      />
+      <TemporarySubmissionsSection
+        activityId={activityId}
+        initialSubmissions={temporarySubmissions}
+        teams={teams}
       />
       <div className="mt-4 flex items-center justify-between">
         <Button href="/activities" variant="ghost" size="md">

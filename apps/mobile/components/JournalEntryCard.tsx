@@ -5,7 +5,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { ActivityMap, regionForRoute } from "@/components/activity-map";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
-import type { CycleJournalMeta, JournalEntry, WalkJournalMeta } from "@/services/journalService";
+import type { CycleJournalMeta, HuntJournalMeta, JournalEntry, WalkJournalMeta } from "@/services/journalService";
 
 const PARCHMENT = "#FFFDF7";
 const PARCHMENT_BORDER = "#D9C9A3";
@@ -22,12 +22,19 @@ function formatEntryDate(iso: string): string {
   return iso;
 }
 
-function tryParseTrackedMeta(notes: string | null): WalkJournalMeta | CycleJournalMeta | null {
+function tryParseTrackedMeta(
+  notes: string | null
+): WalkJournalMeta | CycleJournalMeta | HuntJournalMeta | null {
   if (!notes) return null;
   if (!notes.trim().startsWith("{")) return null;
   try {
-    const obj = JSON.parse(notes) as WalkJournalMeta | CycleJournalMeta;
-    if (obj && (obj.type === "walk" || obj.type === "cycle") && Array.isArray(obj.route)) return obj;
+    const obj = JSON.parse(notes) as WalkJournalMeta | CycleJournalMeta | HuntJournalMeta;
+    if (!obj || typeof obj !== "object" || !("type" in obj)) return null;
+    if (obj.type === "walk" || obj.type === "cycle") {
+      if (Array.isArray(obj.route)) return obj;
+      return null;
+    }
+    if (obj.type === "hunt" && typeof obj.questName === "string") return obj;
     return null;
   } catch {
     return null;
@@ -63,16 +70,24 @@ export function JournalEntryCard({
   const { scaleW } = useLayoutScale();
   const trackedMeta = useMemo(() => tryParseTrackedMeta(entry.notes), [entry.notes]);
   const [previewUri, setPreviewUri] = useState<string | null>(null);
+  const routeMeta =
+    trackedMeta && (trackedMeta.type === "walk" || trackedMeta.type === "cycle")
+      ? trackedMeta
+      : null;
+  const huntMeta = trackedMeta?.type === "hunt" ? trackedMeta : null;
   const trackedRegion = useMemo(() => {
-    if (!trackedMeta || trackedMeta.route.length === 0) return null;
-    return regionForRoute(trackedMeta.route);
-  }, [trackedMeta]);
+    if (!routeMeta || routeMeta.route.length === 0) return null;
+    return regionForRoute(routeMeta.route);
+  }, [routeMeta]);
   const trackedDurationMs = useMemo(() => {
-    if (!trackedMeta) return 0;
-    const started = new Date(trackedMeta.startedAt).getTime();
-    const ended = new Date(trackedMeta.endedAt).getTime();
+    if (!routeMeta) return 0;
+    const started = new Date(routeMeta.startedAt).getTime();
+    const ended = new Date(routeMeta.endedAt).getTime();
     return Math.max(0, ended - started);
-  }, [trackedMeta]);
+  }, [routeMeta]);
+  const xpLabel = huntMeta
+    ? `+${Math.max(0, huntMeta.xp)} XP`
+    : "+5 XP";
 
   const styles = useMemo(
     () =>
@@ -241,35 +256,35 @@ export function JournalEntryCard({
             </ThemedText>
           </View>
 
-          {trackedMeta ? (
+          {routeMeta ? (
             <>
               <ThemedText style={styles.title} numberOfLines={2}>
-                {trackedMeta.type === "cycle" ? "Cycle" : "Walk"}
+                {routeMeta.type === "cycle" ? "Cycle" : "Walk"}
               </ThemedText>
               <View style={styles.walkStatsRow}>
                 <View style={styles.walkStatChip}>
                   <ThemedText style={styles.walkStatLabel}>Distance</ThemedText>
-                  <ThemedText style={styles.walkStatValue}>{formatDistance(trackedMeta.distanceMeters)}</ThemedText>
+                  <ThemedText style={styles.walkStatValue}>{formatDistance(routeMeta.distanceMeters)}</ThemedText>
                 </View>
                 <View style={styles.walkStatChip}>
                   <ThemedText style={styles.walkStatLabel}>Time</ThemedText>
                   <ThemedText style={styles.walkStatValue}>{formatDurationMs(trackedDurationMs)}</ThemedText>
                 </View>
-                {"steps" in trackedMeta && (
+                {"steps" in routeMeta && (
                   <View style={styles.walkStatChip}>
                     <ThemedText style={styles.walkStatLabel}>Steps</ThemedText>
                     <ThemedText style={styles.walkStatValue}>
-                      {trackedMeta.steps == null ? "—" : `${trackedMeta.steps}`}
+                      {routeMeta.steps == null ? "—" : `${routeMeta.steps}`}
                     </ThemedText>
                   </View>
                 )}
               </View>
-              {trackedRegion && trackedMeta.route.length >= 2 && (
+              {trackedRegion && routeMeta.route.length >= 2 && (
                 <View style={styles.walkMapWrap}>
                   <ActivityMap
                     style={styles.walkMap}
                     initialRegion={trackedRegion}
-                    route={trackedMeta.route}
+                    route={routeMeta.route}
                     fitRoute
                     routeStrokeWidth={5}
                     scrollEnabled={false}
@@ -280,18 +295,70 @@ export function JournalEntryCard({
                   />
                 </View>
               )}
-              {trackedMeta.selectedProfiles.length > 0 && (
+              {routeMeta.selectedProfiles.length > 0 && (
                 <View style={styles.chipRow}>
-                  {trackedMeta.selectedProfiles.slice(0, 6).map((p) => (
+                  {routeMeta.selectedProfiles.slice(0, 6).map((p) => (
                     <View key={p.id} style={styles.chip}>
                       <ThemedText style={styles.chipText}>{p.nickname || "Explorer"}</ThemedText>
                     </View>
                   ))}
                 </View>
               )}
-              {trackedMeta.photoUrls.length > 0 && (
+              {routeMeta.photoUrls.length > 0 && (
                 <View style={styles.walkPhotoRow}>
-                  {trackedMeta.photoUrls.slice(0, 4).map((url) => (
+                  {routeMeta.photoUrls.slice(0, 4).map((url) => (
+                    <Pressable
+                      key={url}
+                      onPress={() => setPreviewUri(url)}
+                      accessibilityRole="button"
+                      accessibilityLabel="View photo"
+                    >
+                      <Image source={{ uri: url }} style={styles.walkPhoto} resizeMode="cover" />
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </>
+          ) : huntMeta ? (
+            <>
+              <ThemedText style={styles.title} numberOfLines={2}>
+                {huntMeta.questName}
+              </ThemedText>
+              <View style={styles.walkStatsRow}>
+                <View style={styles.walkStatChip}>
+                  <ThemedText style={styles.walkStatLabel}>Found</ThemedText>
+                  <ThemedText style={styles.walkStatValue}>
+                    {huntMeta.itemsFoundThisSession}
+                  </ThemedText>
+                </View>
+                <View style={styles.walkStatChip}>
+                  <ThemedText style={styles.walkStatLabel}>Status</ThemedText>
+                  <ThemedText style={styles.walkStatValue}>
+                    {huntMeta.complete ? "Complete" : "In progress"}
+                  </ThemedText>
+                </View>
+              </View>
+              {(huntMeta.foundItemNames?.length ?? 0) > 0 && (
+                <View style={styles.chipRow}>
+                  {huntMeta.foundItemNames.slice(0, 8).map((name) => (
+                    <View key={name} style={styles.chip}>
+                      <ThemedText style={styles.chipText}>{name}</ThemedText>
+                    </View>
+                  ))}
+                </View>
+              )}
+              {huntMeta.selectedProfiles.length > 0 && (
+                <View style={styles.chipRow}>
+                  {huntMeta.selectedProfiles.slice(0, 6).map((p) => (
+                    <View key={p.id} style={styles.chip}>
+                      <ThemedText style={styles.chipText}>{p.nickname || "Explorer"}</ThemedText>
+                    </View>
+                  ))}
+                </View>
+              )}
+              {huntMeta.photoUrls.length > 0 && (
+                <View style={styles.walkPhotoRow}>
+                  {huntMeta.photoUrls.slice(0, 4).map((url) => (
                     <Pressable
                       key={url}
                       onPress={() => setPreviewUri(url)}
@@ -334,7 +401,7 @@ export function JournalEntryCard({
             </ThemedText>
             <View style={styles.xpRow}>
               <MaterialIcons name="star" size={scaleW(14)} color={AMBER} />
-              <ThemedText style={styles.xpText}>+5 XP</ThemedText>
+              <ThemedText style={styles.xpText}>{xpLabel}</ThemedText>
             </View>
           </View>
         </View>

@@ -7,7 +7,6 @@ import {
   Text,
   StyleSheet,
   Dimensions,
-  type ImageSourcePropType,
   ActivityIndicator,
   InteractionManager } from "react-native";
 import ConfettiCannon from "react-native-confetti-cannon";
@@ -25,10 +24,14 @@ import { useRouter, useNavigation, useLocalSearchParams } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { MissionCard } from "@/components/MissionCard";
-import { getActivityById, getActivityImageSource } from "@/services/packService";
+import { getActivityById } from "@/services/packService";
 import type { MissionCardData } from "@/constants/missionCards";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { hasOtherApprovedMissionPhotos } from "@/services/activityProgressService";
+import {
+  buildRewardCardSnapshot,
+  missionCardFromSnapshot,
+} from "@/utils/missionRewardParams";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -44,8 +47,6 @@ const ACHIEVEMENT_ICON_BG = ["#F7A676", "#7FAF8A", "#A8D5E5", "#D4A05A", "#C97B6
 const BADGE_ICON = require("@/assets/images/badge.png");
 const CELEBRATE_ICON = require("@/assets/images/celebrate.png");
 
-const DEFAULT_CARD_IMAGE = require("@/assets/images/laser-fortress.jpg");
-
 const WELL_DONE_HEADLINES = [
   "Well done!",
   "You did it!",
@@ -60,104 +61,124 @@ type UnlockedBadgePayload = {
   profile_id: number;
 };
 
+type RewardRouteParams = {
+  activityId?: string;
+  cardSnapshot?: string;
+  achievements?: string;
+  unlockedBadges?: string;
+};
+
+function parseAchievements(raw?: string): RewardAchievement[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as RewardAchievement[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function parseUnlockedBadges(raw?: string): UnlockedBadgePayload[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as UnlockedBadgePayload[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+const STAMP_REVEAL_DELAY_MS = 350;
+const CONFETTI_PARTICLE_COUNT = 100;
+
 export default function RewardScreen() {
   const router = useRouter();
   const navigation = useNavigation();
+  const params = useLocalSearchParams<RewardRouteParams>();
   const { scaleW } = useLayoutScale();
   const insets = useSafeAreaInsets();
   const { profiles } = usePlayer();
-  const params = useLocalSearchParams<{
-    activityId?: string;
-    achievements?: string;
-    unlockedBadges?: string;
-  }>();
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (e) => {
+      e.preventDefault();
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  const initialCard = useMemo(
+    () => missionCardFromSnapshot(params.cardSnapshot),
+    [params.cardSnapshot]
+  );
 
   const wellDoneHeadline = useMemo(
     () => WELL_DONE_HEADLINES[Math.floor(Math.random() * WELL_DONE_HEADLINES.length)],
     []
   );
 
-  const [activityCard, setActivityCard] = useState<MissionCardData | null>(null);
-  const [activityXp, setActivityXp] = useState<number | null>(null);
-  const [achievements, setAchievements] = useState<RewardAchievement[]>([]);
-  const [unlockedBadges, setUnlockedBadges] = useState<UnlockedBadgePayload[]>([]);
+  const achievements = useMemo(
+    () => parseAchievements(params.achievements),
+    [params.achievements]
+  );
+  const unlockedBadges = useMemo(
+    () => parseUnlockedBadges(params.unlockedBadges),
+    [params.unlockedBadges]
+  );
+
+  const [activityCard, setActivityCard] = useState<MissionCardData | null>(initialCard.card);
+  const [activityXp, setActivityXp] = useState<number | null>(initialCard.xp);
   const [badgeNoticeDismissed, setBadgeNoticeDismissed] = useState(false);
   const [goingHome, setGoingHome] = useState(false);
   const [showOthersButton, setShowOthersButton] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
+    if (activityCard) return;
     const activityId = params.activityId ? Number(params.activityId) : null;
     if (!activityId) return;
+    let cancelled = false;
     getActivityById(activityId)
       .then((activity) => {
-        if (!activity) return;
-        const imageSource = getActivityImageSource(activity.image) as ImageSourcePropType | null;
-        setActivityCard({
-          id: String(activity.id),
-          image: imageSource ?? DEFAULT_CARD_IMAGE,
-          title: activity.title,
-          description: activity.description ?? "" });
-        setActivityXp(activity.xp ?? null);
+        if (cancelled || !activity) return;
+        const parsed = missionCardFromSnapshot(buildRewardCardSnapshot(activity));
+        setActivityCard(parsed.card);
+        setActivityXp(parsed.xp);
       })
       .catch(() => {
-        setActivityCard(null);
-        setActivityXp(null);
-      });
-  }, [params.activityId]);
-
-  useEffect(() => {
-    const activityId = params.activityId ? Number(params.activityId) : null;
-    if (!activityId) {
-      setShowOthersButton(false);
-      return;
-    }
-    if (profiles.length === 0) {
-      setShowOthersButton(false);
-      return;
-    }
-    let cancelled = false;
-    const excludeProfileIds = profiles.map((p) => p.id);
-    hasOtherApprovedMissionPhotos(activityId, excludeProfileIds)
-      .then((hasAny) => {
-        if (cancelled) return;
-        setShowOthersButton(Boolean(hasAny));
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setShowOthersButton(false);
+        if (!cancelled) {
+          setActivityCard(null);
+          setActivityXp(null);
+        }
       });
     return () => {
       cancelled = true;
     };
+  }, [params.activityId, activityCard]);
+
+  useEffect(() => {
+    const activityId = params.activityId ? Number(params.activityId) : null;
+    if (!activityId || profiles.length === 0) {
+      setShowOthersButton(false);
+      return;
+    }
+    let cancelled = false;
+    const task = InteractionManager.runAfterInteractions(() => {
+      const excludeProfileIds = profiles.map((p) => p.id);
+      hasOtherApprovedMissionPhotos(activityId, excludeProfileIds)
+        .then((hasAny) => {
+          if (cancelled) return;
+          setShowOthersButton(Boolean(hasAny));
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setShowOthersButton(false);
+        });
+    });
+    return () => {
+      cancelled = true;
+      task.cancel();
+    };
   }, [params.activityId, profiles]);
-
-  useEffect(() => {
-    try {
-      const raw = params.achievements;
-      if (raw) {
-        const parsed = JSON.parse(raw) as RewardAchievement[];
-        setAchievements(Array.isArray(parsed) ? parsed : []);
-      } else {
-        setAchievements([]);
-      }
-    } catch {
-      setAchievements([]);
-    }
-  }, [params.achievements]);
-
-  useEffect(() => {
-    try {
-      const raw = params.unlockedBadges;
-      if (raw) {
-        const parsed = JSON.parse(raw) as UnlockedBadgePayload[];
-        setUnlockedBadges(Array.isArray(parsed) ? parsed : []);
-      } else {
-        setUnlockedBadges([]);
-      }
-    } catch {
-      setUnlockedBadges([]);
-    }
-  }, [params.unlockedBadges]);
 
   const confettiRef = useRef<ConfettiCannon>(null);
   const celebrateScale = useSharedValue(0.85);
@@ -179,15 +200,8 @@ export default function RewardScreen() {
   }));
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener("beforeRemove", (e) => {
-      e.preventDefault();
-    });
-    return unsubscribe;
-  }, [navigation]);
-
-  useEffect(() => {
     celebrateScale.value = withSequence(
-      withDelay(200, withSpring(1.12, { damping: 10, stiffness: 180 })),
+      withSpring(1.12, { damping: 10, stiffness: 180 }),
       withSpring(1, { damping: 14, stiffness: 120 })
     );
   }, []);
@@ -195,13 +209,20 @@ export default function RewardScreen() {
   const runStampAnimation = () => {
     stampOpacity.value = 0;
     stampScale.value = 1.5;
-    stampOpacity.value = withDelay(800, withTiming(1, { duration: 120, easing: Easing.out(Easing.ease) }));
-    stampScale.value = withDelay(800, withSpring(1, { damping: 9, stiffness: 280 }));
+    stampOpacity.value = withDelay(
+      STAMP_REVEAL_DELAY_MS,
+      withTiming(1, { duration: 120, easing: Easing.out(Easing.ease) })
+    );
+    stampScale.value = withDelay(
+      STAMP_REVEAL_DELAY_MS,
+      withSpring(1, { damping: 9, stiffness: 280 })
+    );
   };
 
   useEffect(() => {
+    if (!activityCard) return;
     runStampAnimation();
-  }, []);
+  }, [activityCard]);
 
   useEffect(() => {
     if (unlockedBadges.length === 0) return;
@@ -211,9 +232,18 @@ export default function RewardScreen() {
   }, [unlockedBadges.length, badgeNoticeY]);
 
   useEffect(() => {
-    const t = setTimeout(() => confettiRef.current?.start?.(), 0);
+    if (!activityCard) return;
+    const task = InteractionManager.runAfterInteractions(() => {
+      setShowConfetti(true);
+    });
+    return () => task.cancel();
+  }, [activityCard]);
+
+  useEffect(() => {
+    if (!showConfetti) return;
+    const t = setTimeout(() => confettiRef.current?.start?.(), 16);
     return () => clearTimeout(t);
-  }, []);
+  }, [showConfetti]);
 
   const handleGoHome = () => {
     if (goingHome) return;
@@ -453,10 +483,10 @@ export default function RewardScreen() {
           )}
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.duration(500).delay(200)}>
+        <Animated.View entering={FadeInDown.duration(320)}>
           <Text style={styles.wellDoneHeading}>{wellDoneHeadline}</Text>
         </Animated.View>
-        <Animated.View entering={FadeInDown.duration(500).delay(260)}>
+        <Animated.View entering={FadeInDown.duration(320).delay(80)}>
           <Text style={styles.approvalNote}>
             Any pictures submitted will appear in your clubhouse image gallery once they
             have been approved.
@@ -622,13 +652,14 @@ export default function RewardScreen() {
           </Pressable>
         </Animated.View>
       ) : null}
+      {showConfetti ? (
       <View
         style={[StyleSheet.absoluteFill, { zIndex: 9999, elevation: 9999 }]}
         pointerEvents="none"
       >
         <ConfettiCannon
           ref={confettiRef}
-          count={200}
+          count={CONFETTI_PARTICLE_COUNT}
           origin={{ x: SCREEN_WIDTH / 2, y: SCREEN_HEIGHT / 2 - scaleW(40) }}
           explosionSpeed={350}
           fallSpeed={3500}
@@ -646,6 +677,7 @@ export default function RewardScreen() {
           ]}
         />
       </View>
+      ) : null}
     </SafeAreaView>
   );
 }

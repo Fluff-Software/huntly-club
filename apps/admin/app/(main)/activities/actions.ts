@@ -4,6 +4,12 @@ import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+function parseReleaseDate(formData: FormData): string | null {
+  const raw = (formData.get("release_date") as string)?.trim();
+  if (!raw) return null;
+  return raw;
+}
+
 function parseCategoryIds(formData: FormData): number[] {
   const raw = formData.getAll("categories");
   const ids: number[] = [];
@@ -32,6 +38,9 @@ export async function createActivity(
   const name = (formData.get("name") as string)?.trim();
   const title = (formData.get("title") as string)?.trim();
   if (!name || !title) return { error: "Name and title are required" };
+
+  const releaseDate = parseReleaseDate(formData);
+  if (!releaseDate) return { error: "Release date is required" };
 
   const description = (formData.get("description") as string)?.trim() || null;
   const image = (formData.get("image") as string)?.trim() || null;
@@ -78,6 +87,7 @@ export async function createActivity(
     const { error } = await supabase.from("activities").insert({
       name,
       title,
+      release_date: releaseDate,
       description,
       image: image || null,
       xp: Number.isNaN(xp) ? 10 : xp,
@@ -118,6 +128,9 @@ export async function updateActivity(
   const name = (formData.get("name") as string)?.trim();
   const title = (formData.get("title") as string)?.trim();
   if (!name || !title) return { error: "Name and title are required" };
+
+  const releaseDate = parseReleaseDate(formData);
+  if (!releaseDate) return { error: "Release date is required" };
 
   const description = (formData.get("description") as string)?.trim() || null;
   const image = (formData.get("image") as string)?.trim() || null;
@@ -189,6 +202,7 @@ export async function updateActivity(
         debrief_question_2: debriefQuestion2,
         mission_type: missionType,
         safety_notes: safetyNotes,
+        release_date: releaseDate,
       })
       .eq("id", id);
 

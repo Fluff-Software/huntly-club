@@ -1,9 +1,10 @@
 import React from "react";
 import { Pressable, StyleSheet } from "react-native";
-import { useRouter } from "expo-router";
+import { router, type Href } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { useNavigationReturnOptional } from "@/contexts/NavigationReturnContext";
 
 const COLORS = {
   white: "#FFFFFF",
@@ -12,34 +13,48 @@ const COLORS = {
 };
 
 type BackHeaderProps = {
-  /** Label next to the back arrow, e.g. "Your profile" */
-  backToLabel: string;
+  /** Label next to the back arrow. Defaults to "Back". */
+  backToLabel?: string;
   /** Use "light" on light backgrounds (dark icon/text), "dark" on dark backgrounds (white icon/text). Default "dark". */
   variant?: "light" | "dark";
-  /** When set, navigate to this route instead of router.back(). E.g. "/(tabs)/profile". */
-  backTo?: string;
+  /** When navigation history is empty, replace with this route instead of Clubhouse. */
+  fallbackRoute?: Href;
+  /** Optional hook before navigating back (e.g. stop media playback). */
+  onBack?: () => void;
 };
 
-export function BackHeader({ backToLabel, variant = "dark", backTo }: BackHeaderProps) {
-  const router = useRouter();
+export function BackHeader({
+  backToLabel = "Back",
+  variant = "dark",
+  fallbackRoute = "/(tabs)",
+  onBack,
+}: BackHeaderProps) {
+  const navigationReturn = useNavigationReturnOptional();
   const { scaleW } = useLayoutScale();
   const isLight = variant === "light";
   const iconColor = isLight ? COLORS.darkGreen : COLORS.white;
   const labelColor = isLight ? COLORS.charcoal : COLORS.white;
 
   const onPress = () => {
-    if (backTo) {
-      router.push(backTo as any);
-    } else {
-      router.back();
+    onBack?.();
+    if (navigationReturn) {
+      navigationReturn.goBack({ fallbackRoute });
+      return;
     }
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace(fallbackRoute);
   };
 
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.wrap, { marginBottom: scaleW(16), paddingVertical: scaleW(8) }]}
+      style={[styles.wrap, { minHeight: scaleW(44), paddingVertical: scaleW(6) }]}
       hitSlop={12}
+      accessibilityRole="button"
+      accessibilityLabel={backToLabel}
     >
       <MaterialIcons
         name="chevron-left"
@@ -47,7 +62,7 @@ export function BackHeader({ backToLabel, variant = "dark", backTo }: BackHeader
         color={iconColor}
         style={{ marginRight: scaleW(4) }}
       />
-      <ThemedText type="body" style={[styles.label, { color: labelColor }]}>
+      <ThemedText type="body" style={[styles.label, { color: labelColor, fontSize: scaleW(16) }]}>
         {backToLabel}
       </ThemedText>
     </Pressable>
@@ -61,7 +76,6 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   label: {
-    fontSize: 16,
     fontWeight: "600",
   },
 });

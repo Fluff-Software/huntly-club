@@ -65,6 +65,9 @@ export type CampfireComponentData =
   | MissionCardComponentData
   | SubmissionComponentData;
 
+export const CAMPFIRE_SESSION_COLUMNS =
+  "id, created_at, updated_at, title, status, scheduled_at, duration, description, thumbnail_url, missions, show_viewer_count";
+
 export type CampfireSessionRow = {
   id: number;
   created_at: string;
@@ -76,6 +79,7 @@ export type CampfireSessionRow = {
   description: string | null;
   thumbnail_url: string | null;
   missions: number[];
+  show_viewer_count: boolean;
 };
 
 export type CampfireTrackRow = {
@@ -103,6 +107,7 @@ export type ActivityOption = {
   description: string | null;
   image: string | null;
   xp: number | null;
+  release_date: string | null;
 };
 
 export type CaptainOption = {

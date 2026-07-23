@@ -5,7 +5,7 @@ import {
   Image,
   Pressable,
   ActivityIndicator } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -69,7 +69,6 @@ export default function IntroScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { scaleW, width, isTablet } = useLayoutScale();
-  const insets = useSafeAreaInsets();
   const { profiles } = usePlayer();
   const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
@@ -193,7 +192,6 @@ export default function IntroScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: FOREST_DARK }} edges={["top", "left", "right"]}>
-
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{

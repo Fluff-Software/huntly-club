@@ -33,6 +33,26 @@
   background-color: rgba(255, 255, 255, 0.35);
 }
 
+/* ImageCropModal: use the library mask instead of a huge box-shadow (avoids scroll overflow) */
+[data-image-crop-modal] .ReactCrop__crop-selection {
+  box-shadow: none !important;
+}
+
+/* ImageCropModal preview / blur tool modes */
+[data-crop-mask="off"] .ReactCrop__crop-mask {
+  opacity: 0.65 !important;
+}
+
+[data-crop-mask="off"] .ReactCrop__crop-selection {
+  box-shadow: none !important;
+}
+
+[data-tool="blur"] .ReactCrop__crop-mask,
+[data-tool="blur"] .ReactCrop__crop-selection,
+[data-tool="blur"] .ReactCrop__drag-handle {
+  pointer-events: none !important;
+}
+
 /* Campfire timeline: horizontal scroll on top strip only */
 .timeline-h-scroll {
   overflow-x: auto;

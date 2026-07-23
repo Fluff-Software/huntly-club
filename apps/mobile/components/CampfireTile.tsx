@@ -1,19 +1,26 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { View, ImageBackground, Pressable } from "react-native";
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { router, useFocusEffect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { useNavigationReturn } from "@/contexts/NavigationReturnContext";
 import {
-  getLatestLiveSession,
-  getNextScheduledSession,
+  fetchCampfireTileRefresh,
+  getServerNowMs,
+  isCampfireLiveDismissed,
   type CampfireSessionRow,
 } from "@/services/campfireService";
 import {
   invalidateCampfireLivePreload,
   startCampfireLivePreload,
 } from "@/services/campfireLivePreload";
-
 const TILE_BG = require("@/assets/images/campfire-tile-bg.png");
 
 const AMBER = "#C47A2A";
@@ -23,7 +30,8 @@ const GREEN = "#2F6B43";
 const CREAM = "#F6EBDD";
 const LIVE_RED = "#C0392B";
 
-const SOON_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+const TILE_SLIDE_DURATION_MS = 420;
+const TILE_SLIDE_DELAY_MS = 150;
 
 function formatCountdownParts(ms: number) {
   const total = Math.max(0, Math.floor(ms / 1000));
@@ -33,63 +41,144 @@ function formatCountdownParts(ms: number) {
   return { hrs, mins, secs };
 }
 
-export function CampfireTile() {
+type CampfireTileProps = {
+  /** When true, parent handles entrance; tile reports readiness via onReadyChange. */
+  coordinatedEntrance?: boolean;
+  onReadyChange?: (ready: boolean) => void;
+};
+
+export function CampfireTile({
+  coordinatedEntrance = false,
+  onReadyChange,
+}: CampfireTileProps) {
   const { scaleW } = useLayoutScale();
+  const { pushWithReturn } = useNavigationReturn();
+  const [statusReady, setStatusReady] = useState(false);
   const [liveSession, setLiveSession] = useState<CampfireSessionRow | null>(null);
   const [scheduledAtMs, setScheduledAtMs] = useState<number | null>(null);
   const [countdownMs, setCountdownMs] = useState<number>(0);
+  const [replaySession, setReplaySession] = useState<CampfireSessionRow | null>(null);
+  const hasLoadedOnceRef = useRef(false);
+  const hasEntranceAnimatedRef = useRef(false);
+  const tileTranslateX = useSharedValue(240);
+  const tileOpacity = useSharedValue(0);
+  const tileSlideStyle = useAnimatedStyle(() => ({
+    opacity: tileOpacity.value,
+    transform: [{ translateX: tileTranslateX.value }],
+  }));
 
   const refresh = useCallback(async () => {
-    const live = await getLatestLiveSession();
-    if (live) {
-      setLiveSession(live);
-      setScheduledAtMs(null);
-      setCountdownMs(0);
-      startCampfireLivePreload(live);
-      return;
+    const result = await fetchCampfireTileRefresh();
+    setLiveSession(result.liveSession);
+    setScheduledAtMs(result.scheduledAtMs);
+    setCountdownMs(result.countdownMs);
+    setReplaySession(result.replaySession);
+    if (result.preloadSession) {
+      startCampfireLivePreload(result.preloadSession);
+    } else {
+      invalidateCampfireLivePreload();
     }
-    setLiveSession(null);
-    invalidateCampfireLivePreload();
-
-    const next = await getNextScheduledSession();
-    const at = next?.scheduled_at ? Date.parse(next.scheduled_at) : null;
-    if (!at) {
-      setScheduledAtMs(null);
-      setCountdownMs(0);
-      return;
-    }
-    const now = Date.now();
-    const delta = at - now;
-    if (delta > 0 && delta <= SOON_WINDOW_MS) {
-      setScheduledAtMs(at);
-      setCountdownMs(delta);
-      return;
-    }
-    // Session is no longer "soon" (already started/ended or too far away).
-    setScheduledAtMs(null);
-    setCountdownMs(0);
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      void refresh();
+      setLiveSession((current) =>
+        current && isCampfireLiveDismissed(current.id) ? null : current
+      );
+      let cancelled = false;
+      // Only hide for the initial load; later refocuses refresh in place (no re-slide).
+      if (!hasLoadedOnceRef.current) {
+        setStatusReady(false);
+      }
+      void (async () => {
+        await refresh();
+        if (!cancelled) {
+          setStatusReady(true);
+          hasLoadedOnceRef.current = true;
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
     }, [refresh])
   );
 
+  useEffect(() => {
+    onReadyChange?.(statusReady);
+  }, [statusReady, onReadyChange]);
+
+  // Slide in once after first status load — same motion as the home team card.
+  useEffect(() => {
+    if (coordinatedEntrance) {
+      tileTranslateX.value = 0;
+      tileOpacity.value = 1;
+      return;
+    }
+    if (!statusReady) return;
+
+    if (hasEntranceAnimatedRef.current) {
+      tileTranslateX.value = 0;
+      tileOpacity.value = 1;
+      return;
+    }
+
+    hasEntranceAnimatedRef.current = true;
+    tileTranslateX.value = 240;
+    tileOpacity.value = 0;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      if (cancelled) return;
+      tileTranslateX.value = withTiming(0, {
+        duration: TILE_SLIDE_DURATION_MS,
+        easing: Easing.out(Easing.cubic),
+      });
+      tileOpacity.value = withTiming(1, {
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+      });
+    }, TILE_SLIDE_DELAY_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [coordinatedEntrance, statusReady, tileOpacity, tileTranslateX]);
+
   // Safety net: keep the tile fresh even if status flips while user stays on home.
   useEffect(() => {
+    if (!statusReady) return;
+    const t = setInterval(() => {
+      void refresh();
+    }, 10_000);
+    return () => clearInterval(t);
+  }, [refresh, statusReady]);
+
+  // Re-check soon after live ends (DB cron may lag behind playback).
+  useEffect(() => {
+    if (!statusReady || !liveSession) return;
+    const t = setInterval(() => {
+      void refresh();
+    }, 3000);
+    return () => clearInterval(t);
+  }, [liveSession?.id, refresh, statusReady]);
+
+  // Poll faster while waiting for live after the countdown hits zero.
+  useEffect(() => {
+    if (!statusReady || !scheduledAtMs || countdownMs > 0) return;
     void refresh();
     const t = setInterval(() => {
       void refresh();
-    }, 30_000);
+    }, 2000);
     return () => clearInterval(t);
-  }, [refresh]);
+  }, [scheduledAtMs, countdownMs, refresh, statusReady]);
 
   useEffect(() => {
     if (!scheduledAtMs) return;
-    const timer = setInterval(() => {
-      setCountdownMs(Math.max(0, scheduledAtMs - Date.now()));
-    }, 250);
+    const tick = () => {
+      const nowMs = getServerNowMs();
+      setCountdownMs(Math.max(0, scheduledAtMs - nowMs));
+    };
+    tick();
+    const timer = setInterval(tick, 250);
     return () => clearInterval(timer);
   }, [scheduledAtMs]);
 
@@ -98,8 +187,16 @@ export function CampfireTile() {
     [countdownMs]
   );
 
-  if (liveSession) {
-    return (
+  if (!statusReady) {
+    return <View style={{ minHeight: scaleW(150) }} />;
+  }
+
+  // Nothing live or scheduled, and no past session to replay — there's nothing to show.
+  if (!liveSession && !scheduledAtMs && !replaySession) {
+    return null;
+  }
+
+  const tileContent = liveSession ? (
       <View
         style={{
           borderRadius: scaleW(22),
@@ -180,7 +277,7 @@ export function CampfireTile() {
             </View>
 
             <Pressable
-              onPress={() => router.push("/(tabs)/campfire")}
+              onPress={() => pushWithReturn("/(tabs)/campfire")}
               style={{
                 alignSelf: "flex-start",
                 flexDirection: "row",
@@ -206,11 +303,7 @@ export function CampfireTile() {
           </View>
         </ImageBackground>
       </View>
-    );
-  }
-
-  if (scheduledAtMs) {
-    return (
+  ) : scheduledAtMs ? (
       <View
         style={{
           borderRadius: scaleW(22),
@@ -301,7 +394,7 @@ export function CampfireTile() {
 
             <View style={{ gap: scaleW(10) }}>
               <Pressable
-                onPress={() => router.push("/(tabs)/campfire?mode=scheduled")}
+                onPress={() => pushWithReturn("/(tabs)/campfire?mode=scheduled")}
                 style={{
                   alignSelf: "flex-start",
                   flexDirection: "row",
@@ -326,7 +419,7 @@ export function CampfireTile() {
               </Pressable>
 
               <Pressable
-                onPress={() => router.push("/(tabs)/campfire?mode=replay")}
+                onPress={() => pushWithReturn("/(tabs)/campfire?mode=replay")}
                 style={{
                   alignSelf: "flex-start",
                   flexDirection: "row",
@@ -352,10 +445,7 @@ export function CampfireTile() {
           </View>
         </ImageBackground>
       </View>
-    );
-  }
-
-  return (
+  ) : (
     <View
       style={{
         borderRadius: scaleW(20),
@@ -430,7 +520,7 @@ export function CampfireTile() {
 
               {/* Watch button pill */}
               <Pressable
-                onPress={() => router.push("/(tabs)/campfire?mode=replay")}
+                onPress={() => pushWithReturn("/(tabs)/campfire?mode=replay")}
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
@@ -456,4 +546,10 @@ export function CampfireTile() {
       </ImageBackground>
     </View>
   );
+
+  if (coordinatedEntrance) {
+    return tileContent;
+  }
+
+  return <Animated.View style={tileSlideStyle}>{tileContent}</Animated.View>;
 }

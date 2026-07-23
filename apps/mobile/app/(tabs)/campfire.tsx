@@ -8,34 +8,59 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useIsFocused } from "@react-navigation/native";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { CampfireStage } from "@/components/campfire/CampfireStage";
-import { useCampfireAudio } from "@/components/campfire/useCampfireAudio";
+import { CampfireVideoPreloadViews } from "@/components/campfire/CampfireVideoPreloadViews";
+import {
+  stopAllCampfireAudio,
+  useCampfireAudio,
+} from "@/components/campfire/useCampfireAudio";
+import { safePlayerPause } from "@/components/campfire/campfireVideoPlayerUtils";
 import { useCampfireVideoPlayers } from "@/components/campfire/useCampfireVideoPlayers";
+import { getCampfireVideoComponents } from "@/components/campfire/campfireVideoPreload";
 import { prepareCampfireMedia } from "@/components/campfire/prepareCampfireMedia";
 import {
+  dismissCampfireLiveSession,
   getCampfireSessionBundle,
+  getCampfireSessionById,
   getLatestLiveSession,
   getLatestReplaySession,
   getNextScheduledSession,
   getServerNowIso,
+  resolveCampfirePlaybackSession,
+  resolveCampfireShowViewerCount,
   sessionDurationMs,
   type CampfireSessionBundle,
+  type CampfireSessionRow,
 } from "@/services/campfireService";
+import { useCampfireRealtime } from "@/hooks/useCampfireRealtime";
 import {
+  CAMPFIRE_REACTION_MIN_INTERVAL_MS,
+  sendCampfireReaction,
+} from "@/services/campfireReactionService";
+import {
+  CAMPFIRE_PRELOAD_LEAD_MS,
   getCampfireLivePreload,
   invalidateCampfireLivePreload,
+  startCampfireSessionPreload,
   waitForCampfireLivePreload,
 } from "@/services/campfireLivePreload";
 import { supabase } from "@/services/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import { usePlayer } from "@/contexts/PlayerContext";
+import { BackHeader } from "@/components/BackHeader";
+import { CHILD_SCREEN_PADDING_W } from "@/components/ChildScreenLayout";
 
 const BG = require("@/assets/images/campfire-bg.jpg");
 
-/** Hard cap so a slow/broken asset can never trap the user on the spinner. */
-const PREPARE_TIMEOUT_MS = 15000;
+/** Hard cap so a slow/broken image fetch can never trap the user on the spinner. */
+const PREPARE_TIMEOUT_MS = 15_000;
+/** Sessions with video need longer to seek/buffer for late live joins. */
+const VIDEO_PREPARE_TIMEOUT_MS = 28_000;
 
 type LoadState =
   | "loading"
@@ -45,7 +70,6 @@ type LoadState =
   | "empty"
   | "error";
 type ReactionBurst = { id: string; emoji: string; createdAtMs: number };
-type PresenceState = Record<string, unknown[]>;
 type CountdownParts = { hrs: number; mins: number; secs: number };
 
 function formatCountdown(ms: number): CountdownParts {
@@ -59,6 +83,8 @@ function formatCountdown(ms: number): CountdownParts {
 export default function CampfireScreen() {
   const { scaleW, width, height } = useLayoutScale();
   const params = useLocalSearchParams<{ mode?: string }>();
+  const { user } = useAuth();
+  const { profiles } = usePlayer();
 
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [bundle, setBundle] = useState<CampfireSessionBundle | null>(null);
@@ -66,10 +92,50 @@ export default function CampfireScreen() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [mediaReady, setMediaReady] = useState(false);
   const [countdownMs, setCountdownMs] = useState<number>(0);
+  const [waitingSession, setWaitingSession] =
+    useState<CampfireSessionRow | null>(null);
+  const waitingSessionRef = useRef<CampfireSessionRow | null>(null);
   const countdownTargetRef = useRef<number | null>(null);
 
+  // Seek/buffer for late live joins once while preparing — not every frame during playback.
+  // Capture live-join offset during prepare and keep it on "ready" (never 0).
+  const videoWarmPlayheadRef = useRef(0);
+  const videoWarmPlayheadMs = useMemo(() => {
+    if (loadState === "loading") return 0;
+    if (loadState === "preparing") return currentTimeMs;
+    return videoWarmPlayheadRef.current;
+  }, [loadState, currentTimeMs]);
+
+  useEffect(() => {
+    if (loadState === "loading") {
+      videoWarmPlayheadRef.current = 0;
+    } else if (loadState === "preparing" || loadState === "ready") {
+      videoWarmPlayheadRef.current = videoWarmPlayheadMs;
+    }
+  }, [loadState, videoWarmPlayheadMs]);
+  const videoPlayersEnabled =
+    !!bundle?.components &&
+    (loadState === "countdown" ||
+      loadState === "preparing" ||
+      loadState === "ready");
+
   const { players: videoPlayers, ready: videosReady } = useCampfireVideoPlayers(
-    bundle?.components ?? null
+    bundle?.components ?? null,
+    {
+      playheadMs: videoWarmPlayheadMs,
+      sessionId: bundle?.session.id ?? null,
+      enabled: videoPlayersEnabled,
+    }
+  );
+  const videoPlayersRef = useRef(videoPlayers);
+  videoPlayersRef.current = videoPlayers;
+
+  const hasVideoComponents = useMemo(
+    () =>
+      bundle
+        ? getCampfireVideoComponents(bundle.components).length > 0
+        : false,
+    [bundle]
   );
 
   const durationMs = bundle ? sessionDurationMs(bundle) : 0;
@@ -82,19 +148,120 @@ export default function CampfireScreen() {
   } | null>(null);
   const serverSkewMsRef = useRef(0);
   const liveResyncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const liveChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const isLiveRef = useRef(false);
   const [reactionBursts, setReactionBursts] = useState<ReactionBurst[]>([]);
-  const [viewerCount, setViewerCount] = useState<number>(0);
+  const [realtimeSessionId, setRealtimeSessionId] = useState<number | null>(null);
+  const realtimeSessionIdRef = useRef<number | null>(null);
   const loadTokenRef = useRef(0);
+  const loadStateRef = useRef<LoadState>("loading");
+  const joinLiveInFlightRef = useRef(false);
+  const lastReactionSentAtRef = useRef(0);
+
+  useEffect(() => {
+    waitingSessionRef.current = waitingSession;
+  }, [waitingSession]);
+
+  useEffect(() => {
+    loadStateRef.current = loadState;
+  }, [loadState]);
+
+  const pinRealtimeSession = useCallback((sessionId: number) => {
+    realtimeSessionIdRef.current = sessionId;
+    setRealtimeSessionId(sessionId);
+  }, []);
+
+  // Keep one Realtime topic for the whole visit (wait screen → live playback).
+  useEffect(() => {
+    if (waitingSession?.id != null) {
+      pinRealtimeSession(waitingSession.id);
+    }
+  }, [waitingSession?.id, pinRealtimeSession]);
+
+  useEffect(() => {
+    if (bundle?.session.status === "live" && bundle.session.id != null) {
+      pinRealtimeSession(bundle.session.id);
+    }
+  }, [bundle?.session.id, bundle?.session.status, pinRealtimeSession]);
+
+  const trackedSessionId = bundle?.session.id ?? waitingSession?.id ?? null;
+
+  useEffect(() => {
+    if (trackedSessionId == null) return;
+
+    const channel = supabase
+      .channel(`campfire-session-settings:${trackedSessionId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "campfire_sessions",
+          filter: `id=eq.${trackedSessionId}`,
+        },
+        (payload) => {
+          const row = payload.new as CampfireSessionRow;
+          if (typeof row.show_viewer_count !== "boolean") return;
+          setWaitingSession((prev) =>
+            prev?.id === trackedSessionId
+              ? { ...prev, show_viewer_count: row.show_viewer_count }
+              : prev
+          );
+          setBundle((prev) =>
+            prev?.session.id === trackedSessionId
+              ? {
+                  ...prev,
+                  session: {
+                    ...prev.session,
+                    show_viewer_count: row.show_viewer_count,
+                  },
+                }
+              : prev
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [trackedSessionId]);
+
+  const effectiveRealtimeSessionId =
+    realtimeSessionId ?? realtimeSessionIdRef.current;
+
+  const handleReactionBroadcast = useCallback((emoji: string) => {
+    const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    setReactionBursts((prev) => {
+      const next = [...prev, { id, emoji, createdAtMs: Date.now() }];
+      return next.length > 24 ? next.slice(-24) : next;
+    });
+  }, []);
+
+  const profileIds = useMemo(() => profiles.map((p) => p.id), [profiles]);
+
+  const { viewerCount, channelRef: liveChannelRef } = useCampfireRealtime({
+    sessionId: effectiveRealtimeSessionId,
+    userId: user?.id,
+    profileIds,
+    onReaction: handleReactionBroadcast,
+  });
 
   const loadCampfire = useCallback(
     async (modeOverride?: string) => {
       const token = ++loadTokenRef.current;
       const mode = modeOverride ?? params.mode;
 
+      const waitingId = waitingSessionRef.current?.id;
+      if (waitingId != null) {
+        pinRealtimeSession(waitingId);
+      }
+      const preloadedWhileWaiting =
+        waitingId != null ? getCampfireLivePreload(waitingId) : null;
+
       hasExitedAfterFinishRef.current = false;
-      setMediaReady(false);
+      if (!preloadedWhileWaiting) {
+        setMediaReady(false);
+      }
       setCurrentTimeMs(0);
       setIsPlaying(false);
       setLoadState("loading");
@@ -127,34 +294,34 @@ export default function CampfireScreen() {
         return;
       }
 
-      if (mode === "scheduled") {
+      // Countdown UI only when opening with ?mode=scheduled and start is still in the future.
+      if (mode === "scheduled" && modeOverride !== "start") {
         const next = await getNextScheduledSession();
         if (loadTokenRef.current !== token) return;
-        if (!next?.scheduled_at) {
-          safeSet(() => setLoadState("empty"));
-          return;
+        if (next?.scheduled_at) {
+          const startMs = Date.parse(next.scheduled_at);
+          const nowIso = await getServerNowIso();
+          if (loadTokenRef.current !== token) return;
+          const nowMs = nowIso ? Date.parse(nowIso) : Date.now();
+          const remaining = Math.max(0, startMs - nowMs);
+          if (remaining > 0) {
+            safeSet(() => {
+              countdownTargetRef.current = startMs;
+              setCountdownMs(remaining);
+              setWaitingSession(next);
+              setBundle(null);
+              setMediaReady(false);
+              isLiveRef.current = false;
+              liveClockRef.current = null;
+              setLoadState("countdown");
+            });
+            return;
+          }
         }
-        const startMs = Date.parse(next.scheduled_at);
-        const nowIso = await getServerNowIso();
-        if (loadTokenRef.current !== token) return;
-        const nowMs = nowIso ? Date.parse(nowIso) : Date.now();
-        const remaining = Math.max(0, startMs - nowMs);
-        if (remaining > 0) {
-          safeSet(() => {
-            countdownTargetRef.current = startMs;
-            setCountdownMs(remaining);
-            setBundle(null);
-            isLiveRef.current = false;
-            liveClockRef.current = null;
-            setLoadState("countdown");
-          });
-          return;
-        }
-        // If start time has passed, fall through to normal live/replay loading.
+        // Start time passed or no upcoming row — resolve live session below.
       }
 
-      const live = await getLatestLiveSession();
-      const session = live ?? (await getLatestReplaySession());
+      const session = await resolveCampfirePlaybackSession(waitingId);
       if (loadTokenRef.current !== token) return;
       if (!session) {
         safeSet(() => setLoadState("empty"));
@@ -182,8 +349,27 @@ export default function CampfireScreen() {
       }
 
       safeSet(() => {
-        setBundle(data);
-        if (preloadedImages) setMediaReady(true);
+        const sessionRow =
+          session.status === "live"
+            ? {
+                ...data!.session,
+                status: "live" as const,
+                live_started_at:
+                  session.live_started_at ??
+                  data!.session.live_started_at ??
+                  data!.session.scheduled_at,
+                show_viewer_count: session.show_viewer_count,
+              }
+            : {
+                ...data!.session,
+                show_viewer_count: session.show_viewer_count,
+              };
+        setBundle({ ...data!, session: sessionRow });
+        if (sessionRow.id != null) {
+          pinRealtimeSession(sessionRow.id);
+        }
+        if (preloadedImages || preloadedWhileWaiting) setMediaReady(true);
+        setWaitingSession(null);
       });
 
       // Live sessions should start "in progress" for late joiners.
@@ -215,36 +401,58 @@ export default function CampfireScreen() {
 
       safeSet(() => setLoadState("preparing"));
     },
-    [params.mode]
+    [params.mode, pinRealtimeSession]
   );
 
-  // Reload each time the screen is opened (hidden tab may stay mounted after finish).
+  const beginLivePlayback = useCallback(() => {
+    if (joinLiveInFlightRef.current) return;
+    if (loadStateRef.current !== "countdown") return;
+    joinLiveInFlightRef.current = true;
+    void loadCampfire("start").finally(() => {
+      joinLiveInFlightRef.current = false;
+    });
+  }, [loadCampfire]);
+
+  const isFocused = useIsFocused();
+
+  const stopCampfireSession = useCallback(() => {
+    stopAllCampfireAudio();
+    for (const player of videoPlayersRef.current.values()) {
+      safePlayerPause(player);
+      try {
+        player.muted = true;
+      } catch {
+        // ignore
+      }
+    }
+    loadTokenRef.current++;
+    countdownTargetRef.current = null;
+    waitingSessionRef.current = null;
+    setWaitingSession(null);
+    if (liveResyncTimerRef.current) {
+      clearInterval(liveResyncTimerRef.current);
+      liveResyncTimerRef.current = null;
+    }
+    realtimeSessionIdRef.current = null;
+    setRealtimeSessionId(null);
+    setReactionBursts([]);
+    setIsPlaying(false);
+    videoWarmPlayheadRef.current = 0;
+    setBundle(null);
+    setLoadState("loading");
+    setCurrentTimeMs(0);
+    setMediaReady(false);
+    invalidateCampfireLivePreload();
+  }, []);
+
+  // Reload when opened; stop playback when user leaves (tab switch = close).
   useFocusEffect(
     useCallback(() => {
-      let cancelled = false;
       void loadCampfire();
-
       return () => {
-        cancelled = true;
-        if (cancelled) loadTokenRef.current++;
-        countdownTargetRef.current = null;
-        if (liveResyncTimerRef.current) {
-          clearInterval(liveResyncTimerRef.current);
-          liveResyncTimerRef.current = null;
-        }
-        if (liveChannelRef.current) {
-          supabase.removeChannel(liveChannelRef.current);
-          liveChannelRef.current = null;
-        }
-        // Ensure no audio keeps playing when leaving the tab/screen.
-        setIsPlaying(false);
-        setLoadState("loading");
-        setBundle(null);
-        setCurrentTimeMs(0);
-        setMediaReady(false);
-        invalidateCampfireLivePreload();
+        stopCampfireSession();
       };
-    }, [loadCampfire])
+    }, [loadCampfire, stopCampfireSession])
   );
 
   // Countdown ticker for scheduled session flow.
@@ -258,14 +466,103 @@ export default function CampfireScreen() {
       const remaining = Math.max(0, target - nowMs);
       setCountdownMs(remaining);
       if (remaining <= 0) {
-        // Jump back into normal campfire flow (live should be promoted by cron).
         countdownTargetRef.current = null;
-        router.replace("/(tabs)/campfire");
-        void loadCampfire(undefined);
+        beginLivePlayback();
       }
     }, 500);
     return () => clearInterval(timer);
-  }, [loadState, loadCampfire]);
+  }, [loadState, beginLivePlayback]);
+
+  // Join live as soon as the session flips (don't wait only on local countdown).
+  useEffect(() => {
+    if (loadState !== "countdown" || !waitingSession) return;
+
+    const sessionId = waitingSession.id;
+    let cancelled = false;
+
+    const checkLive = async () => {
+      if (cancelled) return;
+      const row = await getCampfireSessionById(sessionId);
+      if (cancelled) return;
+      if (row?.status === "live") {
+        beginLivePlayback();
+        return;
+      }
+      const latest = await getLatestLiveSession();
+      if (cancelled) return;
+      if (latest?.id === sessionId) {
+        beginLivePlayback();
+      }
+    };
+
+    void checkLive();
+
+    const watchChannel = supabase
+      .channel(`campfire-live-watch:${sessionId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "campfire_sessions",
+          filter: `id=eq.${sessionId}`,
+        },
+        (payload) => {
+          const row = payload.new as CampfireSessionRow;
+          if (row?.status === "live") {
+            beginLivePlayback();
+          }
+        }
+      )
+      .subscribe();
+
+    const poll = setInterval(() => {
+      void checkLive();
+    }, 2000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(poll);
+      supabase.removeChannel(watchChannel);
+    };
+  }, [loadState, waitingSession?.id, beginLivePlayback]);
+
+  // Preload session media in the background during the final 30s on the wait screen.
+  useEffect(() => {
+    if (loadState !== "countdown" || !waitingSession) return;
+    if (countdownMs > CAMPFIRE_PRELOAD_LEAD_MS) return;
+
+    const sessionId = waitingSession.id;
+    startCampfireSessionPreload(sessionId);
+
+    let cancelled = false;
+    const applyPreload = async () => {
+      const hit =
+        getCampfireLivePreload(sessionId) ??
+        (await waitForCampfireLivePreload(sessionId));
+      if (cancelled || !hit) return;
+      setBundle({
+        ...hit.bundle,
+        session: {
+          ...hit.bundle.session,
+          show_viewer_count:
+            waitingSession?.show_viewer_count ??
+            hit.bundle.session.show_viewer_count,
+        },
+      });
+      setMediaReady(true);
+    };
+
+    void applyPreload();
+    const poll = setInterval(() => {
+      void applyPreload();
+    }, 800);
+
+    return () => {
+      cancelled = true;
+      clearInterval(poll);
+    };
+  }, [loadState, waitingSession, countdownMs]);
 
   // 2. Prefetch images before reveal (audio loads in useCampfireAudio).
   useEffect(() => {
@@ -282,26 +579,45 @@ export default function CampfireScreen() {
 
   // 3. Reveal the stage only once images, audio and video are all ready.
   useEffect(() => {
-    if (loadState !== "preparing") return;
+    if (loadState !== "preparing" || !isFocused) return;
     if (mediaReady && videosReady) {
       setLoadState("ready");
       setIsPlaying(true);
     }
-  }, [loadState, mediaReady, videosReady]);
+  }, [loadState, mediaReady, videosReady, isFocused]);
 
-  // 3b. Safety net: never block the user indefinitely on preparing.
+  // 3b. Safety net: never block indefinitely (video sessions get more time).
   useEffect(() => {
-    if (loadState !== "preparing") return;
+    if (loadState !== "preparing" || !isFocused) return;
+    const timeoutMs = hasVideoComponents
+      ? VIDEO_PREPARE_TIMEOUT_MS
+      : PREPARE_TIMEOUT_MS;
     const timer = setTimeout(() => {
+      if (!isFocused) return;
       setLoadState("ready");
       setIsPlaying(true);
-    }, PREPARE_TIMEOUT_MS);
+    }, timeoutMs);
     return () => clearTimeout(timer);
-  }, [loadState]);
+  }, [loadState, isFocused, hasVideoComponents]);
+
+  const playbackEnabled = isFocused && loadState === "ready";
+  const transportPlaying = playbackEnabled && isPlaying;
+
+  // Pause video immediately when the screen loses focus (tab stays mounted).
+  useEffect(() => {
+    if (isFocused) return;
+    for (const player of videoPlayers.values()) {
+      try {
+        player.pause();
+      } catch {
+        // ignore
+      }
+    }
+  }, [isFocused, videoPlayers]);
 
   // Timeline clock.
   useEffect(() => {
-    if (!isPlaying || durationMs <= 0) return;
+    if (!transportPlaying || durationMs <= 0) return;
     let raf: number;
     let last = Date.now();
     const tick = () => {
@@ -333,61 +649,19 @@ export default function CampfireScreen() {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [isPlaying, durationMs]);
+  }, [transportPlaying, durationMs]);
 
-  // Live drift correction + realtime channel hookup.
+  // Periodically resync live playhead with server time.
   useEffect(() => {
-    if (loadState !== "ready" || !bundle) return;
-    if (!isLiveRef.current || !bundle.session.live_started_at) return;
+    const shouldResync =
+      loadState === "ready" &&
+      bundle?.session.live_started_at &&
+      isLiveRef.current;
 
-    // Realtime channel for future interactions (reactions, etc.).
-    const channel = supabase.channel(`campfire:${bundle.session.id}`, {
-      config: { private: true, broadcast: { self: true } },
-    });
-    channel.on("broadcast", { event: "reaction" }, ({ payload }) => {
-      const emoji = typeof payload?.emoji === "string" ? payload.emoji : "🔥";
-      const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      setReactionBursts((prev) => [
-        ...prev,
-        { id, emoji, createdAtMs: Date.now() },
-      ]);
-    });
+    if (!shouldResync) return;
 
-    const updateViewerCount = () => {
-      const state = channel.presenceState() as PresenceState;
-      setViewerCount(Object.keys(state).length);
-    };
-
-    channel
-      .on("presence", { event: "sync" }, updateViewerCount)
-      .on("presence", { event: "join" }, updateViewerCount)
-      .on("presence", { event: "leave" }, updateViewerCount);
-
-    channel.subscribe();
-    liveChannelRef.current = channel;
-
-    // Track presence (viewer count). Only for authenticated users.
-    void supabase.auth.getUser().then(async ({ data }) => {
-      if (!data.user) return;
-      // Set a stable presence key based on user id.
-      channel.updateJoinPayload({
-        config: {
-          private: true,
-          broadcast: { self: true },
-          presence: { key: data.user.id },
-        },
-      });
-      // Track a small payload (kept minimal; presence is not for high-frequency updates).
-      try {
-        await channel.track({ online_at: new Date().toISOString() });
-      } catch {
-        // Presence is best-effort.
-      }
-    });
-
-    // Periodically resync with server time to keep playhead accurate.
     liveResyncTimerRef.current = setInterval(async () => {
-      if (!bundle.session.live_started_at) return;
+      if (!bundle?.session.live_started_at) return;
       const serverNowIso = await getServerNowIso();
       if (!serverNowIso) return;
 
@@ -400,7 +674,6 @@ export default function CampfireScreen() {
         Math.max(1, bundle.session.duration ?? durationMs);
       const expected = Math.min(elapsed, d);
 
-      // If we're off by more than ~300ms, snap.
       setCurrentTimeMs((current) => {
         const diff = Math.abs(current - expected);
         if (diff > 300) {
@@ -420,11 +693,6 @@ export default function CampfireScreen() {
         clearInterval(liveResyncTimerRef.current);
         liveResyncTimerRef.current = null;
       }
-      if (liveChannelRef.current) {
-        supabase.removeChannel(liveChannelRef.current);
-        liveChannelRef.current = null;
-      }
-      setViewerCount(0);
     };
   }, [loadState, bundle, durationMs]);
 
@@ -435,25 +703,40 @@ export default function CampfireScreen() {
     }
     hasExitedAfterFinishRef.current = true;
     setIsPlaying(false);
+    if (bundle?.session.id != null && isLiveRef.current) {
+      dismissCampfireLiveSession(bundle.session.id);
+    }
     router.replace("/(tabs)");
-  }, [loadState, finished]);
+  }, [loadState, finished, bundle?.session.id]);
 
   useCampfireAudio(
     bundle?.components ?? [],
     currentTimeMs,
-    isPlaying,
-    loadState === "ready"
+    transportPlaying,
+    playbackEnabled
+  );
+
+  const isLivePlayback =
+    loadState === "ready" &&
+    (bundle?.session.status === "live" || isLiveRef.current);
+
+  const showLiveInteractions =
+    effectiveRealtimeSessionId != null &&
+    (loadState === "countdown" ||
+      loadState === "loading" ||
+      loadState === "preparing" ||
+      (loadState === "ready" &&
+        (isLiveRef.current || bundle?.session.status === "live")));
+
+  const showViewerCount = useMemo(
+    () => resolveCampfireShowViewerCount(bundle, waitingSession),
+    [bundle, waitingSession]
   );
 
   const togglePlay = useCallback(() => {
-    if (finished) return;
+    if (finished || isLiveRef.current) return;
     setIsPlaying((p) => !p);
   }, [finished]);
-
-  const handleClose = useCallback(() => {
-    setIsPlaying(false);
-    router.replace("/(tabs)");
-  }, []);
 
   const showSpinner = loadState === "loading" || loadState === "preparing";
   const countdownParts = useMemo(
@@ -463,46 +746,89 @@ export default function CampfireScreen() {
 
   const sendReaction = useCallback(
     async (emoji: string) => {
-      if (!isLiveRef.current || !bundle || !liveChannelRef.current) return;
-      const playheadMs = currentTimeMs;
-      try {
-        const { data } = await supabase.auth.getUser();
-        if (!data.user) throw new Error("not_authenticated");
-        const { error } = await supabase.from("campfire_reactions").insert({
-          session_id: bundle.session.id,
-          emoji,
-          playhead_ms: Math.round(playheadMs),
-        });
-        if (error) throw error;
-      } catch (e) {
-        // Best-effort fallback (e.g. if user isn't authed yet).
-        try {
-          await liveChannelRef.current.send({
-            type: "broadcast",
-            event: "reaction",
-            payload: { emoji, at: new Date().toISOString(), playhead_ms: Math.round(playheadMs) },
-          });
-        } catch {
-          void e;
-        }
+      if (!effectiveRealtimeSessionId || !liveChannelRef.current || !user) {
+        return;
+      }
+      const now = Date.now();
+      if (now - lastReactionSentAtRef.current < CAMPFIRE_REACTION_MIN_INTERVAL_MS) {
+        return;
+      }
+      const playheadMs =
+        loadState === "countdown" || loadState === "preparing"
+          ? 0
+          : currentTimeMs;
+      const sent = await sendCampfireReaction(
+        liveChannelRef.current,
+        effectiveRealtimeSessionId,
+        emoji,
+        playheadMs
+      );
+      if (sent) {
+        lastReactionSentAtRef.current = now;
       }
     },
-    [bundle, currentTimeMs]
+    [effectiveRealtimeSessionId, currentTimeMs, loadState, user]
   );
+
+  const liveInteractionChrome = (
+    <>
+      <ReactionOverlay
+        bursts={reactionBursts}
+        onPrune={(ids) => {
+          if (ids.length === 0) return;
+          setReactionBursts((prev) => prev.filter((b) => !ids.includes(b.id)));
+        }}
+        width={width}
+        height={height}
+      />
+      <SafeAreaView pointerEvents="box-none" style={styles.liveControls}>
+        {showViewerCount ? (
+          <View style={styles.viewerPill}>
+            <View style={styles.viewerDot} />
+            <ThemedText style={styles.viewerText}>{viewerCount}</ThemedText>
+          </View>
+        ) : null}
+        <Pressable
+          onPress={() => void sendReaction("🔥")}
+          style={styles.reactionButton}
+          hitSlop={12}
+        >
+          <MaterialIcons
+            name="local-fire-department"
+            size={scaleW(22)}
+            color="#FFF"
+          />
+        </Pressable>
+      </SafeAreaView>
+    </>
+  );
+
+  // One VideoView per player (Android). Hidden views only before the stage mounts.
+  const mountPreloadViews =
+    videoPlayers.size > 0 &&
+    (loadState === "countdown" || loadState === "preparing");
 
   return (
     <View style={styles.container}>
       <ImageBackground source={BG} style={styles.bg} resizeMode="cover">
         <View style={styles.overlay} />
 
+        {mountPreloadViews ? (
+          <CampfireVideoPreloadViews players={videoPlayers} />
+        ) : null}
+
         {loadState === "ready" && bundle && (
-          <Pressable style={StyleSheet.absoluteFill} onPress={togglePlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={isLivePlayback ? undefined : togglePlay}
+            disabled={isLivePlayback}
+          >
             <CampfireStage
               width={width}
               height={height}
               scaleW={scaleW}
               currentTimeMs={currentTimeMs}
-              isPlaying={isPlaying}
+              isPlaying={transportPlaying}
               tracks={bundle.tracks}
               components={bundle.components}
               activities={bundle.activities}
@@ -511,46 +837,13 @@ export default function CampfireScreen() {
               videoPlayers={videoPlayers}
             />
 
-            {isLiveRef.current && (
-              <>
-                <ReactionOverlay
-                  bursts={reactionBursts}
-                  onPrune={(ids) => {
-                    if (ids.length === 0) return;
-                    setReactionBursts((prev) => prev.filter((b) => !ids.includes(b.id)));
-                  }}
-                  width={width}
-                  height={height}
-                />
-                <SafeAreaView
-                  pointerEvents="box-none"
-                  style={styles.liveControls}
-                >
-                  <View style={styles.viewerPill}>
-                    <View style={styles.viewerDot} />
-                    <ThemedText style={styles.viewerText}>
-                      {viewerCount}
-                    </ThemedText>
-                  </View>
-                  <Pressable
-                    onPress={() => void sendReaction("🔥")}
-                    style={styles.reactionButton}
-                    hitSlop={12}
-                  >
-                    <MaterialIcons
-                      name="local-fire-department"
-                      size={scaleW(22)}
-                      color="#FFF"
-                    />
-                  </Pressable>
-                </SafeAreaView>
-              </>
-            )}
+            {showLiveInteractions && liveInteractionChrome}
           </Pressable>
         )}
 
         {loadState === "countdown" && (
           <View style={styles.centerFill}>
+            {showLiveInteractions && liveInteractionChrome}
             <View style={styles.countdownCard}>
               <ThemedText
                 type="heading"
@@ -621,7 +914,9 @@ export default function CampfireScreen() {
                   textAlign: "center",
                 }}
               >
-                We’ll start automatically when it begins.
+                {countdownMs <= CAMPFIRE_PRELOAD_LEAD_MS
+                  ? "Getting everything ready…"
+                  : "We'll start automatically when it begins."}
               </ThemedText>
             </View>
           </View>
@@ -629,6 +924,11 @@ export default function CampfireScreen() {
 
         {showSpinner && (
           <View style={styles.centerFill}>
+            {showLiveInteractions && (
+              <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+                {liveInteractionChrome}
+              </View>
+            )}
             <ActivityIndicator size="large" color="#FFFFFF" />
             <ThemedText
               style={{
@@ -681,8 +981,8 @@ export default function CampfireScreen() {
           </View>
         )}
 
-        {/* Paused hint */}
-        {loadState === "ready" && !isPlaying && !finished && (
+        {/* Paused hint (replay only; live follows the shared clock) */}
+        {loadState === "ready" && !isPlaying && !finished && !isLivePlayback && (
           <View style={styles.centerFill} pointerEvents="none">
             <View style={styles.playBadge}>
               <MaterialIcons
@@ -694,17 +994,12 @@ export default function CampfireScreen() {
           </View>
         )}
 
-        <SafeAreaView style={styles.controls} edges={["top"]} pointerEvents="box-none">
-          <Pressable
-            onPress={handleClose}
-            hitSlop={12}
-            style={({ pressed }) => [
-              styles.closeButton,
-              { opacity: pressed ? 0.7 : 1 },
-            ]}
-          >
-            <MaterialIcons name="close" size={scaleW(24)} color="#FFFFFF" />
-          </Pressable>
+        <SafeAreaView
+          style={[styles.controls, { paddingHorizontal: scaleW(CHILD_SCREEN_PADDING_W) }]}
+          edges={["top"]}
+          pointerEvents="box-none"
+        >
+          <BackHeader variant="dark" onBack={stopCampfireSession} />
         </SafeAreaView>
       </ImageBackground>
     </View>
@@ -763,9 +1058,6 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    paddingHorizontal: 16,
   },
   closeButton: {
     marginTop: 8,

@@ -57,6 +57,7 @@ export function CampfireTile({
   const [liveSession, setLiveSession] = useState<CampfireSessionRow | null>(null);
   const [scheduledAtMs, setScheduledAtMs] = useState<number | null>(null);
   const [countdownMs, setCountdownMs] = useState<number>(0);
+  const [replaySession, setReplaySession] = useState<CampfireSessionRow | null>(null);
   const hasLoadedOnceRef = useRef(false);
   const hasEntranceAnimatedRef = useRef(false);
   const tileTranslateX = useSharedValue(240);
@@ -71,6 +72,7 @@ export function CampfireTile({
     setLiveSession(result.liveSession);
     setScheduledAtMs(result.scheduledAtMs);
     setCountdownMs(result.countdownMs);
+    setReplaySession(result.replaySession);
     if (result.preloadSession) {
       startCampfireLivePreload(result.preloadSession);
     } else {
@@ -187,6 +189,11 @@ export function CampfireTile({
 
   if (!statusReady) {
     return <View style={{ minHeight: scaleW(150) }} />;
+  }
+
+  // Nothing live or scheduled, and no past session to replay — there's nothing to show.
+  if (!liveSession && !scheduledAtMs && !replaySession) {
+    return null;
   }
 
   const tileContent = liveSession ? (

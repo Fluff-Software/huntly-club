@@ -13,9 +13,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useNextMissionReleaseDate } from "@/hooks/useNextMissionReleaseDate";
 import { useCountdownToUtcDate } from "@/hooks/useCountdownToUtcDate";
-import {
-  useSessionsWithMissions,
-  type SessionWithActivities } from "@/hooks/useSessionsWithMissions";
+import { useLatestMissions } from "@/hooks/useLatestMissions";
 import { useTutorialActive } from "@/hooks/useTutorialActive";
 import { useRefreshWhenTutorialEnds } from "@/hooks/useRefreshWhenTutorialEnds";
 import { usePlayer } from "@/contexts/PlayerContext";
@@ -24,14 +22,10 @@ import { supabase } from "@/services/supabase";
 
 const MISSIONS_BG = require("@/assets/images/missions-bg.png");
 
-function sessionSectionTitle(session: SessionWithActivities): string {
-  return session.title?.trim() || "Campfire session";
-}
-
 export default function MissionsScreen() {
   const { scaleW } = useLayoutScale();
   const { profiles } = usePlayer();
-  const { sessions, completedActivityIds, loading, error, refetch } = useSessionsWithMissions(null);
+  const { missions, completedActivityIds, loading, error, refetch } = useLatestMissions(null);
   const {
     nextReleaseDate,
     loading: nextReleaseLoading,
@@ -70,7 +64,7 @@ export default function MissionsScreen() {
   React.useEffect(() => {
     if (isTutorialActive) return;
     const profileIds = profiles.map((p) => p.id);
-    const activityIds = sessions.flatMap((s) => s.activities.map((a) => parseInt(a.id, 10)));
+    const activityIds = missions.map((a) => parseInt(a.id, 10));
     if (profileIds.length === 0 || activityIds.length === 0) {
       setCompletionCountByActivityId({});
       return;
@@ -92,7 +86,7 @@ export default function MissionsScreen() {
       setCompletionCountByActivityId(counts);
     })();
     return () => { cancelled = true; };
-  }, [sessions, profiles, isTutorialActive]);
+  }, [missions, profiles, isTutorialActive]);
 
   useEffect(() => {
     if (!hasLoadedOnce && !loading && !error) {
@@ -130,13 +124,6 @@ export default function MissionsScreen() {
           color: "#FFF",
           textAlign: "center" as const,
           marginBottom: 0 },
-        sectionTitle: {
-          fontSize: scaleW(18),
-          fontWeight: "600",
-          color: "#FFF",
-          marginBottom: scaleW(12),
-          marginHorizontal: scaleW(20),
-          opacity: 0.95 },
         sectionBlock: {
           marginBottom: scaleW(28) },
         cardRow: {
@@ -201,81 +188,31 @@ export default function MissionsScreen() {
 
         {(!loading || hasLoadedOnce) && !error && (
           <>
-            {sessions.length === 0 ? (
+            {missions.length === 0 ? (
               <View style={[styles.loadingContainer, { paddingVertical: scaleW(24) }]}>
                 <ThemedText style={styles.emptyText}>New adventures are on the way. Check back soon!</ThemedText>
               </View>
             ) : (
-              <>
-                <Animated.View key={sessions[0].id} style={styles.sectionBlock}>
-                  <ThemedText type="heading" style={styles.sectionTitle}>
-                    {sessionSectionTitle(sessions[0])}
-                  </ThemedText>
-                  {sessions[0].activities.length === 0 ? (
-                    <View style={{ paddingHorizontal: scaleW(20), paddingVertical: scaleW(12) }}>
-                      <ThemedText style={styles.emptyText}>No missions here yet—your next challenge is coming!</ThemedText>
+              <Animated.View style={styles.sectionBlock}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.cardRow}
+                >
+                  {missions.map((card) => (
+                    <View key={card.id} style={styles.cardWrap}>
+                      <MissionCard
+                        card={card}
+                        xp={card.xp}
+                        tiltDeg={0}
+                        completed={completedActivityIds.has(card.id)}
+                        completionCount={completionCountByActivityId[card.id] ?? 0}
+                        totalExplorers={profiles.length}
+                      />
                     </View>
-                  ) : (
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={styles.cardRow}
-                    >
-                      {sessions[0].activities.map((card) => (
-                        <View key={card.id} style={styles.cardWrap}>
-                          <MissionCard
-                            card={card}
-                            xp={card.xp}
-                            tiltDeg={0}
-                            completed={completedActivityIds.has(card.id)}
-                            completionCount={completionCountByActivityId[card.id] ?? 0}
-                            totalExplorers={profiles.length}
-                          />
-                        </View>
-                      ))}
-                    </ScrollView>
-                  )}
-                </Animated.View>
-
-                {sessions.length > 1 && (
-                  <>
-                    <ThemedText type="heading" style={styles.sectionTitle}>
-                      Previous missions
-                    </ThemedText>
-                    {sessions.slice(1).map((session) => (
-                      <Animated.View key={session.id} style={styles.sectionBlock}>
-                        <ThemedText type="heading" style={styles.sectionTitle}>
-                          {sessionSectionTitle(session)}
-                        </ThemedText>
-                        {session.activities.length === 0 ? (
-                          <View style={{ paddingHorizontal: scaleW(20), paddingVertical: scaleW(12) }}>
-                            <ThemedText style={styles.emptyText}>No missions here yet—your next challenge is coming!</ThemedText>
-                          </View>
-                        ) : (
-                          <ScrollView
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={styles.cardRow}
-                          >
-                            {session.activities.map((card) => (
-                              <View key={card.id} style={styles.cardWrap}>
-                                <MissionCard
-                                  card={card}
-                                  xp={card.xp}
-                                  tiltDeg={0}
-                                  completed={completedActivityIds.has(card.id)}
-                                  completionCount={completionCountByActivityId[card.id] ?? 0}
-                                  totalExplorers={profiles.length}
-                                />
-                              </View>
-                            ))}
-                          </ScrollView>
-                        )}
-                      </Animated.View>
-                    ))}
-                  </>
-                )}
-              </>
+                  ))}
+                </ScrollView>
+              </Animated.View>
             )}
           </>
         )}

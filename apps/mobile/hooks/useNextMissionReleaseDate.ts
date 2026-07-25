@@ -17,35 +17,9 @@ export function useNextMissionReleaseDate(): {
     setLoading(true);
     const today = ukTodayForChapterUnlockGate();
 
-    const { data: sessionRows, error: sessionsError } = await supabase
-      .from("campfire_sessions")
-      .select("missions");
-
-    if (sessionsError) {
-      setError(sessionsError.message ?? "Failed to load sessions");
-      setNextReleaseDate(null);
-      setLoading(false);
-      return;
-    }
-
-    const missionIds = new Set<number>();
-    for (const row of sessionRows ?? []) {
-      const ids = (row.missions as number[] | null) ?? [];
-      for (const id of ids) {
-        if (Number.isFinite(id)) missionIds.add(Number(id));
-      }
-    }
-
-    if (missionIds.size === 0) {
-      setNextReleaseDate(null);
-      setLoading(false);
-      return;
-    }
-
     const { data, error: activitiesError } = await supabase
       .from("activities")
       .select("release_date")
-      .in("id", [...missionIds])
       .eq("content_status", "published")
       .not("release_date", "is", null)
       .gt("release_date", today)

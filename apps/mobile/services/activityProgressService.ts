@@ -961,32 +961,13 @@ export type EarliestAvailableMission = {
   xp: number | null;
 };
 
-/** Returns the earliest released mission in campfire session scope (oldest release_date first). */
+/** Returns the earliest released, published mission (oldest release_date first). */
 export const getEarliestAvailableMission = async (): Promise<EarliestAvailableMission | null> => {
   const today = ukTodayForChapterUnlockGate();
-
-  const { data: sessionRows, error: sessionsError } = await supabase
-    .from("campfire_sessions")
-    .select("missions, scheduled_at, id");
-
-  if (sessionsError) {
-    throw new Error(`Failed to load campfire sessions: ${sessionsError.message}`);
-  }
-
-  const missionIds = new Set<number>();
-  for (const row of sessionRows ?? []) {
-    const ids = (row.missions as number[] | null) ?? [];
-    for (const id of ids) {
-      if (Number.isFinite(id)) missionIds.add(Number(id));
-    }
-  }
-
-  if (missionIds.size === 0) return null;
 
   const { data, error } = await supabase
     .from("activities")
     .select("id, title, description, image, xp, release_date, session_order")
-    .in("id", [...missionIds])
     .eq("content_status", "published")
     .not("release_date", "is", null)
     .lte("release_date", today)

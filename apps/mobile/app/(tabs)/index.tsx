@@ -34,9 +34,9 @@ import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useTutorialActive } from "@/hooks/useTutorialActive";
 import { useRefreshWhenTutorialEnds } from "@/hooks/useRefreshWhenTutorialEnds";
 import {
-  useSessionsWithMissions,
-  type SessionWithActivities,
-} from "@/hooks/useSessionsWithMissions";
+  useLatestMissions,
+  type MissionActivityCard,
+} from "@/hooks/useLatestMissions";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useProfileDashboard } from "@/contexts/ProfileDashboardContext";
 import { useUser } from "@/contexts/UserContext";
@@ -77,29 +77,27 @@ function missionImageToUrl(image: ImageSourcePropType): string | null {
   return null;
 }
 
-/** Next uncompleted mission across sessions (oldest session first, then mission order); falls back to the last mission once everything is complete. */
+/** Next uncompleted mission (oldest release first among the latest missions); falls back to the oldest once everything is complete. */
 function pickNextMission(
-  sessions: SessionWithActivities[],
+  missions: MissionActivityCard[],
   completedActivityIds: Set<string>
 ): EarliestAvailableMission | null {
-  if (sessions.length === 0) return null;
+  if (missions.length === 0) return null;
 
-  for (let sessionIndex = sessions.length - 1; sessionIndex >= 0; sessionIndex -= 1) {
-    for (const card of sessions[sessionIndex].activities) {
-      if (!completedActivityIds.has(card.id)) {
-        return {
-          id: parseInt(card.id, 10),
-          title: card.title,
-          description: card.description || null,
-          image: missionImageToUrl(card.image),
-          xp: card.xp,
-        };
-      }
+  for (let i = missions.length - 1; i >= 0; i -= 1) {
+    const card = missions[i];
+    if (!completedActivityIds.has(card.id)) {
+      return {
+        id: parseInt(card.id, 10),
+        title: card.title,
+        description: card.description || null,
+        image: missionImageToUrl(card.image),
+        xp: card.xp,
+      };
     }
   }
 
-  const fallback = sessions[sessions.length - 1]?.activities[0];
-  if (!fallback) return null;
+  const fallback = missions[missions.length - 1];
   return {
     id: parseInt(fallback.id, 10),
     title: fallback.title,
@@ -119,14 +117,14 @@ export default function HomeScreen() {
   const firstProfileId = profiles[0]?.id ?? null;
   const allProfileIds = useMemo(() => profiles.map((profile) => profile.id), [profiles]);
   const {
-    sessions,
+    missions,
     completedActivityIds,
     loading: sessionsLoading,
     refetch: refetchSessions,
-  } = useSessionsWithMissions(firstProfileId, { allProfileIds });
+  } = useLatestMissions(firstProfileId, { allProfileIds });
   const nextMission = useMemo(
-    () => pickNextMission(sessions, completedActivityIds),
-    [sessions, completedActivityIds]
+    () => pickNextMission(missions, completedActivityIds),
+    [missions, completedActivityIds]
   );
   const [clubCards, setClubCards] = useState<ClubPhotoCardItem[]>([]);
   const [clubCardsLoading, setClubCardsLoading] = useState(true);

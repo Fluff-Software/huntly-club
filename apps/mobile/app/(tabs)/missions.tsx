@@ -20,7 +20,7 @@ import { usePlayer } from "@/contexts/PlayerContext";
 import { MissionCard } from "@/components/MissionCard";
 import { supabase } from "@/services/supabase";
 
-const MISSIONS_BG = require("@/assets/images/missions-bg.png");
+const MISSIONS_BG = require("@/assets/images/missions-bg.jpg");
 
 export default function MissionsScreen() {
   const { scaleW } = useLayoutScale();

@@ -21,7 +21,7 @@ import {
   invalidateCampfireLivePreload,
   startCampfireLivePreload,
 } from "@/services/campfireLivePreload";
-const TILE_BG = require("@/assets/images/campfire-tile-bg.png");
+const TILE_BG = require("@/assets/images/campfire-tile-bg.jpg");
 
 const AMBER = "#C47A2A";
 const BROWN_DEEP = "#3B1A06";

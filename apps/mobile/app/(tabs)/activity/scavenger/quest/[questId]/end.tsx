@@ -8,6 +8,9 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import { MaterialIcons } from "@expo/vector-icons";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -22,8 +25,11 @@ import { usePlayer } from "@/contexts/PlayerContext";
 import {
   SCAVENGER_ACCENT,
   SCAVENGER_BG,
+  SCAVENGER_CTA_GRADIENT,
+  SCAVENGER_GOLD,
   SCAVENGER_GREEN,
   SCAVENGER_LIGHT,
+  scavengerSoftShadow,
 } from "@/constants/scavengerTheme";
 import { createHuntJournalEntry } from "@/services/journalService";
 import {
@@ -42,6 +48,39 @@ import {
 } from "@/services/scavengerService";
 
 const PROFILE_KEY = "scavenger_selected_profile_id";
+
+function StatCard({
+  icon,
+  value,
+  label,
+  scaleW,
+  accent = SCAVENGER_GREEN,
+}: {
+  icon: keyof typeof MaterialIcons.glyphMap;
+  value: string;
+  label: string;
+  scaleW: (n: number) => number;
+  accent?: string;
+}) {
+  return (
+    <View style={[styles.statCard, { borderRadius: scaleW(16), padding: scaleW(14) }]}>
+      <View
+        style={[
+          styles.statIcon,
+          { width: scaleW(34), height: scaleW(34), borderRadius: scaleW(10), backgroundColor: `${accent}22` },
+        ]}
+      >
+        <MaterialIcons name={icon} size={scaleW(19)} color={accent} />
+      </View>
+      <ThemedText style={{ marginTop: scaleW(8), fontSize: scaleW(20), fontWeight: "800", color: SCAVENGER_BG }}>
+        {value}
+      </ThemedText>
+      <ThemedText style={{ marginTop: scaleW(1), fontSize: scaleW(12), fontWeight: "600", color: "#7A8A7C" }}>
+        {label}
+      </ThemedText>
+    </View>
+  );
+}
 
 export default function ScavengerEndSessionScreen() {
   const {
@@ -223,159 +262,203 @@ export default function ScavengerEndSessionScreen() {
 
   if (photos === null || (photos.length === 0 && !xpMessage)) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <StatusBar style="dark" />
-        <ActivityIndicator
-          color={SCAVENGER_GREEN}
-          style={{ marginTop: scaleW(60) }}
-        />
-        {!!xpMessage && (
-          <ThemedText
-            style={{
-              textAlign: "center",
-              marginTop: scaleW(16),
-              color: SCAVENGER_GREEN,
-              fontWeight: "700",
-            }}
-          >
-            {xpMessage}
-          </ThemedText>
-        )}
-      </SafeAreaView>
+      <View style={styles.root}>
+        <SafeAreaView style={styles.safe}>
+          <StatusBar style="dark" />
+          <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+            <ActivityIndicator color={SCAVENGER_GREEN} />
+            {!!xpMessage && (
+              <ThemedText
+                style={{
+                  textAlign: "center",
+                  marginTop: scaleW(16),
+                  color: SCAVENGER_GREEN,
+                  fontWeight: "800",
+                }}
+              >
+                {xpMessage}
+              </ThemedText>
+            )}
+          </View>
+        </SafeAreaView>
+      </View>
     );
   }
+
+  const photoCount = Number(photoCountParam) > 0 || photos.length > 0 ? photos.length : 0;
 
   return (
     <>
       <StatusBar style="dark" />
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-        <ScrollView
-          contentContainerStyle={{
-            padding: scaleW(20),
-            paddingBottom: insets.bottom + scaleW(120),
-          }}
-        >
-          <ThemedText
-            type="heading"
-            style={{
-              fontSize: scaleW(28),
-              fontWeight: "800",
-              color: SCAVENGER_BG,
+      <View style={styles.root}>
+        <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{
+              padding: scaleW(20),
+              paddingBottom: insets.bottom + scaleW(140),
             }}
           >
-            Nice work!
-          </ThemedText>
-          <ThemedText
-            style={{ marginTop: scaleW(8), color: "#5a5a5a", fontSize: scaleW(15) }}
-          >
-            {found} of {total} found this hunt
-            {Number(photoCountParam) > 0 || photos.length > 0
-              ? ` · ${photos.length} photo${photos.length === 1 ? "" : "s"}`
-              : ""}
-          </ThemedText>
-          {!!xpMessage && (
-            <ThemedText
-              style={{
-                marginTop: scaleW(10),
-                color: SCAVENGER_ACCENT,
-                fontWeight: "800",
-              }}
-            >
-              {xpMessage}
-            </ThemedText>
-          )}
-
-          <View style={{ marginTop: scaleW(20), gap: scaleW(12) }}>
-            {photos.map((photo) => (
-              <View
-                key={photo.id}
-                style={[
-                  styles.photoCard,
-                  { borderRadius: scaleW(14), overflow: "hidden" },
-                ]}
-              >
-                <ScavengerImage
-                  uri={photo.photo_url}
-                  style={{ width: "100%", height: scaleW(220) }}
-                />
-                {!!photo.item_name && (
-                  <View style={{ padding: scaleW(12) }}>
-                    <ThemedText
-                      style={{ fontWeight: "700", color: SCAVENGER_BG }}
-                    >
-                      {photo.item_name}
-                    </ThemedText>
-                  </View>
-                )}
+            <Animated.View entering={FadeInDown.duration(360)}>
+              <View style={[styles.badge, { width: scaleW(60), height: scaleW(60), borderRadius: scaleW(20) }]}>
+                <MaterialIcons name={complete ? "emoji-events" : "check-circle"} size={scaleW(34)} color={complete ? SCAVENGER_GOLD : SCAVENGER_ACCENT} />
               </View>
-            ))}
-          </View>
-        </ScrollView>
+              <ThemedText
+                type="heading"
+                style={{ marginTop: scaleW(14), fontSize: scaleW(28), fontWeight: "800", color: SCAVENGER_BG }}
+              >
+                {complete ? "Hunt complete!" : "Nice work!"}
+              </ThemedText>
+              <ThemedText style={{ marginTop: scaleW(4), color: "#5a6a5c", fontSize: scaleW(15), lineHeight: scaleW(21) }}>
+                {quest?.name ? `${quest.name} · ` : ""}Here’s how you did.
+              </ThemedText>
+            </Animated.View>
 
-        <View
-          style={[
-            styles.footer,
-            {
-              paddingBottom: insets.bottom + scaleW(12),
-              paddingHorizontal: scaleW(20),
-              paddingTop: scaleW(12),
-              gap: scaleW(10),
-            },
-          ]}
-        >
-          <Pressable
-            onPress={() => finish(false, quest, complete, photos)}
-            disabled={busy}
+            <Animated.View entering={FadeInDown.duration(360).delay(100)} style={{ flexDirection: "row", gap: scaleW(10), marginTop: scaleW(18) }}>
+              <StatCard icon="stars" value={`${found}/${total}`} label="Found" scaleW={scaleW} accent={SCAVENGER_GREEN} />
+              <StatCard icon="photo-camera" value={String(photoCount)} label={photoCount === 1 ? "Photo" : "Photos"} scaleW={scaleW} accent={SCAVENGER_GOLD} />
+            </Animated.View>
+
+            {!!xpMessage && (
+              <Animated.View entering={FadeInDown.duration(360).delay(160)}>
+                <View style={[styles.xpPill, { marginTop: scaleW(14), paddingVertical: scaleW(12), paddingHorizontal: scaleW(14), borderRadius: scaleW(14) }]}>
+                  <MaterialIcons name="auto-awesome" size={scaleW(18)} color={SCAVENGER_GOLD} />
+                  <ThemedText style={{ flex: 1, color: SCAVENGER_BG, fontWeight: "800", fontSize: scaleW(14) }}>
+                    {xpMessage}
+                  </ThemedText>
+                </View>
+              </Animated.View>
+            )}
+
+            {photos.length > 0 && (
+              <ThemedText style={{ marginTop: scaleW(24), marginBottom: scaleW(2), fontSize: scaleW(12), fontWeight: "800", color: "#7A8A7C", textTransform: "uppercase", letterSpacing: 1 }}>
+                Your snaps
+              </ThemedText>
+            )}
+            <View style={{ marginTop: scaleW(12), gap: scaleW(14) }}>
+              {photos.map((photo, index) => (
+                <Animated.View
+                  key={photo.id}
+                  entering={FadeInDown.duration(360).delay(Math.min(index, 6) * 60)}
+                  style={[
+                    styles.photoCard,
+                    { borderRadius: scaleW(18) },
+                  ]}
+                >
+                  <View style={{ borderRadius: scaleW(18), overflow: "hidden" }}>
+                    <ScavengerImage
+                      uri={photo.photo_url}
+                      style={{ width: "100%", height: scaleW(220) }}
+                    />
+                    {!!photo.item_name && (
+                      <View style={[styles.photoCaption, { paddingHorizontal: scaleW(12), paddingVertical: scaleW(6), borderRadius: scaleW(999), bottom: scaleW(12), left: scaleW(12) }]}>
+                        <MaterialIcons name="check-circle" size={scaleW(13)} color="#fff" />
+                        <ThemedText style={{ fontWeight: "800", color: "#fff", fontSize: scaleW(12) }}>
+                          {photo.item_name}
+                        </ThemedText>
+                      </View>
+                    )}
+                  </View>
+                </Animated.View>
+              ))}
+            </View>
+          </ScrollView>
+
+          <View
             style={[
-              styles.cta,
+              styles.footer,
               {
-                paddingVertical: scaleW(14),
-                borderRadius: scaleW(28),
-                opacity: busy ? 0.7 : 1,
+                paddingBottom: insets.bottom + scaleW(12),
+                paddingHorizontal: scaleW(20),
+                paddingTop: scaleW(14),
+                gap: scaleW(10),
               },
             ]}
           >
-            {busy ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <ThemedText
-                lightColor="#fff"
-                darkColor="#fff"
-                style={{ fontWeight: "800", fontSize: scaleW(16) }}
-              >
-                Keep photos & finish
-              </ThemedText>
-            )}
-          </Pressable>
-          <Pressable
-            onPress={() => finish(true, quest, complete, photos)}
-            disabled={busy}
-            style={[
-              styles.secondary,
-              { paddingVertical: scaleW(14), borderRadius: scaleW(28) },
-            ]}
-          >
-            <ThemedText
-              style={{
-                fontWeight: "700",
-                fontSize: scaleW(15),
-                color: SCAVENGER_BG,
-                textAlign: "center",
-              }}
+            <Pressable
+              onPress={() => finish(false, quest, complete, photos)}
+              disabled={busy}
+              style={({ pressed }) => [
+                styles.ctaWrap,
+                { borderRadius: scaleW(28), opacity: busy ? 0.7 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] },
+              ]}
             >
-              Discard photos & finish
-            </ThemedText>
-          </Pressable>
-        </View>
-      </SafeAreaView>
+              <LinearGradient
+                colors={SCAVENGER_CTA_GRADIENT}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.cta, { paddingVertical: scaleW(15), borderRadius: scaleW(28) }]}
+              >
+                {busy ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <MaterialIcons name="collections-bookmark" size={scaleW(19)} color="#fff" />
+                    <ThemedText lightColor="#fff" darkColor="#fff" style={{ fontWeight: "800", fontSize: scaleW(16) }}>
+                      Keep photos & finish
+                    </ThemedText>
+                  </>
+                )}
+              </LinearGradient>
+            </Pressable>
+            <Pressable
+              onPress={() => finish(true, quest, complete, photos)}
+              disabled={busy}
+              style={[
+                styles.secondary,
+                { paddingVertical: scaleW(14), borderRadius: scaleW(28) },
+              ]}
+            >
+              <ThemedText
+                style={{
+                  fontWeight: "800",
+                  fontSize: scaleW(15),
+                  color: "#6b7a6d",
+                  textAlign: "center",
+                }}
+              >
+                Discard photos & finish
+              </ThemedText>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      </View>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: SCAVENGER_LIGHT },
-  photoCard: { backgroundColor: "#fff" },
+  root: { flex: 1, backgroundColor: SCAVENGER_LIGHT },
+  safe: { flex: 1 },
+  badge: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+    ...scavengerSoftShadow,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: "#fff",
+    ...scavengerSoftShadow,
+  },
+  statIcon: { alignItems: "center", justifyContent: "center" },
+  xpPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(244,197,80,0.16)",
+    borderWidth: 1,
+    borderColor: "rgba(244,197,80,0.35)",
+  },
+  photoCard: { backgroundColor: "#fff", ...scavengerSoftShadow },
+  photoCaption: {
+    position: "absolute",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: SCAVENGER_ACCENT,
+  },
   footer: {
     position: "absolute",
     left: 0,
@@ -385,6 +468,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "rgba(0,0,0,0.06)",
   },
-  cta: { backgroundColor: SCAVENGER_GREEN, alignItems: "center" },
+  ctaWrap: { overflow: "hidden", ...scavengerSoftShadow },
+  cta: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   secondary: { backgroundColor: "#E5EDE5" },
 });

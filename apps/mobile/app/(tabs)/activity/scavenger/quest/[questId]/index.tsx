@@ -118,7 +118,7 @@ export default function ScavengerQuestOverviewScreen() {
         ]);
       }
     } catch (e) {
-      Alert.alert("Couldn’t load hunt", e instanceof Error ? e.message : "Try again");
+      Alert.alert("Couldn’t load scavenger hunt", e instanceof Error ? e.message : "Try again");
     } finally {
       setLoading(false);
     }
@@ -136,13 +136,13 @@ export default function ScavengerQuestOverviewScreen() {
     if (!unlocked) return "Locked";
     if (state?.complete) return "Play again";
     if (found > 0) return "Continue exploring";
-    return "Start hunt";
+    return "Start scavenger hunt";
   }, [unlocked, state?.complete, found]);
 
   const beginHunt = useCallback(async () => {
     if (!questId || !profileId) return;
     if (!unlocked) {
-      Alert.alert("Still locked", "This hunt isn’t available yet.");
+      Alert.alert("Still locked", "This scavenger hunt isn’t available yet.");
       return;
     }
     setStarting(true);
@@ -189,7 +189,7 @@ export default function ScavengerQuestOverviewScreen() {
     if (!questId || !profileId) return;
     Alert.alert(
       "Start over?",
-      "This clears your found items for this hunt so you can play again.",
+      "This clears your found items for this scavenger hunt so you can play again.",
       [
         { text: "Cancel", style: "cancel" },
         {

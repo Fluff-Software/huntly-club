@@ -59,7 +59,7 @@ export const ACTIVITY_TYPES: ActivityTypeMeta[] = [
   },
   {
     key: "hunt",
-    label: "Hunt",
+    label: "Scavenger Hunt",
     description: "Find clues and complete a scavenger hunt outdoors",
     icon: "travel-explore",
     route: "/(tabs)/activity/scavenger",

@@ -175,7 +175,7 @@ export default function ScavengerGroupScreen() {
             )}
 
             <ThemedText lightColor="rgba(255,255,255,0.85)" darkColor="rgba(255,255,255,0.85)" style={{ marginTop: scaleW(24), marginBottom: scaleW(10), fontWeight: "700", textTransform: "uppercase", fontSize: scaleW(12), letterSpacing: 0.6 }}>
-              Hunts in this group
+              Scavenger hunts in this group
             </ThemedText>
 
             {quests.map((quest) => {

@@ -120,7 +120,7 @@ export default function ScavengerBrowseScreen() {
         ...q.slice(0, 8).flatMap((quest) => [quest.tile_image_url, quest.cover_image_url]),
       ]);
     } catch (e) {
-      Alert.alert("Couldn’t load hunts", e instanceof Error ? e.message : "Please try again.");
+      Alert.alert("Couldn’t load scavenger hunts", e instanceof Error ? e.message : "Please try again.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -200,7 +200,7 @@ export default function ScavengerBrowseScreen() {
       rows.push({
         kind: "header",
         id: "quests-h",
-        title: nearbyQuests.length ? "More hunts" : "Hunts",
+        title: nearbyQuests.length ? "More scavenger hunts" : "Scavenger hunts",
       });
       for (const q of otherQuests) {
         rows.push({ kind: "quest", id: q.id, quest: q });
@@ -227,7 +227,7 @@ export default function ScavengerBrowseScreen() {
             <MaterialIcons name="arrow-back" size={scaleW(26)} color="#fff" />
           </Pressable>
           <ThemedText type="heading" lightColor="#fff" darkColor="#fff" style={{ fontSize: scaleW(26), fontWeight: "800" }}>
-            Hunt
+            Scavenger Hunt
           </ThemedText>
           <ThemedText lightColor="rgba(255,255,255,0.7)" darkColor="rgba(255,255,255,0.7)" style={{ marginTop: scaleW(4), fontSize: scaleW(14) }}>
             Find clues and explore outdoors
@@ -276,7 +276,7 @@ export default function ScavengerBrowseScreen() {
             }
             ListEmptyComponent={
               <ThemedText lightColor="rgba(255,255,255,0.7)" darkColor="rgba(255,255,255,0.7)" style={{ textAlign: "center", marginTop: scaleW(40) }}>
-                No hunts available yet. Check back soon!
+                No scavenger hunts available yet. Check back soon!
               </ThemedText>
             }
             renderItem={({ item }) => {

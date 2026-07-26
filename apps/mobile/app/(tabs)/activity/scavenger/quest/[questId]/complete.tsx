@@ -51,7 +51,7 @@ export default function ScavengerCompleteScreen() {
               type="heading"
               style={{ fontSize: scaleW(32), fontWeight: "800", textAlign: "center" }}
             >
-              {completion?.cta || "Hunt complete!"}
+              {completion?.cta || "Scavenger hunt complete!"}
             </ThemedText>
             {!!completion?.copy && (
               <ThemedText

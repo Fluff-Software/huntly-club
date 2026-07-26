@@ -490,7 +490,7 @@ export default function TabLayout() {
             );
           }}
           accessibilityRole="button"
-          accessibilityLabel="Return to active hunt"
+          accessibilityLabel="Return to active scavenger hunt"
         >
           <MaterialIcons name="travel-explore" size={scaleW(26)} color="#FFFFFF" />
         </Pressable>

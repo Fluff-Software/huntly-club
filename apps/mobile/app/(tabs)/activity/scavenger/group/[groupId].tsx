@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -50,6 +50,7 @@ export default function ScavengerGroupScreen() {
   const [quests, setQuests] = useState<ScavengerQuest[]>([]);
   const [states, setStates] = useState<ScavengerQuestState[]>([]);
   const [unlocked, setUnlocked] = useState(true);
+  const [unlockedQuestIds, setUnlockedQuestIds] = useState<Set<string>>(new Set());
   const [groupComplete, setGroupComplete] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -79,6 +80,13 @@ export default function ScavengerGroupScreen() {
       setQuests(q);
       setStates(s);
 
+      const questUnlocks = await Promise.all(
+        q
+          .filter((quest) => quest.lockable)
+          .map(async (quest) => [quest.id, await isPlayUnlocked("quest", quest.id)] as const)
+      );
+      setUnlockedQuestIds(new Set(questUnlocks.filter(([, ok]) => ok).map(([id]) => id)));
+
       setUnlocked(!g?.lockable || playUnlocked);
       if (g) {
         const completion = await fetchGroupCompletionStatus(profileId, groupId);
@@ -98,6 +106,11 @@ export default function ScavengerGroupScreen() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const visibleQuests = useMemo(
+    () => quests.filter((quest) => !quest.lockable || unlockedQuestIds.has(quest.id)),
+    [quests, unlockedQuestIds]
+  );
 
   const statusFor = (questId: string) => {
     const state = states.find((s) => s.quest_id === questId);
@@ -178,7 +191,7 @@ export default function ScavengerGroupScreen() {
               Scavenger hunts in this group
             </ThemedText>
 
-            {quests.map((quest) => {
+            {visibleQuests.map((quest) => {
               const label = statusFor(quest.id);
               return (
                 <Pressable

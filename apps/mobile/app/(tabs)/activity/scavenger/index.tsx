@@ -3,11 +3,9 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Modal,
   Pressable,
   RefreshControl,
   StyleSheet,
-  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -34,8 +32,6 @@ import {
   fetchPublishedQuests,
   fetchQuestStatesForProfile,
   isPlayUnlocked,
-  unlockWithCodeAnywhere,
-  unlockWithLocation,
   type ScavengerQuest,
   type ScavengerQuestGroup,
   type ScavengerQuestState,
@@ -66,10 +62,6 @@ export default function ScavengerBrowseScreen() {
   const [coords, setCoords] = useState<Coords | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [codeOpen, setCodeOpen] = useState(false);
-  const [code, setCode] = useState("");
-  const [codeBusy, setCodeBusy] = useState(false);
-  const [codeError, setCodeError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -110,8 +102,6 @@ export default function ScavengerBrowseScreen() {
           .filter((group) => group.lockable)
           .map(async (group) => [group.id, await isPlayUnlocked("questGroup", group.id)] as const)
       );
-      const questUnlockMap = new Map(questUnlocks);
-      const groupUnlockMap = new Map(groupUnlocks);
       setUnlockedQuestIds(new Set(questUnlocks.filter(([, ok]) => ok).map(([id]) => id)));
       setUnlockedGroupIds(new Set(groupUnlocks.filter(([, ok]) => ok).map(([id]) => id)));
 
@@ -120,37 +110,7 @@ export default function ScavengerBrowseScreen() {
         const pos = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
         });
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        setCoords({ lat, lng });
-        const nextQuestUnlocks = new Set(
-          questUnlocks.filter(([, ok]) => ok).map(([id]) => id)
-        );
-        const nextGroupUnlocks = new Set(
-          groupUnlocks.filter(([, ok]) => ok).map(([id]) => id)
-        );
-        for (const quest of q.filter((item) => item.lockable && !questUnlockMap.get(item.id))) {
-          try {
-            const result = await unlockWithLocation("quest", quest.id, lat, lng);
-            if (result.ok && result.play_unlocked) {
-              nextQuestUnlocks.add(quest.id);
-            }
-          } catch {
-            // ignore individual unlock failures
-          }
-        }
-        for (const group of g.filter((item) => item.lockable && !groupUnlockMap.get(item.id))) {
-          try {
-            const result = await unlockWithLocation("questGroup", group.id, lat, lng);
-            if (result.ok && result.play_unlocked) {
-              nextGroupUnlocks.add(group.id);
-            }
-          } catch {
-            // ignore
-          }
-        }
-        setUnlockedQuestIds(nextQuestUnlocks);
-        setUnlockedGroupIds(nextGroupUnlocks);
+        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
       } else {
         setCoords(null);
       }
@@ -249,31 +209,6 @@ export default function ScavengerBrowseScreen() {
     return rows;
   }, [nearbyQuests, visibleGroups, otherQuests]);
 
-  const submitCode = async () => {
-    if (!code.trim()) return;
-    setCodeBusy(true);
-    setCodeError(null);
-    try {
-      const result = await unlockWithCodeAnywhere(code.trim());
-      if (!result.ok || !result.itemId) {
-        setCodeError("That code didn’t unlock anything. Try again?");
-        return;
-      }
-      setCodeOpen(false);
-      setCode("");
-      if (result.type === "quest") {
-        router.push(`/(tabs)/activity/scavenger/quest/${result.itemId}`);
-      } else {
-        router.push(`/(tabs)/activity/scavenger/group/${result.itemId}`);
-      }
-      void load();
-    } catch (e) {
-      setCodeError(e instanceof Error ? e.message : "Unlock failed");
-    } finally {
-      setCodeBusy(false);
-    }
-  };
-
   const statusLabel = (questId: string) => {
     const state = stateByQuest.get(questId);
     if (!state) return null;
@@ -322,16 +257,6 @@ export default function ScavengerBrowseScreen() {
           </View>
         )}
 
-        <Pressable
-          onPress={() => setCodeOpen(true)}
-          style={[styles.codeBtn, { marginHorizontal: scaleW(20), marginBottom: scaleW(12), padding: scaleW(14), borderRadius: scaleW(14) }]}
-        >
-          <MaterialIcons name="vpn-key" size={scaleW(20)} color={SCAVENGER_ACCENT} />
-          <ThemedText lightColor="#fff" darkColor="#fff" style={{ fontWeight: "700", fontSize: scaleW(15) }}>
-            Got a code?
-          </ThemedText>
-        </Pressable>
-
         {loading || !profileId ? (
           <ActivityIndicator color="#fff" style={{ marginTop: scaleW(40) }} />
         ) : (
@@ -351,7 +276,7 @@ export default function ScavengerBrowseScreen() {
             }
             ListEmptyComponent={
               <ThemedText lightColor="rgba(255,255,255,0.7)" darkColor="rgba(255,255,255,0.7)" style={{ textAlign: "center", marginTop: scaleW(40) }}>
-                No hunts available yet. Try a code if you have one!
+                No hunts available yet. Check back soon!
               </ThemedText>
             }
             renderItem={({ item }) => {
@@ -439,43 +364,6 @@ export default function ScavengerBrowseScreen() {
           />
         )}
       </SafeAreaView>
-
-      <Modal visible={codeOpen} transparent animationType="slide" onRequestClose={() => setCodeOpen(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setCodeOpen(false)}>
-          <Pressable style={[styles.modalSheet, { padding: scaleW(20), borderTopLeftRadius: scaleW(24), borderTopRightRadius: scaleW(24) }]} onPress={(e) => e.stopPropagation()}>
-            <ThemedText type="heading" style={{ fontSize: scaleW(22), fontWeight: "800", color: SCAVENGER_BG }}>
-              Got a code?
-            </ThemedText>
-            <ThemedText style={{ marginTop: scaleW(8), color: "#5a5a5a", fontSize: scaleW(14) }}>
-              Codes are often on posters, leaflets, or tickets at the venue.
-            </ThemedText>
-            <TextInput
-              value={code}
-              onChangeText={setCode}
-              autoCapitalize="characters"
-              placeholder="Enter code"
-              placeholderTextColor="#999"
-              style={[styles.input, { marginTop: scaleW(16), padding: scaleW(14), borderRadius: scaleW(12), fontSize: scaleW(16) }]}
-            />
-            {!!codeError && (
-              <ThemedText style={{ color: "#B42318", marginTop: scaleW(8), fontSize: scaleW(13) }}>{codeError}</ThemedText>
-            )}
-            <Pressable
-              onPress={submitCode}
-              disabled={codeBusy}
-              style={[styles.primaryBtn, { marginTop: scaleW(16), paddingVertical: scaleW(14), borderRadius: scaleW(28), opacity: codeBusy ? 0.7 : 1 }]}
-            >
-              {codeBusy ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <ThemedText lightColor="#fff" darkColor="#fff" style={{ fontWeight: "800", fontSize: scaleW(16) }}>
-                  Unlock
-                </ThemedText>
-              )}
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </>
   );
 }
@@ -486,16 +374,6 @@ const styles = StyleSheet.create({
   backBtn: { alignSelf: "flex-start", marginBottom: 16, padding: 4 },
   chip: { backgroundColor: "rgba(255,255,255,0.12)" },
   chipActive: { backgroundColor: "rgba(98,169,79,0.45)" },
-  codeBtn: {
-    backgroundColor: SCAVENGER_CARD,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
   card: { backgroundColor: SCAVENGER_CARD },
   pill: { backgroundColor: "rgba(98,169,79,0.18)", alignSelf: "flex-start" },
-  modalBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.45)" },
-  modalSheet: { backgroundColor: "#fff" },
-  input: { backgroundColor: "#F3F5F3", color: "#1A2E1E" },
-  primaryBtn: { backgroundColor: SCAVENGER_GREEN, alignItems: "center" },
 });

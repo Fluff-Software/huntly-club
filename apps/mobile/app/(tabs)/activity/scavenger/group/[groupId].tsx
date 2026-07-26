@@ -12,7 +12,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import * as Location from "expo-location";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ThemedText } from "@/components/ThemedText";
 import {
@@ -29,12 +28,10 @@ import {
 } from "@/constants/scavengerTheme";
 import {
   fetchGroupCompletionStatus,
-  fetchLockById,
   fetchQuestGroupById,
   fetchQuestStatesForProfile,
   fetchQuestsInGroup,
   isPlayUnlocked,
-  unlockWithLocation,
   type ScavengerQuest,
   type ScavengerQuestGroup,
   type ScavengerQuestState,
@@ -82,40 +79,7 @@ export default function ScavengerGroupScreen() {
       setQuests(q);
       setStates(s);
 
-      let playOk = playUnlocked;
-      if (g?.lockable && !playOk) {
-        let requiresLocation = false;
-        if (g.lock_id) {
-          const lock = await fetchLockById(g.lock_id);
-          requiresLocation = Boolean(lock?.requires_location);
-        } else {
-          requiresLocation = true;
-        }
-
-        if (requiresLocation) {
-          try {
-            const { status } = await Location.requestForegroundPermissionsAsync();
-            if (status === "granted") {
-              const pos = await Location.getCurrentPositionAsync({
-                accuracy: Location.Accuracy.Balanced,
-              });
-              const result = await unlockWithLocation(
-                "questGroup",
-                groupId,
-                pos.coords.latitude,
-                pos.coords.longitude
-              );
-              if (result.ok) {
-                playOk = await isPlayUnlocked("questGroup", groupId);
-              }
-            }
-          } catch {
-            // Keep prior unlock state if GPS/unlock fails
-          }
-        }
-      }
-
-      setUnlocked(!g?.lockable || playOk);
+      setUnlocked(!g?.lockable || playUnlocked);
       if (g) {
         const completion = await fetchGroupCompletionStatus(profileId, groupId);
         setGroupComplete(completion.all_completed && completion.has_cta);
@@ -161,14 +125,14 @@ export default function ScavengerGroupScreen() {
               {group.name} is locked
             </ThemedText>
             <ThemedText lightColor="rgba(255,255,255,0.7)" darkColor="rgba(255,255,255,0.7)" style={{ marginTop: scaleW(8), textAlign: "center" }}>
-              Enter a code or visit the unlock location to open this collection.
+              This collection isn’t available yet.
             </ThemedText>
             <Pressable
               onPress={() => router.replace("/(tabs)/activity/scavenger")}
               style={[styles.primaryBtn, { marginTop: scaleW(20), paddingVertical: scaleW(14), paddingHorizontal: scaleW(24), borderRadius: scaleW(28) }]}
             >
               <ThemedText lightColor="#fff" darkColor="#fff" style={{ fontWeight: "800" }}>
-                Got a code?
+                Back to hunts
               </ThemedText>
             </Pressable>
           </View>

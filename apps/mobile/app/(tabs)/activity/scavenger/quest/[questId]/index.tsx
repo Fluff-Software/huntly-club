@@ -3,18 +3,15 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
-  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import * as Location from "expo-location";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ThemedText } from "@/components/ThemedText";
 import { ItemPreviewFan } from "@/components/scavenger/ItemPreviewFan";
@@ -32,18 +29,14 @@ import {
   SCAVENGER_ACCENT,
   SCAVENGER_BG,
   SCAVENGER_GREEN,
-  SCAVENGER_LIGHT,
 } from "@/constants/scavengerTheme";
 import {
   ensureQuestState,
-  fetchLockById,
   fetchQuestById,
   fetchQuestItems,
   fetchQuestState,
   isPlayUnlocked,
   restartQuest,
-  unlockWithCode,
-  unlockWithLocation,
   type ScavengerQuest,
   type ScavengerQuestItem,
   type ScavengerQuestState,
@@ -78,13 +71,8 @@ export default function ScavengerQuestOverviewScreen() {
   const [items, setItems] = useState<ScavengerQuestItem[]>([]);
   const [state, setState] = useState<ScavengerQuestState | null>(null);
   const [unlocked, setUnlocked] = useState(true);
-  const [needsCode, setNeedsCode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
-  const [codeOpen, setCodeOpen] = useState(false);
-  const [code, setCode] = useState("");
-  const [codeBusy, setCodeBusy] = useState(false);
-  const [codeError, setCodeError] = useState<string | null>(null);
   const [restarting, setRestarting] = useState(false);
 
   useEffect(() => {
@@ -113,47 +101,11 @@ export default function ScavengerQuestOverviewScreen() {
       setItems(itemRows);
       setState(s);
 
-      let playOk = true;
-      let lockRequiresCode = false;
-      let lockRequiresLocation = false;
-
       if (q?.lockable && q.lock_id) {
-        const [unlockedPlay, lock] = await Promise.all([
-          isPlayUnlocked("quest", questId),
-          fetchLockById(q.lock_id),
-        ]);
-        playOk = unlockedPlay;
-        lockRequiresCode = Boolean(lock?.requires_code);
-        lockRequiresLocation = Boolean(lock?.requires_location);
-
-        // Re-check location unlock on overview (OG Huntly parity)
-        if (!playOk && lockRequiresLocation) {
-          try {
-            const { status } = await Location.requestForegroundPermissionsAsync();
-            if (status === "granted") {
-              const pos = await Location.getCurrentPositionAsync({
-                accuracy: Location.Accuracy.Balanced,
-              });
-              const result = await unlockWithLocation(
-                "quest",
-                questId,
-                pos.coords.latitude,
-                pos.coords.longitude
-              );
-              if (result.ok) {
-                playOk = await isPlayUnlocked("quest", questId);
-              }
-            }
-          } catch {
-            // Keep prior unlock state if GPS/unlock fails
-          }
-        }
-
+        const playOk = await isPlayUnlocked("quest", questId);
         setUnlocked(playOk);
-        setNeedsCode(lockRequiresCode && !playOk);
       } else {
         setUnlocked(true);
-        setNeedsCode(false);
       }
 
       // Warm hero + preview images before leaving the page spinner.
@@ -166,7 +118,7 @@ export default function ScavengerQuestOverviewScreen() {
         ]);
       }
     } catch (e) {
-      Alert.alert("Couldn’t load hunt", e instanceof Error ? e.message : "Try again");
+      Alert.alert("Couldn’t load scavenger hunt", e instanceof Error ? e.message : "Try again");
     } finally {
       setLoading(false);
     }
@@ -181,21 +133,16 @@ export default function ScavengerQuestOverviewScreen() {
   const remaining = Math.max(0, total - found);
 
   const ctaLabel = useMemo(() => {
-    if (needsCode && !unlocked) return "Got a code?";
     if (!unlocked) return "Locked";
     if (state?.complete) return "Play again";
     if (found > 0) return "Continue exploring";
-    return "Start hunt";
-  }, [needsCode, unlocked, state?.complete, found]);
+    return "Start scavenger hunt";
+  }, [unlocked, state?.complete, found]);
 
   const beginHunt = useCallback(async () => {
     if (!questId || !profileId) return;
-    if (needsCode && !unlocked) {
-      setCodeOpen(true);
-      return;
-    }
     if (!unlocked) {
-      Alert.alert("Still locked", "Visit the unlock location or enter a code first.");
+      Alert.alert("Still locked", "This scavenger hunt isn’t available yet.");
       return;
     }
     setStarting(true);
@@ -236,13 +183,13 @@ export default function ScavengerQuestOverviewScreen() {
     } finally {
       setStarting(false);
     }
-  }, [questId, profileId, needsCode, unlocked, quest, router]);
+  }, [questId, profileId, unlocked, quest, router]);
 
   const confirmRestart = () => {
     if (!questId || !profileId) return;
     Alert.alert(
       "Start over?",
-      "This clears your found items for this hunt so you can play again.",
+      "This clears your found items for this scavenger hunt so you can play again.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -275,26 +222,6 @@ export default function ScavengerQuestOverviewScreen() {
       return;
     }
     await beginHunt();
-  };
-
-  const submitCode = async () => {
-    if (!questId || !code.trim()) return;
-    setCodeBusy(true);
-    setCodeError(null);
-    try {
-      const result = await unlockWithCode("quest", questId, code.trim());
-      if (!result.ok || !result.play_unlocked) {
-        setCodeError("That code didn’t work. Try again?");
-        return;
-      }
-      setCodeOpen(false);
-      setCode("");
-      await load();
-    } catch (e) {
-      setCodeError(e instanceof Error ? e.message : "Unlock failed");
-    } finally {
-      setCodeBusy(false);
-    }
   };
 
   // Attraction branding only — World theme stays the default when unset.
@@ -392,7 +319,7 @@ export default function ScavengerQuestOverviewScreen() {
                   <ItemPreviewFan
                     items={items}
                     onItemPress={() => {
-                      if (unlocked && !needsCode) void start();
+                      if (unlocked) void start();
                     }}
                   />
 
@@ -467,7 +394,7 @@ export default function ScavengerQuestOverviewScreen() {
               >
                 <Pressable
                   onPress={start}
-                  disabled={starting || restarting || (!unlocked && !needsCode)}
+                  disabled={starting || restarting || !unlocked}
                   style={[styles.cta, { paddingVertical: scaleW(16), borderRadius: scaleW(28), opacity: starting || restarting ? 0.7 : 1 }]}
                 >
                   {starting || restarting ? (
@@ -483,40 +410,6 @@ export default function ScavengerQuestOverviewScreen() {
           )}
         </SafeAreaView>
       </View>
-
-      <Modal visible={codeOpen} transparent animationType="slide" onRequestClose={() => setCodeOpen(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setCodeOpen(false)}>
-          <Pressable style={[styles.modalSheet, { padding: scaleW(20), borderTopLeftRadius: scaleW(24), borderTopRightRadius: scaleW(24) }]} onPress={(e) => e.stopPropagation()}>
-            <ThemedText type="heading" style={{ fontSize: scaleW(22), fontWeight: "800", color: SCAVENGER_BG }}>
-              Enter unlock code
-            </ThemedText>
-            <TextInput
-              value={code}
-              onChangeText={setCode}
-              autoCapitalize="characters"
-              placeholder="Code"
-              placeholderTextColor="#999"
-              style={[styles.input, { marginTop: scaleW(16), padding: scaleW(14), borderRadius: scaleW(12), fontSize: scaleW(16) }]}
-            />
-            {!!codeError && (
-              <ThemedText style={{ color: "#B42318", marginTop: scaleW(8) }}>{codeError}</ThemedText>
-            )}
-            <Pressable
-              onPress={submitCode}
-              disabled={codeBusy}
-              style={[styles.cta, { marginTop: scaleW(16), paddingVertical: scaleW(14), borderRadius: scaleW(28) }]}
-            >
-              {codeBusy ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <ThemedText lightColor="#fff" darkColor="#fff" style={{ fontWeight: "800" }}>
-                  Unlock
-                </ThemedText>
-              )}
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </>
   );
 }
@@ -525,7 +418,4 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   footer: { position: "absolute", left: 0, right: 0, bottom: 0 },
   cta: { backgroundColor: SCAVENGER_GREEN, alignItems: "center" },
-  modalBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.45)" },
-  modalSheet: { backgroundColor: SCAVENGER_LIGHT },
-  input: { backgroundColor: "#fff", color: "#1A2E1E" },
 });

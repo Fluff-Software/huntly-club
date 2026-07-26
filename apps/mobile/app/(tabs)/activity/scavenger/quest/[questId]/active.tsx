@@ -159,7 +159,7 @@ export default function ScavengerActiveScreen() {
           (itemRows ?? []).slice(0, 8).map((item) => item.image_url)
         );
       } catch (e) {
-        Alert.alert("Couldn’t open hunt", e instanceof Error ? e.message : "Try again");
+        Alert.alert("Couldn’t open scavenger hunt", e instanceof Error ? e.message : "Try again");
       } finally {
         setLoading(false);
       }
@@ -312,7 +312,7 @@ export default function ScavengerActiveScreen() {
               </ThemedText>
             </Pressable>
             <ThemedText lightColor="#fff" darkColor="#fff" numberOfLines={1} style={{ flex: 1, textAlign: "center", fontWeight: "800", fontSize: scaleW(16), marginHorizontal: scaleW(8) }}>
-              {quest?.name ?? "Hunt"}
+              {quest?.name ?? "Scavenger Hunt"}
             </ThemedText>
             <View style={{ width: scaleW(52) }} />
           </View>

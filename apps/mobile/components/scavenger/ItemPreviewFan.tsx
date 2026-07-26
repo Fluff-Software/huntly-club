@@ -2,7 +2,7 @@ import React from "react";
 import { Pressable, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import type { ScavengerQuestItem } from "@/services/scavengerService";
-import { SCAVENGER_GREEN } from "@/constants/scavengerTheme";
+import { SCAVENGER_GREEN, scavengerShadow } from "@/constants/scavengerTheme";
 import { ScavengerImage } from "@/components/scavenger/ScavengerImage";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 
@@ -50,16 +50,19 @@ export function ItemPreviewFan({ items, onItemPress }: Props) {
               transform: [{ rotate: `${rotations[index] ?? 0}deg` }],
               zIndex: index === 1 ? 2 : 1,
               width: cardW,
-              borderRadius: scaleW(14),
-              overflow: "hidden",
+              borderRadius: scaleW(16),
               backgroundColor: "#fff",
+              padding: scaleW(4),
+              ...scavengerShadow,
             }}
           >
-            <ScavengerImage
-              uri={item.image_url}
-              style={{ width: "100%", height: scaleW(110) }}
-              fallback={placeholder}
-            />
+            <View style={{ borderRadius: scaleW(12), overflow: "hidden" }}>
+              <ScavengerImage
+                uri={item.image_url}
+                style={{ width: "100%", height: scaleW(110) }}
+                fallback={placeholder}
+              />
+            </View>
           </Pressable>
         ))}
       </View>

@@ -10,18 +10,30 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as Location from "expo-location";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { usePlayer } from "@/contexts/PlayerContext";
 import {
   SCAVENGER_ACCENT,
-  SCAVENGER_BG,
-  SCAVENGER_CARD,
+  SCAVENGER_BG_DEEP,
+  SCAVENGER_CARD_GRADIENT,
+  SCAVENGER_CTA_GRADIENT,
+  SCAVENGER_GOLD,
   SCAVENGER_GREEN,
+  SCAVENGER_HAIRLINE,
+  SCAVENGER_HEADER_GRADIENT,
+  SCAVENGER_IMAGE_SCRIM,
+  SCAVENGER_SCREEN_GRADIENT,
+  SCAVENGER_TEXT_DIM,
+  SCAVENGER_TEXT_FAINT,
+  scavengerShadow,
+  scavengerSoftShadow,
 } from "@/constants/scavengerTheme";
 import {
   prefetchScavengerImages,
@@ -31,7 +43,6 @@ import {
   fetchPublishedQuestGroups,
   fetchPublishedQuests,
   fetchQuestStatesForProfile,
-  isPlayUnlocked,
   type ScavengerQuest,
   type ScavengerQuestGroup,
   type ScavengerQuestState,
@@ -44,9 +55,44 @@ const NEARBY_RADIUS_KM = 8;
 type Coords = { lat: number; lng: number };
 
 type ListRow =
-  | { kind: "header"; id: string; title: string }
+  | { kind: "header"; id: string; title: string; icon: keyof typeof MaterialIcons.glyphMap }
   | { kind: "group"; id: string; group: ScavengerQuestGroup }
   | { kind: "quest"; id: string; quest: ScavengerQuest; distanceKm?: number };
+
+type StatusTone = "progress" | "complete";
+
+function StatusPill({
+  label,
+  icon,
+  tone,
+  scaleW,
+}: {
+  label: string;
+  icon: keyof typeof MaterialIcons.glyphMap;
+  tone: StatusTone;
+  scaleW: (n: number) => number;
+}) {
+  const color = tone === "complete" ? SCAVENGER_ACCENT : SCAVENGER_GOLD;
+  return (
+    <View
+      style={[
+        styles.pill,
+        {
+          paddingHorizontal: scaleW(9),
+          paddingVertical: scaleW(4),
+          borderRadius: scaleW(999),
+          backgroundColor:
+            tone === "complete" ? "rgba(98,169,79,0.18)" : "rgba(244,197,80,0.18)",
+        },
+      ]}
+    >
+      <MaterialIcons name={icon} size={scaleW(13)} color={color} />
+      <ThemedText style={{ fontSize: scaleW(11), fontWeight: "800", color }}>
+        {label}
+      </ThemedText>
+    </View>
+  );
+}
 
 export default function ScavengerBrowseScreen() {
   const router = useRouter();
@@ -57,8 +103,6 @@ export default function ScavengerBrowseScreen() {
   const [quests, setQuests] = useState<ScavengerQuest[]>([]);
   const [groups, setGroups] = useState<ScavengerQuestGroup[]>([]);
   const [states, setStates] = useState<ScavengerQuestState[]>([]);
-  const [unlockedQuestIds, setUnlockedQuestIds] = useState<Set<string>>(new Set());
-  const [unlockedGroupIds, setUnlockedGroupIds] = useState<Set<string>>(new Set());
   const [coords, setCoords] = useState<Coords | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -91,19 +135,6 @@ export default function ScavengerBrowseScreen() {
       setQuests(q);
       setGroups(g);
       setStates(s);
-
-      const questUnlocks = await Promise.all(
-        q
-          .filter((quest) => quest.lockable)
-          .map(async (quest) => [quest.id, await isPlayUnlocked("quest", quest.id)] as const)
-      );
-      const groupUnlocks = await Promise.all(
-        g
-          .filter((group) => group.lockable)
-          .map(async (group) => [group.id, await isPlayUnlocked("questGroup", group.id)] as const)
-      );
-      setUnlockedQuestIds(new Set(questUnlocks.filter(([, ok]) => ok).map(([id]) => id)));
-      setUnlockedGroupIds(new Set(groupUnlocks.filter(([, ok]) => ok).map(([id]) => id)));
 
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === "granted") {
@@ -141,15 +172,13 @@ export default function ScavengerBrowseScreen() {
   }, [states]);
 
   const visibleQuests = useMemo(
-    () =>
-      quests.filter((quest) => !quest.lockable || unlockedQuestIds.has(quest.id)),
-    [quests, unlockedQuestIds]
+    () => quests.filter((quest) => !quest.lockable),
+    [quests]
   );
 
   const visibleGroups = useMemo(
-    () =>
-      groups.filter((group) => !group.lockable || unlockedGroupIds.has(group.id)),
-    [groups, unlockedGroupIds]
+    () => groups.filter((group) => !group.lockable),
+    [groups]
   );
 
   const nearbyQuests = useMemo(() => {
@@ -180,7 +209,7 @@ export default function ScavengerBrowseScreen() {
   const listData = useMemo((): ListRow[] => {
     const rows: ListRow[] = [];
     if (nearbyQuests.length) {
-      rows.push({ kind: "header", id: "nearby-h", title: "Nearby" });
+      rows.push({ kind: "header", id: "nearby-h", title: "Nearby", icon: "near-me" });
       for (const item of nearbyQuests) {
         rows.push({
           kind: "quest",
@@ -191,7 +220,7 @@ export default function ScavengerBrowseScreen() {
       }
     }
     if (visibleGroups.length) {
-      rows.push({ kind: "header", id: "groups-h", title: "Quest groups" });
+      rows.push({ kind: "header", id: "groups-h", title: "Quest groups", icon: "auto-awesome-mosaic" });
       for (const g of visibleGroups) {
         rows.push({ kind: "group", id: g.id, group: g });
       }
@@ -201,6 +230,7 @@ export default function ScavengerBrowseScreen() {
         kind: "header",
         id: "quests-h",
         title: nearbyQuests.length ? "More scavenger hunts" : "Scavenger hunts",
+        icon: "travel-explore",
       });
       for (const q of otherQuests) {
         rows.push({ kind: "quest", id: q.id, quest: q });
@@ -209,11 +239,14 @@ export default function ScavengerBrowseScreen() {
     return rows;
   }, [nearbyQuests, visibleGroups, otherQuests]);
 
-  const statusLabel = (questId: string) => {
+  const statusFor = (
+    questId: string
+  ): { label: string; icon: keyof typeof MaterialIcons.glyphMap; tone: StatusTone } | null => {
     const state = stateByQuest.get(questId);
     if (!state) return null;
-    if (state.complete) return "Complete";
-    if (state.found_items.length > 0) return "In progress";
+    if (state.complete) return { label: "Complete", icon: "check-circle", tone: "complete" };
+    if (state.found_items.length > 0)
+      return { label: "In progress", icon: "bolt", tone: "progress" };
     return null;
   };
 
@@ -221,159 +254,423 @@ export default function ScavengerBrowseScreen() {
     <>
       <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-        <View style={[styles.header, { paddingHorizontal: scaleW(20), paddingBottom: scaleW(16) }]}>
-          <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
-            <MaterialIcons name="arrow-back" size={scaleW(26)} color="#fff" />
-          </Pressable>
-          <ThemedText type="heading" lightColor="#fff" darkColor="#fff" style={{ fontSize: scaleW(26), fontWeight: "800" }}>
-            Scavenger Hunt
-          </ThemedText>
-          <ThemedText lightColor="rgba(255,255,255,0.7)" darkColor="rgba(255,255,255,0.7)" style={{ marginTop: scaleW(4), fontSize: scaleW(14) }}>
-            Find clues and explore outdoors
-          </ThemedText>
-        </View>
-
-        {profiles.length > 1 && (
-          <View style={{ paddingHorizontal: scaleW(20), marginBottom: scaleW(12), flexDirection: "row", flexWrap: "wrap", gap: scaleW(8) }}>
-            {profiles.map((profile) => {
-              const active = profile.id === profileId;
-              return (
-                <Pressable
-                  key={profile.id}
-                  onPress={() => selectProfile(profile.id)}
-                  style={[
-                    styles.chip,
-                    { paddingHorizontal: scaleW(12), paddingVertical: scaleW(8), borderRadius: scaleW(16) },
-                    active && styles.chipActive,
-                  ]}
-                >
-                  <ThemedText lightColor="#fff" darkColor="#fff" style={{ fontSize: scaleW(13), fontWeight: active ? "700" : "500" }}>
-                    {profile.nickname}
-                  </ThemedText>
-                </Pressable>
-              );
-            })}
-          </View>
-        )}
-
-        {loading || !profileId ? (
-          <ActivityIndicator color="#fff" style={{ marginTop: scaleW(40) }} />
-        ) : (
-          <FlatList
-            data={listData}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={{ paddingHorizontal: scaleW(20), paddingBottom: scaleW(40), gap: scaleW(12) }}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={() => {
-                  setRefreshing(true);
-                  void load();
-                }}
-                tintColor="#fff"
-              />
-            }
-            ListEmptyComponent={
-              <ThemedText lightColor="rgba(255,255,255,0.7)" darkColor="rgba(255,255,255,0.7)" style={{ textAlign: "center", marginTop: scaleW(40) }}>
-                No scavenger hunts available yet. Check back soon!
-              </ThemedText>
-            }
-            renderItem={({ item }) => {
-              if (item.kind === "header") {
-                return (
-                  <ThemedText lightColor="rgba(255,255,255,0.85)" darkColor="rgba(255,255,255,0.85)" style={{ fontSize: scaleW(13), fontWeight: "700", marginTop: scaleW(8), textTransform: "uppercase", letterSpacing: 0.6 }}>
-                    {item.title}
-                  </ThemedText>
-                );
+      <View style={styles.root}>
+        <LinearGradient
+          colors={SCAVENGER_SCREEN_GRADIENT}
+          style={StyleSheet.absoluteFill}
+        />
+        <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+          {loading || !profileId ? (
+            <View style={styles.loadingWrap}>
+              <ActivityIndicator color="#fff" />
+            </View>
+          ) : (
+            <FlatList
+              data={listData}
+              keyExtractor={(item) => item.id}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: scaleW(40), gap: scaleW(12) }}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={() => {
+                    setRefreshing(true);
+                    void load();
+                  }}
+                  tintColor="#fff"
+                />
               }
-              if (item.kind === "group") {
-                const group = item.group;
-                return (
-                  <Pressable
-                    onPress={() => router.push(`/(tabs)/activity/scavenger/group/${group.id}`)}
-                    style={[styles.card, { borderRadius: scaleW(16), overflow: "hidden" }]}
+              ListHeaderComponent={
+                <View>
+                  <LinearGradient
+                    colors={SCAVENGER_HEADER_GRADIENT}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[
+                      styles.hero,
+                      {
+                        paddingHorizontal: scaleW(20),
+                        paddingTop: scaleW(8),
+                        paddingBottom: scaleW(28),
+                        borderBottomLeftRadius: scaleW(28),
+                        borderBottomRightRadius: scaleW(28),
+                      },
+                    ]}
                   >
-                    {group.cover_image_url ? (
-                      <ScavengerImage
-                        uri={group.cover_image_url}
-                        tint="#fff"
-                        style={{ width: "100%", height: scaleW(120) }}
-                      />
-                    ) : (
-                      <View style={{ height: scaleW(80), backgroundColor: SCAVENGER_GREEN, alignItems: "center", justifyContent: "center" }}>
-                        <MaterialIcons name="collections" size={scaleW(32)} color="#fff" />
-                      </View>
-                    )}
-                    <View style={{ padding: scaleW(14) }}>
-                      <ThemedText lightColor="#fff" darkColor="#fff" style={{ fontSize: scaleW(18), fontWeight: "800" }}>
-                        {group.name}
-                      </ThemedText>
-                      {!!group.description && (
-                        <ThemedText lightColor="rgba(255,255,255,0.7)" darkColor="rgba(255,255,255,0.7)" numberOfLines={2} style={{ marginTop: scaleW(4), fontSize: scaleW(13) }}>
-                          {group.description}
-                        </ThemedText>
-                      )}
-                    </View>
-                  </Pressable>
-                );
-              }
-              const quest = item.quest;
-              const label = statusLabel(quest.id);
-              return (
-                <Pressable
-                  onPress={() => router.push(`/(tabs)/activity/scavenger/quest/${quest.id}?profileId=${profileId}`)}
-                  style={[styles.card, { borderRadius: scaleW(16), overflow: "hidden", flexDirection: "row" }]}
-                >
-                  {quest.tile_image_url || quest.cover_image_url ? (
-                    <ScavengerImage
-                      uri={quest.tile_image_url || quest.cover_image_url}
-                      tint="#fff"
-                      style={{ width: scaleW(88), height: scaleW(88) }}
+                    <MaterialIcons
+                      name="travel-explore"
+                      size={scaleW(180)}
+                      color="rgba(255,255,255,0.06)"
+                      style={{ position: "absolute", right: scaleW(-36), top: scaleW(-24) }}
                     />
-                  ) : (
-                    <View style={{ width: scaleW(88), height: scaleW(88), backgroundColor: SCAVENGER_GREEN, alignItems: "center", justifyContent: "center" }}>
-                      <MaterialIcons name="travel-explore" size={scaleW(28)} color="#fff" />
+                    <Pressable
+                      onPress={() => router.back()}
+                      hitSlop={12}
+                      style={[styles.iconChip, { width: scaleW(40), height: scaleW(40), borderRadius: scaleW(20) }]}
+                    >
+                      <MaterialIcons name="arrow-back" size={scaleW(22)} color="#fff" />
+                    </Pressable>
+                    <View style={{ marginTop: scaleW(18), flexDirection: "row", alignItems: "center", gap: scaleW(6) }}>
+                      <MaterialIcons name="hiking" size={scaleW(15)} color={SCAVENGER_GOLD} />
+                      <ThemedText
+                        lightColor={SCAVENGER_GOLD}
+                        darkColor={SCAVENGER_GOLD}
+                        style={{ fontSize: scaleW(12), fontWeight: "800", letterSpacing: 1.2 }}
+                      >
+                        EXPLORE OUTDOORS
+                      </ThemedText>
+                    </View>
+                    <ThemedText
+                      type="heading"
+                      lightColor="#fff"
+                      darkColor="#fff"
+                      style={{ marginTop: scaleW(4), fontSize: scaleW(30), fontWeight: "800", lineHeight: scaleW(34) }}
+                    >
+                      Scavenger Hunt
+                    </ThemedText>
+                    <ThemedText
+                      lightColor={SCAVENGER_TEXT_DIM}
+                      darkColor={SCAVENGER_TEXT_DIM}
+                      style={{ marginTop: scaleW(6), fontSize: scaleW(14), lineHeight: scaleW(20) }}
+                    >
+                      Find hidden clues and discover the world around you.
+                    </ThemedText>
+                  </LinearGradient>
+
+                  {profiles.length > 1 && (
+                    <View
+                      style={{
+                        paddingHorizontal: scaleW(20),
+                        marginTop: scaleW(16),
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        gap: scaleW(8),
+                      }}
+                    >
+                      {profiles.map((profile) => {
+                        const active = profile.id === profileId;
+                        return (
+                          <Pressable
+                            key={profile.id}
+                            onPress={() => selectProfile(profile.id)}
+                            style={[
+                              styles.chip,
+                              {
+                                paddingHorizontal: scaleW(14),
+                                paddingVertical: scaleW(9),
+                                borderRadius: scaleW(999),
+                              },
+                              active && styles.chipActive,
+                            ]}
+                          >
+                            {active && (
+                              <MaterialIcons name="person" size={scaleW(14)} color="#fff" />
+                            )}
+                            <ThemedText
+                              lightColor="#fff"
+                              darkColor="#fff"
+                              style={{ fontSize: scaleW(13), fontWeight: active ? "800" : "600" }}
+                            >
+                              {profile.nickname}
+                            </ThemedText>
+                          </Pressable>
+                        );
+                      })}
                     </View>
                   )}
-                  <View style={{ flex: 1, padding: scaleW(12), justifyContent: "center" }}>
-                    <ThemedText lightColor="#fff" darkColor="#fff" style={{ fontSize: scaleW(16), fontWeight: "800" }}>
-                      {quest.name}
-                    </ThemedText>
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: scaleW(6), marginTop: scaleW(6) }}>
-                      {item.distanceKm != null && (
-                        <View style={[styles.pill, { paddingHorizontal: scaleW(8), paddingVertical: scaleW(3), borderRadius: scaleW(10) }]}>
-                          <ThemedText lightColor={SCAVENGER_ACCENT} darkColor={SCAVENGER_ACCENT} style={{ fontSize: scaleW(11), fontWeight: "700" }}>
-                            {formatDistanceKm(item.distanceKm)}
-                          </ThemedText>
-                        </View>
-                      )}
-                      {!!label && (
-                        <View style={[styles.pill, { paddingHorizontal: scaleW(8), paddingVertical: scaleW(3), borderRadius: scaleW(10) }]}>
-                          <ThemedText lightColor={SCAVENGER_ACCENT} darkColor={SCAVENGER_ACCENT} style={{ fontSize: scaleW(11), fontWeight: "700" }}>
-                            {label}
-                          </ThemedText>
-                        </View>
-                      )}
-                    </View>
+                  <View style={{ height: scaleW(4) }} />
+                </View>
+              }
+              ListEmptyComponent={
+                <View style={{ alignItems: "center", paddingHorizontal: scaleW(40), marginTop: scaleW(48) }}>
+                  <View
+                    style={[
+                      styles.emptyIcon,
+                      { width: scaleW(88), height: scaleW(88), borderRadius: scaleW(44) },
+                    ]}
+                  >
+                    <MaterialIcons name="explore" size={scaleW(44)} color={SCAVENGER_GOLD} />
                   </View>
-                  <MaterialIcons name="chevron-right" size={scaleW(24)} color="rgba(255,255,255,0.45)" style={{ alignSelf: "center", marginRight: scaleW(8) }} />
-                </Pressable>
-              );
-            }}
-          />
-        )}
-      </SafeAreaView>
+                  <ThemedText
+                    lightColor="#fff"
+                    darkColor="#fff"
+                    style={{ marginTop: scaleW(18), fontSize: scaleW(18), fontWeight: "800", textAlign: "center" }}
+                  >
+                    No hunts just yet
+                  </ThemedText>
+                  <ThemedText
+                    lightColor={SCAVENGER_TEXT_DIM}
+                    darkColor={SCAVENGER_TEXT_DIM}
+                    style={{ marginTop: scaleW(6), textAlign: "center", fontSize: scaleW(14), lineHeight: scaleW(20) }}
+                  >
+                    New adventures are on their way — check back soon!
+                  </ThemedText>
+                </View>
+              }
+              renderItem={({ item, index }) => {
+                if (item.kind === "header") {
+                  return (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: scaleW(8),
+                        marginTop: scaleW(14),
+                        marginBottom: scaleW(2),
+                        paddingHorizontal: scaleW(20),
+                      }}
+                    >
+                      <View
+                        style={[
+                          styles.sectionIcon,
+                          { width: scaleW(26), height: scaleW(26), borderRadius: scaleW(8) },
+                        ]}
+                      >
+                        <MaterialIcons name={item.icon} size={scaleW(16)} color={SCAVENGER_GOLD} />
+                      </View>
+                      <ThemedText
+                        lightColor="#fff"
+                        darkColor="#fff"
+                        style={{ fontSize: scaleW(13), fontWeight: "800", textTransform: "uppercase", letterSpacing: 1 }}
+                      >
+                        {item.title}
+                      </ThemedText>
+                    </View>
+                  );
+                }
+                if (item.kind === "group") {
+                  const group = item.group;
+                  return (
+                    <Animated.View
+                      entering={FadeInDown.duration(320).delay(Math.min(index, 6) * 40)}
+                      style={{ paddingHorizontal: scaleW(20) }}
+                    >
+                      <Pressable
+                        onPress={() => router.push(`/(tabs)/activity/scavenger/group/${group.id}`)}
+                        style={({ pressed }) => [
+                          styles.groupCard,
+                          { borderRadius: scaleW(22), transform: [{ scale: pressed ? 0.985 : 1 }] },
+                        ]}
+                      >
+                        <View style={{ height: scaleW(150) }}>
+                          {group.cover_image_url ? (
+                            <ScavengerImage
+                              uri={group.cover_image_url}
+                              tint="#fff"
+                              style={{ width: "100%", height: "100%" }}
+                            />
+                          ) : (
+                            <LinearGradient
+                              colors={SCAVENGER_CARD_GRADIENT}
+                              style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+                            >
+                              <MaterialIcons name="collections" size={scaleW(40)} color="rgba(255,255,255,0.7)" />
+                            </LinearGradient>
+                          )}
+                          <LinearGradient
+                            colors={SCAVENGER_IMAGE_SCRIM}
+                            style={StyleSheet.absoluteFill}
+                          />
+                          <View
+                            style={[
+                              styles.collectionTag,
+                              {
+                                top: scaleW(12),
+                                left: scaleW(12),
+                                paddingHorizontal: scaleW(10),
+                                paddingVertical: scaleW(5),
+                                borderRadius: scaleW(999),
+                              },
+                            ]}
+                          >
+                            <MaterialIcons name="auto-awesome" size={scaleW(12)} color={SCAVENGER_BG_DEEP} />
+                            <ThemedText style={{ fontSize: scaleW(11), fontWeight: "800", color: SCAVENGER_BG_DEEP }}>
+                              Collection
+                            </ThemedText>
+                          </View>
+                          <View style={{ position: "absolute", left: scaleW(16), right: scaleW(16), bottom: scaleW(14) }}>
+                            <ThemedText
+                              lightColor="#fff"
+                              darkColor="#fff"
+                              numberOfLines={1}
+                              style={{ fontSize: scaleW(20), fontWeight: "800" }}
+                            >
+                              {group.name}
+                            </ThemedText>
+                            {!!group.description && (
+                              <ThemedText
+                                lightColor="rgba(255,255,255,0.82)"
+                                darkColor="rgba(255,255,255,0.82)"
+                                numberOfLines={1}
+                                style={{ marginTop: scaleW(2), fontSize: scaleW(13) }}
+                              >
+                                {group.description}
+                              </ThemedText>
+                            )}
+                          </View>
+                        </View>
+                      </Pressable>
+                    </Animated.View>
+                  );
+                }
+                const quest = item.quest;
+                const status = statusFor(quest.id);
+                return (
+                  <Animated.View
+                    entering={FadeInDown.duration(320).delay(Math.min(index, 6) * 40)}
+                    style={{ paddingHorizontal: scaleW(20) }}
+                  >
+                    <Pressable
+                      onPress={() =>
+                        router.push(`/(tabs)/activity/scavenger/quest/${quest.id}?profileId=${profileId}`)
+                      }
+                      style={({ pressed }) => [
+                        styles.questCard,
+                        {
+                          borderRadius: scaleW(18),
+                          padding: scaleW(10),
+                          transform: [{ scale: pressed ? 0.985 : 1 }],
+                        },
+                      ]}
+                    >
+                      <View style={{ borderRadius: scaleW(14), overflow: "hidden" }}>
+                        {quest.tile_image_url || quest.cover_image_url ? (
+                          <ScavengerImage
+                            uri={quest.tile_image_url || quest.cover_image_url}
+                            tint="#fff"
+                            style={{ width: scaleW(84), height: scaleW(84) }}
+                          />
+                        ) : (
+                          <LinearGradient
+                            colors={SCAVENGER_CTA_GRADIENT}
+                            style={{ width: scaleW(84), height: scaleW(84), alignItems: "center", justifyContent: "center" }}
+                          >
+                            <MaterialIcons name="travel-explore" size={scaleW(30)} color="#fff" />
+                          </LinearGradient>
+                        )}
+                      </View>
+                      <View style={{ flex: 1, paddingHorizontal: scaleW(12), justifyContent: "center" }}>
+                        <ThemedText
+                          lightColor="#fff"
+                          darkColor="#fff"
+                          numberOfLines={2}
+                          style={{ fontSize: scaleW(16), fontWeight: "800", lineHeight: scaleW(20) }}
+                        >
+                          {quest.name}
+                        </ThemedText>
+                        {!!quest.attraction_name && (
+                          <ThemedText
+                            lightColor={SCAVENGER_TEXT_FAINT}
+                            darkColor={SCAVENGER_TEXT_FAINT}
+                            numberOfLines={1}
+                            style={{ marginTop: scaleW(2), fontSize: scaleW(12) }}
+                          >
+                            {quest.attraction_name}
+                          </ThemedText>
+                        )}
+                        {(item.distanceKm != null || status) && (
+                          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: scaleW(6), marginTop: scaleW(8) }}>
+                            {item.distanceKm != null && (
+                              <StatusPill
+                                label={formatDistanceKm(item.distanceKm)}
+                                icon="place"
+                                tone="progress"
+                                scaleW={scaleW}
+                              />
+                            )}
+                            {status && (
+                              <StatusPill
+                                label={status.label}
+                                icon={status.icon}
+                                tone={status.tone}
+                                scaleW={scaleW}
+                              />
+                            )}
+                          </View>
+                        )}
+                      </View>
+                      <View
+                        style={[
+                          styles.chevChip,
+                          { width: scaleW(30), height: scaleW(30), borderRadius: scaleW(15), alignSelf: "center" },
+                        ]}
+                      >
+                        <MaterialIcons name="chevron-right" size={scaleW(20)} color="#fff" />
+                      </View>
+                    </Pressable>
+                  </Animated.View>
+                );
+              }}
+            />
+          )}
+        </SafeAreaView>
+      </View>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: SCAVENGER_BG },
-  header: { paddingTop: 8 },
-  backBtn: { alignSelf: "flex-start", marginBottom: 16, padding: 4 },
-  chip: { backgroundColor: "rgba(255,255,255,0.12)" },
-  chipActive: { backgroundColor: "rgba(98,169,79,0.45)" },
-  card: { backgroundColor: SCAVENGER_CARD },
-  pill: { backgroundColor: "rgba(98,169,79,0.18)", alignSelf: "flex-start" },
+  root: { flex: 1, backgroundColor: SCAVENGER_BG_DEEP },
+  safe: { flex: 1 },
+  loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
+  hero: { overflow: "hidden" },
+  iconChip: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.14)",
+  },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(255,255,255,0.10)",
+    borderWidth: 1,
+    borderColor: SCAVENGER_HAIRLINE,
+  },
+  chipActive: {
+    backgroundColor: SCAVENGER_GREEN,
+    borderColor: SCAVENGER_ACCENT,
+  },
+  sectionIcon: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(244,197,80,0.14)",
+  },
+  groupCard: {
+    backgroundColor: SCAVENGER_CARD_GRADIENT[0],
+    overflow: "hidden",
+    ...scavengerShadow,
+  },
+  questCard: {
+    flexDirection: "row",
+    backgroundColor: SCAVENGER_CARD_GRADIENT[0],
+    borderWidth: 1,
+    borderColor: SCAVENGER_HAIRLINE,
+    ...scavengerSoftShadow,
+  },
+  chevChip: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.12)",
+  },
+  pill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-start",
+  },
+  collectionTag: {
+    position: "absolute",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: SCAVENGER_GOLD,
+  },
+  emptyIcon: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(244,197,80,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(244,197,80,0.25)",
+  },
 });

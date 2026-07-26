@@ -11,6 +11,8 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as ImagePicker from "expo-image-picker";
@@ -33,9 +35,14 @@ import {
   SCAVENGER_ACCENT,
   SCAVENGER_BG,
   SCAVENGER_CHECK,
+  SCAVENGER_CTA_GRADIENT,
+  SCAVENGER_GOLD,
   SCAVENGER_GREEN,
+  SCAVENGER_HEADER_GRADIENT,
+  SCAVENGER_IMAGE_SCRIM,
   SCAVENGER_LIGHT,
   SCAVENGER_WARNING,
+  scavengerSoftShadow,
 } from "@/constants/scavengerTheme";
 import {
   addSessionPhoto,
@@ -173,6 +180,7 @@ export default function ScavengerActiveScreen() {
   const found = foundIds.size;
   const total = items.length;
   const ratio = total > 0 ? Math.min(1, found / total) : 0;
+  const allDone = found >= total && total > 0;
   const hasMap = useMemo(
     () => items.some((item) => item.lat != null && item.lng != null),
     [items]
@@ -214,6 +222,7 @@ export default function ScavengerActiveScreen() {
   };
 
   const afterMarkedFound = async (item: ScavengerQuestItem) => {
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setSelected(null);
     setShowHint(false);
     setTriviaOpen(false);
@@ -285,6 +294,7 @@ export default function ScavengerActiveScreen() {
         return;
       }
       if (!result.is_correct) {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         setTriviaError("Not quite—have another go!");
         return;
       }
@@ -304,31 +314,59 @@ export default function ScavengerActiveScreen() {
       <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-        <View style={[styles.hero, { paddingHorizontal: scaleW(16), paddingBottom: scaleW(16) }]}>
+        <LinearGradient
+          colors={SCAVENGER_HEADER_GRADIENT}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[
+            styles.hero,
+            {
+              paddingHorizontal: scaleW(16),
+              paddingBottom: scaleW(18),
+              borderBottomLeftRadius: scaleW(24),
+              borderBottomRightRadius: scaleW(24),
+            },
+          ]}
+        >
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
             <Pressable onPress={endSession} hitSlop={10} style={styles.endBtn}>
-              <ThemedText lightColor="#fff" darkColor="#fff" style={{ fontWeight: "700", fontSize: scaleW(13) }}>
+              <MaterialIcons name="flag" size={scaleW(14)} color="#fff" />
+              <ThemedText lightColor="#fff" darkColor="#fff" style={{ fontWeight: "800", fontSize: scaleW(13) }}>
                 End
               </ThemedText>
             </Pressable>
             <ThemedText lightColor="#fff" darkColor="#fff" numberOfLines={1} style={{ flex: 1, textAlign: "center", fontWeight: "800", fontSize: scaleW(16), marginHorizontal: scaleW(8) }}>
               {quest?.name ?? "Scavenger Hunt"}
             </ThemedText>
-            <View style={{ width: scaleW(52) }} />
+            <View style={{ width: scaleW(64) }} />
           </View>
-          <ThemedText lightColor="rgba(255,255,255,0.85)" darkColor="rgba(255,255,255,0.85)" style={{ marginTop: scaleW(12), fontWeight: "700", fontSize: scaleW(15) }}>
-            {found} of {total} found
-          </ThemedText>
-          <View style={[styles.progressTrack, { marginTop: scaleW(8), height: scaleW(8), borderRadius: scaleW(4) }]}>
-            <View style={[styles.progressFill, { width: `${ratio * 100}%`, borderRadius: scaleW(4) }]} />
+
+          <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", marginTop: scaleW(14) }}>
+            <ThemedText lightColor="#fff" darkColor="#fff" style={{ fontWeight: "800", fontSize: scaleW(15) }}>
+              {allDone ? "All found — amazing!" : `${found} of ${total} found`}
+            </ThemedText>
+            <View style={[styles.countBadge, { paddingHorizontal: scaleW(10), paddingVertical: scaleW(3), borderRadius: scaleW(999) }]}>
+              {allDone && <MaterialIcons name="emoji-events" size={scaleW(13)} color={SCAVENGER_BG} />}
+              <ThemedText style={{ fontSize: scaleW(12), fontWeight: "800", color: SCAVENGER_BG }}>
+                {Math.round(ratio * 100)}%
+              </ThemedText>
+            </View>
           </View>
-          <ThemedText lightColor="rgba(255,255,255,0.7)" darkColor="rgba(255,255,255,0.7)" style={{ marginTop: scaleW(6), fontSize: scaleW(12) }}>
-            {found >= total && total > 0 ? "All done!" : `${Math.max(0, total - found)} to go`}
-          </ThemedText>
-        </View>
+
+          <View style={[styles.progressTrack, { marginTop: scaleW(8), height: scaleW(10), borderRadius: scaleW(6) }]}>
+            <LinearGradient
+              colors={allDone ? (["#F7CE5E", "#E0A32E"] as const) : (["#8FD873", "#5FA84C"] as const)}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{ width: `${ratio * 100}%`, height: "100%", borderRadius: scaleW(6) }}
+            />
+          </View>
+        </LinearGradient>
 
         {loading ? (
-          <ActivityIndicator color={SCAVENGER_GREEN} style={{ marginTop: scaleW(40) }} />
+          <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+            <ActivityIndicator color={SCAVENGER_GREEN} />
+          </View>
         ) : viewMode === "map" && hasMap ? (
           <View style={{ flex: 1 }}>
             <QuestItemsMap
@@ -346,6 +384,7 @@ export default function ScavengerActiveScreen() {
             data={items}
             keyExtractor={(item) => item.id}
             numColumns={numColumns}
+            showsVerticalScrollIndicator={false}
             contentContainerStyle={{
               padding: scaleW(12),
               paddingBottom: insets.bottom + scaleW(hasMap ? 88 : 24),
@@ -360,55 +399,65 @@ export default function ScavengerActiveScreen() {
               return (
                 <Pressable
                   onPress={() => {
+                    void Haptics.selectionAsync();
                     setSelected(item);
                     setShowHint(false);
                   }}
-                  style={[
+                  style={({ pressed }) => [
                     styles.tile,
                     {
                       width: tileSize,
-                      borderRadius: scaleW(14),
-                      overflow: "hidden",
-                      opacity: isFound ? 0.85 : 1,
+                      borderRadius: scaleW(18),
+                      transform: [{ scale: pressed ? 0.97 : 1 }],
                     },
                   ]}
                 >
-                  <ScavengerImage
-                    uri={item.image_url}
-                    style={{ width: "100%", height: scaleW(110) }}
-                    fallback={
-                      <View style={{ height: scaleW(110), backgroundColor: "#D7E4D7", alignItems: "center", justifyContent: "center" }}>
-                        <MaterialIcons name="image" size={scaleW(28)} color={SCAVENGER_GREEN} />
-                      </View>
-                    }
-                  />
-                  <View style={{ padding: scaleW(10), alignItems: "center" }}>
-                    <ThemedText style={{ fontWeight: "800", fontSize: scaleW(13), color: SCAVENGER_BG, textAlign: "center" }} numberOfLines={2}>
-                      {item.name}
-                    </ThemedText>
-                    {!!item.warning && (
-                      <View
-                        style={[
-                          styles.takeCarePill,
-                          {
-                            marginTop: scaleW(6),
-                            paddingHorizontal: scaleW(10),
-                            paddingVertical: scaleW(4),
-                            borderRadius: scaleW(999),
-                          },
-                        ]}
-                      >
-                        <ThemedText style={{ fontSize: scaleW(11), fontWeight: "700", color: SCAVENGER_WARNING }}>
-                          Take care
-                        </ThemedText>
-                      </View>
-                    )}
-                  </View>
-                  {isFound && (
-                    <View style={styles.checkBadge}>
-                      <MaterialIcons name="check-circle" size={scaleW(22)} color={SCAVENGER_CHECK} />
+                  <View style={{ borderRadius: scaleW(18), overflow: "hidden" }}>
+                    <View>
+                      <ScavengerImage
+                        uri={item.image_url}
+                        style={{ width: "100%", height: scaleW(118) }}
+                        fallback={
+                          <View style={{ height: scaleW(118), backgroundColor: "#D7E4D7", alignItems: "center", justifyContent: "center" }}>
+                            <MaterialIcons name="image" size={scaleW(28)} color={SCAVENGER_GREEN} />
+                          </View>
+                        }
+                      />
+                      {isFound && (
+                        <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(45,90,39,0.35)" }]} />
+                      )}
+                      {!!item.warning && (
+                        <View
+                          style={[
+                            styles.warnCorner,
+                            { top: scaleW(8), left: scaleW(8), paddingHorizontal: scaleW(8), paddingVertical: scaleW(3), borderRadius: scaleW(999) },
+                          ]}
+                        >
+                          <MaterialIcons name="warning-amber" size={scaleW(11)} color="#fff" />
+                          <ThemedText style={{ fontSize: scaleW(10), fontWeight: "800", color: "#fff" }}>Care</ThemedText>
+                        </View>
+                      )}
+                      {isFound && (
+                        <View style={[styles.checkBadge, { width: scaleW(30), height: scaleW(30), borderRadius: scaleW(15), top: scaleW(8), right: scaleW(8) }]}>
+                          <MaterialIcons name="check" size={scaleW(20)} color="#fff" />
+                        </View>
+                      )}
                     </View>
-                  )}
+                    <View style={{ padding: scaleW(10), alignItems: "center" }}>
+                      <ThemedText style={{ fontWeight: "800", fontSize: scaleW(13), color: SCAVENGER_BG, textAlign: "center" }} numberOfLines={2}>
+                        {item.name}
+                      </ThemedText>
+                      {isFound ? (
+                        <ThemedText style={{ marginTop: scaleW(4), fontSize: scaleW(11), fontWeight: "800", color: SCAVENGER_ACCENT }}>
+                          Found!
+                        </ThemedText>
+                      ) : (
+                        <ThemedText style={{ marginTop: scaleW(4), fontSize: scaleW(11), fontWeight: "700", color: "#8AA08D" }}>
+                          Tap to find
+                        </ThemedText>
+                      )}
+                    </View>
+                  </View>
                 </Pressable>
               );
             }}
@@ -431,16 +480,28 @@ export default function ScavengerActiveScreen() {
       <Modal visible={!!selected && !triviaOpen} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
         <Pressable style={styles.modalBackdrop} onPress={() => setSelected(null)}>
           <Pressable
-            style={[styles.sheet, { padding: scaleW(20), paddingBottom: insets.bottom + scaleW(20), borderTopLeftRadius: scaleW(24), borderTopRightRadius: scaleW(24) }]}
+            style={[styles.sheet, { padding: scaleW(20), paddingBottom: insets.bottom + scaleW(20), borderTopLeftRadius: scaleW(28), borderTopRightRadius: scaleW(28) }]}
             onPress={(e) => e.stopPropagation()}
           >
+            <View style={[styles.grabber, { width: scaleW(44), height: scaleW(5), borderRadius: scaleW(3), marginBottom: scaleW(14) }]} />
             {selected && (
               <>
                 {selected.image_url ? (
-                  <ScavengerImage
-                    uri={selected.image_url}
-                    style={{ width: "100%", height: scaleW(180), borderRadius: scaleW(14) }}
-                  />
+                  <View style={{ borderRadius: scaleW(18), overflow: "hidden" }}>
+                    <ScavengerImage
+                      uri={selected.image_url}
+                      style={{ width: "100%", height: scaleW(190) }}
+                    />
+                    {foundIds.has(selected.id) && (
+                      <>
+                        <LinearGradient colors={SCAVENGER_IMAGE_SCRIM} style={StyleSheet.absoluteFill} />
+                        <View style={[styles.foundTag, { bottom: scaleW(12), left: scaleW(12), paddingHorizontal: scaleW(10), paddingVertical: scaleW(5), borderRadius: scaleW(999) }]}>
+                          <MaterialIcons name="check-circle" size={scaleW(14)} color="#fff" />
+                          <ThemedText style={{ fontSize: scaleW(12), fontWeight: "800", color: "#fff" }}>Found</ThemedText>
+                        </View>
+                      </>
+                    )}
+                  </View>
                 ) : null}
                 <ThemedText type="heading" style={{ marginTop: scaleW(14), fontSize: scaleW(22), fontWeight: "800", color: SCAVENGER_BG }}>
                   {selected.name}
@@ -451,15 +512,19 @@ export default function ScavengerActiveScreen() {
                   </ThemedText>
                 )}
                 {!!selected.hint && (
-                  <Pressable onPress={() => setShowHint((v) => !v)} style={{ marginTop: scaleW(12) }}>
-                    <ThemedText style={{ color: SCAVENGER_GREEN, fontWeight: "700" }}>
+                  <Pressable
+                    onPress={() => setShowHint((v) => !v)}
+                    style={{ marginTop: scaleW(12), flexDirection: "row", alignItems: "center", gap: scaleW(6), alignSelf: "flex-start" }}
+                  >
+                    <MaterialIcons name={showHint ? "lightbulb" : "lightbulb-outline"} size={scaleW(18)} color={SCAVENGER_GREEN} />
+                    <ThemedText style={{ color: SCAVENGER_GREEN, fontWeight: "800" }}>
                       {showHint ? "Hide hint" : "Show hint"}
                     </ThemedText>
                   </Pressable>
                 )}
                 {showHint && !!selected.hint && (
-                  <View style={[styles.hintBox, { marginTop: scaleW(8), padding: scaleW(14), borderRadius: scaleW(10) }]}>
-                    <ThemedText style={{ color: "#333", fontSize: scaleW(14), lineHeight: scaleW(20) }}>
+                  <View style={[styles.hintBox, { marginTop: scaleW(10), padding: scaleW(14), borderRadius: scaleW(14) }]}>
+                    <ThemedText style={{ color: "#2f4a33", fontSize: scaleW(14), lineHeight: scaleW(20) }}>
                       💡 {selected.hint}
                     </ThemedText>
                   </View>
@@ -471,15 +536,15 @@ export default function ScavengerActiveScreen() {
                       {
                         marginTop: scaleW(12),
                         padding: scaleW(14),
-                        borderRadius: scaleW(10),
+                        borderRadius: scaleW(14),
                         flexDirection: "row",
                         alignItems: "flex-start",
-                        gap: scaleW(8),
+                        gap: scaleW(10),
                       },
                     ]}
                   >
-                    <MaterialIcons name="warning-amber" size={scaleW(24)} color={SCAVENGER_WARNING} />
-                    <ThemedText style={{ flex: 1, color: "#333", fontSize: scaleW(14), lineHeight: scaleW(20) }}>
+                    <MaterialIcons name="warning-amber" size={scaleW(22)} color={SCAVENGER_WARNING} />
+                    <ThemedText style={{ flex: 1, color: "#6b5200", fontSize: scaleW(14), lineHeight: scaleW(20) }}>
                       {selected.warning}
                     </ThemedText>
                   </View>
@@ -487,23 +552,33 @@ export default function ScavengerActiveScreen() {
                 <Pressable
                   onPress={onFoundPress}
                   disabled={busy || foundIds.has(selected.id)}
-                  style={[
-                    styles.cta,
+                  style={({ pressed }) => [
+                    styles.ctaWrap,
                     {
                       marginTop: scaleW(18),
-                      paddingVertical: scaleW(14),
                       borderRadius: scaleW(28),
                       opacity: busy || foundIds.has(selected.id) ? 0.6 : 1,
+                      transform: [{ scale: pressed ? 0.98 : 1 }],
                     },
                   ]}
                 >
-                  {busy ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <ThemedText lightColor="#fff" darkColor="#fff" style={{ fontWeight: "800", fontSize: scaleW(16) }}>
-                      {foundIds.has(selected.id) ? "Already found" : "I found it!"}
-                    </ThemedText>
-                  )}
+                  <LinearGradient
+                    colors={foundIds.has(selected.id) ? (["#9AAE9D", "#7E927F"] as const) : SCAVENGER_CTA_GRADIENT}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[styles.cta, { paddingVertical: scaleW(15), borderRadius: scaleW(28) }]}
+                  >
+                    {busy ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <>
+                        <MaterialIcons name={foundIds.has(selected.id) ? "check-circle" : "search"} size={scaleW(20)} color="#fff" />
+                        <ThemedText lightColor="#fff" darkColor="#fff" style={{ fontWeight: "800", fontSize: scaleW(16) }}>
+                          {foundIds.has(selected.id) ? "Already found" : "I found it!"}
+                        </ThemedText>
+                      </>
+                    )}
+                  </LinearGradient>
                 </Pressable>
               </>
             )}
@@ -513,46 +588,59 @@ export default function ScavengerActiveScreen() {
 
       <Modal visible={triviaOpen} transparent animationType="fade" onRequestClose={() => setTriviaOpen(false)}>
         <View style={styles.modalBackdropCenter}>
-          <View style={[styles.triviaCard, { marginHorizontal: scaleW(24), padding: scaleW(20), borderRadius: scaleW(18) }]}>
+          <View style={[styles.triviaCard, { marginHorizontal: scaleW(24), padding: scaleW(22), borderRadius: scaleW(22) }]}>
+            <View style={[styles.quizIcon, { width: scaleW(48), height: scaleW(48), borderRadius: scaleW(16), marginBottom: scaleW(12) }]}>
+              <MaterialIcons name="quiz" size={scaleW(26)} color="#fff" />
+            </View>
             <ThemedText type="heading" style={{ fontSize: scaleW(20), fontWeight: "800", color: SCAVENGER_BG }}>
               Quick question
             </ThemedText>
-            <ThemedText style={{ marginTop: scaleW(10), color: "#333", fontSize: scaleW(15) }}>
+            <ThemedText style={{ marginTop: scaleW(8), color: "#333", fontSize: scaleW(15), lineHeight: scaleW(21) }}>
               {selected?.question}
             </ThemedText>
             <TextInput
               value={answer}
               onChangeText={setAnswer}
               placeholder="Your answer"
-              placeholderTextColor="#999"
-              style={[styles.input, { marginTop: scaleW(14), padding: scaleW(12), borderRadius: scaleW(12) }]}
+              placeholderTextColor="#9AA79B"
+              style={[styles.input, { marginTop: scaleW(14), padding: scaleW(14), borderRadius: scaleW(14) }]}
             />
             {!!triviaError && (
-              <ThemedText style={{ color: "#B42318", marginTop: scaleW(8) }}>{triviaError}</ThemedText>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: scaleW(6), marginTop: scaleW(10) }}>
+                <MaterialIcons name="error-outline" size={scaleW(16)} color="#B42318" />
+                <ThemedText style={{ color: "#B42318", fontWeight: "600" }}>{triviaError}</ThemedText>
+              </View>
             )}
-            <View style={{ flexDirection: "row", gap: scaleW(10), marginTop: scaleW(16) }}>
+            <View style={{ flexDirection: "row", gap: scaleW(10), marginTop: scaleW(18) }}>
               <Pressable
                 onPress={() => {
                   setTriviaOpen(false);
                   setAnswer("");
                   setTriviaError(null);
                 }}
-                style={[styles.secondaryBtn, { flex: 1, paddingVertical: scaleW(12), borderRadius: scaleW(24) }]}
+                style={[styles.secondaryBtn, { flex: 1, paddingVertical: scaleW(13), borderRadius: scaleW(24) }]}
               >
-                <ThemedText style={{ textAlign: "center", fontWeight: "700", color: SCAVENGER_BG }}>Cancel</ThemedText>
+                <ThemedText style={{ textAlign: "center", fontWeight: "800", color: SCAVENGER_BG }}>Cancel</ThemedText>
               </Pressable>
               <Pressable
                 onPress={submitTrivia}
                 disabled={busy}
-                style={[styles.cta, { flex: 1, paddingVertical: scaleW(12), borderRadius: scaleW(24) }]}
+                style={[styles.ctaWrap, { flex: 1, borderRadius: scaleW(24) }]}
               >
-                {busy ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <ThemedText lightColor="#fff" darkColor="#fff" style={{ textAlign: "center", fontWeight: "800" }}>
-                    Check
-                  </ThemedText>
-                )}
+                <LinearGradient
+                  colors={SCAVENGER_CTA_GRADIENT}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.cta, { paddingVertical: scaleW(13), borderRadius: scaleW(24) }]}
+                >
+                  {busy ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <ThemedText lightColor="#fff" darkColor="#fff" style={{ textAlign: "center", fontWeight: "800" }}>
+                      Check
+                    </ThemedText>
+                  )}
+                </LinearGradient>
               </Pressable>
             </View>
           </View>
@@ -566,17 +654,37 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: SCAVENGER_LIGHT },
   hero: { backgroundColor: SCAVENGER_BG, paddingTop: 8 },
   endBtn: {
-    backgroundColor: "rgba(255,255,255,0.18)",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(255,255,255,0.16)",
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 16,
+    borderRadius: 999,
   },
-  progressTrack: { backgroundColor: "rgba(255,255,255,0.2)", overflow: "hidden" },
-  progressFill: { height: "100%", backgroundColor: SCAVENGER_ACCENT },
-  tile: { backgroundColor: "#fff" },
-  checkBadge: { position: "absolute", top: 8, right: 8 },
-  takeCarePill: { backgroundColor: "rgba(226,161,0,0.2)" },
-  hintBox: { backgroundColor: "rgba(98,169,79,0.15)" },
+  countBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: SCAVENGER_GOLD,
+  },
+  progressTrack: { backgroundColor: "rgba(0,0,0,0.22)", overflow: "hidden" },
+  tile: { backgroundColor: "#fff", ...scavengerSoftShadow },
+  checkBadge: {
+    position: "absolute",
+    backgroundColor: SCAVENGER_CHECK,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  warnCorner: {
+    position: "absolute",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "rgba(226,161,0,0.92)",
+  },
   switcherWrap: {
     position: "absolute",
     left: 0,
@@ -584,12 +692,23 @@ const styles = StyleSheet.create({
     zIndex: 20,
     alignItems: "center",
   },
-  modalBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.45)" },
-  modalBackdropCenter: { flex: 1, justifyContent: "center", backgroundColor: "rgba(0,0,0,0.45)" },
+  modalBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" },
+  modalBackdropCenter: { flex: 1, justifyContent: "center", backgroundColor: "rgba(0,0,0,0.5)" },
   sheet: { backgroundColor: "#fff", maxHeight: "88%" },
+  grabber: { backgroundColor: "#D2DED3", alignSelf: "center" },
+  foundTag: {
+    position: "absolute",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: SCAVENGER_ACCENT,
+  },
+  hintBox: { backgroundColor: "rgba(98,169,79,0.15)" },
   warning: { backgroundColor: "rgba(226,161,0,0.15)" },
-  cta: { backgroundColor: SCAVENGER_GREEN, alignItems: "center" },
+  ctaWrap: { overflow: "hidden" },
+  cta: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   secondaryBtn: { backgroundColor: "#E8EEE8" },
-  triviaCard: { backgroundColor: "#fff" },
-  input: { backgroundColor: "#F3F5F3", color: "#1A2E1E" },
+  triviaCard: { backgroundColor: "#fff", ...scavengerSoftShadow },
+  quizIcon: { backgroundColor: SCAVENGER_GREEN, alignItems: "center", justifyContent: "center" },
+  input: { backgroundColor: "#F3F5F3", color: "#1A2E1E", borderWidth: 1, borderColor: "#E1E8E1" },
 });

@@ -4,13 +4,15 @@ import { router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { useAuth } from "@/contexts/AuthContext";
 import { getAvailableActivityTypes } from "@/constants/activityTypes";
 
 const SEE_ALL_COLOR = "#1A5C6B";
 
 export function ThingsToDoRow() {
   const { scaleW } = useLayoutScale();
-  const available = getAvailableActivityTypes(Platform.OS);
+  const { user } = useAuth();
+  const available = getAvailableActivityTypes(Platform.OS, user?.email);
   const shown = available.slice(0, 2);
   const remaining = available.length - shown.length;
 

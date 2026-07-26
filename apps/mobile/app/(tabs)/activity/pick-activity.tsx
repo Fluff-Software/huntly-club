@@ -7,6 +7,7 @@ import { Stack } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { useAuth } from "@/contexts/AuthContext";
 import { getAvailableActivityTypes } from "@/constants/activityTypes";
 
 const BG = "#2D4A35";
@@ -16,7 +17,8 @@ const ACCENT = "#62A94F";
 export default function PickActivityScreen() {
   const router = useRouter();
   const { scaleW } = useLayoutScale();
-  const activityTypes = getAvailableActivityTypes(Platform.OS);
+  const { user } = useAuth();
+  const activityTypes = getAvailableActivityTypes(Platform.OS, user?.email);
 
   return (
     <>

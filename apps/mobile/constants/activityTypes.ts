@@ -6,6 +6,14 @@ export type ActivityTypeKey = "walk" | "cycle" | "mission" | "hunt";
 /** Scavenger hunt catalog data hasn't been merged into production yet — keep the activity hidden from users until it has. */
 export const SCAVENGER_HUNTS_ENABLED = false;
 
+/** Domain allowed to see Hunt early, ahead of the general rollout. */
+const SCAVENGER_HUNTS_PREVIEW_DOMAIN = "@fluff.software";
+
+function isHuntActivityEnabled(userEmail?: string | null): boolean {
+  if (SCAVENGER_HUNTS_ENABLED) return true;
+  return Boolean(userEmail?.toLowerCase().endsWith(SCAVENGER_HUNTS_PREVIEW_DOMAIN));
+}
+
 export type ActivityTypeMeta = {
   key: ActivityTypeKey;
   label: string;
@@ -60,9 +68,12 @@ export const ACTIVITY_TYPES: ActivityTypeMeta[] = [
   },
 ];
 
-export function getAvailableActivityTypes(platformOS: string): ActivityTypeMeta[] {
+export function getAvailableActivityTypes(
+  platformOS: string,
+  userEmail?: string | null
+): ActivityTypeMeta[] {
   return ACTIVITY_TYPES.filter((type) => {
-    if (type.key === "hunt" && !SCAVENGER_HUNTS_ENABLED) return false;
+    if (type.key === "hunt" && !isHuntActivityEnabled(userEmail)) return false;
     return !type.unavailableOn?.includes(platformOS as "ios" | "android");
   });
 }

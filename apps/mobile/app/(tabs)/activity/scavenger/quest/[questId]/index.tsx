@@ -35,7 +35,6 @@ import {
   fetchQuestById,
   fetchQuestItems,
   fetchQuestState,
-  isPlayUnlocked,
   restartQuest,
   type ScavengerQuest,
   type ScavengerQuestItem,
@@ -101,12 +100,7 @@ export default function ScavengerQuestOverviewScreen() {
       setItems(itemRows);
       setState(s);
 
-      if (q?.lockable && q.lock_id) {
-        const playOk = await isPlayUnlocked("quest", questId);
-        setUnlocked(playOk);
-      } else {
-        setUnlocked(true);
-      }
+      setUnlocked(!q?.lockable);
 
       // Warm hero + preview images before leaving the page spinner.
       if (q) {

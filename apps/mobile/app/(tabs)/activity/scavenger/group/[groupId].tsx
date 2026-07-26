@@ -31,7 +31,6 @@ import {
   fetchQuestGroupById,
   fetchQuestStatesForProfile,
   fetchQuestsInGroup,
-  isPlayUnlocked,
   type ScavengerQuest,
   type ScavengerQuestGroup,
   type ScavengerQuestState,
@@ -50,7 +49,6 @@ export default function ScavengerGroupScreen() {
   const [quests, setQuests] = useState<ScavengerQuest[]>([]);
   const [states, setStates] = useState<ScavengerQuestState[]>([]);
   const [unlocked, setUnlocked] = useState(true);
-  const [unlockedQuestIds, setUnlockedQuestIds] = useState<Set<string>>(new Set());
   const [groupComplete, setGroupComplete] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -70,24 +68,16 @@ export default function ScavengerGroupScreen() {
     if (!groupId || !profileId) return;
     setLoading(true);
     try {
-      const [g, q, s, playUnlocked] = await Promise.all([
+      const [g, q, s] = await Promise.all([
         fetchQuestGroupById(groupId),
         fetchQuestsInGroup(groupId),
         fetchQuestStatesForProfile(profileId),
-        isPlayUnlocked("questGroup", groupId),
       ]);
       setGroup(g);
       setQuests(q);
       setStates(s);
 
-      const questUnlocks = await Promise.all(
-        q
-          .filter((quest) => quest.lockable)
-          .map(async (quest) => [quest.id, await isPlayUnlocked("quest", quest.id)] as const)
-      );
-      setUnlockedQuestIds(new Set(questUnlocks.filter(([, ok]) => ok).map(([id]) => id)));
-
-      setUnlocked(!g?.lockable || playUnlocked);
+      setUnlocked(!g?.lockable);
       if (g) {
         const completion = await fetchGroupCompletionStatus(profileId, groupId);
         setGroupComplete(completion.all_completed && completion.has_cta);
@@ -108,8 +98,8 @@ export default function ScavengerGroupScreen() {
   }, [load]);
 
   const visibleQuests = useMemo(
-    () => quests.filter((quest) => !quest.lockable || unlockedQuestIds.has(quest.id)),
-    [quests, unlockedQuestIds]
+    () => quests.filter((quest) => !quest.lockable),
+    [quests]
   );
 
   const statusFor = (questId: string) => {

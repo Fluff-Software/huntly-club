@@ -31,7 +31,6 @@ import {
   fetchPublishedQuestGroups,
   fetchPublishedQuests,
   fetchQuestStatesForProfile,
-  isPlayUnlocked,
   type ScavengerQuest,
   type ScavengerQuestGroup,
   type ScavengerQuestState,
@@ -57,8 +56,6 @@ export default function ScavengerBrowseScreen() {
   const [quests, setQuests] = useState<ScavengerQuest[]>([]);
   const [groups, setGroups] = useState<ScavengerQuestGroup[]>([]);
   const [states, setStates] = useState<ScavengerQuestState[]>([]);
-  const [unlockedQuestIds, setUnlockedQuestIds] = useState<Set<string>>(new Set());
-  const [unlockedGroupIds, setUnlockedGroupIds] = useState<Set<string>>(new Set());
   const [coords, setCoords] = useState<Coords | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -91,19 +88,6 @@ export default function ScavengerBrowseScreen() {
       setQuests(q);
       setGroups(g);
       setStates(s);
-
-      const questUnlocks = await Promise.all(
-        q
-          .filter((quest) => quest.lockable)
-          .map(async (quest) => [quest.id, await isPlayUnlocked("quest", quest.id)] as const)
-      );
-      const groupUnlocks = await Promise.all(
-        g
-          .filter((group) => group.lockable)
-          .map(async (group) => [group.id, await isPlayUnlocked("questGroup", group.id)] as const)
-      );
-      setUnlockedQuestIds(new Set(questUnlocks.filter(([, ok]) => ok).map(([id]) => id)));
-      setUnlockedGroupIds(new Set(groupUnlocks.filter(([, ok]) => ok).map(([id]) => id)));
 
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === "granted") {
@@ -141,15 +125,13 @@ export default function ScavengerBrowseScreen() {
   }, [states]);
 
   const visibleQuests = useMemo(
-    () =>
-      quests.filter((quest) => !quest.lockable || unlockedQuestIds.has(quest.id)),
-    [quests, unlockedQuestIds]
+    () => quests.filter((quest) => !quest.lockable),
+    [quests]
   );
 
   const visibleGroups = useMemo(
-    () =>
-      groups.filter((group) => !group.lockable || unlockedGroupIds.has(group.id)),
-    [groups, unlockedGroupIds]
+    () => groups.filter((group) => !group.lockable),
+    [groups]
   );
 
   const nearbyQuests = useMemo(() => {

@@ -330,3 +330,16 @@ verify_jwt = false
 
 [functions.finalize-monthly-team-winner]
 verify_jwt = false
+
+# Explore (Step 10.2) — JWT verified inside the function via auth.getUser
+[functions.explore-nearby]
+verify_jwt = false
+
+[functions.explore-verify]
+verify_jwt = false
+
+[functions.explore-claim]
+verify_jwt = false
+
+[functions.explore-health]
+verify_jwt = false

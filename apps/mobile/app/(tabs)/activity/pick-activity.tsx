@@ -49,7 +49,7 @@ export default function PickActivityScreen() {
               darkColor="rgba(255,255,255,0.7)"
               style={{ fontSize: scaleW(15), marginTop: scaleW(6) }}
             >
-              How would you like to explore today?
+              Pick a way to get outside and earn rewards together.
             </ThemedText>
           </View>
 

@@ -4,6 +4,7 @@ import { useRouter, useSegments } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePurchases } from "@/contexts/PurchasesContext";
 import { useSignUpOptional } from "@/contexts/SignUpContext";
+import { useExploreAreaWarmup } from "@/hooks/useExploreAreaWarmup";
 import { getProfiles, getUserData } from "@/services/profileService";
 import type { Profile } from "@/services/profileService";
 import { REQUIRE_EMAIL_VERIFICATION } from "@/constants/auth";
@@ -44,6 +45,9 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const signUpContext = useSignUpOptional();
   const [checkingProfiles, setCheckingProfiles] = useState(true);
   const onTabs = segments[0] === "(tabs)";
+
+  // Background Explore tile warm-up when location was already granted (no prompt).
+  useExploreAreaWarmup();
 
   useEffect(() => {
     const inAuthGroup = segments[0] === "auth";

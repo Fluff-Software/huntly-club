@@ -1,5 +1,5 @@
-import { Platform } from "react-native";
-import { ActivityMap as ActivityMapAndroid } from "./ActivityMap.android";
-import { ActivityMap as ActivityMapIos } from "./ActivityMap.ios";
-
-export const ActivityMap = Platform.OS === "ios" ? ActivityMapIos : ActivityMapAndroid;
+/**
+ * TypeScript resolution stub. Metro uses ActivityMap.ios / ActivityMap.android
+ * at runtime; this file exists so `import "./ActivityMap"` typechecks.
+ */
+export { ActivityMap } from "./ActivityMap.ios";

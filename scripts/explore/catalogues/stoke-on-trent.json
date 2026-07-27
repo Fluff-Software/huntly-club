@@ -1,0 +1,18 @@
+{
+  "region_id": "stoke-on-trent",
+  "name": "Stoke-on-Trent",
+  "notes": "Full Stoke-on-Trent unitary-authority extent as an axis-aligned bbox (covers the city; includes some fringe outside the admin polygon). OSM prepared offline via npm run prepare:osm -- --region stoke-on-trent.",
+  "bounding_box": {
+    "min_latitude": 52.96,
+    "min_longitude": -2.25,
+    "max_latitude": 53.08,
+    "max_longitude": -2.08
+  },
+  "source_geojson": "fixtures/local/stoke-on-trent.geojson",
+  "source_revision": "2026-07-24",
+  "generation_version": 2,
+  "output_dir": "output/catalogues/stoke-on-trent",
+  "attribution": "© OpenStreetMap contributors",
+  "licence": "ODbL 1.0",
+  "attribution_url": "https://www.openstreetmap.org/copyright"
+}

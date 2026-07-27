@@ -18,6 +18,24 @@ export type ActivityMapRegion = {
   longitudeDelta: number;
 };
 
+export type ActivityMapMarkerIcon = "lock" | "check" | "pin";
+
+export type ActivityMapMarker = {
+  id: string;
+  latitude: number;
+  longitude: number;
+  /** Hex colour for the pin / circle. */
+  color?: string;
+  title?: string;
+  /** Visual variant — `user` is distinct from stop pins. */
+  variant?: "stop" | "user";
+  /**
+   * Optional glyph for stop markers.
+   * `lock` = not yet collected, `check` = already collected.
+   */
+  icon?: ActivityMapMarkerIcon;
+};
+
 export type ActivityMapProps = {
   style?: StyleProp<ViewStyle>;
   route: ActivityCoordinate[];
@@ -31,7 +49,17 @@ export type ActivityMapProps = {
   pointerEvents?: "box-none" | "none" | "box-only" | "auto";
   /** When true and route has 2+ points, camera uses geographic bounds instead of center + delta. */
   fitRoute?: boolean;
+  /**
+   * Minimum map zoom (more zoomed out = lower number).
+   * Use to cap how far the user can zoom out.
+   */
+  minZoomLevel?: number;
+  /** Maximum map zoom (more zoomed in = higher number). */
+  maxZoomLevel?: number;
   onRegionChange?: (region: ActivityMapRegion) => void;
+  /** Optional point markers (Explore debug / POI overlays). */
+  markers?: ActivityMapMarker[];
+  onMarkerPress?: (markerId: string) => void;
 };
 
 export type ActivityMapRecenterOptions = {

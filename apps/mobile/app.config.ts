@@ -29,11 +29,23 @@ const ANDROID_APPLICATION_ID = 'software.fluff.huntlyclub';
 const maptilerApiKey = process.env.EXPO_PUBLIC_MAPTILER_API_KEY?.trim();
 
 const isEasBuild = process.env.EAS_BUILD === "true" || process.env.EAS_BUILD === "1";
+const appVersion = require("./package.json").version as string;
 if (isEasBuild && process.env.EAS_BUILD_PLATFORM === "android" && !maptilerApiKey) {
   throw new Error(
     "EAS Android build: EXPO_PUBLIC_MAPTILER_API_KEY is unset. " +
       "In Expo (expo.dev) open this project → Environment variables → add EXPO_PUBLIC_MAPTILER_API_KEY for the environment used by this profile, then rebuild."
   );
+}
+
+// Preview/production use Supabase Edge Explore — localhost Node URL is forbidden.
+if (isEasBuild && (variant === "preview" || variant === "production")) {
+  const exploreUrl = process.env.EXPO_PUBLIC_EXPLORE_API_URL?.trim() ?? "";
+  if (exploreUrl && /localhost|127\.0\.0\.1|10\.0\.2\.2|192\.168\./i.test(exploreUrl)) {
+    throw new Error(
+      `EAS ${variant} build: EXPO_PUBLIC_EXPLORE_API_URL must not be localhost (got ${exploreUrl}). ` +
+        "Production Explore uses Supabase Edge Functions (no Cloud Run URL required)."
+    );
+  }
 }
 
 const androidPackage: Record<AppVariant, string> = {
@@ -132,9 +144,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     output: "static",
     favicon: "./assets/images/favicon.png",
   },
-  runtimeVersion: {
-    policy: "appVersion",
-  },
+  // Expo Updates:
+  // - EAS builds support `runtimeVersion.policy`
+  // - Bare builds (e.g. `expo run:ios`) require an explicit runtime version string
+  runtimeVersion: isEasBuild ? { policy: "appVersion" } : appVersion,
   updates: {
     url: "https://u.expo.dev/" + (process.env.EXPO_PUBLIC_EAS_PROJECT_ID ?? ""),
     checkAutomatically: "NEVER",
@@ -236,6 +249,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   extra: {
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
     supabaseAnon: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+    exploreApiUrl: process.env.EXPO_PUBLIC_EXPLORE_API_URL,
     eas: {
       projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID,
     },

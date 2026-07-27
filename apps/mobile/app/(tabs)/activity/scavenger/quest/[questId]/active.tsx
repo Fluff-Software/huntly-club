@@ -39,7 +39,6 @@ import {
   SCAVENGER_GOLD,
   SCAVENGER_GREEN,
   SCAVENGER_HEADER_GRADIENT,
-  SCAVENGER_IMAGE_SCRIM,
   SCAVENGER_LIGHT,
   SCAVENGER_WARNING,
   scavengerSoftShadow,
@@ -313,7 +312,7 @@ export default function ScavengerActiveScreen() {
     <>
       <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+      <SafeAreaView style={styles.safe} edges={["left", "right"]}>
         <LinearGradient
           colors={SCAVENGER_HEADER_GRADIENT}
           start={{ x: 0, y: 0 }}
@@ -322,6 +321,7 @@ export default function ScavengerActiveScreen() {
             styles.hero,
             {
               paddingHorizontal: scaleW(16),
+              paddingTop: insets.top + scaleW(8),
               paddingBottom: scaleW(18),
               borderBottomLeftRadius: scaleW(24),
               borderBottomRightRadius: scaleW(24),
@@ -403,12 +403,11 @@ export default function ScavengerActiveScreen() {
                     setSelected(item);
                     setShowHint(false);
                   }}
-                  style={({ pressed }) => [
+                  style={[
                     styles.tile,
                     {
                       width: tileSize,
                       borderRadius: scaleW(18),
-                      transform: [{ scale: pressed ? 0.97 : 1 }],
                     },
                   ]}
                 >
@@ -425,17 +424,6 @@ export default function ScavengerActiveScreen() {
                       />
                       {isFound && (
                         <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(45,90,39,0.35)" }]} />
-                      )}
-                      {!!item.warning && (
-                        <View
-                          style={[
-                            styles.warnCorner,
-                            { top: scaleW(8), left: scaleW(8), paddingHorizontal: scaleW(8), paddingVertical: scaleW(3), borderRadius: scaleW(999) },
-                          ]}
-                        >
-                          <MaterialIcons name="warning-amber" size={scaleW(11)} color="#fff" />
-                          <ThemedText style={{ fontSize: scaleW(10), fontWeight: "800", color: "#fff" }}>Care</ThemedText>
-                        </View>
                       )}
                       {isFound && (
                         <View style={[styles.checkBadge, { width: scaleW(30), height: scaleW(30), borderRadius: scaleW(15), top: scaleW(8), right: scaleW(8) }]}>
@@ -477,7 +465,7 @@ export default function ScavengerActiveScreen() {
         ) : null}
       </SafeAreaView>
 
-      <Modal visible={!!selected && !triviaOpen} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
+      <Modal visible={!!selected && !triviaOpen} transparent animationType="fade" onRequestClose={() => setSelected(null)}>
         <Pressable style={styles.modalBackdrop} onPress={() => setSelected(null)}>
           <Pressable
             style={[styles.sheet, { padding: scaleW(20), paddingBottom: insets.bottom + scaleW(20), borderTopLeftRadius: scaleW(28), borderTopRightRadius: scaleW(28) }]}
@@ -492,15 +480,6 @@ export default function ScavengerActiveScreen() {
                       uri={selected.image_url}
                       style={{ width: "100%", height: scaleW(190) }}
                     />
-                    {foundIds.has(selected.id) && (
-                      <>
-                        <LinearGradient colors={SCAVENGER_IMAGE_SCRIM} style={StyleSheet.absoluteFill} />
-                        <View style={[styles.foundTag, { bottom: scaleW(12), left: scaleW(12), paddingHorizontal: scaleW(10), paddingVertical: scaleW(5), borderRadius: scaleW(999) }]}>
-                          <MaterialIcons name="check-circle" size={scaleW(14)} color="#fff" />
-                          <ThemedText style={{ fontSize: scaleW(12), fontWeight: "800", color: "#fff" }}>Found</ThemedText>
-                        </View>
-                      </>
-                    )}
                   </View>
                 ) : null}
                 <ThemedText type="heading" style={{ marginTop: scaleW(14), fontSize: scaleW(22), fontWeight: "800", color: SCAVENGER_BG }}>
@@ -552,13 +531,12 @@ export default function ScavengerActiveScreen() {
                 <Pressable
                   onPress={onFoundPress}
                   disabled={busy || foundIds.has(selected.id)}
-                  style={({ pressed }) => [
+                  style={[
                     styles.ctaWrap,
                     {
                       marginTop: scaleW(18),
                       borderRadius: scaleW(28),
                       opacity: busy || foundIds.has(selected.id) ? 0.6 : 1,
-                      transform: [{ scale: pressed ? 0.98 : 1 }],
                     },
                   ]}
                 >
@@ -678,13 +656,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#fff",
   },
-  warnCorner: {
-    position: "absolute",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    backgroundColor: "rgba(226,161,0,0.92)",
-  },
   switcherWrap: {
     position: "absolute",
     left: 0,
@@ -696,13 +667,6 @@ const styles = StyleSheet.create({
   modalBackdropCenter: { flex: 1, justifyContent: "center", backgroundColor: "rgba(0,0,0,0.5)" },
   sheet: { backgroundColor: "#fff", maxHeight: "88%" },
   grabber: { backgroundColor: "#D2DED3", alignSelf: "center" },
-  foundTag: {
-    position: "absolute",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: SCAVENGER_ACCENT,
-  },
   hintBox: { backgroundColor: "rgba(98,169,79,0.15)" },
   warning: { backgroundColor: "rgba(226,161,0,0.15)" },
   ctaWrap: { overflow: "hidden" },

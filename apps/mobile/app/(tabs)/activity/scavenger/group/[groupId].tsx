@@ -8,7 +8,7 @@ import {
   StyleSheet,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
@@ -52,6 +52,7 @@ export default function ScavengerGroupScreen() {
   const { groupId } = useLocalSearchParams<{ groupId: string }>();
   const router = useRouter();
   const { scaleW } = useLayoutScale();
+  const insets = useSafeAreaInsets();
   const { profiles } = usePlayer();
 
   const [profileId, setProfileId] = useState<number | null>(null);
@@ -146,17 +147,17 @@ export default function ScavengerGroupScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.root}>
         <LinearGradient colors={SCAVENGER_SCREEN_GRADIENT} style={StyleSheet.absoluteFill} />
-        <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+        <SafeAreaView style={styles.safe} edges={["left", "right"]}>
           {loading || !group ? (
             <>
-              <View style={{ padding: scaleW(16) }}>{BackChip}</View>
+              <View style={{ paddingTop: insets.top + scaleW(16), paddingHorizontal: scaleW(16) }}>{BackChip}</View>
               <View style={styles.center}>
                 <ActivityIndicator color="#fff" />
               </View>
             </>
           ) : !unlocked ? (
             <>
-              <View style={{ padding: scaleW(16) }}>{BackChip}</View>
+              <View style={{ paddingTop: insets.top + scaleW(16), paddingHorizontal: scaleW(16) }}>{BackChip}</View>
               <View style={{ padding: scaleW(24), alignItems: "center", marginTop: scaleW(40) }}>
                 <View
                   style={[
@@ -318,13 +319,12 @@ export default function ScavengerGroupScreen() {
                             `/(tabs)/activity/scavenger/quest/${quest.id}?profileId=${profileId}`
                           )
                         }
-                        style={({ pressed }) => [
+                        style={[
                           styles.questCard,
                           {
                             borderRadius: scaleW(18),
                             padding: scaleW(10),
                             marginBottom: scaleW(10),
-                            transform: [{ scale: pressed ? 0.985 : 1 }],
                           },
                         ]}
                       >

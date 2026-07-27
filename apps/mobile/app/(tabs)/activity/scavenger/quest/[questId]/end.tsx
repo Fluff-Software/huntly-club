@@ -379,9 +379,9 @@ export default function ScavengerEndSessionScreen() {
             <Pressable
               onPress={() => finish(false, quest, complete, photos)}
               disabled={busy}
-              style={({ pressed }) => [
+              style={[
                 styles.ctaWrap,
-                { borderRadius: scaleW(28), opacity: busy ? 0.7 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] },
+                { borderRadius: scaleW(28), opacity: busy ? 0.7 : 1 },
               ]}
             >
               <LinearGradient

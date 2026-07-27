@@ -8,7 +8,7 @@ import {
   StyleSheet,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useRouter } from "expo-router";
@@ -97,6 +97,7 @@ function StatusPill({
 export default function ScavengerBrowseScreen() {
   const router = useRouter();
   const { scaleW } = useLayoutScale();
+  const insets = useSafeAreaInsets();
   const { profiles } = usePlayer();
 
   const [profileId, setProfileId] = useState<number | null>(null);
@@ -259,7 +260,7 @@ export default function ScavengerBrowseScreen() {
           colors={SCAVENGER_SCREEN_GRADIENT}
           style={StyleSheet.absoluteFill}
         />
-        <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+        <SafeAreaView style={styles.safe} edges={["left", "right"]}>
           {loading || !profileId ? (
             <View style={styles.loadingWrap}>
               <ActivityIndicator color="#fff" />
@@ -290,7 +291,7 @@ export default function ScavengerBrowseScreen() {
                       styles.hero,
                       {
                         paddingHorizontal: scaleW(20),
-                        paddingTop: scaleW(8),
+                        paddingTop: insets.top + scaleW(8),
                         paddingBottom: scaleW(28),
                         borderBottomLeftRadius: scaleW(28),
                         borderBottomRightRadius: scaleW(28),
@@ -447,10 +448,7 @@ export default function ScavengerBrowseScreen() {
                     >
                       <Pressable
                         onPress={() => router.push(`/(tabs)/activity/scavenger/group/${group.id}`)}
-                        style={({ pressed }) => [
-                          styles.groupCard,
-                          { borderRadius: scaleW(22), transform: [{ scale: pressed ? 0.985 : 1 }] },
-                        ]}
+                        style={[styles.groupCard, { borderRadius: scaleW(22) }]}
                       >
                         <View style={{ height: scaleW(150) }}>
                           {group.cover_image_url ? (
@@ -524,13 +522,9 @@ export default function ScavengerBrowseScreen() {
                       onPress={() =>
                         router.push(`/(tabs)/activity/scavenger/quest/${quest.id}?profileId=${profileId}`)
                       }
-                      style={({ pressed }) => [
+                      style={[
                         styles.questCard,
-                        {
-                          borderRadius: scaleW(18),
-                          padding: scaleW(10),
-                          transform: [{ scale: pressed ? 0.985 : 1 }],
-                        },
+                        { borderRadius: scaleW(18), padding: scaleW(10) },
                       ]}
                     >
                       <View style={{ borderRadius: scaleW(14), overflow: "hidden" }}>

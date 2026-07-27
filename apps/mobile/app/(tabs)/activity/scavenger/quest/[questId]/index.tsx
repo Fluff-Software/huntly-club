@@ -251,10 +251,14 @@ export default function ScavengerQuestOverviewScreen() {
         {!hasCustomBackground && (
           <LinearGradient colors={SCAVENGER_SCREEN_GRADIENT} style={StyleSheet.absoluteFill} />
         )}
-        <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
+        <SafeAreaView style={{ flex: 1 }} edges={["left", "right"]}>
           {loading || !quest ? (
             <>
-              <Pressable onPress={() => router.back()} hitSlop={12} style={{ padding: scaleW(16) }}>
+              <Pressable
+                onPress={() => router.back()}
+                hitSlop={12}
+                style={{ paddingTop: insets.top + scaleW(16), paddingHorizontal: scaleW(16) }}
+              >
                 <View
                   style={[
                     styles.backChip,
@@ -277,7 +281,7 @@ export default function ScavengerQuestOverviewScreen() {
           ) : (
             <>
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: scaleW(140) }}>
-                <View style={{ height: quest.cover_image_url ? scaleW(240) : scaleW(64) }}>
+                <View style={{ height: quest.cover_image_url ? scaleW(240) : insets.top + scaleW(64) }}>
                   {quest.cover_image_url ? (
                     <>
                       <ScavengerImage
@@ -293,7 +297,7 @@ export default function ScavengerQuestOverviewScreen() {
                   <Pressable
                     onPress={() => router.back()}
                     hitSlop={12}
-                    style={{ position: "absolute", top: scaleW(12), left: scaleW(16) }}
+                    style={{ position: "absolute", top: insets.top + scaleW(12), left: scaleW(16) }}
                   >
                     <View
                       style={[
@@ -498,9 +502,9 @@ export default function ScavengerQuestOverviewScreen() {
                 <Pressable
                   onPress={start}
                   disabled={starting || restarting || !unlocked}
-                  style={({ pressed }) => [
+                  style={[
                     styles.ctaWrap,
-                    { borderRadius: scaleW(28), opacity: starting || restarting || !unlocked ? 0.7 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] },
+                    { borderRadius: scaleW(28), opacity: starting || restarting || !unlocked ? 0.7 : 1 },
                   ]}
                 >
                   <LinearGradient

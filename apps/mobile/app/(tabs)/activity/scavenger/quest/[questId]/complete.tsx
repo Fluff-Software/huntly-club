@@ -140,7 +140,7 @@ export default function ScavengerCompleteScreen() {
                       router.replace("/(tabs)/activity/scavenger");
                     }
                   }}
-                  style={({ pressed }) => [
+                  style={[
                     styles.secondaryBtn,
                     {
                       marginTop: scaleW(16),
@@ -149,7 +149,6 @@ export default function ScavengerCompleteScreen() {
                       alignSelf: "stretch",
                       backgroundColor: hasCustomBackground ? "rgba(26,46,30,0.08)" : "rgba(255,255,255,0.12)",
                       borderColor: hasCustomBackground ? "rgba(26,46,30,0.12)" : "rgba(255,255,255,0.2)",
-                      transform: [{ scale: pressed ? 0.98 : 1 }],
                     },
                   ]}
                 >

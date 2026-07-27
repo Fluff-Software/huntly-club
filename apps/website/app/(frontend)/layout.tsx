@@ -54,6 +54,7 @@ const navLinks = [
   { href: "/parents", label: "For parents" },
   { href: "/schools", label: "For schools" },
   { href: "/pricing", label: "Pricing" },
+  { href: "/blog", label: "Blog" },
 ];
 
 export default function RootLayout({
@@ -146,6 +147,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                 </Link>
                 <Link href="/schools" className="underline-offset-2 hover:underline">
                   For schools
+                </Link>
+                <Link href="/blog" className="underline-offset-2 hover:underline">
+                  Blog
                 </Link>
                 <Link href="/pricing" className="underline-offset-2 hover:underline">
                   Pricing

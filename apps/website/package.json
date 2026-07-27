@@ -6,13 +6,25 @@
     "dev": "next dev --port 3000",
     "build": "next build",
     "start": "next start --port 3000",
-    "lint": "next lint"
+    "lint": "next lint",
+    "payload": "PAYLOAD_CONFIG_PATH=./payload-src/payload.config.ts payload",
+    "generate:importmap": "PAYLOAD_CONFIG_PATH=./payload-src/payload.config.ts payload generate:importmap",
+    "generate:types": "PAYLOAD_CONFIG_PATH=./payload-src/payload.config.ts payload generate:types",
+    "migrate": "PAYLOAD_CONFIG_PATH=./payload-src/payload.config.ts payload migrate"
   },
   "dependencies": {
-    "next": "^15.0.3",
+    "@payloadcms/db-postgres": "3.86.0",
+    "@payloadcms/next": "3.86.0",
+    "@payloadcms/plugin-seo": "^3.86.0",
+    "@payloadcms/richtext-lexical": "3.86.0",
+    "@payloadcms/storage-s3": "^3.86.0",
+    "@supabase/supabase-js": "^2.49.4",
+    "graphql": "^16.8.1",
+    "next": "15.4.11",
+    "payload": "3.86.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "@supabase/supabase-js": "^2.49.4"
+    "sharp": "^0.34.2"
   },
   "devDependencies": {
     "@types/node": "^22.15.2",

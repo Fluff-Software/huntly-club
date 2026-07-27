@@ -1,0 +1,138 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-background: #EFEBE3;
+  --color-surface: #FFFFFF;
+  --color-border-subtle: #CFC8BC;
+  --color-text-main: #22282D;
+  --color-text-muted: #495057;
+}
+
+body {
+  @apply min-h-screen bg-[var(--color-background)] text-[var(--color-text-main)] antialiased;
+}
+
+.page-shell {
+  @apply flex min-h-screen flex-col;
+}
+
+.page-main {
+  @apply flex-1;
+}
+
+.nav-link {
+  @apply text-sm font-semibold text-huntly-slate transition-colors hover:text-huntly-moss;
+}
+
+.btn-primary {
+  @apply inline-flex cursor-pointer items-center justify-center rounded-full bg-huntly-moss px-5 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:bg-[#2f4336] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-huntly-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-background)];
+}
+
+.btn-ghost {
+  @apply inline-flex cursor-pointer items-center justify-center rounded-full border border-[var(--color-border-subtle)] bg-white px-5 py-2.5 text-sm font-semibold text-[var(--color-text-main)] shadow-sm transition hover:border-huntly-moss/50 hover:bg-[#ebe7dd] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-huntly-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-background)];
+}
+
+.card {
+  @apply rounded-2xl border border-[var(--color-border-subtle)] bg-white/90 p-6 shadow-soft backdrop-blur;
+}
+
+.section {
+  @apply mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8;
+}
+
+.richtext {
+  @apply text-base leading-relaxed text-huntly-slate sm:text-lg sm:leading-[1.85];
+}
+
+/* The RichText component wraps its output in its own inner div, so these are
+   grandchildren of .richtext, not direct children - descendant selectors
+   with :not(:first-child) instead of space-y. */
+.richtext :where(p, h1, h2, h3, ul, ol, blockquote, hr):not(:first-child) {
+  @apply mt-5 sm:mt-6;
+}
+
+.richtext :where(h2, h3):not(:first-child) {
+  @apply mt-12 sm:mt-14;
+}
+
+/* Pull the element right after a heading in closer, so sections read as
+   distinct chunks: a big gap before the heading, a tight one after it. */
+.richtext :where(h2, h3) + * {
+  @apply mt-3 sm:mt-4;
+}
+
+/* The opening paragraph reads like a lede - a little larger and darker to
+   draw the reader in before the body copy settles into its normal size. */
+.richtext p:first-child {
+  @apply text-lg font-medium text-huntly-forest sm:text-xl;
+}
+
+.richtext h1,
+.richtext h2,
+.richtext h3 {
+  @apply font-display font-bold text-huntly-forest;
+}
+
+.richtext h1 {
+  @apply text-2xl sm:text-3xl;
+}
+
+.richtext h2 {
+  @apply text-xl sm:text-2xl;
+}
+
+.richtext h3 {
+  @apply text-lg sm:text-xl;
+}
+
+.richtext strong {
+  @apply font-semibold text-huntly-forest;
+}
+
+.richtext a {
+  @apply font-medium text-huntly-moss underline-offset-2 hover:underline;
+}
+
+.richtext ul {
+  @apply list-none space-y-2.5 pl-0;
+}
+
+.richtext ul > li {
+  @apply relative pl-6;
+}
+
+.richtext ul > li::before {
+  content: "";
+  @apply absolute left-0 top-[0.7em] h-1.5 w-1.5 rounded-full bg-huntly-leaf;
+}
+
+.richtext ol {
+  @apply list-decimal space-y-2.5 pl-5 marker:font-semibold marker:text-huntly-moss;
+}
+
+.richtext li {
+  @apply leading-relaxed;
+}
+
+.richtext blockquote {
+  @apply rounded-2xl border-l-4 border-huntly-leaf bg-white/70 px-5 py-4 italic text-huntly-forest shadow-sm;
+}
+
+.richtext blockquote p {
+  @apply m-0;
+}
+
+.richtext hr {
+  @apply my-2 border-t border-huntly-stone;
+}
+
+.richtext img {
+  @apply rounded-2xl shadow-soft;
+}
+
+.richtext code {
+  @apply rounded bg-huntly-stone/30 px-1.5 py-0.5 font-mono text-[0.9em] text-huntly-forest;
+}
+

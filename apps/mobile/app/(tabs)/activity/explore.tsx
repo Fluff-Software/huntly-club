@@ -85,6 +85,24 @@ type PackSession = {
   profileId: number;
 };
 
+/** DEV-only mock award so we can preview the NEW seal without claiming a stop. */
+const DEV_NEW_REVEAL_AWARD: ExploreAward = {
+  card: {
+    id: "dev-preview-tawny-owl",
+    slug: "tawny-owl",
+    name: "Tawny Owl",
+    description:
+      "A soft-feathered night hunter with big dark eyes. By day it rests in trees; by night it listens carefully for tiny rustles below.",
+    category: "animal",
+    rarity: "rare",
+    imageUrl:
+      "https://mkdrlicbqusfuldtpmtr.supabase.co/storage/v1/object/public/explore-card-images/explore-cards/tawny-owl.jpg",
+  },
+  isNew: true,
+  count: 1,
+  matchedEnvironments: ["woodland"],
+};
+
 function newIdempotencyKey(): string {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
@@ -156,6 +174,8 @@ export default function ExploreScreen() {
   const [claiming, setClaiming] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
   const [packSession, setPackSession] = useState<PackSession | null>(null);
+  /** DEV: preview pack reveal (NEW seal) without a real claim. */
+  const [devRevealPreview, setDevRevealPreview] = useState(false);
   const [claimedIds, setClaimedIds] = useState<Set<string>>(new Set());
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null);
   /** Safety gate — must accept before using the map (Pokémon GO–style). */
@@ -644,6 +664,7 @@ export default function ExploreScreen() {
 
   const closePack = useCallback(() => {
     setPackSession(null);
+    setDevRevealPreview(false);
   }, []);
 
   const alreadyClaimed = selected ? claimedIds.has(selected.stopId) : false;
@@ -745,6 +766,20 @@ export default function ExploreScreen() {
                 </ThemedText>
               </Pressable>
             ) : null}
+            <Pressable
+              onPress={() => {
+                if (packSession) return;
+                setDevRevealPreview(true);
+              }}
+              style={styles.devBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Preview new card pack reveal"
+            >
+              <MaterialIcons name="auto-awesome" size={16} color="#FFE08A" />
+              <ThemedText lightColor="#FFE08A" darkColor="#FFE08A" style={styles.devBtnText}>
+                DEV: New reveal
+              </ThemedText>
+            </Pressable>
           </View>
         ) : null}
 
@@ -932,10 +967,18 @@ export default function ExploreScreen() {
           </View>
         ) : null}
 
-        {packSession ? (
+        {packSession || devRevealPreview ? (
           <ExploreCardPackReveal
             visible
-            onRipComplete={commitPackClaim}
+            onRipComplete={
+              packSession
+                ? commitPackClaim
+                : async () => {
+                    // Small delay so the tear → claim beat still feels real.
+                    await new Promise((r) => setTimeout(r, 280));
+                    return DEV_NEW_REVEAL_AWARD;
+                  }
+            }
             onClose={() => {
               closePack();
             }}

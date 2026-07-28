@@ -122,6 +122,10 @@ type Props = {
 const RIP_THRESHOLD = 200;
 const ACCENT = "#B8F000";
 
+/** Soft gold for NEW discovery badge (not brand lime). */
+const NEW_GOLD = "#E4C56A";
+const NEW_GOLD_SOFT = "#F3E2A8";
+
 function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
 }
@@ -139,8 +143,13 @@ export function ExploreCardPackReveal({
   const [claimError, setClaimError] = useState<string | null>(null);
   /** Unmount pack foil before award UI so it can’t flash over the card. */
   const [packMounted, setPackMounted] = useState(true);
+  /** Show “NEW CARD!” once the face is revealed (new finds only). */
+  const [showNewBadge, setShowNewBadge] = useState(false);
   const claimStartedRef = useRef(false);
+  const awardRef = useRef<ExploreAward | null>(null);
   const { playRip, stopRip } = usePackRipSound();
+
+  awardRef.current = award;
 
   const packW = Math.min(screenW * 0.72, 280);
   const packH = packW * (PACK_NATIVE_H / PACK_NATIVE_W);
@@ -166,6 +175,8 @@ export function ExploreCardPackReveal({
   const cardOpacity = useSharedValue(0);
   const cardY = useSharedValue(120);
   const cardScale = useSharedValue(0.92);
+  const newBadgeOpacity = useSharedValue(0);
+  const newBadgeScale = useSharedValue(0.82);
   const ripArmed = useSharedValue(0);
   const auraOpacity = useSharedValue(0);
 
@@ -182,6 +193,8 @@ export function ExploreCardPackReveal({
     cardOpacity.value = 0;
     cardY.value = 120;
     cardScale.value = 0.92;
+    newBadgeOpacity.value = 0;
+    newBadgeScale.value = 0.82;
     ripArmed.value = 0;
     auraOpacity.value = 0;
     claimStartedRef.current = false;
@@ -189,6 +202,7 @@ export function ExploreCardPackReveal({
     setAward(null);
     setClaimError(null);
     setPackMounted(true);
+    setShowNewBadge(false);
     setPhase("enter");
   }, [
     packScale,
@@ -201,6 +215,8 @@ export function ExploreCardPackReveal({
     cardOpacity,
     cardY,
     cardScale,
+    newBadgeOpacity,
+    newBadgeScale,
     ripArmed,
     auraOpacity,
     stopRip,
@@ -253,6 +269,9 @@ export function ExploreCardPackReveal({
     (nextAward: ExploreAward) => {
       setAward(nextAward);
       setPhase("reveal");
+      setShowNewBadge(false);
+      newBadgeOpacity.value = 0;
+      newBadgeScale.value = 0.82;
 
       const profile = rarityRevealProfile(nextAward.card.rarity);
       cardY.value = profile.cardY;
@@ -295,8 +314,16 @@ export function ExploreCardPackReveal({
         }
       })();
     },
-    [auraOpacity, cardOpacity, cardY, cardScale, foilOpacity]
+    [auraOpacity, cardOpacity, cardY, cardScale, foilOpacity, newBadgeOpacity, newBadgeScale]
   );
+
+  const onCardFlipComplete = useCallback(() => {
+    if (awardRef.current?.isNew !== true) return;
+    setShowNewBadge(true);
+    newBadgeOpacity.value = withTiming(1, { duration: 240 });
+    newBadgeScale.value = withSpring(1, { damping: 11, stiffness: 170 });
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, [newBadgeOpacity, newBadgeScale]);
 
   const finishRipAndClaim = useCallback(async () => {
     if (claimStartedRef.current) return;
@@ -393,7 +420,11 @@ export function ExploreCardPackReveal({
 
   const cardStyle = useAnimatedStyle(() => ({
     opacity: cardOpacity.value,
-    transform: [{ translateY: cardY.value }, { scale: cardScale.value }],
+    // Final settle sits a bit high so the cluster reads centered above the buttons.
+    transform: [
+      { translateY: cardY.value - 28 },
+      { scale: cardScale.value },
+    ],
   }));
 
   const auraStyle = useAnimatedStyle(() => ({
@@ -401,8 +432,16 @@ export function ExploreCardPackReveal({
     transform: [{ scale: 1 + auraOpacity.value * 0.35 }],
   }));
 
-  const cardWidth = Math.min(screenW * 0.86, 320);
-  const cardHeight = Math.min(screenH * 0.62, cardWidth / EXPLORE_CARD_ART_ASPECT);
+  const newBadgeStyle = useAnimatedStyle(() => ({
+    opacity: newBadgeOpacity.value,
+    transform: [{ scale: newBadgeScale.value }],
+  }));
+
+  const cardWidth = Math.min(screenW * 0.82, 300);
+  const cardHeight = Math.min(
+    screenH * 0.52,
+    (cardWidth / EXPLORE_CARD_ART_ASPECT) * 0.98
+  );
   const canCloseWithoutClaim =
     phase === "enter" || phase === "ready" || phase === "ripping" || phase === "error";
 
@@ -427,7 +466,19 @@ export function ExploreCardPackReveal({
       <GestureHandlerRootView style={styles.root}>
         <View style={styles.dim} />
 
-        <View style={styles.stage} pointerEvents="box-none">
+        <View
+          style={[
+            styles.stage,
+            phase === "reveal"
+              ? {
+                  paddingTop: insets.top + 12,
+                  // Leave room for the two action buttons under the card.
+                  paddingBottom: insets.bottom + 156,
+                }
+              : null,
+          ]}
+          pointerEvents="box-none"
+        >
           {/* Soft glow behind the rising card (no spin / no empty dark beat). */}
           {phase === "reveal" && award ? (
             <Animated.View
@@ -438,18 +489,38 @@ export function ExploreCardPackReveal({
 
           {/* Card sits BEHIND the pack and slides up after the rip. */}
           {phase === "reveal" && award ? (
-            <Animated.View
-              style={[
-                styles.risingCard,
-                { width: cardWidth, height: cardHeight },
-                cardStyle,
-              ]}
-            >
-              <View style={styles.revealCard}>
+            <Animated.View style={[styles.risingCard, cardStyle]}>
+              {award.isNew ? (
+                showNewBadge ? (
+                  <Animated.View
+                    pointerEvents="none"
+                    style={[styles.newBadge, newBadgeStyle]}
+                    accessibilityRole="text"
+                    accessibilityLabel="New card"
+                  >
+                    <View style={styles.newBadgeGlow} />
+                    <View style={styles.newBadgeInner}>
+                      <View style={styles.newBadgeRule} />
+                      <ThemedText
+                        lightColor={NEW_GOLD_SOFT}
+                        darkColor={NEW_GOLD_SOFT}
+                        style={styles.newBadgeLabel}
+                      >
+                        NEW DISCOVERY
+                      </ThemedText>
+                      <View style={styles.newBadgeRule} />
+                    </View>
+                  </Animated.View>
+                ) : (
+                  <View style={styles.newBadgeSpacer} />
+                )
+              ) : null}
+              <View style={[styles.revealCard, { width: cardWidth, height: cardHeight }]}>
                 <ExploreCardFlip
                   autoFlip
                   autoFlipDelayMs={revealProfile.flipHoldMs}
                   key={award.card.id}
+                  onFlipComplete={onCardFlipComplete}
                 >
                   <ExploreCardArt
                     imageUrl={award.card.imageUrl}
@@ -573,7 +644,52 @@ const styles = StyleSheet.create({
   },
   risingCard: {
     position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
     zIndex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 14,
+    // Shift the badge+card cluster up within the stage.
+    paddingBottom: 64,
+  },
+  newBadgeSpacer: {
+    height: 36,
+  },
+  newBadge: {
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  newBadgeGlow: {
+    position: "absolute",
+    width: 200,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: NEW_GOLD,
+    opacity: 0.22,
+  },
+  newBadgeInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 6,
+  },
+  newBadgeRule: {
+    width: 22,
+    height: StyleSheet.hairlineWidth * 2,
+    backgroundColor: NEW_GOLD,
+    opacity: 0.85,
+  },
+  newBadgeLabel: {
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 3.2,
+    textShadowColor: "rgba(228, 197, 106, 0.45)",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
   },
   auraOuter: {
     position: "absolute",
@@ -605,9 +721,8 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   revealCard: {
-    flex: 1,
     borderRadius: 14,
-    // Visible so rotateY perspective isn't clipped mid-flip
+    // Visible so rotateY perspective + NEW badge aren't clipped
     overflow: "visible",
     backgroundColor: "transparent",
   },

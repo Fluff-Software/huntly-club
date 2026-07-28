@@ -1,6 +1,6 @@
 /**
  * Explore trading-card face — Yu-Gi-Oh-style layout on the textured card bg:
- * outer frame → name + attribute → rarity → art window → type/description box.
+ * outer frame → name → rarity → art window → description + found footer.
  */
 import React, { useEffect, useState } from "react";
 import {
@@ -13,10 +13,7 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { EXPLORE_RARITY_COLORS } from "@/constants/exploreBinder";
-import {
-  formatRarityLabel,
-  readableHabitatAffinities,
-} from "@/utils/exploreBinder";
+import { formatRarityLabel } from "@/utils/exploreBinder";
 
 const CARD_BG = require("@/assets/images/explore-card-bg.png");
 
@@ -47,19 +44,6 @@ type Props = {
   style?: StyleProp<ViewStyle>;
 };
 
-function categoryTypeLabel(category: string | undefined): string {
-  switch (category) {
-    case "animal":
-      return "Animal";
-    case "habitat":
-      return "Habitat";
-    case "flora_wildlife":
-      return "Flora";
-    default:
-      return "Explore";
-  }
-}
-
 function formatFoundDate(iso: string | null | undefined): string | null {
   if (!iso) return null;
   const d = new Date(iso);
@@ -72,8 +56,6 @@ export function ExploreCardArt({
   name,
   rarity,
   description = "",
-  category,
-  habitatWeights,
   count = 0,
   firstCollectedAt = null,
   lastCollectedAt: _lastCollectedAt = null,
@@ -84,17 +66,11 @@ export function ExploreCardArt({
   const [failed, setFailed] = useState(false);
   const showCatalogueImage = Boolean(imageUrl?.startsWith("http")) && !failed;
   const rarityColor = EXPLORE_RARITY_COLORS[rarity] ?? "#3B82F6";
-  const typeLabel = categoryTypeLabel(category);
   const displayName = collected ? name.toUpperCase() : "?????";
   const rarityLabel = collected ? formatRarityLabel(rarity).toUpperCase() : "UNKNOWN";
   const bodyText = collected
     ? description.trim() || "A discovery from your Explore adventures."
     : "Not discovered yet. Keep exploring to find this card.";
-  const habitats = collected
-    ? readableHabitatAffinities(habitatWeights ?? {})
-        .filter((h) => h.key !== "general")
-        .slice(0, compact ? 2 : 4)
-    : [];
   const firstFound = formatFoundDate(firstCollectedAt);
   const copiesLabel =
     collected && count > 0 ? (count === 1 ? "1 copy" : `${count} copies`) : null;
@@ -164,35 +140,37 @@ export function ExploreCardArt({
           </View>
         </View>
 
-        <View style={[styles.artBevelOuter, compact && styles.artBevelOuterCompact]}>
-          <View style={styles.artBevelMid}>
-            <View style={[styles.artWindow, !collected && styles.artWindowLocked]}>
-              {collected && showCatalogueImage ? (
-                <Image
-                  source={{ uri: imageUrl! }}
-                  style={styles.artImage}
-                  resizeMode="cover"
-                  onError={() => setFailed(true)}
-                  accessibilityIgnoresInvertColors
-                />
-              ) : (
-                <View style={[styles.placeholder, !collected && styles.placeholderLocked]}>
-                  <MaterialIcons
-                    name={collected ? "image" : "lock"}
-                    size={compact ? 28 : 42}
-                    color={collected ? "rgba(30,50,32,0.4)" : "rgba(255,255,255,0.75)"}
+        <View style={styles.artSlot}>
+          <View style={[styles.artBevelOuter, compact && styles.artBevelOuterCompact]}>
+            <View style={[styles.artBevelMid, compact && styles.artBevelMidCompact]}>
+              <View style={[styles.artWindow, !collected && styles.artWindowLocked]}>
+                {collected && showCatalogueImage ? (
+                  <Image
+                    source={{ uri: imageUrl! }}
+                    style={styles.artImage}
+                    resizeMode="cover"
+                    onError={() => setFailed(true)}
+                    accessibilityIgnoresInvertColors
                   />
-                  {collected && !compact ? (
-                    <ThemedText
-                      lightColor="rgba(30,50,32,0.5)"
-                      darkColor="rgba(30,50,32,0.5)"
-                      style={styles.placeholderLabel}
-                    >
-                      Artwork coming soon
-                    </ThemedText>
-                  ) : null}
-                </View>
-              )}
+                ) : (
+                  <View style={[styles.placeholder, !collected && styles.placeholderLocked]}>
+                    <MaterialIcons
+                      name={collected ? "image" : "lock"}
+                      size={compact ? 28 : 42}
+                      color={collected ? "rgba(30,50,32,0.4)" : "rgba(255,255,255,0.75)"}
+                    />
+                    {collected && !compact ? (
+                      <ThemedText
+                        lightColor="rgba(30,50,32,0.5)"
+                        darkColor="rgba(30,50,32,0.5)"
+                        style={styles.placeholderLabel}
+                      >
+                        Artwork coming soon
+                      </ThemedText>
+                    ) : null}
+                  </View>
+                )}
+              </View>
             </View>
           </View>
         </View>
@@ -205,55 +183,35 @@ export function ExploreCardArt({
           ]}
         >
           <ThemedText
-            lightColor={collected ? INK : "rgba(220,230,220,0.85)"}
-            darkColor={collected ? INK : "rgba(220,230,220,0.85)"}
-            numberOfLines={1}
-            style={[styles.typeLine, compact && styles.typeLineCompact]}
-          >
-            {typeLabel}
-          </ThemedText>
-          <ThemedText
             lightColor={collected ? "#243028" : "rgba(210,220,210,0.75)"}
             darkColor={collected ? "#243028" : "rgba(210,220,210,0.75)"}
-            numberOfLines={compact ? 2 : 4}
+            numberOfLines={compact ? 3 : 5}
             style={[styles.description, compact && styles.descriptionCompact]}
           >
             {bodyText}
           </ThemedText>
 
-          {collected && habitats.length > 0 ? (
-            <View style={styles.metaBlock}>
-              <ThemedText
-                lightColor={INK}
-                darkColor={INK}
-                style={[styles.metaHeading, compact && styles.metaHeadingCompact]}
-              >
-                Habitats
-              </ThemedText>
-              <ThemedText
-                lightColor="#243028"
-                darkColor="#243028"
-                numberOfLines={compact ? 1 : 2}
-                style={[styles.metaBody, compact && styles.metaBodyCompact]}
-              >
-                {habitats.map((h) => h.label).join(" · ")}
-              </ThemedText>
-            </View>
-          ) : null}
-
-          {!compact && collected ? (
+          {collected ? (
             <>
-              <View style={styles.descRule} />
+              <View style={[styles.descRule, compact && styles.descRuleCompact]} />
               <View style={styles.footerStats}>
                 {copiesLabel ? (
-                  <ThemedText lightColor={INK} darkColor={INK} style={styles.footerLeft}>
+                  <ThemedText
+                    lightColor={INK}
+                    darkColor={INK}
+                    style={[styles.footerLeft, compact && styles.footerLeftCompact]}
+                  >
                     {copiesLabel.toUpperCase()}
                   </ThemedText>
                 ) : (
                   <View />
                 )}
                 {firstFound ? (
-                  <ThemedText lightColor={INK} darkColor={INK} style={styles.footerRight}>
+                  <ThemedText
+                    lightColor={INK}
+                    darkColor={INK}
+                    style={[styles.footerRight, compact && styles.footerRightCompact]}
+                  >
                     FOUND {firstFound}
                   </ThemedText>
                 ) : null}
@@ -374,12 +332,20 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
     fontWeight: "900",
   },
+  /** Fills leftover height so art can sit larger above a hugging desc box. */
+  artSlot: {
+    flexGrow: 1,
+    flexShrink: 1,
+    minHeight: 0,
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   artBevelOuter: {
-    width: "78%",
+    width: "86%",
+    maxHeight: "100%",
     aspectRatio: 1,
     alignSelf: "center",
-    flexGrow: 0,
-    flexShrink: 0,
     backgroundColor: BEVEL_LIGHT,
     borderWidth: 1,
     borderColor: BEVEL_DARK,
@@ -387,7 +353,7 @@ const styles = StyleSheet.create({
     padding: 3,
   },
   artBevelOuterCompact: {
-    width: "76%",
+    width: "86%",
     borderRadius: 9,
     padding: 2,
   },
@@ -402,6 +368,10 @@ const styles = StyleSheet.create({
     borderBottomColor: BEVEL_DARK,
     padding: 2,
     overflow: "hidden",
+  },
+  artBevelMidCompact: {
+    borderRadius: 7,
+    padding: 1.5,
   },
   artWindow: {
     flex: 1,
@@ -433,38 +403,27 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   descBox: {
-    flexGrow: 1,
-    flexShrink: 1,
+    flexGrow: 0,
+    flexShrink: 0,
     backgroundColor: PANEL_FILL,
     borderWidth: 1.5,
     borderColor: PANEL_BORDER,
     borderRadius: 12,
     paddingHorizontal: 11,
-    paddingTop: 9,
-    paddingBottom: 12,
-    gap: 5,
-    minHeight: 78,
+    paddingTop: 8,
+    paddingBottom: 9,
+    gap: 4,
   },
   descBoxCompact: {
     borderRadius: 9,
-    minHeight: 46,
     paddingHorizontal: 7,
     paddingTop: 5,
-    paddingBottom: 7,
+    paddingBottom: 6,
     gap: 2,
   },
   descBoxLocked: {
     backgroundColor: PANEL_FILL_LOCKED,
     borderColor: PANEL_BORDER_LOCKED,
-  },
-  typeLine: {
-    fontSize: 13,
-    fontWeight: "900",
-    letterSpacing: 0.35,
-  },
-  typeLineCompact: {
-    fontSize: 10,
-    fontWeight: "900",
   },
   description: {
     fontSize: 14,
@@ -476,49 +435,37 @@ const styles = StyleSheet.create({
     lineHeight: 13,
     fontWeight: "700",
   },
-  metaBlock: {
-    marginTop: 4,
-    gap: 2,
-  },
-  metaHeading: {
-    fontSize: 12,
-    fontWeight: "900",
-    letterSpacing: 0.35,
-  },
-  metaHeadingCompact: {
-    fontSize: 9,
-    fontWeight: "900",
-  },
-  metaBody: {
-    fontSize: 13,
-    lineHeight: 17,
-    fontWeight: "700",
-  },
-  metaBodyCompact: {
-    fontSize: 9,
-    lineHeight: 12,
-    fontWeight: "700",
-  },
   descRule: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: PANEL_BORDER,
-    marginTop: 6,
+    marginTop: 2,
     opacity: 0.8,
+  },
+  descRuleCompact: {
+    marginTop: 1,
   },
   footerStats: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 4,
+    gap: 6,
   },
   footerLeft: {
     fontSize: 11,
     fontWeight: "900",
     letterSpacing: 0.6,
   },
+  footerLeftCompact: {
+    fontSize: 8,
+    letterSpacing: 0.4,
+  },
   footerRight: {
     fontSize: 11,
     fontWeight: "900",
     letterSpacing: 0.4,
+  },
+  footerRightCompact: {
+    fontSize: 8,
+    letterSpacing: 0.3,
   },
 });

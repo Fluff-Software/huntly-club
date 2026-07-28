@@ -253,9 +253,10 @@ export default function ScavengerActiveScreen() {
 
   const endSession = () => {
     if (!questId || !profileId || !quest) return;
-    router.push(
-      `/(tabs)/activity/scavenger/quest/${questId}/end?profileId=${profileId}&photoCount=${photoCount}`
-    );
+    router.push({
+      pathname: "/(tabs)/activity/scavenger/quest/end",
+      params: { questId, profileId: String(profileId), photoCount: String(photoCount) },
+    });
   };
 
   const afterMarkedFound = async (item: ScavengerQuestItem) => {

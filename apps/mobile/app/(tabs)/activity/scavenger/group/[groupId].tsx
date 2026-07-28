@@ -316,7 +316,7 @@ export default function ScavengerGroupScreen() {
                       <Pressable
                         onPress={() =>
                           router.push(
-                            `/(tabs)/activity/scavenger/quest/${quest.id}?profileId=${profileId}`
+                            `/(tabs)/activity/scavenger/quest?questId=${quest.id}&profileId=${profileId}`
                           )
                         }
                         style={[

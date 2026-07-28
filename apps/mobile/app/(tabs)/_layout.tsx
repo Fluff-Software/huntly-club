@@ -256,18 +256,14 @@ export default function TabLayout() {
     activeTrackingTitle != null &&
     !pathname.endsWith(activeTrackingRoute);
 
-  const activeHuntRoute = activeHuntSession
-    ? `/activity/scavenger/quest/${activeHuntSession.questId}/active`
-    : null;
   const onActiveHuntScreen =
     activeHuntSession != null &&
-    (pathname.includes(`/scavenger/quest/${activeHuntSession.questId}/active`) ||
-      pathname.includes(`/scavenger/quest/${activeHuntSession.questId}/end`) ||
-      pathname.includes(`/scavenger/quest/${activeHuntSession.questId}/complete`));
+    (pathname.endsWith("/scavenger/quest/active") ||
+      pathname.endsWith("/scavenger/quest/end") ||
+      pathname.endsWith("/scavenger/quest/complete"));
   const showActiveHuntBanner =
     !showActiveTrackingBanner &&
     activeHuntSession?.status === "active" &&
-    activeHuntRoute != null &&
     !onActiveHuntScreen;
 
   const handleTutorialDismiss = () => {
@@ -487,9 +483,13 @@ export default function TabLayout() {
             },
           ]}
           onPress={() => {
-            router.push(
-              `/(tabs)/activity/scavenger/quest/${activeHuntSession.questId}/active?profileId=${activeHuntSession.profileId}`
-            );
+            router.push({
+              pathname: "/(tabs)/activity/scavenger/quest/active",
+              params: {
+                questId: activeHuntSession.questId,
+                profileId: String(activeHuntSession.profileId),
+              },
+            });
           }}
           accessibilityRole="button"
           accessibilityLabel="Return to active scavenger hunt"

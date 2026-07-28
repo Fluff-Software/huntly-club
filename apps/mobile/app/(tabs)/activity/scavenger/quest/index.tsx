@@ -183,9 +183,10 @@ export default function ScavengerQuestOverviewScreen() {
           return;
         }
       }
-      router.push(
-        `/(tabs)/activity/scavenger/quest/${questId}/active?profileId=${profileId}`
-      );
+      router.push({
+        pathname: "/(tabs)/activity/scavenger/quest/active",
+        params: { questId, profileId: String(profileId) },
+      });
     } catch (e) {
       Alert.alert("Couldn’t start", e instanceof Error ? e.message : "Try again");
     } finally {

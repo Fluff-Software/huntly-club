@@ -32,7 +32,10 @@ export async function getBlockingAdventure(
 
 export function routeForBlockingAdventure(blocking: BlockingAdventure): Href {
   if (blocking.kind === "hunt") {
-    return `/(tabs)/activity/scavenger/quest/${blocking.questId}/active?profileId=${blocking.profileId}` as Href;
+    return {
+      pathname: "/(tabs)/activity/scavenger/quest/active",
+      params: { questId: blocking.questId, profileId: String(blocking.profileId) },
+    } as Href;
   }
   if (blocking.kind === "cycle") {
     return "/(tabs)/activity/cycle-map";

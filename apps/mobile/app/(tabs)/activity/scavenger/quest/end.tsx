@@ -205,9 +205,10 @@ export default function ScavengerEndSessionScreen() {
         const hasCompletion = Boolean(currentQuest?.on_completion?.cta);
 
         if (allDone && hasCompletion) {
-          router.replace(
-            `/(tabs)/activity/scavenger/quest/${questId}/complete?profileId=${profileId}`
-          );
+          router.replace({
+            pathname: "/(tabs)/activity/scavenger/quest/complete",
+            params: { questId, profileId: String(profileId) },
+          });
           return;
         }
         if (currentQuest?.group_id) {

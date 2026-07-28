@@ -2,6 +2,9 @@
  * Skia pack foil with a progressive jagged tear at the perforation.
  * As openProgress advances (swipe), the rip travels L→R and already-torn
  * strips peel away — instead of lifting the whole top at once.
+ *
+ * Peel strips only animate after the tear front reaches them, so letters
+ * on the seal never appear on flying bits before the finger gets there.
  */
 import React, { useMemo } from "react";
 import { StyleSheet } from "react-native";
@@ -37,6 +40,7 @@ type Props = {
 
 /** Deterministic irregular tear along y = splitY. */
 function jaggedY(x: number, width: number, splitY: number): number {
+  "worklet";
   const t = width <= 0 ? 0 : x / width;
   return (
     splitY +
@@ -85,16 +89,6 @@ function buildTopStripClip(
   return path;
 }
 
-function buildFullTearEdge(width: number, splitY: number, segments = 32): SkPath {
-  const path = Skia.Path.Make();
-  path.moveTo(0, jaggedY(0, width, splitY));
-  for (let i = 1; i <= segments; i++) {
-    const x = (width * i) / segments;
-    path.lineTo(x, jaggedY(x, width, splitY));
-  }
-  return path;
-}
-
 type DebrisSpec = {
   x: number;
   y: number;
@@ -119,7 +113,8 @@ function buildDebris(width: number, splitY: number): DebrisSpec[] {
       rot: (i % 2 === 0 ? -1 : 1) * (10 + i * 5),
       dx: (t - 0.5) * 70 + (i % 3) * 6,
       dy: -22 - i * 8,
-      appearAt: t * 0.92,
+      /** Appear when tear front reaches this x (0–1 of width). */
+      appearAt: t,
     };
   });
 }
@@ -136,8 +131,6 @@ type StripSpec = {
   x1: number;
   midX: number;
   clip: SkPath;
-  start: number;
-  end: number;
 };
 
 function buildStrips(width: number, splitY: number): StripSpec[] {
@@ -145,17 +138,12 @@ function buildStrips(width: number, splitY: number): StripSpec[] {
   for (let i = 0; i < STRIP_COUNT; i++) {
     const x0 = (width * i) / STRIP_COUNT;
     const x1 = (width * (i + 1)) / STRIP_COUNT;
-    // Rip wave: strip i peels as progress crosses its band, with overlap.
-    const start = i / (STRIP_COUNT + 1.5);
-    const end = (i + 2.2) / (STRIP_COUNT + 1.5);
     strips.push({
       index: i,
       x0,
       x1,
       midX: (x0 + x1) / 2,
       clip: buildTopStripClip(x0, x1, width, splitY),
-      start,
-      end,
     });
   }
   return strips;
@@ -175,7 +163,6 @@ export function ExplorePackTearSkia({
     () => buildBottomClip(width, height, splitY),
     [width, height, splitY]
   );
-  const tearEdge = useMemo(() => buildFullTearEdge(width, splitY), [width, splitY]);
   const strips = useMemo(() => buildStrips(width, splitY), [width, splitY]);
   const debris = useMemo(() => buildDebris(width, splitY), [width, splitY]);
   const debrisPaths = useMemo(() => debris.map(debrisPath), [debris]);
@@ -187,31 +174,11 @@ export function ExplorePackTearSkia({
     return eased * width;
   });
 
-  /** Still-sealed region width (right side). */
   const sealedWidth = useDerivedValue(() => Math.max(0, width - tearFrontX.value));
-
   const sealedX = useDerivedValue(() => tearFrontX.value);
 
-  const bottomOpacity = useDerivedValue(() => {
-    const p = openProgress.value;
-    return (
-      interpolate(p, [0, 0.7, 1], [1, 1, 0.15], Extrapolation.CLAMP) * foilOpacity.value
-    );
-  });
-
+  const bottomOpacity = useDerivedValue(() => foilOpacity.value);
   const sealedOpacity = useDerivedValue(() => foilOpacity.value);
-
-  const edgeOpacity = useDerivedValue(() => {
-    const p = openProgress.value;
-    return (
-      interpolate(p, [0, 0.06, 0.75, 1], [0, 0.9, 0.75, 0], Extrapolation.CLAMP) *
-      foilOpacity.value
-    );
-  });
-
-  /** Clip the jagged edge stroke so it only shows along the revealed rip. */
-  const edgeClipX = useDerivedValue(() => 0);
-  const edgeClipW = useDerivedValue(() => Math.max(0, tearFrontX.value + 2));
 
   if (!packImage) {
     return null;
@@ -230,14 +197,12 @@ export function ExplorePackTearSkia({
       pointerEvents="none"
     >
       <Group transform={[{ translateX: 40 }, { translateY: peelPad }]}>
-        {/* Pack body below the perforation. */}
         <Group opacity={bottomOpacity}>
           <Group clip={bottomClip}>
             <SkiaImage image={packImage} x={0} y={0} width={width} height={height} fit="fill" />
           </Group>
         </Group>
 
-        {/* Still-sealed right side — shrinks as the rip advances L→R. */}
         <SealedFoil
           packImage={packImage}
           width={width}
@@ -247,7 +212,7 @@ export function ExplorePackTearSkia({
           opacity={sealedOpacity}
         />
 
-        {/* Progressive foil strips: peel L→R with the swipe. */}
+        {/* Peel only after tear front reaches each strip */}
         {strips.map((strip) => (
           <PeelStrip
             key={strip.index}
@@ -256,33 +221,19 @@ export function ExplorePackTearSkia({
             width={width}
             height={height}
             splitY={splitY}
-            openProgress={openProgress}
+            tearFrontX={tearFrontX}
             foilOpacity={foilOpacity}
           />
         ))}
-
-        {/* Jagged foil edge along the revealed tear only. */}
-        <Group opacity={edgeOpacity}>
-          <Group
-            clip={Skia.XYWHRect(0, splitY - 16, width, 36)}
-          >
-            {/* Mask edge by covering only [0, tearFront] via an overlapping clip rect */}
-            <EdgeClip
-              tearEdge={tearEdge}
-              edgeClipX={edgeClipX}
-              edgeClipW={edgeClipW}
-              splitY={splitY}
-            />
-          </Group>
-        </Group>
 
         {debris.map((d, i) => (
           <DebrisPiece
             key={i}
             path={debrisPaths[i]!}
             spec={d}
-            openProgress={openProgress}
             foilOpacity={foilOpacity}
+            tearFrontX={tearFrontX}
+            width={width}
           />
         ))}
       </Group>
@@ -316,37 +267,13 @@ function SealedFoil({
   );
 }
 
-function EdgeClip({
-  tearEdge,
-  edgeClipX,
-  edgeClipW,
-  splitY,
-}: {
-  tearEdge: SkPath;
-  edgeClipX: SharedValue<number>;
-  edgeClipW: SharedValue<number>;
-  splitY: number;
-}) {
-  const clip = useDerivedValue(() => {
-    return Skia.XYWHRect(edgeClipX.value, splitY - 16, edgeClipW.value, 36);
-  });
-
-  return (
-    <Group clip={clip}>
-      <Path path={tearEdge} style="stroke" strokeWidth={2.8} color="rgba(5, 14, 8, 0.85)" />
-      <Path path={tearEdge} style="stroke" strokeWidth={1.1} color="rgba(255, 255, 255, 0.3)" />
-      <Path path={tearEdge} style="stroke" strokeWidth={1} color="rgba(184, 240, 0, 0.28)" />
-    </Group>
-  );
-}
-
 function PeelStrip({
   strip,
   packImage,
   width,
   height,
   splitY,
-  openProgress,
+  tearFrontX,
   foilOpacity,
 }: {
   strip: StripSpec;
@@ -354,12 +281,24 @@ function PeelStrip({
   width: number;
   height: number;
   splitY: number;
-  openProgress: SharedValue<number>;
+  tearFrontX: SharedValue<number>;
   foilOpacity: SharedValue<number>;
 }) {
+  const stripW = strip.x1 - strip.x0;
+
+  /** Peel only once the tear has entered this strip — never ahead of the finger. */
+  const localProgress = (tearX: number) => {
+    "worklet";
+    return interpolate(
+      tearX,
+      [strip.x0, strip.x1 + stripW * 0.65],
+      [0, 1],
+      Extrapolation.CLAMP
+    );
+  };
+
   const transform = useDerivedValue(() => {
-    const p = openProgress.value;
-    const local = interpolate(p, [strip.start, strip.end], [0, 1], Extrapolation.CLAMP);
+    const local = localProgress(tearFrontX.value);
     const lift = interpolate(
       local,
       [0, 1],
@@ -377,11 +316,12 @@ function PeelStrip({
   });
 
   const opacity = useDerivedValue(() => {
-    const p = openProgress.value;
-    const local = interpolate(p, [strip.start, strip.end], [0, 1], Extrapolation.CLAMP);
-    const visible = interpolate(local, [0, 0.02, 0.85, 1], [0, 1, 0.9, 0], Extrapolation.CLAMP);
-    const packFade = interpolate(p, [0.82, 1], [1, 0], Extrapolation.CLAMP);
-    return visible * packFade * foilOpacity.value;
+    const tearX = tearFrontX.value;
+    // Stay invisible until the tear front reaches this strip.
+    if (tearX < strip.x0) return 0;
+    const local = localProgress(tearX);
+    const visible = interpolate(local, [0, 0.08, 0.85, 1], [0, 1, 0.9, 0], Extrapolation.CLAMP);
+    return visible * foilOpacity.value;
   });
 
   return (
@@ -400,19 +340,21 @@ function PeelStrip({
 function DebrisPiece({
   path,
   spec,
-  openProgress,
   foilOpacity,
+  tearFrontX,
+  width,
 }: {
   path: SkPath;
   spec: DebrisSpec;
-  openProgress: SharedValue<number>;
   foilOpacity: SharedValue<number>;
+  tearFrontX: SharedValue<number>;
+  width: number;
 }) {
   const transform = useDerivedValue(() => {
-    const p = openProgress.value;
+    const tearT = width <= 0 ? 0 : tearFrontX.value / width;
     const local = interpolate(
-      p,
-      [spec.appearAt, Math.min(1, spec.appearAt + 0.28)],
+      tearT,
+      [spec.appearAt, Math.min(1, spec.appearAt + 0.18)],
       [0, 1],
       Extrapolation.CLAMP
     );
@@ -427,10 +369,11 @@ function DebrisPiece({
   });
 
   const opacity = useDerivedValue(() => {
-    const p = openProgress.value;
+    const tearT = width <= 0 ? 0 : tearFrontX.value / width;
+    if (tearT < spec.appearAt) return 0;
     const local = interpolate(
-      p,
-      [spec.appearAt, Math.min(1, spec.appearAt + 0.2), Math.min(1, spec.appearAt + 0.55)],
+      tearT,
+      [spec.appearAt, Math.min(1, spec.appearAt + 0.12), Math.min(1, spec.appearAt + 0.4)],
       [0, 1, 0],
       Extrapolation.CLAMP
     );

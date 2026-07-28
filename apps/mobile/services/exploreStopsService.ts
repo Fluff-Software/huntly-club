@@ -29,6 +29,47 @@ export { ExploreStopsRequestError };
 
 const DEFAULT_GENERATION_VERSION = 2;
 
+/** Short-lived pan cache — avoids repeat Edge calls while panning the same area. */
+const NEARBY_CACHE_TTL_MS = 45_000;
+const NEARBY_CACHE_MAX = 48;
+
+type NearbyCacheEntry = {
+  expiresAt: number;
+  response: ExploreStopsResponse;
+};
+
+const nearbyStopsCache = new Map<string, NearbyCacheEntry>();
+
+function nearbyCacheKey(request: ExploreStopsRequest): string {
+  // ~110 m grid; radius in 50 m buckets.
+  const lat = request.latitude.toFixed(3);
+  const lon = request.longitude.toFixed(3);
+  const radius = Math.round(request.radiusMetres / 50) * 50;
+  const version = request.generationVersion ?? DEFAULT_GENERATION_VERSION;
+  return `${lat}:${lon}:${radius}:${version}`;
+}
+
+function readNearbyCache(key: string): ExploreStopsResponse | null {
+  const hit = nearbyStopsCache.get(key);
+  if (!hit) return null;
+  if (hit.expiresAt <= Date.now()) {
+    nearbyStopsCache.delete(key);
+    return null;
+  }
+  return hit.response;
+}
+
+function writeNearbyCache(key: string, response: ExploreStopsResponse): void {
+  if (nearbyStopsCache.size >= NEARBY_CACHE_MAX) {
+    const oldest = nearbyStopsCache.keys().next().value;
+    if (oldest != null) nearbyStopsCache.delete(oldest);
+  }
+  nearbyStopsCache.set(key, {
+    expiresAt: Date.now() + NEARBY_CACHE_TTL_MS,
+    response,
+  });
+}
+
 type RawNearbyStop = {
   id?: string;
   stop_id?: string;
@@ -143,9 +184,11 @@ function friendlyMessage(code: string, fallback: string): string {
     case "unauthenticated":
       return "Sign in to use Explore.";
     case "no_coverage":
-      return "Explore is not available in this area yet.";
+      return "This place isn’t covered by Explore yet.";
+    case "no_nearby_points":
+      return "No spots in view. Pan toward parks, footpaths, or green space.";
     case "outside_supported_test_area":
-      return "You’re outside the Explore test area for now.";
+      return "You’re outside Explore coverage for now.";
     case "too_far_away":
     case "too_far":
       return "Get closer to this spot to collect the card.";
@@ -327,9 +370,21 @@ async function fetchEdgeFunction(
 }
 
 /**
- * Fetch nearby Explore stops.
+ * Fetch nearby Explore stops (with a short in-memory pan cache).
  */
 export async function getExploreStopsNear(
+  request: ExploreStopsRequest
+): Promise<ExploreStopsResponse> {
+  const cacheKey = nearbyCacheKey(request);
+  const cached = readNearbyCache(cacheKey);
+  if (cached) return cached;
+
+  const response = await fetchExploreStopsNearUncached(request);
+  writeNearbyCache(cacheKey, response);
+  return response;
+}
+
+async function fetchExploreStopsNearUncached(
   request: ExploreStopsRequest
 ): Promise<ExploreStopsResponse> {
   const transport = resolveExploreTransport();

@@ -691,7 +691,7 @@ INSERT INTO public.explore_cards (
     '{"freshwater":5,"wetland":2,"general":0.2}'::jsonb, 50),
   ('red-fox', 'Red Fox', 'A adaptable mammal of woods and edges.', 'animal', 'uncommon', 'explore-cards/red-fox.png', 5,
     '{"woodland":5,"farmland":2,"urban":1.5,"park_garden":2,"general":0.3}'::jsonb, 60),
-  ('tawny-owl', 'Tawny Owl', 'A nocturnal woodland hunter.', 'animal', 'rare', 'explore-cards/tawny-owl.png', 2,
+  ('tawny-owl', 'Tawny Owl', 'A nocturnal woodland hunter.', 'animal', 'rare', 'explore-cards/tawny-owl.png', 6,
     '{"woodland":5,"park_garden":1,"general":0.2}'::jsonb, 70),
   ('oak-tree', 'Oak Tree', 'A long-lived woodland cornerstone.', 'flora_wildlife', 'common', 'explore-cards/oak-tree.png', 10,
     '{"woodland":5,"park_garden":2,"general":0.25}'::jsonb, 80),
@@ -715,10 +715,8 @@ INSERT INTO public.explore_cards (
     '{"grassland":5,"farmland":2,"general":0.2}'::jsonb, 170),
   ('park-habitat', 'Park Habitat', 'Managed green space for play and wildlife.', 'habitat', 'common', 'explore-cards/park-habitat.png', 10,
     '{"park_garden":5,"urban":2,"general":0.25}'::jsonb, 180),
-  ('otter', 'Otter', 'A shy river hunter — hard to spot.', 'animal', 'very_rare', 'explore-cards/otter.png', 1,
+  ('otter', 'Otter', 'A shy river hunter — hard to spot.', 'animal', 'very_rare', 'explore-cards/otter.png', 3,
     '{"freshwater":5,"wetland":3,"general":0.15}'::jsonb, 190),
-  ('kingfisher', 'Kingfisher', 'A flash of blue along waterways.', 'animal', 'rare', 'explore-cards/kingfisher.png', 2,
-    '{"freshwater":5,"wetland":2,"general":0.2}'::jsonb, 200),
-  ('explorer-badge', 'Explorer Badge', 'A general keepsake from any outing.', 'habitat', 'common', 'explore-cards/explorer-badge.png', 10,
-    '{"general":5,"urban":1,"park_garden":1,"woodland":1,"grassland":1,"freshwater":1}'::jsonb, 210)
+  ('kingfisher', 'Kingfisher', 'A flash of blue along waterways.', 'animal', 'rare', 'explore-cards/kingfisher.png', 6,
+    '{"freshwater":5,"wetland":2,"general":0.2}'::jsonb, 200)
 ON CONFLICT (slug) DO NOTHING;

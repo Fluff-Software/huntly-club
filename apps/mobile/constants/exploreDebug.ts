@@ -82,6 +82,12 @@ export const EXPLORE_DEV_GPS_PRESETS = {
     latitude: 51.4545,
     longitude: -2.5879,
   },
+  /** Metro Manila (Rizal Park) — on land with dense OSM; not the geographic sea centre. */
+  philippines: {
+    label: "Manila",
+    latitude: 14.582,
+    longitude: 120.9794,
+  },
 } as const;
 
 export type ExploreDevGpsPresetId = keyof typeof EXPLORE_DEV_GPS_PRESETS;
@@ -95,7 +101,7 @@ export const EXPLORE_CLAIM_RADIUS_METRES = 50;
 export const EXPLORE_MAP_DEFAULT_DELTA = 0.02;
 
 /** Debounce after map settle before fetching nearby points for the new centre. */
-export const EXPLORE_MAP_FETCH_DEBOUNCE_MS = 400;
+export const EXPLORE_MAP_FETCH_DEBOUNCE_MS = 150;
 
 /** Match Edge/local nearby max radius (`DEFAULT_MAX_RADIUS_METRES`). */
 export const EXPLORE_MAP_MAX_RADIUS_METRES = 2000;

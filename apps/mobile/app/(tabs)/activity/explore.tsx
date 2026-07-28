@@ -22,8 +22,10 @@ import {
   type ActivityMapRegion,
 } from "@/components/activity-map";
 import { ExploreCardPackReveal } from "@/components/explore/ExploreCardPackReveal";
+import { ExploreSafetyWarning } from "@/components/explore/ExploreSafetyWarning";
 import {
   EXPLORE_CLAIM_RADIUS_METRES,
+  EXPLORE_DEV_GPS_PRESETS,
   EXPLORE_MAP_DEFAULT_DELTA,
   EXPLORE_MAP_FETCH_DEBOUNCE_MS,
   EXPLORE_MAP_KEEP_METRES,
@@ -34,6 +36,7 @@ import {
   EXPLORE_TEST_AREA_CENTRE,
   isLowConfidenceStop,
   stopHasReviewFlags,
+  type ExploreDevGpsPresetId,
 } from "@/constants/exploreDebug";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
@@ -55,6 +58,16 @@ const BG = "#2D4A35";
 const PANEL = "#3D5F45";
 const ACCENT = "#62A94F";
 const FIXED_RADIUS_METRES = 1000;
+const METRES_PER_MILE = 1609.34;
+
+function formatExploreDistanceAway(metres: number): string {
+  if (metres < METRES_PER_MILE) {
+    return `${Math.round(metres)} m away`;
+  }
+  const miles = metres / METRES_PER_MILE;
+  const rounded = miles >= 10 ? miles.toFixed(0) : miles.toFixed(1);
+  return Number(rounded) === 1 ? "1 mile away" : `${rounded} miles away`;
+}
 
 type LocState =
   | { status: "idle" }
@@ -145,6 +158,8 @@ export default function ExploreScreen() {
   const [packSession, setPackSession] = useState<PackSession | null>(null);
   const [claimedIds, setClaimedIds] = useState<Set<string>>(new Set());
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null);
+  /** Safety gate — must accept before using the map (Pokémon GO–style). */
+  const [safetyAccepted, setSafetyAccepted] = useState(false);
   /** DEV: freeze GPS and report spoofed coords for claim testing. */
   const debugSpoofRef = useRef(false);
   const [debugSpoofActive, setDebugSpoofActive] = useState(false);
@@ -222,6 +237,19 @@ export default function ExploreScreen() {
       }),
     [visibleStops, claimedIds]
   );
+
+  const outsideCoverage =
+    error?.code === "no_coverage" ||
+    error?.code === "outside_supported_test_area";
+
+  const emptyExploreHint =
+    outsideCoverage || error?.code === "no_nearby_points";
+
+  const showEmptyPanel =
+    !selected &&
+    !loadingStops &&
+    loc.status === "ready" &&
+    (emptyExploreHint || (visibleStops.length === 0 && !error));
 
   const initialRegion = useMemo(() => {
     if (loc.status === "ready") {
@@ -306,7 +334,17 @@ export default function ExploreScreen() {
           });
         }
       } catch (err: unknown) {
-        if (!merge) setStops([]);
+        // Coverage / empty-area errors should not keep distant spots from a previous pan.
+        const exploreCode =
+          err instanceof ExploreStopsRequestError ? err.exploreError.code : null;
+        if (
+          !merge ||
+          exploreCode === "no_coverage" ||
+          exploreCode === "outside_supported_test_area"
+        ) {
+          setStops([]);
+          setSelectedId(null);
+        }
         if (err instanceof ExploreStopsRequestError) {
           setError({
             ...err.exploreError,
@@ -342,8 +380,9 @@ export default function ExploreScreen() {
   );
 
   useEffect(() => {
+    if (!safetyAccepted) return;
     void requestLocation();
-  }, [requestLocation]);
+  }, [safetyAccepted, requestLocation]);
 
   useEffect(() => {
     if (loc.status !== "ready") return;
@@ -402,6 +441,8 @@ export default function ExploreScreen() {
         void fetchStops(region.latitude, region.longitude, radius, {
           merge: true,
           quiet: true,
+          // Pan/zoom should always refetch — don't wait for the GPS move threshold.
+          force: true,
         });
       }, EXPLORE_MAP_FETCH_DEBOUNCE_MS);
     },
@@ -436,6 +477,27 @@ export default function ExploreScreen() {
       longitudeDelta: EXPLORE_MAP_DEFAULT_DELTA,
     });
   }, [selected]);
+
+  const spoofToPreset = useCallback((presetId: ExploreDevGpsPresetId) => {
+    if (!__DEV__) return;
+    const preset = EXPLORE_DEV_GPS_PRESETS[presetId];
+    debugSpoofRef.current = true;
+    setDebugSpoofActive(true);
+    setClaimError(null);
+    setSelectedId(null);
+    setLoc({
+      status: "ready",
+      latitude: preset.latitude,
+      longitude: preset.longitude,
+      accuracy: 5,
+    });
+    mapRef.current?.recenter({
+      latitude: preset.latitude,
+      longitude: preset.longitude,
+      latitudeDelta: EXPLORE_MAP_DEFAULT_DELTA,
+      longitudeDelta: EXPLORE_MAP_DEFAULT_DELTA,
+    });
+  }, []);
 
   const clearDebugSpoof = useCallback(() => {
     if (!__DEV__) return;
@@ -590,6 +652,11 @@ export default function ExploreScreen() {
     <>
       <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
+      <ExploreSafetyWarning
+        visible={!safetyAccepted}
+        onAccept={() => setSafetyAccepted(true)}
+        onCancel={() => router.back()}
+      />
       <View style={styles.root}>
         <ActivityMap
           ref={mapRef}
@@ -649,10 +716,45 @@ export default function ExploreScreen() {
           </Pressable>
         </View>
 
+        {__DEV__ ? (
+          <View style={[styles.devPresetBar, { top: insets.top + 60 }]}>
+            <Pressable
+              onPress={() => spoofToPreset("philippines")}
+              style={styles.devBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Spoof location to Manila, Philippines"
+            >
+              <MaterialIcons name="public" size={16} color="#FFE08A" />
+              <ThemedText lightColor="#FFE08A" darkColor="#FFE08A" style={styles.devBtnText}>
+                DEV: Manila
+              </ThemedText>
+            </Pressable>
+            {debugSpoofActive ? (
+              <Pressable
+                onPress={clearDebugSpoof}
+                style={styles.devBtnMuted}
+                accessibilityRole="button"
+                accessibilityLabel="Clear spoofed location"
+              >
+                <ThemedText
+                  lightColor="rgba(255,255,255,0.7)"
+                  darkColor="rgba(255,255,255,0.7)"
+                  style={styles.devBtnText}
+                >
+                  Clear GPS
+                </ThemedText>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+
         <Pressable
           style={[
             styles.myPinButton,
-            { bottom: (selected ? 220 : 28) + insets.bottom },
+            {
+              bottom:
+                (selected ? 240 : showEmptyPanel ? 160 : 28) + insets.bottom,
+            },
             loc.status !== "ready" && styles.myPinButtonDisabled,
           ]}
           onPress={centreOnUser}
@@ -664,7 +766,12 @@ export default function ExploreScreen() {
         </Pressable>
 
         {loc.status === "denied" || loc.status === "unavailable" ? (
-          <View style={[styles.banner, { top: insets.top + 64 }]}>
+          <View
+            style={[
+              styles.banner,
+              { top: insets.top + (__DEV__ ? 112 : 64) },
+            ]}
+          >
             <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.bannerText}>
               {loc.status === "denied"
                 ? "Location permission is needed to find nearby Explore spots."
@@ -678,11 +785,41 @@ export default function ExploreScreen() {
           </View>
         ) : null}
 
-        {error && !selected ? (
-          <View style={[styles.banner, { top: insets.top + 64 }]}>
+        {error && !selected && !showEmptyPanel ? (
+          <View
+            style={[
+              styles.banner,
+              { top: insets.top + (__DEV__ ? 112 : 64) },
+            ]}
+          >
             <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.bannerText}>
               {exploreUserMessage(error.code, error.message)}
             </ThemedText>
+          </View>
+        ) : null}
+
+        {showEmptyPanel ? (
+          <View
+            style={[
+              styles.emptyPanel,
+              { bottom: Math.max(insets.bottom, 16) + 12 },
+            ]}
+          >
+            <MaterialIcons name="explore" size={22} color="#FFE08A" />
+            <View style={{ flex: 1, gap: 4 }}>
+              <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.emptyTitle}>
+                {outsideCoverage ? "Explore isn’t here yet" : "No spots nearby"}
+              </ThemedText>
+              <ThemedText
+                lightColor="rgba(255,255,255,0.78)"
+                darkColor="rgba(255,255,255,0.78)"
+                style={styles.emptyBody}
+              >
+                {outsideCoverage
+                  ? "This place isn’t covered yet. Try parks and paths in the UK, Ireland, or the Philippines."
+                  : "Pan the map toward parks, footpaths, or green space to find collectible spots."}
+              </ThemedText>
+            </View>
           </View>
         ) : null}
 
@@ -700,7 +837,7 @@ export default function ExploreScreen() {
                   style={{ fontSize: 13 }}
                 >
                   {distanceToSelectedMetres != null
-                    ? `${Math.round(distanceToSelectedMetres)} m away`
+                    ? formatExploreDistanceAway(distanceToSelectedMetres)
                     : "Finding your distance…"}
                 </ThemedText>
               </View>
@@ -874,6 +1011,15 @@ const styles = StyleSheet.create({
   myPinButtonDisabled: {
     opacity: 0.45,
   },
+  devPresetBar: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    zIndex: 20,
+  },
   banner: {
     position: "absolute",
     left: 16,
@@ -893,6 +1039,25 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
+  },
+  emptyPanel: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    backgroundColor: "rgba(0,0,0,0.72)",
+    borderRadius: 16,
+    padding: 14,
+  },
+  emptyTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  emptyBody: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   sheet: {
     position: "absolute",
@@ -934,7 +1099,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   devBtn: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -942,14 +1106,15 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: "rgba(255,224,138,0.45)",
-    backgroundColor: "rgba(255,224,138,0.12)",
+    backgroundColor: "rgba(0,0,0,0.55)",
     paddingVertical: 10,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
   },
   devBtnMuted: {
     borderRadius: 10,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.25)",
+    backgroundColor: "rgba(0,0,0,0.45)",
     paddingVertical: 10,
     paddingHorizontal: 12,
   },

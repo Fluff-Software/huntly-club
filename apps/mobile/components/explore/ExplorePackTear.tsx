@@ -1,6 +1,8 @@
 /**
  * Pack foil tear: Skia jagged progressive rip when the native module is present,
  * otherwise an Image strip fallback (Expo Go / old binaries).
+ *
+ * Fallback strips also wait for the tear front so letters don’t peel early.
  */
 import React, { useMemo } from "react";
 import { Image, StyleSheet, View } from "react-native";
@@ -66,17 +68,21 @@ function FallbackStrip({
   openProgress: SharedValue<number>;
   foilOpacity: SharedValue<number>;
 }) {
-  const start = index / (FALLBACK_STRIPS + 1.5);
-  const end = (index + 2.2) / (FALLBACK_STRIPS + 1.5);
   const x0 = stripW * index;
+  const x1 = x0 + stripW;
 
   const style = useAnimatedStyle(() => {
     const p = openProgress.value;
-    const local = interpolate(p, [start, end], [0, 1], Extrapolation.CLAMP);
-    const visible = interpolate(local, [0, 0.02, 0.85, 1], [0, 1, 0.9, 0], Extrapolation.CLAMP);
-    const packFade = interpolate(p, [0.82, 1], [1, 0], Extrapolation.CLAMP);
+    const eased = interpolate(p, [0, 0.08, 1], [0, 0.06, 1], Extrapolation.CLAMP);
+    const tearX = eased * width;
+    // Don't peel ahead of the tear front.
+    if (tearX < x0) {
+      return { opacity: 0, transform: [{ translateY: 0 }, { translateX: 0 }, { rotateZ: "0deg" }] };
+    }
+    const local = interpolate(tearX, [x0, x1 + stripW * 0.65], [0, 1], Extrapolation.CLAMP);
+    const visible = interpolate(local, [0, 0.08, 0.85, 1], [0, 1, 0.9, 0], Extrapolation.CLAMP);
     return {
-      opacity: visible * packFade * foilOpacity.value,
+      opacity: visible * foilOpacity.value,
       transform: [
         {
           translateY: interpolate(
@@ -131,16 +137,12 @@ function PackTearImageFallback({
 }: PackTearProps) {
   const stripW = width / FALLBACK_STRIPS;
 
-  const bottomStyle = useAnimatedStyle(() => {
-    const p = openProgress.value;
-    return {
-      opacity: interpolate(p, [0, 0.7, 1], [1, 1, 0.15], Extrapolation.CLAMP) * foilOpacity.value,
-    };
-  });
+  const bottomStyle = useAnimatedStyle(() => ({
+    opacity: foilOpacity.value,
+  }));
 
   return (
     <View style={[StyleSheet.absoluteFill, { width, height }]} pointerEvents="none">
-      {/* Pack body below the seal */}
       <Animated.View
         style={[
           {

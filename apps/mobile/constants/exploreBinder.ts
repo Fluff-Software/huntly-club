@@ -10,8 +10,8 @@ export const EXPLORE_RARITY_COLORS: Record<string, string> = {
 };
 
 /** Native card art pixel size (explore-card-bg.png). */
-export const EXPLORE_CARD_ART_WIDTH = 599;
-export const EXPLORE_CARD_ART_HEIGHT = 996;
+export const EXPLORE_CARD_ART_WIDTH = 682;
+export const EXPLORE_CARD_ART_HEIGHT = 1024;
 /** width / height — keep binder + reveal frames matched to the asset. */
 export const EXPLORE_CARD_ART_ASPECT = EXPLORE_CARD_ART_WIDTH / EXPLORE_CARD_ART_HEIGHT;
 

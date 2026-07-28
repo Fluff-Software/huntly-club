@@ -1,19 +1,27 @@
 import React from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Image, Pressable, StyleSheet, View } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { ExploreCardArt } from "@/components/explore/ExploreCardArt";
 import { EXPLORE_CARD_ART_ASPECT, EXPLORE_RARITY_COLORS } from "@/constants/exploreBinder";
 import {
   binderPocketAccessibilityLabel,
-  formatRarityLabel,
   type BinderCardEntry,
 } from "@/utils/exploreBinder";
+
+const CARD_BG = require("@/assets/images/explore-card-bg.png");
 
 type Props = {
   card: BinderCardEntry;
   highlighted?: boolean;
   onPress: () => void;
 };
+
+/** Cap stack depth so the grid stays tidy. */
+function stackDepth(count: number): number {
+  if (count >= 3) return 2;
+  if (count >= 2) return 1;
+  return 0;
+}
 
 /** Simple grid cell for a catalogue card. */
 export function BinderCardPocket({ card, highlighted, onPress }: Props) {
@@ -22,7 +30,8 @@ export function BinderCardPocket({ card, highlighted, onPress }: Props) {
     Number(card.count) > 0 ||
     Boolean(card.firstCollectedAt);
   const rarityColor = EXPLORE_RARITY_COLORS[card.rarity] ?? "#3B82F6";
-  const tabColor = collected ? rarityColor : "#5A6B62";
+  const depth = collected ? stackDepth(card.count) : 0;
+  const stacked = depth > 0;
 
   return (
     <Pressable
@@ -35,36 +44,65 @@ export function BinderCardPocket({ card, highlighted, onPress }: Props) {
       })}
       style={({ pressed }) => [
         styles.pocket,
+        stacked && styles.pocketStacked,
         highlighted && styles.highlighted,
-        pressed && { opacity: 0.85 },
+        pressed && { opacity: 0.9 },
       ]}
     >
-      <View style={styles.artWrap}>
-        <ExploreCardArt
-          key={`${card.id}-${collected ? "in" : "out"}`}
-          imageUrl={card.imageUrl}
-          name={card.name}
-          rarity={card.rarity}
-          collected={collected}
-          compact
-        />
+      <View style={styles.stackStage}>
+        {Array.from({ length: depth }).map((_, i) => {
+          // i=0 is furthest back
+          const step = depth - i;
+          return (
+            <View
+              key={`stack-${step}`}
+              pointerEvents="none"
+              style={[
+                styles.stackLayer,
+                {
+                  transform: [
+                    { translateX: step * 3 },
+                    { translateY: step * 3 },
+                  ],
+                  zIndex: i,
+                },
+              ]}
+            >
+              <Image
+                source={CARD_BG}
+                style={styles.stackBg}
+                resizeMode="stretch"
+                accessibilityIgnoresInvertColors
+              />
+              <View style={styles.stackEdge} />
+            </View>
+          );
+        })}
 
-        <View style={[styles.rarityTab, { backgroundColor: tabColor }]} pointerEvents="none">
-          <ThemedText lightColor="#FFF" darkColor="#FFF" numberOfLines={1} style={styles.name}>
-            {card.name}
-          </ThemedText>
-          <ThemedText lightColor="#FFF" darkColor="#FFF" numberOfLines={1} style={styles.meta}>
-            {collected ? formatRarityLabel(card.rarity) : "Not discovered"}
-          </ThemedText>
+        <View style={[styles.artWrap, { zIndex: depth + 1 }]}>
+          <ExploreCardArt
+            key={`${card.id}-${collected ? "in" : "out"}`}
+            imageUrl={card.imageUrl}
+            name={card.name}
+            rarity={card.rarity}
+            description={card.description}
+            category={card.category}
+            habitatWeights={card.habitatWeights}
+            count={card.count}
+            firstCollectedAt={card.firstCollectedAt}
+            lastCollectedAt={card.lastCollectedAt}
+            collected={collected}
+            compact
+          />
+
+          {stacked ? (
+            <View style={[styles.dupBadge, { backgroundColor: rarityColor }]}>
+              <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.dupText}>
+                ×{card.count}
+              </ThemedText>
+            </View>
+          ) : null}
         </View>
-
-        {collected && card.count > 1 ? (
-          <View style={[styles.dupBadge, { backgroundColor: rarityColor }]}>
-            <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.dupText}>
-              ×{card.count}
-            </ThemedText>
-          </View>
-        ) : null}
       </View>
     </Pressable>
   );
@@ -76,43 +114,52 @@ const styles = StyleSheet.create({
     minWidth: 0,
     padding: 4,
   },
+  pocketStacked: {
+    paddingBottom: 8,
+    paddingRight: 6,
+  },
   highlighted: {
     borderRadius: 18,
     borderWidth: 2,
     borderColor: "#FFE08A",
   },
+  stackStage: {
+    position: "relative",
+    width: "100%",
+  },
+  stackLayer: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 14,
+    overflow: "hidden",
+  },
+  stackBg: {
+    ...StyleSheet.absoluteFillObject,
+    width: "100%",
+    height: "100%",
+  },
+  stackEdge: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(20, 40, 24, 0.28)",
+  },
   artWrap: {
     position: "relative",
     width: "100%",
     aspectRatio: EXPLORE_CARD_ART_ASPECT,
-    borderRadius: 16,
+    borderRadius: 14,
     overflow: "hidden",
-  },
-  rarityTab: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 8,
-    paddingVertical: 7,
-    alignItems: "center",
-  },
-  name: {
-    fontSize: 12,
-    fontWeight: "800",
-    textAlign: "center",
-  },
-  meta: {
-    marginTop: 1,
-    fontSize: 10,
-    fontWeight: "700",
-    textAlign: "center",
-    opacity: 0.92,
+    backgroundColor: "#2D4A35",
+    shadowColor: "#000",
+    shadowOpacity: 0.22,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
   },
   dupBadge: {
     position: "absolute",
-    top: 52,
-    right: 6,
+    top: 8,
+    right: 8,
     borderRadius: 8,
     paddingHorizontal: 5,
     paddingVertical: 1,

@@ -29,17 +29,13 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
 import { ExploreCardArt } from "@/components/explore/ExploreCardArt";
+import { ExploreCardFlip } from "@/components/explore/ExploreCardFlip";
 import {
   ExplorePackTear,
   packTearStyles,
 } from "@/components/explore/ExplorePackTear";
+import { usePackRipSound } from "@/components/explore/usePackRipSound";
 import { EXPLORE_CARD_ART_ASPECT, EXPLORE_RARITY_COLORS } from "@/constants/exploreBinder";
-import {
-  BINDER_CATEGORY_LABELS,
-  formatRarityLabel,
-  readableHabitatAffinities,
-  type BinderCategoryFilter,
-} from "@/utils/exploreBinder";
 import type { ExploreAward } from "@/types/exploreStops";
 
 /** Native pixel size of explore-pack-full.png */
@@ -48,6 +44,70 @@ const PACK_NATIVE_H = 1024;
 /** Cut just below the “SWIPE HERE” perforation. */
 const PACK_SPLIT_Y = 74;
 const PACK_SPLIT_RATIO = PACK_SPLIT_Y / PACK_NATIVE_H;
+
+function rarityRevealProfile(rarity: string): {
+  auraPeak: number;
+  auraIn: number;
+  auraOut: number;
+  cardY: number;
+  springDamping: number;
+  springStiffness: number;
+  hapticBeats: number;
+  hapticStyle: Haptics.ImpactFeedbackStyle;
+  /** Hold on the card back before flipping to the front. */
+  flipHoldMs: number;
+} {
+  switch (rarity) {
+    case "very_rare":
+      return {
+        auraPeak: 0.72,
+        auraIn: 260,
+        auraOut: 720,
+        cardY: 150,
+        springDamping: 11,
+        springStiffness: 78,
+        hapticBeats: 3,
+        hapticStyle: Haptics.ImpactFeedbackStyle.Heavy,
+        flipHoldMs: 3400,
+      };
+    case "rare":
+      return {
+        auraPeak: 0.55,
+        auraIn: 220,
+        auraOut: 540,
+        cardY: 135,
+        springDamping: 12,
+        springStiffness: 90,
+        hapticBeats: 2,
+        hapticStyle: Haptics.ImpactFeedbackStyle.Medium,
+        flipHoldMs: 3000,
+      };
+    case "uncommon":
+      return {
+        auraPeak: 0.45,
+        auraIn: 190,
+        auraOut: 460,
+        cardY: 125,
+        springDamping: 13,
+        springStiffness: 100,
+        hapticBeats: 1,
+        hapticStyle: Haptics.ImpactFeedbackStyle.Medium,
+        flipHoldMs: 2600,
+      };
+    default:
+      return {
+        auraPeak: 0.36,
+        auraIn: 160,
+        auraOut: 380,
+        cardY: 120,
+        springDamping: 14,
+        springStiffness: 110,
+        hapticBeats: 1,
+        hapticStyle: Haptics.ImpactFeedbackStyle.Light,
+        flipHoldMs: 2400,
+      };
+  }
+}
 
 type Phase = "enter" | "ready" | "ripping" | "claiming" | "reveal" | "error";
 
@@ -61,11 +121,6 @@ type Props = {
 /** Horizontal swipe across the top strip to finish the tear. */
 const RIP_THRESHOLD = 200;
 const ACCENT = "#B8F000";
-
-function categoryLabel(category: string): string {
-  const key = category as Exclude<BinderCategoryFilter, "all">;
-  return BINDER_CATEGORY_LABELS[key] ?? category.replace(/_/g, " ");
-}
 
 function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
@@ -85,6 +140,7 @@ export function ExploreCardPackReveal({
   /** Unmount pack foil before award UI so it can’t flash over the card. */
   const [packMounted, setPackMounted] = useState(true);
   const claimStartedRef = useRef(false);
+  const { playRip, stopRip } = usePackRipSound();
 
   const packW = Math.min(screenW * 0.72, 280);
   const packH = packW * (PACK_NATIVE_H / PACK_NATIVE_W);
@@ -93,6 +149,9 @@ export function ExploreCardPackReveal({
   const rarityColor = award
     ? EXPLORE_RARITY_COLORS[award.card.rarity] ?? "#3B82F6"
     : ACCENT;
+  const revealProfile = award
+    ? rarityRevealProfile(award.card.rarity)
+    : rarityRevealProfile("common");
 
   const packScale = useSharedValue(0.4);
   const packOpacity = useSharedValue(0);
@@ -126,6 +185,7 @@ export function ExploreCardPackReveal({
     ripArmed.value = 0;
     auraOpacity.value = 0;
     claimStartedRef.current = false;
+    stopRip();
     setAward(null);
     setClaimError(null);
     setPackMounted(true);
@@ -143,6 +203,7 @@ export function ExploreCardPackReveal({
     cardScale,
     ripArmed,
     auraOpacity,
+    stopRip,
   ]);
 
   useEffect(() => {
@@ -193,34 +254,43 @@ export function ExploreCardPackReveal({
       setAward(nextAward);
       setPhase("reveal");
 
-      // Soft glow while the card rises — no spin, no empty dark beat.
+      const profile = rarityRevealProfile(nextAward.card.rarity);
+      cardY.value = profile.cardY;
+
+      // Soft glow while the card rises — intensity scales with rarity.
       auraOpacity.value = withSequence(
-        withTiming(0.4, { duration: 180, easing: Easing.out(Easing.quad) }),
-        withTiming(0, { duration: 420, easing: Easing.in(Easing.quad) })
+        withTiming(profile.auraPeak, {
+          duration: profile.auraIn,
+          easing: Easing.out(Easing.quad),
+        }),
+        withTiming(0, {
+          duration: profile.auraOut,
+          easing: Easing.in(Easing.quad),
+        })
       );
 
       // Slide the real card up from behind the pack.
       cardOpacity.value = withTiming(1, { duration: 220 });
-      cardY.value = withSpring(0, { damping: 14, stiffness: 95 });
-      cardScale.value = withSpring(1, { damping: 12, stiffness: 110 });
+      cardY.value = withSpring(0, {
+        damping: profile.springDamping,
+        stiffness: profile.springStiffness,
+      });
+      cardScale.value = withSpring(1, {
+        damping: profile.springDamping,
+        stiffness: profile.springStiffness + 10,
+      });
 
-      // Pack stays briefly so the card can rise out of it, then foil clears.
+      // Pack stays so the torn top sits above the rising card, then foil clears.
       foilOpacity.value = withTiming(0, {
-        duration: 380,
+        duration: 520,
         easing: Easing.in(Easing.cubic),
       });
-      setTimeout(() => setPackMounted(false), 420);
+      setTimeout(() => setPackMounted(false), 560);
 
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      const beats =
-        nextAward.card.rarity === "very_rare"
-          ? 3
-          : nextAward.card.rarity === "rare"
-            ? 2
-            : 1;
       void (async () => {
-        for (let i = 0; i < beats; i++) {
-          await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        for (let i = 0; i < profile.hapticBeats; i++) {
+          await Haptics.impactAsync(profile.hapticStyle);
           await new Promise((r) => setTimeout(r, 90));
         }
       })();
@@ -257,6 +327,9 @@ export function ExploreCardPackReveal({
   const selectionHaptic = useCallback(() => {
     void Haptics.selectionAsync();
   }, []);
+  const mediumRipHaptic = useCallback(() => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  }, []);
 
   const pan = useMemo(
     () =>
@@ -268,6 +341,7 @@ export function ExploreCardPackReveal({
           ripArmed.value = 0;
           runOnJS(setPhase)("ripping");
           runOnJS(selectionHaptic)();
+          runOnJS(playRip)();
         })
         .onUpdate((e) => {
           // Prefer L→R so the tear advances with the finger across the seal.
@@ -290,14 +364,16 @@ export function ExploreCardPackReveal({
           const progress = Math.min(1, Math.max(fromX, fromY * 0.45));
           const fling = e.velocityX > 700 || e.velocityY < -900;
           if (progress >= 0.72 || fling) {
+            runOnJS(mediumRipHaptic)();
             runOnJS(finishRipAndClaim)();
           } else {
             openProgress.value = withSpring(0, { damping: 16, stiffness: 180 });
             ripArmed.value = 0;
+            runOnJS(stopRip)();
             runOnJS(setPhase)("ready");
           }
         }),
-    [phase, openProgress, finishRipAndClaim, selectionHaptic, lightHaptic, ripArmed]
+    [phase, openProgress, finishRipAndClaim, selectionHaptic, lightHaptic, mediumRipHaptic, playRip, stopRip, ripArmed]
   );
 
   const handleDismiss = useCallback(() => {
@@ -327,10 +403,6 @@ export function ExploreCardPackReveal({
 
   const cardWidth = Math.min(screenW * 0.86, 320);
   const cardHeight = Math.min(screenH * 0.62, cardWidth / EXPLORE_CARD_ART_ASPECT);
-  const revealAffinities = award
-    ? readableHabitatAffinities(award.card.habitatWeights ?? {})
-    : [];
-  const collectedAtLabel = new Date().toLocaleDateString();
   const canCloseWithoutClaim =
     phase === "enter" || phase === "ready" || phase === "ripping" || phase === "error";
 
@@ -374,75 +446,25 @@ export function ExploreCardPackReveal({
               ]}
             >
               <View style={styles.revealCard}>
-                <ExploreCardArt
-                  imageUrl={award.card.imageUrl}
-                  name={award.card.name}
-                  rarity={award.card.rarity}
-                  collected
-                  style={styles.revealArt}
-                />
-                <View style={[styles.revealTopTab, { backgroundColor: rarityColor }]} pointerEvents="none">
-                  <ThemedText
-                    type="heading"
-                    lightColor="#FFF"
-                    darkColor="#FFF"
-                    numberOfLines={1}
-                    style={styles.revealName}
-                  >
-                    {award.card.name}
-                  </ThemedText>
-                  <ThemedText lightColor="#FFF" darkColor="#FFF" numberOfLines={1} style={styles.revealRarity}>
-                    {formatRarityLabel(award.card.rarity)}
-                  </ThemedText>
-                </View>
-
-                <View style={styles.revealBody} pointerEvents="none">
-                  <ThemedText
-                    lightColor="rgba(255,255,255,0.75)"
-                    darkColor="rgba(255,255,255,0.75)"
-                    style={styles.revealCategory}
-                  >
-                    {categoryLabel(award.card.category)}
-                  </ThemedText>
-                  <ThemedText lightColor="#FFF" darkColor="#FFF" numberOfLines={3} style={styles.revealDesc}>
-                    {award.card.description}
-                  </ThemedText>
-                  <View style={styles.statRow}>
-                    <ThemedText lightColor="#FFE08A" darkColor="#FFE08A" style={styles.statLabel}>
-                      Copies
-                    </ThemedText>
-                    <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.statValue}>
-                      {award.count}
-                    </ThemedText>
-                  </View>
-                  <View style={styles.statRow}>
-                    <ThemedText
-                      lightColor="rgba(255,255,255,0.65)"
-                      darkColor="rgba(255,255,255,0.65)"
-                      style={styles.statLabel}
-                    >
-                      {award.isNew ? "First found" : "Last found"}
-                    </ThemedText>
-                    <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.statValue}>
-                      {collectedAtLabel}
-                    </ThemedText>
-                  </View>
-                  {revealAffinities.length > 0 ? (
-                    <View style={styles.affinityBlock}>
-                      <ThemedText lightColor="#FFE08A" darkColor="#FFE08A" style={styles.affinityHeading}>
-                        Habitats
-                      </ThemedText>
-                      <ThemedText
-                        lightColor="rgba(255,255,255,0.9)"
-                        darkColor="rgba(255,255,255,0.9)"
-                        numberOfLines={2}
-                        style={styles.affinityText}
-                      >
-                        {revealAffinities.map((a) => a.label).join(" · ")}
-                      </ThemedText>
-                    </View>
-                  ) : null}
-                </View>
+                <ExploreCardFlip
+                  autoFlip
+                  autoFlipDelayMs={revealProfile.flipHoldMs}
+                  key={award.card.id}
+                >
+                  <ExploreCardArt
+                    imageUrl={award.card.imageUrl}
+                    name={award.card.name}
+                    rarity={award.card.rarity}
+                    description={award.card.description}
+                    category={award.card.category}
+                    habitatWeights={award.card.habitatWeights}
+                    count={award.count}
+                    firstCollectedAt={award.isNew ? new Date().toISOString() : null}
+                    lastCollectedAt={new Date().toISOString()}
+                    collected
+                    style={styles.revealArt}
+                  />
+                </ExploreCardFlip>
               </View>
             </Animated.View>
           ) : null}
@@ -546,8 +568,8 @@ const styles = StyleSheet.create({
   packWrap: {
     alignItems: "center",
     overflow: "visible",
-    // Pack draws above the rising card until foil fades.
-    zIndex: 2,
+    // Pack + torn top draw above the rising card.
+    zIndex: 5,
   },
   risingCard: {
     position: "absolute",
@@ -584,81 +606,13 @@ const styles = StyleSheet.create({
   },
   revealCard: {
     flex: 1,
-    borderRadius: 20,
-    overflow: "hidden",
-    backgroundColor: "#0B120E",
-  },
-  revealTopTab: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-  },
-  revealName: {
-    flex: 1,
-    fontSize: 18,
-    lineHeight: 22,
-    fontWeight: "800",
-  },
-  revealRarity: {
-    fontSize: 12,
-    fontWeight: "800",
+    borderRadius: 14,
+    // Visible so rotateY perspective isn't clipped mid-flip
+    overflow: "visible",
+    backgroundColor: "transparent",
   },
   revealArt: {
     borderRadius: 0,
-  },
-  revealBody: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    maxHeight: "42%",
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 14,
-    gap: 5,
-    backgroundColor: "rgba(8, 14, 10, 0.78)",
-  },
-  revealCategory: {
-    fontSize: 11,
-    fontWeight: "800",
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-  },
-  revealDesc: {
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 2,
-  },
-  statRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  statLabel: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  statValue: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  affinityBlock: {
-    marginTop: 2,
-    gap: 2,
-  },
-  affinityHeading: {
-    fontSize: 12,
-    fontWeight: "800",
-  },
-  affinityText: {
-    fontSize: 12,
-    lineHeight: 16,
   },
   actions: {
     width: "100%",

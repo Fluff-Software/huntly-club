@@ -132,6 +132,11 @@ export default function ExploreCollectionScreen() {
 
   const filtered = useMemo(() => filterBinderCards(cards, filter), [cards, filter]);
 
+  const overallUnique = uniqueCollectedCount(cards);
+  const overallTotal = cards.length;
+  const overallCopies = totalCopyCount(cards);
+  const overallPct = completionPercent(overallUnique, overallTotal);
+
   // Highlighted card from “View in binder” must be findable — reset category filter.
   useEffect(() => {
     if (!highlightId) return;
@@ -163,11 +168,6 @@ export default function ExploreCollectionScreen() {
     };
   }, [highlightId, filtered, columns]);
 
-  const unique = uniqueCollectedCount(filtered);
-  const totalActive = filtered.length;
-  const copies = totalCopyCount(filtered);
-  const pct = completionPercent(unique, totalActive);
-
   const listHeader = (
     <View style={styles.listHeader}>
       <View style={styles.header}>
@@ -188,12 +188,13 @@ export default function ExploreCollectionScreen() {
             darkColor="rgba(255,255,255,0.75)"
             style={styles.subtitle}
           >
-            {totalActive > 0
-              ? `${unique} of ${totalActive} discovered · ${pct}%`
+            {overallTotal > 0
+              ? overallCopies > overallUnique
+                ? `${overallUnique} of ${overallTotal} found · ${overallCopies} cards in total`
+                : `${overallUnique} of ${overallTotal} found`
               : loading
                 ? "Loading…"
                 : "No cards"}
-            {copies > 0 ? ` · ${copies} total` : ""}
           </ThemedText>
         </View>
         <Pressable
@@ -205,6 +206,12 @@ export default function ExploreCollectionScreen() {
           <MaterialIcons name="refresh" size={22} color="#FFF" />
         </Pressable>
       </View>
+
+      {overallTotal > 0 ? (
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${overallPct}%` }]} />
+        </View>
+      ) : null}
 
       {profiles.length > 1 ? (
         <View style={styles.chipRow}>
@@ -332,6 +339,19 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 22, lineHeight: 26 },
   subtitle: { fontSize: 12, marginTop: 2 },
+  progressTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    overflow: "hidden",
+    marginHorizontal: 12,
+    marginBottom: 10,
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 3,
+    backgroundColor: "#62A94F",
+  },
   chipRow: {
     flexDirection: "row",
     flexWrap: "wrap",

@@ -146,3 +146,92 @@ export function formatRarityLabel(rarity: string): string {
     .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
     .join(" ");
 }
+
+/** Ownership / discovery filter for the binder grid. */
+export type BinderStatusFilter = "all" | "collected" | "missing";
+
+export const BINDER_STATUS_FILTERS: { id: BinderStatusFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "collected", label: "Collected" },
+  { id: "missing", label: "Missing" },
+];
+
+export function filterBinderByStatus(
+  cards: BinderCardEntry[],
+  status: BinderStatusFilter
+): BinderCardEntry[] {
+  if (status === "all") return cards;
+  if (status === "collected") {
+    return cards.filter((c) => c.collected || c.count > 0);
+  }
+  return cards.filter((c) => !c.collected && c.count <= 0);
+}
+
+export function filterBinderCardsFull(
+  cards: BinderCardEntry[],
+  category: BinderCategoryFilter,
+  status: BinderStatusFilter = "all"
+): BinderCardEntry[] {
+  return filterBinderByStatus(filterBinderCards(cards, category), status);
+}
+
+export type CategoryProgress = {
+  category: Exclude<BinderCategoryFilter, "all">;
+  label: string;
+  collected: number;
+  total: number;
+  percent: number;
+};
+
+/** Per-category completion for binder progress chips. */
+export function categoryProgressRows(cards: BinderCardEntry[]): CategoryProgress[] {
+  const keys = Object.keys(BINDER_CATEGORY_LABELS) as Exclude<BinderCategoryFilter, "all">[];
+  return keys.map((category) => {
+    const subset = cards.filter((c) => c.category === category);
+    const collected = uniqueCollectedCount(subset);
+    const total = subset.length;
+    return {
+      category,
+      label: BINDER_CATEGORY_LABELS[category],
+      collected,
+      total,
+      percent: completionPercent(collected, total),
+    };
+  });
+}
+
+/**
+ * Top habitat labels from a stop's stored environment_profile
+ * (already on catalogue points — no regeneration needed).
+ */
+export function topHabitatsFromProfile(
+  profile: Record<string, number> | null | undefined,
+  limit = 2
+): { key: string; label: string; score: number }[] {
+  if (!profile) return [];
+  return Object.entries(profile)
+    .filter(([key, score]) => key !== "general" && typeof score === "number" && score >= 0.25)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([key, score]) => ({
+      key,
+      label: HABITAT_AFFINITY_LABELS[key] ?? key.replace(/_/g, " "),
+      score,
+    }));
+}
+
+export function describeStopHabitat(profile: Record<string, number> | null | undefined): string | null {
+  const tops = topHabitatsFromProfile(profile, 2);
+  if (tops.length === 0) return null;
+  if (tops.length === 1) return `Near ${tops[0]!.label.toLowerCase()}`;
+  return `Near ${tops[0]!.label.toLowerCase()} · ${tops[1]!.label.toLowerCase()}`;
+}
+
+export function formatMatchedEnvironments(keys: string[]): string | null {
+  const labels = keys
+    .filter((k) => k !== "general")
+    .map((k) => HABITAT_AFFINITY_LABELS[k] ?? k.replace(/_/g, " "));
+  if (labels.length === 0) return null;
+  if (labels.length === 1) return `Found near ${labels[0]!.toLowerCase()}`;
+  return `Found near ${labels.slice(0, 2).map((l) => l.toLowerCase()).join(" · ")}`;
+}

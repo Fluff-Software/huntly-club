@@ -4,8 +4,13 @@ import {
   canGoNextPage,
   canGoPreviousPage,
   cardsPerPageForLayout,
+  categoryProgressRows,
   completionPercent,
+  describeStopHabitat,
+  filterBinderByStatus,
   filterBinderCards,
+  filterBinderCardsFull,
+  formatMatchedEnvironments,
   formatRarityLabel,
   pageCount,
   pageIndexForCardId,
@@ -129,6 +134,23 @@ describe("exploreBinder helpers", () => {
     const rows = readableHabitatAffinities({ freshwater: 5, woodland: 2, general: 0.25 });
     expect(rows[0]?.label).toBe("Freshwater");
     expect(formatRarityLabel("very_rare")).toBe("Very Rare");
+  });
+
+  it("filters by collected / missing status", () => {
+    expect(filterBinderByStatus(sample, "collected").map((c) => c.id)).toEqual(["b", "c"]);
+    expect(filterBinderByStatus(sample, "missing").map((c) => c.id)).toEqual(["a"]);
+    expect(filterBinderCardsFull(sample, "animal", "collected").map((c) => c.id)).toEqual(["b"]);
+  });
+
+  it("summarises category progress and stop habitats", () => {
+    const rows = categoryProgressRows(sample);
+    expect(rows.find((r) => r.category === "animal")?.collected).toBe(1);
+    expect(describeStopHabitat({ woodland: 0.8, urban: 0.3 })).toBe(
+      "Near woodland · town & urban"
+    );
+    expect(formatMatchedEnvironments(["park_garden", "freshwater"])).toBe(
+      "Found near parks & gardens · freshwater"
+    );
   });
 
   it("exposes filter labels for All / Animals / Habitats / Flora", () => {

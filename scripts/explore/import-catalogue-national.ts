@@ -2,14 +2,12 @@
  * National catalogue bulk import (Step 10.5).
  *
  * Dry-run (no DB writes):
- *   npm run import:catalogue:national -- --region uk-and-ireland \
- *     --build-dir output/catalogues/uk-and-ireland/build_… --dry-run
+ *   npm run import:catalogue:national -- --region philippines --dry-run
  *
  * Real import (requires EXPLORE_DATABASE_URL + migration applied):
- *   npm run import:catalogue:national -- --region uk-and-ireland \
- *     --build-dir output/catalogues/uk-and-ireland/build_…
+ *   npm run import:catalogue:national -- --region philippines
  *
- * Does NOT activate. Does NOT retire Stoke.
+ * Does NOT activate.
  */
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,6 +21,7 @@ import {
   redactDatabaseUrl,
   runNationalCatalogueImport,
 } from "./national/import/import-runner.js";
+import { resolveNationalImportTarget } from "./national/import/resolve-target.js";
 
 loadDotenv({ path: path.join(EXPLORE_PACKAGE_ROOT, ".env") });
 
@@ -50,13 +49,16 @@ async function main() {
     cwd: process.cwd(),
   });
   const ndjsonPath = path.join(buildDir, "catalogue.ndjson");
+  const target = resolveNationalImportTarget({ buildDir, regionId: args.region });
 
   console.log("National catalogue import");
+  console.log(`  region=${target.regionId}`);
   console.log(`  buildDir=${buildDir}`);
+  console.log(`  expectedPoints=${target.expectedPointCount}`);
   console.log(`  dryRun=${args.dryRun}`);
 
   if (args.dryRun) {
-    const result = await runNationalImportDryRun({ ndjsonPath });
+    const result = await runNationalImportDryRun({ ndjsonPath, target });
     console.log(
       JSON.stringify(
         {
@@ -97,8 +99,32 @@ async function main() {
   }
   console.log(`  database=${redactDatabaseUrl(dbUrl)}`);
 
+  // Scan once for SHA when not pinned (non-UK builds).
+  let ndjsonSha256 = target.ndjsonSha256;
+  if (!ndjsonSha256) {
+    const scan = await runNationalImportDryRun({ ndjsonPath, target });
+    if (!scan.ok) {
+      console.error(JSON.stringify(scan.errors, null, 2));
+      process.exit(1);
+    }
+    ndjsonSha256 = scan.stats.sha256;
+    // Prefer scanned type histogram if summary was empty
+    if (!target.enforcePointsByType) {
+      target.pointsByType = scan.stats.pointsByType;
+    }
+    // Authoritative count from scan if validation said otherwise inconsistently
+    if (scan.stats.rows !== target.expectedPointCount) {
+      console.error(
+        `Refusing import: scan rows ${scan.stats.rows} != expected ${target.expectedPointCount}`
+      );
+      process.exit(1);
+    }
+  }
+
   const result = await runNationalCatalogueImport({
     ndjsonPath,
+    target,
+    ndjsonSha256,
     restartFailed: args.restartFailed,
     onProgress: (p) => {
       console.log(
@@ -110,7 +136,7 @@ async function main() {
   console.log(JSON.stringify(result, null, 2));
   if (!result.ok) process.exit(1);
   console.log(
-    "IMPORT OK — catalogue status=ready, active=false, Stoke untouched. Do not activate yet."
+    `IMPORT OK — region=${result.regionId} status=${result.status} active=false. Activate separately if intended.`
   );
 }
 

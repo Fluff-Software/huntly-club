@@ -124,7 +124,8 @@ function main() {
     sourcePath = path.resolve(args.localPath);
     if (!fs.existsSync(sourcePath)) throw new Error(`PBF not found: ${sourcePath}`);
   } else {
-    const staging = path.join(baseDir, "_download", "britain-and-ireland-latest.osm.pbf");
+    const stagingName = `${region.geofabrik.dataset}-latest.osm.pbf`;
+    const staging = path.join(baseDir, "_download", stagingName);
     if (fs.existsSync(staging) && !args.force) {
       console.log(`Using existing download staging file: ${staging}`);
       console.log("Pass --force to re-download.");
@@ -185,7 +186,9 @@ function main() {
   fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2));
   console.log(`Pinned: ${destDir}`);
   console.log(`Metadata: ${metaPath}`);
-  console.log("Next: npm run check:pbf-tools && npm run preflight:catalogue -- --region uk-and-ireland");
+  console.log(
+    `Next: npm run check:pbf-tools && npm run extract:coverage -- --region ${region.region_id}`
+  );
 }
 
 const isMain =

@@ -3,15 +3,8 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import {
-  NATIONAL_BUILD_ID,
-  NATIONAL_CONFIG_HASH,
-  NATIONAL_EXPECTED_POINT_COUNT,
-  NATIONAL_NDJSON_SHA256,
-  NATIONAL_POINTS_BY_TYPE,
-  NATIONAL_SOURCE_REVISION,
-  STOKE_REGION_ID,
-} from "./constants.js";
+import { STOKE_REGION_ID } from "./constants.js";
+import type { NationalImportTarget } from "./resolve-target.js";
 import { streamScanNationalNdjson } from "./stream-ndjson.js";
 
 export type PreflightResult = {
@@ -40,15 +33,11 @@ function redactUrl(url: string): string {
 
 export async function runNationalImportPreflight(opts: {
   buildDir: string;
-  expectedSourceRevision?: string;
-  expectedConfigHash?: string;
-  expectedPointCount?: number;
-  expectedSha256?: string;
+  target: NationalImportTarget;
   skipStreamScan?: boolean;
   databaseUrl?: string | null;
   supabaseUrl?: string | null;
   hasServiceRole?: boolean;
-  /** Optional live DB probe (passed in by CLI when configured). */
   dbProbe?: () => Promise<{
     postgis: boolean;
     migrationHint: boolean;
@@ -62,10 +51,10 @@ export async function runNationalImportPreflight(opts: {
   const buildDir = opts.buildDir;
   const ndjsonPath = path.join(buildDir, "catalogue.ndjson");
   const validationPath = path.join(buildDir, "validation.json");
-  const expectedRev = opts.expectedSourceRevision ?? NATIONAL_SOURCE_REVISION;
-  const expectedHash = opts.expectedConfigHash ?? NATIONAL_CONFIG_HASH;
-  const expectedCount = opts.expectedPointCount ?? NATIONAL_EXPECTED_POINT_COUNT;
-  const expectedSha = opts.expectedSha256 ?? NATIONAL_NDJSON_SHA256;
+  const target = opts.target;
+  const expectedRev = target.sourceRevision;
+  const expectedHash = target.generatorConfigHash;
+  const expectedCount = target.expectedPointCount;
 
   if (!fs.existsSync(ndjsonPath)) errors.push(`missing_ndjson:${ndjsonPath}`);
   if (!fs.existsSync(validationPath)) errors.push(`missing_validation:${validationPath}`);
@@ -83,9 +72,7 @@ export async function runNationalImportPreflight(opts: {
       if (v.ok !== true) errors.push("validation_status_not_ok");
       else validationOk = true;
       if (v.expected_source_revision && v.expected_source_revision !== expectedRev) {
-        errors.push(
-          `validation_source_revision_mismatch:${v.expected_source_revision}`
-        );
+        errors.push(`validation_source_revision_mismatch:${v.expected_source_revision}`);
       }
       if (v.expected_config_hash && v.expected_config_hash !== expectedHash) {
         errors.push(`validation_config_hash_mismatch:${v.expected_config_hash}`);
@@ -95,8 +82,8 @@ export async function runNationalImportPreflight(opts: {
           `validation_row_count_mismatch:got=${v.ndjson.rows} expected=${expectedCount}`
         );
       }
-      if (v.catalogue_build_id && v.catalogue_build_id !== NATIONAL_BUILD_ID) {
-        warnings.push(`build_id_differs_from_canonical:${v.catalogue_build_id}`);
+      if (v.catalogue_build_id && v.catalogue_build_id !== target.catalogueBuildId) {
+        warnings.push(`build_id_differs_from_target:${v.catalogue_build_id}`);
       }
     } catch {
       errors.push("validation_json_unreadable");
@@ -135,12 +122,16 @@ export async function runNationalImportPreflight(opts: {
     if (scan.rows !== expectedCount) {
       errors.push(`row_count_mismatch:got=${scan.rows} expected=${expectedCount}`);
     }
-    if (scan.sha256 !== expectedSha) {
-      errors.push(`sha256_mismatch:got=${scan.sha256} expected=${expectedSha}`);
+    if (target.enforceNdjsonSha256 && target.ndjsonSha256 && scan.sha256 !== target.ndjsonSha256) {
+      errors.push(`sha256_mismatch:got=${scan.sha256} expected=${target.ndjsonSha256}`);
     }
-    for (const [t, n] of Object.entries(NATIONAL_POINTS_BY_TYPE)) {
-      if ((scan.pointsByType[t] ?? 0) !== n) {
-        errors.push(`type_count_mismatch:type=${t} got=${scan.pointsByType[t] ?? 0} expected=${n}`);
+    if (target.enforcePointsByType) {
+      for (const [t, n] of Object.entries(target.pointsByType)) {
+        if ((scan.pointsByType[t] ?? 0) !== n) {
+          errors.push(
+            `type_count_mismatch:type=${t} got=${scan.pointsByType[t] ?? 0} expected=${n}`
+          );
+        }
       }
     }
   }
@@ -149,18 +140,18 @@ export async function runNationalImportPreflight(opts: {
   if (opts.dbProbe) {
     try {
       const probe = await opts.dbProbe();
-      dbChecks = { ...probe, stoke_region: STOKE_REGION_ID };
+      dbChecks = { ...probe, region_id: target.regionId, stoke_region: STOKE_REGION_ID };
       if (!probe.postgis) errors.push("postgis_unavailable");
       if (!probe.migrationHint) {
         warnings.push(
           "explore_catalogue_import_jobs table missing — run: supabase db push"
         );
       }
-      if (!probe.stokeActive) {
-        warnings.push("stoke_not_active — unexpected for Step 10.5");
+      if (!probe.stokeActive && target.regionId === "uk-and-ireland") {
+        warnings.push("stoke_not_active — unexpected for Step 10.5 UK cutover");
       }
       if (probe.conflictingNational) {
-        errors.push("conflicting_ready_or_active_national_catalogue");
+        errors.push(`conflicting_ready_or_active_catalogue:${target.regionId}`);
       }
       if (probe.encrypted === false) {
         errors.push("database_connection_not_encrypted");

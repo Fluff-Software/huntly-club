@@ -10,6 +10,7 @@
  * Does NOT regenerate chunk outputs. Merge runs only if catalogue.ndjson is missing
  * (or --force-merge is passed).
  */
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { EXPLORE_PACKAGE_ROOT } from "./config.js";
@@ -17,15 +18,16 @@ import { loadRegionConfig } from "./generate-catalogue.js";
 import { resolveBuildDir } from "./national/resolve-build.js";
 import { validateNationalBuild } from "./national/validate-national.js";
 
-const DEFAULT_SOURCE_REVISION = "2026-07-24_7093f494b688";
-const DEFAULT_CONFIG_HASH = "ac05054c54dad3c0";
+/** UK legacy defaults — only used when region is uk-and-ireland and flags omitted. */
+const UK_DEFAULT_SOURCE_REVISION = "2026-07-24_7093f494b688";
+const UK_DEFAULT_CONFIG_HASH = "ac05054c54dad3c0";
 
 function parseArgs(argv: string[]) {
   let region = "uk-and-ireland";
   let buildDir: string | undefined;
   let forceMerge = false;
-  let expectedSourceRevision = DEFAULT_SOURCE_REVISION;
-  let expectedConfigHash = DEFAULT_CONFIG_HASH;
+  let expectedSourceRevision: string | undefined;
+  let expectedConfigHash: string | undefined;
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--region" && argv[i + 1]) region = argv[++i]!;
     else if (argv[i] === "--build-dir" && argv[i + 1]) buildDir = argv[++i];
@@ -66,14 +68,43 @@ async function main() {
 
   const coveragePath = path.join(
     EXPLORE_PACKAGE_ROOT,
-    region.coverage_policy?.polygons_path ?? "catalogues/coverage/uk-and-ireland.geojson"
+    region.coverage_policy?.polygons_path ?? `catalogues/coverage/${args.region}.geojson`
   );
+
+  const manifestPath = path.join(buildDir, "build-manifest.json");
+  const manifest = fs.existsSync(manifestPath)
+    ? (JSON.parse(fs.readFileSync(manifestPath, "utf8")) as {
+        source_revision?: string;
+        generator_config_hash?: string;
+      })
+    : {};
+
+  const expectedSourceRevision =
+    args.expectedSourceRevision ??
+    region.source_revision ??
+    (args.region === "uk-and-ireland" ? UK_DEFAULT_SOURCE_REVISION : undefined) ??
+    manifest.source_revision;
+  const expectedConfigHash =
+    args.expectedConfigHash ??
+    (args.region === "uk-and-ireland" ? UK_DEFAULT_CONFIG_HASH : undefined) ??
+    manifest.generator_config_hash;
+
+  if (!expectedSourceRevision) {
+    throw new Error(
+      "Could not resolve expected source revision (set catalogues/<region>.json source_revision or pass --expected-source-revision)"
+    );
+  }
+  if (!expectedConfigHash) {
+    throw new Error(
+      "Could not resolve expected config hash (pass --expected-config-hash or ensure build-manifest.json exists)"
+    );
+  }
 
   console.log(`National validate`);
   console.log(`  region=${args.region}`);
   console.log(`  buildDir=${buildDir}`);
-  console.log(`  expectedRevision=${args.expectedSourceRevision}`);
-  console.log(`  expectedConfigHash=${args.expectedConfigHash}`);
+  console.log(`  expectedRevision=${expectedSourceRevision}`);
+  console.log(`  expectedConfigHash=${expectedConfigHash}`);
   console.log(`  forceMerge=${args.forceMerge}`);
 
   const report = await validateNationalBuild({
@@ -81,8 +112,8 @@ async function main() {
     regionId: region.region_id,
     coveragePath,
     generationVersion: region.generation_version,
-    expectedSourceRevision: args.expectedSourceRevision,
-    expectedConfigHash: args.expectedConfigHash,
+    expectedSourceRevision,
+    expectedConfigHash,
     forceMerge: args.forceMerge,
     allowMerge: true,
   });

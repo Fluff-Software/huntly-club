@@ -6,21 +6,9 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import pg from "pg";
 import { from as copyFrom } from "pg-copy-streams";
-import {
-  NATIONAL_BUILD_ID,
-  NATIONAL_CONFIG_HASH,
-  NATIONAL_EXPECTED_POINT_COUNT,
-  NATIONAL_GENERATION_VERSION,
-  NATIONAL_NDJSON_SHA256,
-  NATIONAL_POINTS_BY_TYPE,
-  NATIONAL_REGION_ID,
-  NATIONAL_SOURCE_REVISION,
-  STOKE_REGION_ID,
-} from "./constants.js";
-import {
-  iterateNationalPoints,
-  pointToCopyCsvLine,
-} from "./stream-ndjson.js";
+import { NATIONAL_EXPECTED_POINT_COUNT, NATIONAL_REGION_ID, STOKE_REGION_ID } from "./constants.js";
+import type { NationalImportTarget } from "./resolve-target.js";
+import { iterateNationalPoints, pointToCopyCsvLine } from "./stream-ndjson.js";
 
 export type ImportProgress = {
   rowsCopied: number;
@@ -37,6 +25,7 @@ export type ImportResult = {
   finalCount: number;
   durationMs: number;
   status: string;
+  regionId: string;
   nationalActive: false;
   stokeActive: boolean;
   error?: string;
@@ -52,7 +41,6 @@ function requireDatabaseUrl(): string {
       "Set EXPLORE_DATABASE_URL (Postgres connection string with SSL). Do not use the service-role key for COPY."
     );
   }
-  // Never log password
   return url;
 }
 
@@ -77,9 +65,14 @@ async function assertSsl(client: pg.Client): Promise<boolean | null> {
 
 export async function runNationalCatalogueImport(opts: {
   ndjsonPath: string;
+  target: NationalImportTarget;
+  /** Filled after dry-run scan when target.ndjsonSha256 was not pinned. */
+  ndjsonSha256?: string;
   restartFailed?: boolean;
   onProgress?: (p: ImportProgress) => void;
 }): Promise<ImportResult> {
+  const target = opts.target;
+  const ndjsonSha256 = opts.ndjsonSha256 ?? target.ndjsonSha256 ?? "";
   const databaseUrl = requireDatabaseUrl();
   const client = new pg.Client({
     connectionString: databaseUrl,
@@ -97,7 +90,6 @@ export async function runNationalCatalogueImport(opts: {
       throw new Error("Refusing non-SSL database connection for hosted import");
     }
 
-    // Ensure migration present
     const tables = await client.query(
       `SELECT to_regclass('public.explore_catalogue_import_jobs') AS jobs,
               to_regclass('public.explore_points_import_staging') AS staging`
@@ -119,14 +111,13 @@ export async function runNationalCatalogueImport(opts: {
       `SELECT id, status FROM explore_point_catalogue_versions
        WHERE region_id = $1 AND status IN ('ready', 'active')
        LIMIT 5`,
-      [NATIONAL_REGION_ID]
+      [target.regionId]
     );
     if ((conflict.rowCount ?? 0) > 0) {
       const ids = conflict.rows.map((r) => `${r.id}:${r.status}`).join(",");
-      throw new Error(`Conflicting national catalogue already ready/active: ${ids}`);
+      throw new Error(`Conflicting catalogue already ready/active for ${target.regionId}: ${ids}`);
     }
 
-    // Create catalogue version (building)
     const ver = await client.query(
       `INSERT INTO explore_point_catalogue_versions (
          region_id, generation_version, source_revision, status, point_count, coverage_km2, metadata
@@ -140,17 +131,17 @@ export async function runNationalCatalogueImport(opts: {
          retired_at = NULL
        RETURNING id`,
       [
-        NATIONAL_REGION_ID,
-        NATIONAL_GENERATION_VERSION,
-        NATIONAL_SOURCE_REVISION,
-        NATIONAL_EXPECTED_POINT_COUNT,
+        target.regionId,
+        target.generationVersion,
+        target.sourceRevision,
+        target.expectedPointCount,
         JSON.stringify({
-          catalogue_build_id: NATIONAL_BUILD_ID,
-          generator_config_hash: NATIONAL_CONFIG_HASH,
-          ndjson_sha256: NATIONAL_NDJSON_SHA256,
+          catalogue_build_id: target.catalogueBuildId,
+          generator_config_hash: target.generatorConfigHash,
+          ndjson_sha256: ndjsonSha256 || null,
           validation_status: "ok",
           min_spacing_m: 150,
-          points_by_type: NATIONAL_POINTS_BY_TYPE,
+          points_by_type: target.pointsByType,
           active: false,
           import_strategy: "copy_staging",
         }),
@@ -158,7 +149,6 @@ export async function runNationalCatalogueImport(opts: {
     );
     const catalogueVersionId = Number(ver.rows[0]!.id);
 
-    // Clear any previous points for this version (rerun safety)
     await client.query(`DELETE FROM explore_points WHERE catalogue_version_id = $1`, [
       catalogueVersionId,
     ]);
@@ -168,7 +158,7 @@ export async function runNationalCatalogueImport(opts: {
         `UPDATE explore_catalogue_import_jobs
          SET status = 'cleaned', updated_at = now()
          WHERE region_id = $1 AND status = 'failed'`,
-        [NATIONAL_REGION_ID]
+        [target.regionId]
       );
     }
 
@@ -180,20 +170,19 @@ export async function runNationalCatalogueImport(opts: {
        ) VALUES ($1,$2,$3,'staging',$4,$5,$6,$7,$8::jsonb, now(), $9::jsonb)
        RETURNING id`,
       [
-        NATIONAL_REGION_ID,
-        NATIONAL_BUILD_ID,
+        target.regionId,
+        target.catalogueBuildId,
         catalogueVersionId,
-        NATIONAL_EXPECTED_POINT_COUNT,
-        NATIONAL_SOURCE_REVISION,
-        NATIONAL_CONFIG_HASH,
-        NATIONAL_NDJSON_SHA256,
-        JSON.stringify(NATIONAL_POINTS_BY_TYPE),
+        target.expectedPointCount,
+        target.sourceRevision,
+        target.generatorConfigHash,
+        ndjsonSha256 || "pending",
+        JSON.stringify(target.pointsByType),
         JSON.stringify({ ndjson_path_basename: "catalogue.ndjson" }),
       ]
     );
     const importJobId = String(job.rows[0]!.id);
 
-    // COPY into staging
     const copySql = `
       COPY public.explore_points_import_staging (
         import_job_id, id, latitude, longitude, point_type, generation_version,
@@ -230,7 +219,7 @@ export async function runNationalCatalogueImport(opts: {
       [importJobId, rowsCopied]
     );
 
-    if (rowsCopied !== NATIONAL_EXPECTED_POINT_COUNT) {
+    if (rowsCopied !== target.expectedPointCount) {
       await client.query(
         `UPDATE explore_catalogue_import_jobs
          SET status = 'failed', failure_reason = $2, updated_at = now() WHERE id = $1`,
@@ -250,6 +239,7 @@ export async function runNationalCatalogueImport(opts: {
         finalCount: 0,
         durationMs: Date.now() - t0,
         status: "failed",
+        regionId: target.regionId,
         nationalActive: false,
         stokeActive,
         error: `staged_count_mismatch:got=${rowsCopied}`,
@@ -258,7 +248,7 @@ export async function runNationalCatalogueImport(opts: {
 
     const finalise = await client.query(
       `SELECT finalise_explore_catalogue_import($1::uuid, $2::integer) AS result`,
-      [importJobId, NATIONAL_EXPECTED_POINT_COUNT]
+      [importJobId, target.expectedPointCount]
     );
     const result = finalise.rows[0]?.result as {
       ok?: boolean;
@@ -267,7 +257,6 @@ export async function runNationalCatalogueImport(opts: {
       active?: boolean;
     };
 
-    // Double-check inactive + Stoke
     const nat = await client.query(
       `SELECT status FROM explore_point_catalogue_versions WHERE id = $1`,
       [catalogueVersionId]
@@ -279,11 +268,11 @@ export async function runNationalCatalogueImport(opts: {
     );
 
     if (nat.rows[0]?.status === "active") {
-      throw new Error("BUG: national catalogue marked active during import");
+      throw new Error("BUG: catalogue marked active during import");
     }
 
     return {
-      ok: result?.ok === true && result.final_point_count === NATIONAL_EXPECTED_POINT_COUNT,
+      ok: result?.ok === true && result.final_point_count === target.expectedPointCount,
       dryRun: false,
       importJobId,
       catalogueVersionId,
@@ -291,12 +280,12 @@ export async function runNationalCatalogueImport(opts: {
       finalCount: Number(result?.final_point_count ?? 0),
       durationMs: Date.now() - t0,
       status: String(nat.rows[0]?.status ?? result?.status ?? "unknown"),
+      regionId: target.regionId,
       nationalActive: false,
       stokeActive: (stoke2.rowCount ?? 0) > 0,
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    // Never include connection string
     if (msg.includes(databaseUrl) || /password/i.test(msg)) {
       throw new Error("import_failed (details redacted)");
     }
@@ -347,10 +336,8 @@ export async function getNationalImportStatus(opts?: {
     const elapsedMs = started ? Date.now() - started : null;
     const staged = Number(row?.staged_point_count ?? 0);
     const expected = Number(row?.expected_point_count ?? NATIONAL_EXPECTED_POINT_COUNT);
-    const rps =
-      elapsedMs && elapsedMs > 0 && staged > 0 ? staged / (elapsedMs / 1000) : null;
-    const remaining =
-      rps && staged < expected ? (expected - staged) / rps : null;
+    const rps = elapsedMs && elapsedMs > 0 && staged > 0 ? staged / (elapsedMs / 1000) : null;
+    const remaining = rps && staged < expected ? (expected - staged) / rps : null;
 
     return {
       import_job: row

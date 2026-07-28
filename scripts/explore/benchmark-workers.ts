@@ -41,7 +41,7 @@ type BenchArea = {
 };
 
 /** Representative real workloads (same set as Step 10.4A, minus optional wales if needed for time). */
-const AREAS: BenchArea[] = [
+const UK_AREAS: BenchArea[] = [
   {
     id: "london-central",
     label: "Central London",
@@ -83,6 +83,50 @@ const AREAS: BenchArea[] = [
     bbox: { minLatitude: 50.65, minLongitude: -1.35, maxLatitude: 50.75, maxLongitude: -1.2 },
   },
 ];
+
+/** Representative Philippines workloads for national worker scaling. */
+const PHILIPPINES_AREAS: BenchArea[] = [
+  {
+    id: "manila-central",
+    label: "Metro Manila (Makati/Manila)",
+    bbox: { minLatitude: 14.55, minLongitude: 120.98, maxLatitude: 14.6, maxLongitude: 121.03 },
+  },
+  {
+    id: "cebu-city",
+    label: "Cebu City",
+    bbox: { minLatitude: 10.29, minLongitude: 123.88, maxLatitude: 10.34, maxLongitude: 123.93 },
+  },
+  {
+    id: "davao-city",
+    label: "Davao City",
+    bbox: { minLatitude: 7.05, minLongitude: 125.58, maxLatitude: 7.1, maxLongitude: 125.63 },
+  },
+  {
+    id: "baguio",
+    label: "Baguio / Cordillera fringe",
+    bbox: { minLatitude: 16.39, minLongitude: 120.57, maxLatitude: 16.44, maxLongitude: 120.62 },
+  },
+  {
+    id: "rural-luzon",
+    label: "Rural Luzon (Nueva Ecija fringe)",
+    bbox: { minLatitude: 15.45, minLongitude: 120.95, maxLatitude: 15.53, maxLongitude: 121.05 },
+  },
+  {
+    id: "coastal-palawan",
+    label: "Coastal Palawan (Puerto Princesa fringe)",
+    bbox: { minLatitude: 9.72, minLongitude: 118.72, maxLatitude: 9.8, maxLongitude: 118.82 },
+  },
+  {
+    id: "cagayan-de-oro",
+    label: "Cagayan de Oro suburban",
+    bbox: { minLatitude: 8.45, minLongitude: 124.62, maxLatitude: 8.5, maxLongitude: 124.68 },
+  },
+];
+
+function areasForRegion(regionId: string): BenchArea[] {
+  if (regionId === "philippines") return PHILIPPINES_AREAS;
+  return UK_AREAS;
+}
 
 function areaKm2(b: LonLatBBox): number {
   const mid = (b.minLatitude + b.maxLatitude) / 2;
@@ -290,10 +334,9 @@ async function runResumeTest(opts: {
   workers: number;
   chunkSpan: number;
   padMetres: number;
+  areas: BenchArea[];
 }): Promise<Record<string, unknown>> {
-  const areas = AREAS.filter((a) =>
-    ["stoke-suburban", "rural-england", "highlands"].includes(a.id)
-  );
+  const areas = opts.areas.slice(0, 3);
   const jobs: BlockJob[] = areas.map((area) => ({
     area,
     chunkSpan: opts.chunkSpan,
@@ -392,18 +435,19 @@ async function main() {
   const workRoot = path.join(EXPLORE_PACKAGE_ROOT, "data/osm/work/benchmarks-workers");
   fs.mkdirSync(workRoot, { recursive: true });
 
-  const jobs: BlockJob[] = AREAS.map((area) => ({
+  const areas = areasForRegion(args.region);
+  const jobs: BlockJob[] = areas.map((area) => ({
     area,
     chunkSpan: args.chunkSpan,
     padMetres: args.padMetres,
   }));
-  const totalKm2 = AREAS.reduce((a, x) => a + areaKm2(x.bbox), 0);
-  const totalBlocks = AREAS.length;
+  const totalKm2 = areas.reduce((a, x) => a + areaKm2(x.bbox), 0);
+  const totalBlocks = areas.length;
 
   console.log(`Working PBF: ${workingPbf}`);
   console.log(`Algorithm: ${OPTIMISED_ALGORITHM_VERSION}`);
   console.log(`Path: ${PRODUCTION_PATH_ID}`);
-  console.log(`Areas: ${AREAS.map((a) => a.id).join(", ")}`);
+  console.log(`Areas: ${areas.map((a) => a.id).join(", ")}`);
   console.log(`Worker counts: ${args.workers.join(", ")}`);
   console.log(`Benchmark land ≈ ${Math.round(totalKm2)} km² across ${totalBlocks} areas`);
 
@@ -477,78 +521,62 @@ async function main() {
     console.log(JSON.stringify(row, null, 2));
   }
 
-  // Decide whether 8 was tested / recommend
-  const w4 = byWorkers["4"] as { wall_ms?: number; metrics?: { swap_growth_mb?: number | null; memory_pressure?: { healthy?: boolean | null }; peak_rss_mb?: number } } | undefined;
-  const w6 = byWorkers["6"] as { wall_ms?: number; metrics?: { swap_growth_mb?: number | null; memory_pressure?: { healthy?: boolean | null }; peak_rss_mb?: number }; parity?: { id_jaccard?: number } } | undefined;
-  const w8 = byWorkers["8"] as typeof w6 | undefined;
-
-  let speedup4to6: number | null = null;
-  if (w4?.wall_ms && w6?.wall_ms) {
-    speedup4to6 = Math.round((1 - w6.wall_ms / w4.wall_ms) * 1000) / 10;
-  }
-
-  const sixHealthy =
-    !!w6 &&
-    (w6.metrics?.swap_growth_mb == null || w6.metrics.swap_growth_mb < 200) &&
-    w6.metrics?.memory_pressure?.healthy !== false &&
-    (w6.parity?.id_jaccard == null || w6.parity.id_jaccard >= 0.999) &&
-    speedup4to6 != null &&
-    speedup4to6 >= 15;
-
-  let recommended = 4;
-  let reason = "Default safe choice on M1 16 GB";
-  if (sixHealthy) {
-    recommended = 6;
-    reason = `6 workers ≥15% faster (${speedup4to6}%) with healthy memory/swap and identical output`;
-  }
-  if (
-    recommended === 6 &&
-    w8 &&
-    (w8.metrics?.swap_growth_mb == null || w8.metrics.swap_growth_mb < 100) &&
-    w8.metrics?.memory_pressure?.healthy !== false &&
-    w8.wall_ms &&
-    w6?.wall_ms &&
-    1 - w8.wall_ms / w6.wall_ms >= 0.12 &&
-    (w8.parity?.id_jaccard == null || w8.parity.id_jaccard >= 0.999)
-  ) {
-    recommended = 8;
-    reason = "8 workers materially faster than 6 with comfortable memory headroom";
-  } else if (w8 && recommended === 6) {
-    reason += "; 8 not recommended (insufficient gain and/or resource pressure)";
+  // Recommend highest worker count that stays reliable and is materially faster.
+  type WorkerRow = {
+    wall_ms?: number;
+    failed_blocks?: number;
+    metrics?: {
+      swap_growth_mb?: number | null;
+      memory_pressure?: { healthy?: boolean | null };
+      peak_rss_mb?: number;
+    };
+    parity?: { id_jaccard?: number };
+  };
+  const sortedWorkers = [...args.workers].sort((a, b) => a - b);
+  let recommended = sortedWorkers[0] ?? 4;
+  let reason = `Default to lowest tested worker count (${recommended}) for reliability`;
+  for (let i = 1; i < sortedWorkers.length; i++) {
+    const prev = recommended;
+    const next = sortedWorkers[i]!;
+    const wPrev = byWorkers[String(prev)] as WorkerRow | undefined;
+    const wNext = byWorkers[String(next)] as WorkerRow | undefined;
+    if (!wPrev?.wall_ms || !wNext?.wall_ms) continue;
+    const speedupPct = Math.round((1 - wNext.wall_ms / wPrev.wall_ms) * 1000) / 10;
+    const healthy =
+      (wNext.failed_blocks ?? 0) === 0 &&
+      (wNext.metrics?.swap_growth_mb == null || wNext.metrics.swap_growth_mb < 500) &&
+      wNext.metrics?.memory_pressure?.healthy !== false &&
+      (wNext.parity?.id_jaccard == null || wNext.parity.id_jaccard >= 0.999);
+    if (healthy && speedupPct >= 12) {
+      recommended = next;
+      reason = `${next} workers ≥12% faster than ${prev} (${speedupPct}%) with healthy memory and identical output`;
+    } else {
+      reason += `; ${next} not recommended vs ${prev} (speedup ${speedupPct}%, healthy=${healthy})`;
+      break;
+    }
   }
 
   /**
-   * National projection: use Step 10.4A blended single-worker hours (~38h), then
-   * scale by measured parallel efficiency. Do NOT use raw bench km²/h — this bench
-   * is urban-straggler dominated (London ≈ wall clock), which understates national
-   * throughput where thousands of similar blocks keep workers busy.
+   * National projection uses a 1-worker hour basis × measured parallel efficiency.
+   * Do NOT use raw bench km²/h — urban stragglers dominate wall clock.
    */
-  const hours1Worker = 38;
+  const hours1Worker = args.region === "philippines" ? 12 : 38;
   const mergeValidateHours = { expected: 2, optimistic: 1, pessimistic: 3 };
-  const wall4 = (byWorkers["4"] as { wall_ms?: number } | undefined)?.wall_ms;
-  const wall6 = (byWorkers["6"] as { wall_ms?: number } | undefined)?.wall_ms;
-  const wall8 = (byWorkers["8"] as { wall_ms?: number } | undefined)?.wall_ms;
-  /** Ideal 4-worker efficiency from 10.4A was 0.75; refine from measured 4→6 gain. */
-  const measuredEffAt4 = 0.75;
-  const measuredEffAt6 =
-    wall4 && wall6
-      ? Math.min(0.85, Math.max(0.45, (4 / 6) * measuredEffAt4 * (wall4 / wall6)))
-      : 0.55;
-  const measuredEffAt8 =
-    wall6 && wall8
-      ? Math.min(0.85, Math.max(0.4, (6 / 8) * measuredEffAt6 * (wall6 / wall8)))
-      : wall4 && wall8
-        ? Math.min(0.85, Math.max(0.4, (4 / 8) * measuredEffAt4 * (wall4 / wall8)))
-        : null;
-
-  const projections: Record<string, unknown> = {};
+  const baselineW = sortedWorkers[0] ?? 4;
+  const wallBaseline = (byWorkers[String(baselineW)] as { wall_ms?: number } | undefined)?.wall_ms;
+  const measuredEffAtBaseline = 0.75;
   const effFor = (w: number): number => {
-    if (w === 4) return measuredEffAt4;
-    if (w === 6) return measuredEffAt6;
-    if (w === 8 && measuredEffAt8 != null) return measuredEffAt8;
-    // Fallback: diminishing returns
-    return Math.max(0.4, measuredEffAt4 * (4 / w) * 1.05);
+    if (w === baselineW) return measuredEffAtBaseline;
+    const wallW = (byWorkers[String(w)] as { wall_ms?: number } | undefined)?.wall_ms;
+    if (wallBaseline && wallW) {
+      return Math.min(
+        0.85,
+        Math.max(0.4, (baselineW / w) * measuredEffAtBaseline * (wallBaseline / wallW))
+      );
+    }
+    return Math.max(0.4, measuredEffAtBaseline * (baselineW / w) * 1.05);
   };
+  const projections: Record<string, unknown> = {};
   for (const w of args.workers) {
     const eff = effFor(w);
     const gen = hours1Worker / (w * eff);
@@ -567,7 +595,7 @@ async function main() {
       total_e2e_pessimistic_hours:
         Math.round((gen * 1.35 + mergeValidateHours.pessimistic + 1) * 10) / 10,
       note:
-        "Bench wall-clock is London-straggler limited; national projection uses 10.4A 38h@1w × measured efficiency.",
+        "Bench wall-clock is urban-straggler limited; national projection uses 1-worker basis × measured efficiency.",
     };
   }
 
@@ -582,6 +610,7 @@ async function main() {
       workers: recommended,
       chunkSpan: args.chunkSpan,
       padMetres: args.padMetres,
+      areas,
     });
     console.log(JSON.stringify(resumeResult, null, 2));
   }
@@ -591,9 +620,10 @@ async function main() {
     arch: process.arch,
     node: process.version,
     reported: {
-      cpu: "Apple M1 (8 cores: 4P+4E)",
-      ram_gb: 16,
-      free_disk_gb_approx: 70,
+      cpu: "i7-12700K (WSL2)",
+      ram_gb: 64,
+      wsl_mem_gb: 31,
+      free_disk_gb_approx: 350,
     },
   };
 
@@ -603,18 +633,17 @@ async function main() {
     production_path: PRODUCTION_PATH_ID,
     pbf_sha256: pinned.meta.sha256,
     machine,
-    areas: AREAS.map((a) => ({ id: a.id, label: a.label, area_km2: Math.round(areaKm2(a.bbox) * 100) / 100 })),
+    areas: areas.map((a) => ({ id: a.id, label: a.label, area_km2: Math.round(areaKm2(a.bbox) * 100) / 100 })),
     chunk_span: args.chunkSpan,
     pad_metres: args.padMetres,
     by_workers: byWorkers,
-    speedup_4_to_6_pct: speedup4to6,
     recommended_workers: recommended,
     recommendation_reason: reason,
     national_projections: projections,
     resume_test: resumeResult,
     caffeinate_command:
       `caffeinate -dimsu npm run generate:catalogue:national -- \\\n` +
-      `  --region uk-and-ireland \\\n` +
+      `  --region ${args.region} \\\n` +
       `  --workers ${recommended} \\\n` +
       `  --chunk-span 0.02 \\\n` +
       `  --pad-metres 400 \\\n` +
@@ -632,7 +661,7 @@ async function main() {
 
   const outDir = path.join(EXPLORE_PACKAGE_ROOT, "output/catalogues/benchmarks");
   fs.mkdirSync(outDir, { recursive: true });
-  const outPath = path.join(outDir, "uk-and-ireland-worker-scaling.json");
+  const outPath = path.join(outDir, `${args.region}-worker-scaling.json`);
   fs.writeFileSync(outPath, JSON.stringify(summary, null, 2));
   console.log("\n=== WORKER SCALING SUMMARY ===");
   console.log(
@@ -640,10 +669,7 @@ async function main() {
       {
         recommended_workers: recommended,
         reason,
-        speedup_4_to_6_pct: speedup4to6,
-        projections: projections[String(recommended)],
-        hours_expected_at_4: (projections["4"] as { total_e2e_expected_hours?: number } | undefined)
-          ?.total_e2e_expected_hours,
+            projections: projections[String(recommended)],
       },
       null,
       2

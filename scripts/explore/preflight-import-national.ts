@@ -1,8 +1,7 @@
 /**
  * National import preflight (Step 10.5).
  *
- *   npm run preflight:import:national -- --region uk-and-ireland \
- *     --build-dir output/catalogues/uk-and-ireland/build_2026-07-24T23-11-06-550Z_aa8033
+ *   npm run preflight:import:national -- --region philippines
  */
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,16 +10,10 @@ import pg from "pg";
 import { EXPLORE_PACKAGE_ROOT } from "./config.js";
 import { resolveBuildDir } from "./national/resolve-build.js";
 import { loadRegionConfig } from "./generate-catalogue.js";
-import {
-  NATIONAL_CONFIG_HASH,
-  NATIONAL_EXPECTED_POINT_COUNT,
-  NATIONAL_NDJSON_SHA256,
-  NATIONAL_REGION_ID,
-  NATIONAL_SOURCE_REVISION,
-  STOKE_REGION_ID,
-} from "./national/import/constants.js";
+import { NATIONAL_REGION_ID, STOKE_REGION_ID } from "./national/import/constants.js";
 import { runNationalImportPreflight } from "./national/import/preflight.js";
 import { redactDatabaseUrl } from "./national/import/import-runner.js";
+import { resolveNationalImportTarget } from "./national/import/resolve-target.js";
 
 loadDotenv({ path: path.join(EXPLORE_PACKAGE_ROOT, ".env") });
 
@@ -45,6 +38,7 @@ async function main() {
     buildDir: args.buildDir,
     cwd: process.cwd(),
   });
+  const target = resolveNationalImportTarget({ buildDir, regionId: args.region });
 
   const databaseUrl =
     process.env.EXPLORE_DATABASE_URL ??
@@ -58,16 +52,14 @@ async function main() {
     process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   console.log("National import preflight");
+  console.log(`  region=${target.regionId}`);
   console.log(`  buildDir=${buildDir}`);
   if (databaseUrl) console.log(`  database=${redactDatabaseUrl(databaseUrl)}`);
   if (supabaseUrl) console.log(`  supabase=${supabaseUrl.replace(/\/\/.*@/, "//***@")}`);
 
   const result = await runNationalImportPreflight({
     buildDir,
-    expectedSourceRevision: NATIONAL_SOURCE_REVISION,
-    expectedConfigHash: NATIONAL_CONFIG_HASH,
-    expectedPointCount: NATIONAL_EXPECTED_POINT_COUNT,
-    expectedSha256: NATIONAL_NDJSON_SHA256,
+    target,
     skipStreamScan: args.skipStreamScan,
     databaseUrl,
     supabaseUrl,
@@ -97,7 +89,7 @@ async function main() {
             const conflict = await client.query(
               `SELECT 1 FROM explore_point_catalogue_versions
                WHERE region_id = $1 AND status IN ('ready','active') LIMIT 1`,
-              [NATIONAL_REGION_ID]
+              [target.regionId]
             );
             let encrypted: boolean | null = null;
             try {

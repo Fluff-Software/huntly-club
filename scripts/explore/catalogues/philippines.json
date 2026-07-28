@@ -1,0 +1,47 @@
+{
+  "region_id": "philippines",
+  "name": "Philippines",
+  "notes": "National catalogue (Geofabrik Philippines PBF — not Overpass). Final points must lie inside approved coverage polygon (Philippines admin, Wikidata Q928), not merely the extract envelope. Do not activate until validation passes and activation is explicitly requested. Offline generation only.",
+  "pipeline": "pbf",
+  "geofabrik": {
+    "dataset": "philippines",
+    "download_url": "https://download.geofabrik.de/asia/philippines-latest.osm.pbf",
+    "page_url": "https://download.geofabrik.de/asia/philippines.html"
+  },
+  "coverage_policy": {
+    "include": [
+      "Philippines (Republic of the Philippines, Wikidata Q928)",
+      "inhabited islands belonging to Philippines admin (Luzon, Visayas, Mindanao, and other PH admin islands)"
+    ],
+    "exclude": [
+      "any territory outside Philippines admin polygons"
+    ],
+    "polygons_path": "catalogues/coverage/philippines.geojson",
+    "inclusion_rule": "point-in-polygon against approved multipolygon(s); chunk bboxes are processing aids only",
+    "notes": "OSM country relation r443174/Q928 does not assemble via osmium export; coverage is built from admin_level=3 PH regions from the same PBF revision as a Q928 proxy."
+  },
+  "bounding_box": {
+    "min_latitude": 4.3,
+    "min_longitude": 112.1,
+    "max_latitude": 21.6,
+    "max_longitude": 127.1
+  },
+  "source_geojson": "",
+  "source_pbf_dir": "data/osm/geofabrik/philippines",
+  "source_revision": "2026-07-27_b9e50974172f",
+  "generation_version": 1,
+  "output_dir": "output/catalogues/philippines",
+  "chunking": {
+    "core_span_degrees": 0.02,
+    "pad_metres": 400,
+    "partition_span_degrees": 2.0,
+    "workers_default": 12,
+    "output_format": "ndjson",
+    "global_spacing": "grid-neighbour",
+    "notes": "0.02° / 2° partitions mirror UK national path. Prefer reliability over max workers on this box."
+  },
+  "attribution": "© OpenStreetMap contributors",
+  "licence": "ODbL 1.0",
+  "attribution_url": "https://www.openstreetmap.org/copyright",
+  "distributor": "Geofabrik GmbH (extract distributor, not data owner)"
+}

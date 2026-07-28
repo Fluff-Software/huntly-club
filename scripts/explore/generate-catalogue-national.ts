@@ -542,7 +542,11 @@ async function main() {
 
   const coveragePath = path.join(
     EXPLORE_PACKAGE_ROOT,
-    region.coverage_policy?.polygons_path ?? "catalogues/coverage/uk-and-ireland.geojson"
+    region.coverage_policy?.polygons_path ?? `catalogues/coverage/${args.region}.geojson`
+  );
+  const workerScalingPath = path.join(
+    EXPLORE_PACKAGE_ROOT,
+    `output/catalogues/benchmarks/${args.region}-worker-scaling.json`
   );
   const parityPath = path.join(
     EXPLORE_PACKAGE_ROOT,
@@ -559,20 +563,30 @@ async function main() {
 
   const gates: string[] = [];
   if (!fs.existsSync(coveragePath)) gates.push(`missing coverage polygon: ${coveragePath}`);
-  if (!fs.existsSync(parityPath)) gates.push(`missing Stoke parity report: ${parityPath}`);
-  else {
-    const parity = JSON.parse(fs.readFileSync(parityPath, "utf8")) as { ok?: boolean };
-    if (!parity.ok) gates.push("Stoke parity hard-failed — do not full-run");
-  }
-  if (!fs.existsSync(benchPath)) gates.push(`missing benchmark report: ${benchPath}`);
-  if (!fs.existsSync(optBenchPath)) {
-    gates.push(`missing optimised benchmark report: ${optBenchPath}`);
+
+  if (args.region === "uk-and-ireland") {
+    if (!fs.existsSync(parityPath)) gates.push(`missing Stoke parity report: ${parityPath}`);
+    else {
+      const parity = JSON.parse(fs.readFileSync(parityPath, "utf8")) as { ok?: boolean };
+      if (!parity.ok) gates.push("Stoke parity hard-failed — do not full-run");
+    }
+    if (!fs.existsSync(benchPath)) gates.push(`missing benchmark report: ${benchPath}`);
+    if (!fs.existsSync(optBenchPath)) {
+      gates.push(`missing optimised benchmark report: ${optBenchPath}`);
+    } else {
+      const opt = JSON.parse(fs.readFileSync(optBenchPath, "utf8")) as {
+        acceptance_gate?: string;
+      };
+      if (opt.acceptance_gate === "fail") {
+        gates.push("Optimised projection >72h (acceptance_gate=fail) — do not full-run");
+      }
+    }
   } else {
-    const opt = JSON.parse(fs.readFileSync(optBenchPath, "utf8")) as {
-      acceptance_gate?: string;
-    };
-    if (opt.acceptance_gate === "fail") {
-      gates.push("Optimised projection >72h (acceptance_gate=fail) — do not full-run");
+    // Non-UK national regions: require region worker-scaling report instead of Stoke/UK benches.
+    if (!fs.existsSync(workerScalingPath)) {
+      gates.push(
+        `missing worker scaling report: ${workerScalingPath} (run npm run benchmark:workers -- --region ${args.region})`
+      );
     }
   }
 

@@ -1,9 +1,9 @@
 /**
- * Extract UK + ROI coverage MultiPolygon from a pinned Geofabrik PBF via osmium.
- * Excludes Isle of Man, Jersey, Guernsey.
+ * Extract admin coverage MultiPolygon from a pinned Geofabrik PBF via osmium.
  *
  * Usage:
  *   npm run extract:coverage -- --region uk-and-ireland
+ *   npm run extract:coverage -- --region philippines
  */
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -13,30 +13,68 @@ import { EXPLORE_PACKAGE_ROOT } from "./config.js";
 import { loadRegionConfig } from "./generate-catalogue.js";
 import type { Feature, FeatureCollection, Polygon, MultiPolygon } from "geojson";
 
-/** Accept these admin_level=2 names / ISO codes from OSM. */
-const INCLUDE_NAME_MATCHERS = [
-  /^united kingdom$/i,
-  /^ireland$/i,
-  /^éire$/i,
-  /^republic of ireland$/i,
-];
+type CoverageRules = {
+  /** osmium tags-filter expression(s) for admin relations */
+  osmiumFilters: string[];
+  includeNameMatchers: RegExp[];
+  includeWikidata: Set<string>;
+  excludeNameMatchers: RegExp[];
+  excludeWikidata: Set<string>;
+  /**
+   * When country-level multipolygons do not assemble via osmium export
+   * (Philippines), accept administrative pieces that represent the country.
+   */
+  fallbackAdminLevels?: Set<string>;
+  requireIso3166PhPrefix?: boolean;
+  minPolygons: number;
+  coverageName: string;
+  excludeLabels: string[];
+  expectedLabel: string;
+};
 
-const INCLUDE_WIKIDATA = new Set([
-  "Q145", // United Kingdom
-  "Q27", // Ireland (Republic)
-]);
-
-const EXCLUDE_NAME_MATCHERS = [
-  /isle of man/i,
-  /^jersey$/i,
-  /^guernsey$/i,
-];
-
-const EXCLUDE_WIKIDATA = new Set([
-  "Q9676", // Isle of Man
-  "Q785", // Jersey
-  "Q25230", // Guernsey
-]);
+const COVERAGE_BY_REGION: Record<string, CoverageRules> = {
+  "uk-and-ireland": {
+    osmiumFilters: ["r/admin_level=2"],
+    includeNameMatchers: [
+      /^united kingdom$/i,
+      /^ireland$/i,
+      /^éire$/i,
+      /^republic of ireland$/i,
+    ],
+    includeWikidata: new Set([
+      "Q145", // United Kingdom
+      "Q27", // Ireland (Republic)
+    ]),
+    excludeNameMatchers: [/isle of man/i, /^jersey$/i, /^guernsey$/i],
+    excludeWikidata: new Set([
+      "Q9676", // Isle of Man
+      "Q785", // Jersey
+      "Q25230", // Guernsey
+    ]),
+    minPolygons: 2,
+    coverageName: "uk-and-ireland-coverage",
+    excludeLabels: ["Isle of Man", "Jersey", "Guernsey"],
+    expectedLabel: "UK + Ireland",
+  },
+  philippines: {
+    // Country relation r443174 / Q928 exists but does not assemble as a polygon
+    // via osmium export (member graph is region/province subareas). Coverage is
+    // therefore built from admin_level=3 PH regions from the same PBF revision.
+    osmiumFilters: ["r/admin_level=3", "r/wikidata=Q928", "r/admin_level=2"],
+    includeNameMatchers: [/^philippines$/i, /^republika ng pilipinas$/i],
+    includeWikidata: new Set([
+      "Q928", // Philippines
+    ]),
+    excludeNameMatchers: [],
+    excludeWikidata: new Set(),
+    fallbackAdminLevels: new Set(["3"]),
+    requireIso3166PhPrefix: true,
+    minPolygons: 10,
+    coverageName: "philippines-coverage",
+    excludeLabels: [],
+    expectedLabel: "Philippines (Q928 via admin_level=3 regions)",
+  },
+};
 
 function parseArgs(argv: string[]) {
   let region = "uk-and-ireland";
@@ -84,86 +122,40 @@ function geometryAreaApprox(geom: Polygon | MultiPolygon): number {
   return area;
 }
 
-function shouldInclude(props: Record<string, unknown>): boolean {
+function shouldIncludeCountry(props: Record<string, unknown>, rules: CoverageRules): boolean {
   const name = String(props.name ?? props["name:en"] ?? "");
   const wd = String(props.wikidata ?? "");
-  if (EXCLUDE_WIKIDATA.has(wd)) return false;
-  if (EXCLUDE_NAME_MATCHERS.some((re) => re.test(name))) return false;
-  if (INCLUDE_WIKIDATA.has(wd)) return true;
-  if (INCLUDE_NAME_MATCHERS.some((re) => re.test(name))) return true;
+  if (rules.excludeWikidata.has(wd)) return false;
+  if (rules.excludeNameMatchers.some((re) => re.test(name))) return false;
+  if (rules.includeWikidata.has(wd)) return true;
+  if (rules.includeNameMatchers.some((re) => re.test(name))) return true;
   return false;
 }
 
-function main() {
-  const args = parseArgs(process.argv.slice(2));
-  const region = loadRegionConfig(args.region) as ReturnType<typeof loadRegionConfig> & {
-    source_pbf_dir?: string;
-    coverage_policy?: { polygons_path?: string };
-  };
+function isPhIso(props: Record<string, unknown>): boolean {
+  const iso = String(props["ISO3166-2"] ?? props.int_ref ?? "");
+  return /^PH-/i.test(iso);
+}
 
-  const pbfBase = path.join(
-    EXPLORE_PACKAGE_ROOT,
-    region.source_pbf_dir ?? "data/osm/geofabrik/britain-and-ireland"
-  );
-  const sourcePbf = args.pbf ? path.resolve(args.pbf) : findPinnedPbf(pbfBase);
-  console.log(`Source PBF: ${sourcePbf}`);
-
-  const workDir = path.join(EXPLORE_PACKAGE_ROOT, "data/osm/work/coverage");
-  fs.mkdirSync(workDir, { recursive: true });
-  const adminPbf = path.join(workDir, "admin-level-2.osm.pbf");
-  const exportGeojson = path.join(workDir, "admin-level-2.geojson");
-
-  // Relations with admin_level=2 + referenced members for polygon assembly.
-  runOsmium(
-    [
-      "tags-filter",
-      "-o",
-      adminPbf,
-      "--overwrite",
-      sourcePbf,
-      "r/admin_level=2",
-    ],
-    "tags-filter admin_level=2"
-  );
-
-  runOsmium(
-    [
-      "export",
-      "-f",
-      "geojson",
-      "--geometry-types=polygon",
-      "-o",
-      exportGeojson,
-      "--overwrite",
-      adminPbf,
-    ],
-    "export polygons"
-  );
-
-  const raw = JSON.parse(fs.readFileSync(exportGeojson, "utf8")) as FeatureCollection;
-  const candidates: Feature[] = [];
-  for (const f of raw.features) {
-    if (!f.geometry || (f.geometry.type !== "Polygon" && f.geometry.type !== "MultiPolygon")) {
-      continue;
-    }
-    const props = (f.properties ?? {}) as Record<string, unknown>;
-    if (String(props.admin_level ?? "") !== "2" && !props.wikidata) {
-      // still allow wikidata matches
-    }
-    if (!shouldInclude(props)) continue;
-    candidates.push({
-      type: "Feature",
-      properties: {
-        name: props.name ?? props["name:en"] ?? null,
-        wikidata: props.wikidata ?? null,
-        admin_level: props.admin_level ?? "2",
-        include: true,
-      },
-      geometry: f.geometry,
-    });
+function shouldIncludeFallback(props: Record<string, unknown>, rules: CoverageRules): boolean {
+  if (!rules.fallbackAdminLevels) return false;
+  const admin = String(props.admin_level ?? "");
+  if (!rules.fallbackAdminLevels.has(admin)) return false;
+  if (String(props.boundary ?? "") !== "administrative") return false;
+  const name = String(props.name ?? props["name:en"] ?? "");
+  const wd = String(props.wikidata ?? "");
+  if (!name || !wd) return false;
+  if (rules.requireIso3166PhPrefix) {
+    // Prefer PH ISO codes; allow named PH regions without ISO (e.g. Negros Island Region).
+    if (isPhIso(props)) return true;
+    const iso = String(props["ISO3166-2"] ?? props.int_ref ?? "");
+    if (iso && !/^PH-/i.test(iso)) return false;
+    return true;
   }
+  return true;
+}
 
-  // Deduplicate by wikidata/name keeping largest polygon
+function dedupeLargest(candidates: Feature[]): Feature[] {
   const byKey = new Map<string, Feature>();
   for (const f of candidates) {
     const p = f.properties as { wikidata?: string; name?: string };
@@ -177,16 +169,114 @@ function main() {
     const b = geometryAreaApprox(prev.geometry as Polygon | MultiPolygon);
     if (a > b) byKey.set(key, f);
   }
+  return [...byKey.values()];
+}
 
-  const features = [...byKey.values()];
-  if (features.length < 2) {
+function exportAdminPolygons(sourcePbf: string, workDir: string, filterExpr: string, stem: string) {
+  const adminPbf = path.join(workDir, `${stem}.osm.pbf`);
+  const exportGeojson = path.join(workDir, `${stem}.geojson`);
+  runOsmium(
+    ["tags-filter", "-o", adminPbf, "--overwrite", sourcePbf, filterExpr],
+    `tags-filter ${filterExpr}`
+  );
+  runOsmium(
+    [
+      "export",
+      "-f",
+      "geojson",
+      "--geometry-types=polygon",
+      "-o",
+      exportGeojson,
+      "--overwrite",
+      adminPbf,
+    ],
+    `export ${stem}`
+  );
+  return JSON.parse(fs.readFileSync(exportGeojson, "utf8")) as FeatureCollection;
+}
+
+function main() {
+  const args = parseArgs(process.argv.slice(2));
+  const rules = COVERAGE_BY_REGION[args.region];
+  if (!rules) {
     throw new Error(
-      `Expected UK + Ireland polygons, got ${features.length}. Check osmium admin extract.`
+      `No coverage extract rules for region "${args.region}". Add an entry in COVERAGE_BY_REGION or place catalogues/coverage/${args.region}.geojson manually.`
+    );
+  }
+
+  const region = loadRegionConfig(args.region) as ReturnType<typeof loadRegionConfig> & {
+    source_pbf_dir?: string;
+    coverage_policy?: { polygons_path?: string };
+  };
+
+  const pbfBase = path.join(
+    EXPLORE_PACKAGE_ROOT,
+    region.source_pbf_dir ?? `data/osm/geofabrik/${args.region}`
+  );
+  const sourcePbf = args.pbf ? path.resolve(args.pbf) : findPinnedPbf(pbfBase);
+  console.log(`Source PBF: ${sourcePbf}`);
+
+  const workDir = path.join(EXPLORE_PACKAGE_ROOT, "data/osm/work/coverage", args.region);
+  fs.mkdirSync(workDir, { recursive: true });
+
+  const countryCandidates: Feature[] = [];
+  const fallbackCandidates: Feature[] = [];
+
+  for (const [i, filterExpr] of rules.osmiumFilters.entries()) {
+    const raw = exportAdminPolygons(sourcePbf, workDir, filterExpr, `filter-${i}`);
+    for (const f of raw.features) {
+      if (!f.geometry || (f.geometry.type !== "Polygon" && f.geometry.type !== "MultiPolygon")) {
+        continue;
+      }
+      const props = (f.properties ?? {}) as Record<string, unknown>;
+      if (shouldIncludeCountry(props, rules)) {
+        countryCandidates.push({
+          type: "Feature",
+          properties: {
+            name: props.name ?? props["name:en"] ?? null,
+            wikidata: props.wikidata ?? null,
+            admin_level: props.admin_level ?? "2",
+            include: true,
+            coverage_role: "country",
+          },
+          geometry: f.geometry,
+        });
+      } else if (shouldIncludeFallback(props, rules)) {
+        fallbackCandidates.push({
+          type: "Feature",
+          properties: {
+            name: props.name ?? props["name:en"] ?? null,
+            wikidata: props.wikidata ?? null,
+            admin_level: props.admin_level ?? null,
+            iso3166_2: props["ISO3166-2"] ?? props.int_ref ?? null,
+            include: true,
+            coverage_role: "region_proxy_for_Q928",
+          },
+          geometry: f.geometry,
+        });
+      }
+    }
+  }
+
+  let features = dedupeLargest(countryCandidates);
+  let assembly = "country_admin_level_2";
+  if (features.length < rules.minPolygons && fallbackCandidates.length > 0) {
+    features = dedupeLargest(fallbackCandidates);
+    assembly = "admin_level_3_regions_proxy_for_Q928";
+    console.log(
+      `Country polygon did not assemble via osmium (${countryCandidates.length} matches). ` +
+        `Using ${features.length} admin_level=3 region polygons as Philippines (Q928) coverage.`
+    );
+  }
+
+  if (features.length < rules.minPolygons) {
+    throw new Error(
+      `Expected ${rules.expectedLabel} polygons (≥${rules.minPolygons}), got ${features.length}. Check osmium admin extract.`
     );
   }
 
   const outRel =
-    region.coverage_policy?.polygons_path ?? "catalogues/coverage/uk-and-ireland.geojson";
+    region.coverage_policy?.polygons_path ?? `catalogues/coverage/${args.region}.geojson`;
   const outPath = path.join(EXPLORE_PACKAGE_ROOT, outRel);
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
   fs.writeFileSync(
@@ -194,11 +284,13 @@ function main() {
     JSON.stringify(
       {
         type: "FeatureCollection",
-        name: "uk-and-ireland-coverage",
+        name: rules.coverageName,
         features,
         properties: {
           region_id: region.region_id,
-          exclude: ["Isle of Man", "Jersey", "Guernsey"],
+          ...(args.region === "philippines" ? { wikidata: "Q928" } : {}),
+          assembly,
+          exclude: rules.excludeLabels,
           attribution: "© OpenStreetMap contributors",
           licence: "ODbL 1.0",
           generated_at: new Date().toISOString(),
@@ -211,10 +303,10 @@ function main() {
   );
 
   console.log(`Wrote ${outPath}`);
-  console.log(`Polygons: ${features.length}`);
+  console.log(`Polygons: ${features.length} (assembly=${assembly})`);
   for (const f of features) {
-    const p = f.properties as { name?: string; wikidata?: string };
-    console.log(`  - ${p.name ?? "?"} (${p.wikidata ?? "no wd"})`);
+    const p = f.properties as { name?: string; wikidata?: string; iso3166_2?: string };
+    console.log(`  - ${p.name ?? "?"} (${p.wikidata ?? "no wd"}${p.iso3166_2 ? ` ${p.iso3166_2}` : ""})`);
   }
 }
 

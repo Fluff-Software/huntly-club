@@ -1,8 +1,11 @@
 /**
- * Activate national catalogue + retire Stoke (Step 10.5 — prepared, gated).
+ * Activate a national (or regional PBF) catalogue that is already ready.
  *
- * Refuses without --confirm-activate. Do NOT run during Step 10.5.
+ * UK: activate_explore_national_catalogue (also retires Stoke).
+ * Other regions (e.g. philippines): activate_explore_catalogue_version
+ *   (retires same region_id only; leaves Stoke alone).
  *
+ *   npm run activate:catalogue:national -- --region philippines --confirm-activate
  *   npm run activate:catalogue:national -- --region uk-and-ireland --confirm-activate
  */
 import path from "node:path";
@@ -32,7 +35,7 @@ export function parseActivateArgs(argv: string[]) {
 export function assertActivationConfirmed(confirmActivate: boolean): void {
   if (!confirmActivate) {
     throw new Error(
-      "Activation refused: pass --confirm-activate after Step 10.5 benchmarks and product approval."
+      "Activation refused: pass --confirm-activate after validation and product approval."
     );
   }
 }
@@ -47,7 +50,8 @@ async function main() {
     process.env.SUPABASE_DB_URL;
   if (!databaseUrl) throw new Error("Set EXPLORE_DATABASE_URL");
 
-  console.log(`Activation (national) database=${redactDatabaseUrl(databaseUrl)}`);
+  console.log(`Activation database=${redactDatabaseUrl(databaseUrl)}`);
+  console.log(`  region=${args.region}`);
 
   const client = new pg.Client({
     connectionString: databaseUrl,
@@ -66,14 +70,35 @@ async function main() {
          ORDER BY created_at DESC LIMIT 1`,
         [args.region]
       );
-      if (!r.rows[0]) throw new Error("No ready national catalogue version found");
+      if (!r.rows[0]) throw new Error(`No ready catalogue version found for ${args.region}`);
       versionId = Number(r.rows[0].id);
     }
-    const res = await client.query(
-      `SELECT activate_explore_national_catalogue($1::bigint, true) AS result`,
-      [versionId]
+    console.log(`  catalogue_version_id=${versionId}`);
+
+    if (args.region === NATIONAL_REGION_ID) {
+      const res = await client.query(
+        `SELECT activate_explore_national_catalogue($1::bigint, true) AS result`,
+        [versionId]
+      );
+      console.log(JSON.stringify(res.rows[0]?.result, null, 2));
+    } else {
+      const res = await client.query(
+        `SELECT activate_explore_catalogue_version($1::bigint) AS result`,
+        [versionId]
+      );
+      console.log(JSON.stringify(res.rows[0]?.result, null, 2));
+    }
+
+    const statuses = await client.query(
+      `SELECT region_id, id, status, point_count
+       FROM explore_point_catalogue_versions
+       WHERE region_id IN ($1, 'stoke-on-trent')
+         AND status IN ('active', 'ready', 'retired')
+       ORDER BY region_id, created_at DESC`,
+      [args.region]
     );
-    console.log(JSON.stringify(res.rows[0]?.result, null, 2));
+    console.log("Current catalogue statuses:");
+    console.log(JSON.stringify(statuses.rows, null, 2));
   } finally {
     await client.end().catch(() => undefined);
   }

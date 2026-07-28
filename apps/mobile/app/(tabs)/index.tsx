@@ -20,7 +20,7 @@ import AnimatedReanimated, {
   withTiming,
   Easing,
 } from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
@@ -109,6 +109,7 @@ function pickNextMission(
 
 export default function HomeScreen() {
   const { scaleW, width } = useLayoutScale();
+  const insets = useSafeAreaInsets();
   const { clubhouseActivityReady, requireClubhouseActivityReady, markClubhouseActivityReady } =
     useHomeBootstrap();
   const { profiles, loading: profilesLoading } = usePlayer();
@@ -338,7 +339,7 @@ export default function HomeScreen() {
         </View>
       ) : null}
       <SafeAreaView
-        edges={["top", "left", "right"]}
+        edges={["left", "right"]}
         style={[{ flex: 1 }, !clubhouseActivityReady && { opacity: 0 }]}
         pointerEvents={clubhouseActivityReady ? "auto" : "none"}
       >
@@ -360,7 +361,7 @@ export default function HomeScreen() {
             end={{ x: 1, y: 1 }}
             style={{
               paddingHorizontal: scaleW(24),
-              paddingTop: scaleW(20),
+              paddingTop: insets.top + scaleW(20),
               paddingBottom: scaleW(48),
               gap: scaleW(10),
               overflow: "hidden",

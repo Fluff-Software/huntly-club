@@ -134,8 +134,10 @@ export default function TabLayout() {
     };
   }, []);
 
+  const isOnActiveScavengerQuest = /\/scavenger\/quest\/[^/]+\/active$/.test(pathname);
+
   const showTabBar =
-    tabBarNavigationReady && (!user?.id || !profilesLoading);
+    tabBarNavigationReady && (!user?.id || !profilesLoading) && !isOnActiveScavengerQuest;
 
   // If user has no team set, send them to add explorers first, then team selection (matches AuthGuard)
   useEffect(() => {

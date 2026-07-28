@@ -7,7 +7,7 @@ import {
   Pressable,
   ImageBackground } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
@@ -24,6 +24,7 @@ const MISSIONS_BG = require("@/assets/images/missions-bg.jpg");
 
 export default function MissionsScreen() {
   const { scaleW } = useLayoutScale();
+  const insets = useSafeAreaInsets();
   const { profiles } = usePlayer();
   const { missions, completedActivityIds, loading, error, refetch } = useLatestMissions(null);
   const {
@@ -101,7 +102,7 @@ export default function MissionsScreen() {
         background: { flex: 1 },
         scrollContent: {
           flexGrow: 1,
-          paddingTop: scaleW(12),
+          paddingTop: insets.top + scaleW(12),
           paddingBottom: scaleW(32) },
         title: {
           fontSize: scaleW(24),
@@ -145,11 +146,11 @@ export default function MissionsScreen() {
           paddingVertical: scaleW(14),
           paddingHorizontal: scaleW(32) },
         emptyText: { fontSize: scaleW(16), color: "#FFF", textAlign: "center" as const, opacity: 0.9 } }),
-    [scaleW]
+    [scaleW, insets.top]
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+    <SafeAreaView style={styles.container} edges={["left", "right"]}>
       <ImageBackground source={MISSIONS_BG} style={styles.background} resizeMode="cover">
       <ScrollView
         ref={scrollRef}

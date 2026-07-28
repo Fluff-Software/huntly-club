@@ -1,7 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  BackHandler,
   FlatList,
   Modal,
   Pressable,
@@ -10,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
@@ -64,6 +67,7 @@ import {
 } from "@/utils/adventureSessionGuard";
 
 const PROFILE_KEY = "scavenger_selected_profile_id";
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function ScavengerActiveScreen() {
   const { questId, profileId: profileIdParam } = useLocalSearchParams<{
@@ -71,7 +75,7 @@ export default function ScavengerActiveScreen() {
     profileId?: string;
   }>();
   const router = useRouter();
-  const { scaleW } = useLayoutScale();
+  const { scaleW, width } = useLayoutScale();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { profiles } = usePlayer();
@@ -213,6 +217,40 @@ export default function ScavengerActiveScreen() {
     if (!hasMap && viewMode === "map") setViewMode("list");
   }, [hasMap, viewMode]);
 
+  // The hunt must be left via the "End" flow — block the hardware back button
+  // (Android) so players can't dodge that confirmation. Swipe-back is disabled
+  // via the Stack.Screen gestureEnabled option below.
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener("hardwareBackPress", () => true);
+      return () => sub.remove();
+    }, [])
+  );
+
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const sheetTranslateY = useRef(new Animated.Value(0)).current;
+  const detailVisible = !!selected && !triviaOpen;
+
+  useEffect(() => {
+    if (!detailVisible) return;
+    backdropOpacity.setValue(0);
+    sheetTranslateY.setValue(scaleW(48));
+    Animated.parallel([
+      Animated.timing(backdropOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.spring(sheetTranslateY, {
+        toValue: 0,
+        useNativeDriver: true,
+        damping: 20,
+        stiffness: 260,
+        mass: 0.9,
+      }),
+    ]).start();
+  }, [detailVisible, scaleW, backdropOpacity, sheetTranslateY]);
+
   const endSession = () => {
     if (!questId || !profileId || !quest) return;
     router.push(
@@ -306,12 +344,15 @@ export default function ScavengerActiveScreen() {
   };
 
   const numColumns = 2;
-  const tileSize = scaleW(156);
+  const gridPadding = scaleW(16);
+  const gridGap = scaleW(14);
+  const tileSize = (width - gridPadding * 2 - gridGap * (numColumns - 1)) / numColumns;
+  const tileImageHeight = tileSize * (118 / 156);
 
   return (
     <>
       <StatusBar style="light" />
-      <Stack.Screen options={{ headerShown: false }} />
+      <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
       <SafeAreaView style={styles.safe} edges={["left", "right"]}>
         <LinearGradient
           colors={SCAVENGER_HEADER_GRADIENT}
@@ -386,13 +427,13 @@ export default function ScavengerActiveScreen() {
             numColumns={numColumns}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{
-              padding: scaleW(12),
+              paddingHorizontal: gridPadding,
+              paddingTop: scaleW(24),
               paddingBottom: insets.bottom + scaleW(hasMap ? 88 : 24),
-              gap: scaleW(12),
+              gap: gridGap,
             }}
             columnWrapperStyle={{
-              justifyContent: "center",
-              gap: scaleW(12),
+              gap: gridGap,
             }}
             renderItem={({ item }) => {
               const isFound = foundIds.has(item.id);
@@ -415,9 +456,9 @@ export default function ScavengerActiveScreen() {
                     <View>
                       <ScavengerImage
                         uri={item.image_url}
-                        style={{ width: "100%", height: scaleW(118) }}
+                        style={{ width: "100%", height: tileImageHeight }}
                         fallback={
-                          <View style={{ height: scaleW(118), backgroundColor: "#D7E4D7", alignItems: "center", justifyContent: "center" }}>
+                          <View style={{ height: tileImageHeight, backgroundColor: "#D7E4D7", alignItems: "center", justifyContent: "center" }}>
                             <MaterialIcons name="image" size={scaleW(28)} color={SCAVENGER_GREEN} />
                           </View>
                         }
@@ -465,10 +506,19 @@ export default function ScavengerActiveScreen() {
         ) : null}
       </SafeAreaView>
 
-      <Modal visible={!!selected && !triviaOpen} transparent animationType="fade" onRequestClose={() => setSelected(null)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setSelected(null)}>
-          <Pressable
-            style={[styles.sheet, { padding: scaleW(20), paddingBottom: insets.bottom + scaleW(20), borderTopLeftRadius: scaleW(28), borderTopRightRadius: scaleW(28) }]}
+      <Modal visible={detailVisible} transparent animationType="none" onRequestClose={() => setSelected(null)}>
+        <AnimatedPressable style={[styles.modalBackdrop, { opacity: backdropOpacity }]} onPress={() => setSelected(null)}>
+          <AnimatedPressable
+            style={[
+              styles.sheet,
+              {
+                padding: scaleW(20),
+                paddingBottom: insets.bottom + scaleW(20),
+                borderTopLeftRadius: scaleW(28),
+                borderTopRightRadius: scaleW(28),
+                transform: [{ translateY: sheetTranslateY }],
+              },
+            ]}
             onPress={(e) => e.stopPropagation()}
           >
             <View style={[styles.grabber, { width: scaleW(44), height: scaleW(5), borderRadius: scaleW(3), marginBottom: scaleW(14) }]} />
@@ -560,8 +610,8 @@ export default function ScavengerActiveScreen() {
                 </Pressable>
               </>
             )}
-          </Pressable>
-        </Pressable>
+          </AnimatedPressable>
+        </AnimatedPressable>
       </Modal>
 
       <Modal visible={triviaOpen} transparent animationType="fade" onRequestClose={() => setTriviaOpen(false)}>

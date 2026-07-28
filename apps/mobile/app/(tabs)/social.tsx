@@ -9,7 +9,7 @@ import {
   Animated,
   Easing,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
 import { BaseLayout } from "@/components/layout/BaseLayout";
 import { ThemedText } from "@/components/ThemedText";
@@ -60,6 +60,7 @@ function mapAchievementsToItems(achievements: { id: number; profile_name: string
 
 export default function SocialScreen() {
   const { scaleW } = useLayoutScale();
+  const insets = useSafeAreaInsets();
   const { teamId } = useUser();
   const [teamAchievements, setTeamAchievements] = useState<Awaited<ReturnType<typeof getTeamAchievements>>>([]);
   const [teamAchievementTotals, setTeamAchievementTotals] = useState<Record<number, number>>({});
@@ -219,7 +220,7 @@ export default function SocialScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#F3F5F0" }} edges={["top", "left", "right"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#F3F5F0" }} edges={["left", "right"]}>
       <ScrollView
         ref={scrollRef}
         style={{ flex: 1 }}
@@ -234,7 +235,7 @@ export default function SocialScreen() {
         <View style={{
           backgroundColor: teamCardConfig.backgroundColor,
           overflow: "hidden",
-          minHeight: scaleW(200) }}>
+          minHeight: insets.top + scaleW(200) }}>
           <Image
             source={teamCardConfig.bgImage}
             resizeMode="cover"
@@ -245,7 +246,7 @@ export default function SocialScreen() {
             resizeMode="contain"
             style={{ position: "absolute", bottom: 0, right: scaleW(-8), width: scaleW(180), height: scaleW(220) }}
           />
-          <View style={{ padding: scaleW(20), paddingRight: scaleW(160), paddingTop: scaleW(28), gap: scaleW(12) }}>
+          <View style={{ padding: scaleW(20), paddingRight: scaleW(160), paddingTop: insets.top + scaleW(28), gap: scaleW(12) }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: scaleW(10) }}>
               <Image source={teamCardConfig.badgeImage} resizeMode="contain" style={{ width: scaleW(44), height: scaleW(44) }} />
               <View>

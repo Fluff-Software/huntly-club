@@ -280,7 +280,7 @@ export default function ScavengerQuestOverviewScreen() {
             </>
           ) : (
             <>
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: scaleW(140) }}>
+              <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
                 <View style={{ height: quest.cover_image_url ? scaleW(240) : insets.top + scaleW(64) }}>
                   {quest.cover_image_url ? (
                     <>
@@ -317,9 +317,11 @@ export default function ScavengerQuestOverviewScreen() {
 
                 <View
                   style={{
+                    flex: 1,
                     marginTop: quest.cover_image_url ? scaleW(-24) : 0,
                     paddingHorizontal: scaleW(20),
                     paddingTop: scaleW(22),
+                    paddingBottom: scaleW(140),
                     borderTopLeftRadius: scaleW(28),
                     borderTopRightRadius: scaleW(28),
                     backgroundColor: panelColor,
@@ -493,12 +495,6 @@ export default function ScavengerQuestOverviewScreen() {
                   },
                 ]}
               >
-                {!hasCustomBackground && (
-                  <LinearGradient
-                    colors={["transparent", "rgba(20,37,26,0.9)"]}
-                    style={StyleSheet.absoluteFill}
-                  />
-                )}
                 <Pressable
                   onPress={start}
                   disabled={starting || restarting || !unlocked}

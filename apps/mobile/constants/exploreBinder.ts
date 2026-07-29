@@ -5,8 +5,8 @@ export type ExploreCardRarity = "common" | "uncommon" | "rare" | "very_rare" | s
 export const EXPLORE_RARITY_COLORS: Record<string, string> = {
   common: "#3B82F6",
   uncommon: "#2D8A4E",
-  rare: "#7C5CFF",
-  very_rare: "#9B4FD1",
+  rare: "#9B4FD1",
+  very_rare: "#C4851A",
 };
 
 /** Native card art pixel size (explore-card-bg.png). */

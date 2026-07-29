@@ -1,7 +1,7 @@
 /**
  * Two-sided Explore card with perspective flip.
  * Unlock: starts on the back, auto-spins to the front.
- * Binder detail: drag / tap to spin.
+ * Binder detail: optional entrance twist, then drag / tap to spin.
  */
 import React, { useCallback, useEffect } from "react";
 import { Image, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
@@ -11,6 +11,7 @@ import Animated, {
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
+  withSequence,
   withSpring,
   withTiming,
 } from "react-native-reanimated";
@@ -18,6 +19,11 @@ import * as Haptics from "expo-haptics";
 
 const CARD_BACK = require("@/assets/images/explore-card-back.png");
 const DEFAULT_INNER_BORDER = "#3B82F6";
+/** Front-facing rest angle for binder / after flip. */
+const FRONT_SPIN = 180;
+/** Binder entrance: twist past flat one way, then the other, then settle. */
+const TWIST_A = FRONT_SPIN + 14;
+const TWIST_B = FRONT_SPIN - 11;
 
 type Props = {
   children: React.ReactNode;
@@ -25,6 +31,11 @@ type Props = {
   autoFlip?: boolean;
   /** Allow horizontal drag / tap to spin the card. */
   interactive?: boolean;
+  /**
+   * Binder open: swing the card faces into place (real rotateY on the card).
+   * Ignored when autoFlip is on.
+   */
+  entranceTwist?: boolean;
   /** Delay before auto-flip begins (ms). Pack reveal holds longer for suspense. */
   autoFlipDelayMs?: number;
   /** Duration of the back→front spin (ms). */
@@ -39,16 +50,21 @@ export function ExploreCardFlip({
   children,
   autoFlip = false,
   interactive = false,
+  entranceTwist = false,
   autoFlipDelayMs = 480,
   autoFlipDurationMs = 920,
   borderColor = DEFAULT_INNER_BORDER,
   style,
   onFlipComplete,
 }: Props) {
+  const startSpin = autoFlip ? 0 : FRONT_SPIN;
+
   /** 0 = back facing camera, 180 = front facing camera. */
-  const spin = useSharedValue(autoFlip ? 0 : 180);
-  const dragStart = useSharedValue(autoFlip ? 0 : 180);
-  const canInteract = useSharedValue(interactive && !autoFlip);
+  const spin = useSharedValue(startSpin);
+  const dragStart = useSharedValue(startSpin);
+  const canInteract = useSharedValue(interactive && !autoFlip && !entranceTwist);
+  /** Soft scale settle only — never rotateY the stage (shows as black slabs). */
+  const entrance = useSharedValue(entranceTwist && !autoFlip ? 0 : 1);
 
   const lightHaptic = useCallback(() => {
     void Haptics.selectionAsync();
@@ -63,19 +79,60 @@ export function ExploreCardFlip({
   }, [canInteract, interactive]);
 
   useEffect(() => {
-    canInteract.value = interactive && !autoFlip;
-  }, [autoFlip, canInteract, interactive]);
+    canInteract.value = interactive && !autoFlip && !entranceTwist;
+  }, [autoFlip, canInteract, entranceTwist, interactive]);
+
+  useEffect(() => {
+    if (!entranceTwist || autoFlip) {
+      entrance.value = 1;
+      return;
+    }
+    entrance.value = 0;
+    spin.value = FRONT_SPIN;
+    dragStart.value = FRONT_SPIN;
+    mediumHaptic();
+    entrance.value = withSpring(1, { damping: 16, stiffness: 140, mass: 0.85 });
+    // Twist one way → the other → settle flat.
+    spin.value = withSequence(
+      withTiming(TWIST_A, {
+        duration: 280,
+        easing: Easing.out(Easing.cubic),
+      }),
+      withTiming(TWIST_B, {
+        duration: 340,
+        easing: Easing.inOut(Easing.cubic),
+      }),
+      withSpring(
+        FRONT_SPIN,
+        { damping: 18, stiffness: 140, mass: 0.85 },
+        (finished) => {
+          if (finished) {
+            dragStart.value = FRONT_SPIN;
+            runOnJS(markInteractive)();
+          }
+        }
+      )
+    );
+  }, [
+    autoFlip,
+    dragStart,
+    entrance,
+    entranceTwist,
+    markInteractive,
+    mediumHaptic,
+    spin,
+  ]);
 
   useEffect(() => {
     if (!autoFlip) {
-      spin.value = 180;
+      if (!entranceTwist) spin.value = FRONT_SPIN;
       return;
     }
     spin.value = 0;
     const t = setTimeout(() => {
       mediumHaptic();
       spin.value = withTiming(
-        180,
+        FRONT_SPIN,
         { duration: autoFlipDurationMs, easing: Easing.inOut(Easing.cubic) },
         (finished) => {
           if (finished) {
@@ -90,6 +147,7 @@ export function ExploreCardFlip({
     autoFlip,
     autoFlipDelayMs,
     autoFlipDurationMs,
+    entranceTwist,
     markInteractive,
     mediumHaptic,
     onFlipComplete,
@@ -130,6 +188,14 @@ export function ExploreCardFlip({
 
   const gesture = Gesture.Exclusive(pan, tap);
 
+  const stageStyle = useAnimatedStyle(() => {
+    const t = entrance.value;
+    return {
+      opacity: 0.75 + 0.25 * t,
+      transform: [{ scale: 0.96 + 0.04 * t }],
+    };
+  });
+
   const backStyle = useAnimatedStyle(() => ({
     transform: [{ perspective: 1200 }, { rotateY: `${spin.value}deg` }],
   }));
@@ -139,7 +205,7 @@ export function ExploreCardFlip({
   }));
 
   const content = (
-    <Animated.View style={[styles.stage, style]}>
+    <Animated.View style={[styles.stage, style, stageStyle]}>
       <Animated.View pointerEvents="none" style={[styles.face, backStyle]}>
         <Image
           source={CARD_BACK}

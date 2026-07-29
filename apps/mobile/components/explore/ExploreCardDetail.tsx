@@ -55,6 +55,7 @@ export function ExploreCardDetail({ card, onClose }: Props) {
           <ExploreCardFlip
             key={`${card.id}-${collected ? "in" : "out"}`}
             interactive={collected}
+            entranceTwist
             borderColor={
               collected
                 ? EXPLORE_RARITY_COLORS[card.rarity] ?? "#3B82F6"

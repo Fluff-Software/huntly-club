@@ -28,6 +28,7 @@ import { CampfireTile } from "@/components/CampfireTile";
 import { CaptainQuoteCard } from "@/components/CaptainQuoteCard";
 import { TeamRaceCard } from "@/components/clubhouse/TeamRaceCard";
 import { ThingsToDoRow } from "@/components/clubhouse/ThingsToDoRow";
+import { ExplorePromoCard } from "@/components/clubhouse/ExplorePromoCard";
 import { AdventureTile } from "@/components/AdventureTile";
 import { PastAdventuresTile } from "@/components/PastAdventuresTile";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
@@ -589,6 +590,8 @@ export default function HomeScreen() {
                 </Pressable>
                 </View>
               ) : null}
+
+              <ExplorePromoCard />
 
               <ThingsToDoRow />
 

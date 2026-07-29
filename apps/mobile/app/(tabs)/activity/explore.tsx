@@ -23,6 +23,8 @@ import {
 } from "@/components/activity-map";
 import { ExploreCardPackReveal } from "@/components/explore/ExploreCardPackReveal";
 import { ExploreSafetyWarning } from "@/components/explore/ExploreSafetyWarning";
+import { LocationPermissionModal } from "@/components/explore/LocationPermissionModal";
+import { openLocationSettings } from "@/services/locationService";
 import {
   EXPLORE_CLAIM_RADIUS_METRES,
   EXPLORE_DEV_GPS_PRESETS,
@@ -85,23 +87,6 @@ type PackSession = {
   profileId: number;
 };
 
-/** DEV-only mock award so we can preview the NEW seal without claiming a stop. */
-const DEV_NEW_REVEAL_AWARD: ExploreAward = {
-  card: {
-    id: "dev-preview-tawny-owl",
-    slug: "tawny-owl",
-    name: "Tawny Owl",
-    description:
-      "A soft-feathered night hunter with big dark eyes. By day it rests in trees; by night it listens carefully for tiny rustles below.",
-    category: "animal",
-    rarity: "rare",
-    imageUrl:
-      "https://mkdrlicbqusfuldtpmtr.supabase.co/storage/v1/object/public/explore-card-images/explore-cards/tawny-owl.jpg",
-  },
-  isNew: true,
-  count: 1,
-  matchedEnvironments: ["woodland"],
-};
 
 function newIdempotencyKey(): string {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
@@ -175,11 +160,13 @@ export default function ExploreScreen() {
   const [claimError, setClaimError] = useState<string | null>(null);
   const [packSession, setPackSession] = useState<PackSession | null>(null);
   /** DEV: preview pack reveal (NEW seal) without a real claim. */
-  const [devRevealPreview, setDevRevealPreview] = useState(false);
+
   const [claimedIds, setClaimedIds] = useState<Set<string>>(new Set());
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null);
   /** Safety gate — must accept before using the map (Pokémon GO–style). */
   const [safetyAccepted, setSafetyAccepted] = useState(false);
+  const [locationModalVisible, setLocationModalVisible] = useState(false);
+  const [locationModalRequesting, setLocationModalRequesting] = useState(false);
   /** DEV: freeze GPS and report spoofed coords for claim testing. */
   const debugSpoofRef = useRef(false);
   const [debugSpoofActive, setDebugSpoofActive] = useState(false);
@@ -292,6 +279,7 @@ export default function ExploreScreen() {
       const permission = await Location.requestForegroundPermissionsAsync();
       if (permission.status !== "granted") {
         setLoc({ status: "denied" });
+        setLocationModalVisible(true);
         return;
       }
       const position = await Location.getCurrentPositionAsync({
@@ -310,6 +298,21 @@ export default function ExploreScreen() {
       });
     }
   }, []);
+
+  const handleLocationModalEnable = useCallback(async () => {
+    if (loc.status === "denied") {
+      openLocationSettings();
+      setLocationModalVisible(false);
+      return;
+    }
+    setLocationModalRequesting(true);
+    try {
+      await requestLocation();
+      setLocationModalVisible(false);
+    } finally {
+      setLocationModalRequesting(false);
+    }
+  }, [loc.status, requestLocation]);
 
   const fetchStops = useCallback(
     async (
@@ -664,7 +667,7 @@ export default function ExploreScreen() {
 
   const closePack = useCallback(() => {
     setPackSession(null);
-    setDevRevealPreview(false);
+
   }, []);
 
   const alreadyClaimed = selected ? claimedIds.has(selected.stopId) : false;
@@ -688,6 +691,8 @@ export default function ExploreScreen() {
           markers={markers}
           minZoomLevel={minZoomLevel}
           maxZoomLevel={18}
+          rotateEnabled={false}
+          pitchEnabled={false}
           onRegionChange={onMapRegionChange}
           onMarkerPress={(id: string) => setSelectedId(id)}
         />
@@ -737,7 +742,7 @@ export default function ExploreScreen() {
           </Pressable>
         </View>
 
-        {__DEV__ ? (
+        {false && __DEV__ ? (
           <View style={[styles.devPresetBar, { top: insets.top + 60 }]}>
             <Pressable
               onPress={() => spoofToPreset("philippines")}
@@ -766,20 +771,6 @@ export default function ExploreScreen() {
                 </ThemedText>
               </Pressable>
             ) : null}
-            <Pressable
-              onPress={() => {
-                if (packSession) return;
-                setDevRevealPreview(true);
-              }}
-              style={styles.devBtn}
-              accessibilityRole="button"
-              accessibilityLabel="Preview new card pack reveal"
-            >
-              <MaterialIcons name="auto-awesome" size={16} color="#FFE08A" />
-              <ThemedText lightColor="#FFE08A" darkColor="#FFE08A" style={styles.devBtnText}>
-                DEV: New reveal
-              </ThemedText>
-            </Pressable>
           </View>
         ) : null}
 
@@ -800,25 +791,13 @@ export default function ExploreScreen() {
           <MaterialIcons name="my-location" size={22} color="#FFF" />
         </Pressable>
 
-        {loc.status === "denied" || loc.status === "unavailable" ? (
-          <View
-            style={[
-              styles.banner,
-              { top: insets.top + (__DEV__ ? 112 : 64) },
-            ]}
-          >
-            <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.bannerText}>
-              {loc.status === "denied"
-                ? "Location permission is needed to find nearby Explore spots."
-                : loc.message}
-            </ThemedText>
-            <Pressable onPress={() => void requestLocation()} style={styles.bannerBtn}>
-              <ThemedText lightColor="#FFF" darkColor="#FFF" style={{ fontWeight: "800" }}>
-                Try again
-              </ThemedText>
-            </Pressable>
-          </View>
-        ) : null}
+        <LocationPermissionModal
+          visible={locationModalVisible}
+          permissionStatus={loc.status === "denied" ? "denied" : "undetermined"}
+          requesting={locationModalRequesting}
+          onEnable={() => void handleLocationModalEnable()}
+          onDismiss={() => setLocationModalVisible(false)}
+        />
 
         {error && !selected && !showEmptyPanel ? (
           <View
@@ -967,18 +946,10 @@ export default function ExploreScreen() {
           </View>
         ) : null}
 
-        {packSession || devRevealPreview ? (
+        {packSession ? (
           <ExploreCardPackReveal
             visible
-            onRipComplete={
-              packSession
-                ? commitPackClaim
-                : async () => {
-                    // Small delay so the tear → claim beat still feels real.
-                    await new Promise((r) => setTimeout(r, 280));
-                    return DEV_NEW_REVEAL_AWARD;
-                  }
-            }
+            onRipComplete={commitPackClaim}
             onClose={() => {
               closePack();
             }}

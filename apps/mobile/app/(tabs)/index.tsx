@@ -52,6 +52,8 @@ import {
   prefetchTeamCardAssets,
 } from "@/utils/homeActivityPreload";
 import type { ImageSourcePropType } from "react-native";
+import { getLocationPermissionStatus, requestLocationPermission, openLocationSettings } from "@/services/locationService";
+import { LocationPermissionModal } from "@/components/explore/LocationPermissionModal";
 
 const CREAM = "#FFF8DC";
 const HUNTLY_GREEN = "#4F6F52";
@@ -137,6 +139,9 @@ export default function HomeScreen() {
   const [campfireTileReady, setCampfireTileReady] = useState(false);
   const hasRevealedActivityTilesRef = useRef(false);
   const isTutorialActive = useTutorialActive();
+  const [locationPermission, setLocationPermission] = useState<"loading" | "granted" | "denied" | "undetermined">("loading");
+  const [locationModalVisible, setLocationModalVisible] = useState(false);
+  const [locationRequesting, setLocationRequesting] = useState(false);
   const teamCardConfig = team ? getTeamCardConfig(team.name) : null;
 
   useEffect(() => {
@@ -290,8 +295,32 @@ export default function HomeScreen() {
         refreshHomeData();
       }
       scrollRef.current?.scrollTo({ y: 0, animated: false });
+      // Re-check location permission each time screen focuses.
+      getLocationPermissionStatus().then((status) => {
+        setLocationPermission(status);
+        if (status !== "granted") {
+          setLocationModalVisible(true);
+        }
+      });
     }, [isTutorialActive, refreshHomeData])
   );
+
+  const handleLocationRequest = useCallback(async () => {
+    if (locationRequesting) return;
+    if (locationPermission === "denied") {
+      openLocationSettings();
+      setLocationModalVisible(false);
+      return;
+    }
+    setLocationRequesting(true);
+    try {
+      const result = await requestLocationPermission();
+      setLocationPermission(result);
+      if (result === "granted") setLocationModalVisible(false);
+    } finally {
+      setLocationRequesting(false);
+    }
+  }, [locationRequesting, locationPermission]);
 
   useRefreshWhenTutorialEnds(refreshHomeData);
 
@@ -643,6 +672,16 @@ export default function HomeScreen() {
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      {locationPermission !== "loading" && locationPermission !== "granted" && (
+        <LocationPermissionModal
+          visible={locationModalVisible}
+          permissionStatus={locationPermission}
+          requesting={locationRequesting}
+          onEnable={handleLocationRequest}
+          onDismiss={() => setLocationModalVisible(false)}
+        />
+      )}
     </View>
   );
 }

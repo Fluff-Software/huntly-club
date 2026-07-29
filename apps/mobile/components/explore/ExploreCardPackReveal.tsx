@@ -23,7 +23,6 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-import { DeviceMotion } from "expo-sensors";
 import * as Haptics from "expo-haptics";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -34,7 +33,6 @@ import {
   ExplorePackTear,
   packTearStyles,
 } from "@/components/explore/ExplorePackTear";
-import { usePackRipSound } from "@/components/explore/usePackRipSound";
 import { EXPLORE_CARD_ART_ASPECT, EXPLORE_RARITY_COLORS } from "@/constants/exploreBinder";
 import type { ExploreAward } from "@/types/exploreStops";
 
@@ -60,7 +58,7 @@ function rarityRevealProfile(rarity: string): {
   switch (rarity) {
     case "very_rare":
       return {
-        auraPeak: 0.72,
+        auraPeak: 0.32,
         auraIn: 260,
         auraOut: 720,
         cardY: 150,
@@ -72,7 +70,7 @@ function rarityRevealProfile(rarity: string): {
       };
     case "rare":
       return {
-        auraPeak: 0.55,
+        auraPeak: 0.26,
         auraIn: 220,
         auraOut: 540,
         cardY: 135,
@@ -84,7 +82,7 @@ function rarityRevealProfile(rarity: string): {
       };
     case "uncommon":
       return {
-        auraPeak: 0.45,
+        auraPeak: 0.22,
         auraIn: 190,
         auraOut: 460,
         cardY: 125,
@@ -96,7 +94,7 @@ function rarityRevealProfile(rarity: string): {
       };
     default:
       return {
-        auraPeak: 0.36,
+        auraPeak: 0.18,
         auraIn: 160,
         auraOut: 380,
         cardY: 120,
@@ -126,10 +124,6 @@ const ACCENT = "#B8F000";
 const NEW_GOLD = "#E4C56A";
 const NEW_GOLD_SOFT = "#F3E2A8";
 
-function clamp(n: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, n));
-}
-
 export function ExploreCardPackReveal({
   visible,
   onRipComplete,
@@ -147,7 +141,6 @@ export function ExploreCardPackReveal({
   const [showNewBadge, setShowNewBadge] = useState(false);
   const claimStartedRef = useRef(false);
   const awardRef = useRef<ExploreAward | null>(null);
-  const { playRip, stopRip } = usePackRipSound();
 
   awardRef.current = award;
 
@@ -164,8 +157,6 @@ export function ExploreCardPackReveal({
 
   const packScale = useSharedValue(0.4);
   const packOpacity = useSharedValue(0);
-  const tiltX = useSharedValue(0);
-  const tiltY = useSharedValue(0);
   const idleBob = useSharedValue(0);
   /** 0 = sealed, 1 = pack torn open. */
   const openProgress = useSharedValue(0);
@@ -185,8 +176,6 @@ export function ExploreCardPackReveal({
     cancelAnimation(auraOpacity);
     packScale.value = 0.4;
     packOpacity.value = 0;
-    tiltX.value = 0;
-    tiltY.value = 0;
     idleBob.value = 0;
     openProgress.value = 0;
     foilOpacity.value = 1;
@@ -198,7 +187,6 @@ export function ExploreCardPackReveal({
     ripArmed.value = 0;
     auraOpacity.value = 0;
     claimStartedRef.current = false;
-    stopRip();
     setAward(null);
     setClaimError(null);
     setPackMounted(true);
@@ -207,8 +195,6 @@ export function ExploreCardPackReveal({
   }, [
     packScale,
     packOpacity,
-    tiltX,
-    tiltY,
     idleBob,
     openProgress,
     foilOpacity,
@@ -219,7 +205,6 @@ export function ExploreCardPackReveal({
     newBadgeScale,
     ripArmed,
     auraOpacity,
-    stopRip,
   ]);
 
   useEffect(() => {
@@ -242,28 +227,6 @@ export function ExploreCardPackReveal({
     );
     return () => clearTimeout(readyTimer);
   }, [visible, reset, packOpacity, packScale, idleBob]);
-
-  useEffect(() => {
-    if (!visible || (phase !== "ready" && phase !== "ripping")) return;
-    let sub: { remove: () => void } | null = null;
-    let active = true;
-    void (async () => {
-      const available = await DeviceMotion.isAvailableAsync();
-      if (!available || !active) return;
-      DeviceMotion.setUpdateInterval(40);
-      sub = DeviceMotion.addListener((data) => {
-        if (!active) return;
-        const beta = data.rotation?.beta ?? 0;
-        const gamma = data.rotation?.gamma ?? 0;
-        tiltX.value = clamp(gamma * (180 / Math.PI) * 0.4, -9, 9);
-        tiltY.value = clamp(beta * (180 / Math.PI) * 0.25, -7, 7);
-      });
-    })();
-    return () => {
-      active = false;
-      sub?.remove();
-    };
-  }, [visible, phase, tiltX, tiltY]);
 
   const playReveal = useCallback(
     (nextAward: ExploreAward) => {
@@ -368,7 +331,6 @@ export function ExploreCardPackReveal({
           ripArmed.value = 0;
           runOnJS(setPhase)("ripping");
           runOnJS(selectionHaptic)();
-          runOnJS(playRip)();
         })
         .onUpdate((e) => {
           // Prefer L→R so the tear advances with the finger across the seal.
@@ -396,11 +358,10 @@ export function ExploreCardPackReveal({
           } else {
             openProgress.value = withSpring(0, { damping: 16, stiffness: 180 });
             ripArmed.value = 0;
-            runOnJS(stopRip)();
             runOnJS(setPhase)("ready");
           }
         }),
-    [phase, openProgress, finishRipAndClaim, selectionHaptic, lightHaptic, mediumRipHaptic, playRip, stopRip, ripArmed]
+    [phase, openProgress, finishRipAndClaim, selectionHaptic, lightHaptic, mediumRipHaptic, ripArmed]
   );
 
   const handleDismiss = useCallback(() => {
@@ -412,8 +373,6 @@ export function ExploreCardPackReveal({
     transform: [
       { perspective: 900 },
       { translateY: idleBob.value },
-      { rotateY: `${tiltX.value}deg` },
-      { rotateX: `${-tiltY.value}deg` },
       { scale: packScale.value },
     ],
   }));
@@ -479,13 +438,6 @@ export function ExploreCardPackReveal({
           ]}
           pointerEvents="box-none"
         >
-          {/* Soft glow behind the rising card (no spin / no empty dark beat). */}
-          {phase === "reveal" && award ? (
-            <Animated.View
-              pointerEvents="none"
-              style={[styles.auraOuter, { backgroundColor: rarityColor }, auraStyle]}
-            />
-          ) : null}
 
           {/* Card sits BEHIND the pack and slides up after the rip. */}
           {phase === "reveal" && award ? (
@@ -516,6 +468,10 @@ export function ExploreCardPackReveal({
                 )
               ) : null}
               <View style={[styles.revealCard, { width: cardWidth, height: cardHeight }]}>
+                <Animated.View
+                  pointerEvents="none"
+                  style={[styles.cardGlow, { backgroundColor: rarityColor }, auraStyle]}
+                />
                 <ExploreCardFlip
                   autoFlip
                   autoFlipDelayMs={revealProfile.flipHoldMs}
@@ -690,6 +646,15 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(228, 197, 106, 0.45)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 8,
+  },
+  cardGlow: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    borderRadius: 999,
+    zIndex: 0,
   },
   auraOuter: {
     position: "absolute",

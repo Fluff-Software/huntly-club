@@ -21,7 +21,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUser } from "@/contexts/UserContext";
 // import { useSignUpOptional } from "@/contexts/SignUpContext";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { useNavigationReturn } from "@/contexts/NavigationReturnContext";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -33,6 +33,11 @@ import {
   canCancelRemovalRequest,
   sendAccountRemovalNotification } from "@/services/accountRemovalService";
 import { getPushEnabled, setPushEnabled } from "@/services/pushNotificationService";
+import {
+  getLocationPermissionStatus,
+  requestLocationPermission,
+  openLocationSettings,
+} from "@/services/locationService";
 
 const COLORS = {
   darkGreen: "#4F6F52",
@@ -58,6 +63,11 @@ export default function SettingsScreen() {
   const [pushNotifications, setPushNotifications] = useState(false);
   const [pushNotificationsLoading, setPushNotificationsLoading] = useState(true);
   const [pushNotificationsToggling, setPushNotificationsToggling] = useState(false);
+  const [locationPermission, setLocationPermission] = useState<"granted" | "denied" | "undetermined" | "loading">("loading");
+  const [locationToggling, setLocationToggling] = useState(false);
+  const locationScale = useSharedValue(1);
+  const locationAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: locationScale.value }] }));
   const [showRemovalModal, setShowRemovalModal] = useState(false);
   const [removalReason, setRemovalReason] = useState("");
   const [removalSubmitting, setRemovalSubmitting] = useState(false);
@@ -116,6 +126,44 @@ export default function SettingsScreen() {
       setPushNotificationsLoading(false);
     });
   }, [user?.id]);
+
+  useEffect(() => {
+    getLocationPermissionStatus().then((status) => {
+      setLocationPermission(status);
+    });
+  }, []);
+
+  const handleLocationToggle = async () => {
+    if (locationToggling) return;
+    if (locationPermission === "granted") {
+      // Can't revoke programmatically — send to settings.
+      openLocationSettings();
+      return;
+    }
+    if (locationPermission === "denied") {
+      // Already permanently denied — must go to settings.
+      openLocationSettings();
+      return;
+    }
+    setLocationToggling(true);
+    try {
+      const result = await requestLocationPermission();
+      setLocationPermission(result);
+    } finally {
+      setLocationToggling(false);
+    }
+  };
+
+  const refreshLocationStatus = async () => {
+    const status = await getLocationPermissionStatus();
+    setLocationPermission(status);
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      void refreshLocationStatus();
+    }, [])
+  );
 
   const handlePushToggle = async () => {
     if (pushNotificationsToggling) return;
@@ -467,6 +515,39 @@ export default function SettingsScreen() {
                       size={scaleW(18)}
                       color={COLORS.darkGreen}
                     />
+                  ) : null}
+                </View>
+              )}
+            </Pressable>
+          </Animated.View>
+          <Animated.View style={locationAnimatedStyle}>
+            <Pressable
+              style={styles.prefRow}
+              onPress={handleLocationToggle}
+              disabled={locationToggling || locationPermission === "loading"}
+              onPressIn={() => {
+                locationScale.value = withSpring(0.98, { damping: 15, stiffness: 400 });
+              }}
+              onPressOut={() => {
+                locationScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+              }}
+            >
+              <View style={{ flex: 1 }}>
+                <ThemedText style={styles.prefLabel}>Location</ThemedText>
+                <ThemedText style={[styles.prefLabel, { fontSize: scaleW(12), opacity: 0.7, marginTop: scaleW(2) }]}>
+                  {locationPermission === "denied"
+                    ? "Tap to open device settings"
+                    : locationPermission === "granted"
+                    ? "Tap to manage in device settings"
+                    : "Used for nearby adventures and outdoor features"}
+                </ThemedText>
+              </View>
+              {locationToggling || locationPermission === "loading" ? (
+                <ActivityIndicator size="small" color={COLORS.darkGreen} />
+              ) : (
+                <View style={styles.checkbox}>
+                  {locationPermission === "granted" ? (
+                    <MaterialIcons name="check" size={scaleW(18)} color={COLORS.darkGreen} />
                   ) : null}
                 </View>
               )}

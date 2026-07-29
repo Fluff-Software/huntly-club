@@ -6,7 +6,7 @@ import {
   GeoJSONSource,
   Layer,
   Map,
-  PointAnnotation,
+  ViewAnnotation,
   UserLocation,
   type CameraRef,
 } from "@maplibre/maplibre-react-native";
@@ -29,7 +29,8 @@ import { useDeferredNativeMount } from "./useDeferredNativeMount";
 
 const ROUTE_SOURCE_ID = "activity-route-source";
 const ROUTE_LAYER_ID = "activity-route-layer";
-const DEV_MAP_STYLE = "https://demotiles.maplibre.org/style.json";
+// Fallback when MapTiler API key isn't configured (keeps the Android map looking polished).
+const DEV_MAP_STYLE = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 
 export const ActivityMap = forwardRef<ActivityMapRef, ActivityMapProps>(function ActivityMap(
   {
@@ -172,29 +173,27 @@ export const ActivityMap = forwardRef<ActivityMapRef, ActivityMapProps>(function
           </GeoJSONSource>
         ) : null}
         {stopMarkers.map((marker) => (
-          <PointAnnotation
+          <ViewAnnotation
             key={`${marker.id}-${marker.icon ?? "pin"}`}
             id={marker.id}
-            coordinate={[marker.longitude, marker.latitude]}
-            anchor={{ x: 0.5, y: 0.5 }}
-            title={marker.title}
-            onSelected={() => onMarkerPress?.(marker.id)}
+            lngLat={[marker.longitude, marker.latitude]}
+            anchor="center"
+            onSelect={() => onMarkerPress?.(marker.id)}
           >
             <ActivityMapStopMarkerView
               color={marker.color ?? "#1f9d55"}
               icon={marker.icon ?? "pin"}
             />
-          </PointAnnotation>
+          </ViewAnnotation>
         ))}
         {userMarker ? (
-          <PointAnnotation
+          <ViewAnnotation
             id={userMarker.id}
-            coordinate={[userMarker.longitude, userMarker.latitude]}
-            anchor={{ x: 0.5, y: 1 }}
-            title={userMarker.title ?? "You"}
+            lngLat={[userMarker.longitude, userMarker.latitude]}
+            anchor="bottom"
           >
             <MaterialIcons name="location-on" size={40} color="#E03131" />
-          </PointAnnotation>
+          </ViewAnnotation>
         ) : null}
       </Map>
     </View>

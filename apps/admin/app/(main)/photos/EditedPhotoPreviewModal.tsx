@@ -10,6 +10,8 @@ type Props = {
   onApprove: () => void;
   pending?: boolean;
   error?: string | null;
+  confirmLabel?: string;
+  pendingLabel?: string;
 };
 
 export function EditedPhotoPreviewModal({
@@ -19,6 +21,8 @@ export function EditedPhotoPreviewModal({
   onApprove,
   pending = false,
   error = null,
+  confirmLabel = "Approve",
+  pendingLabel = "Approving…",
 }: Props) {
   useBodyScrollLock(open);
 
@@ -107,7 +111,7 @@ export function EditedPhotoPreviewModal({
               disabled={pending || !file}
               className="rounded-lg border border-emerald-300 bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
             >
-              {pending ? "Approving…" : "Approve"}
+              {pending ? pendingLabel : confirmLabel}
             </button>
           </div>
         </div>

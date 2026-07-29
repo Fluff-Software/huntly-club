@@ -1,5 +1,5 @@
 /**
- * Authenticated claim — regenerates stop, then invokes claim_explore_stop RPC.
+ * Authenticated claim — regenerates stop, then invokes claim_explore_stop_award_achievements RPC.
  */
 import type { SupabaseClient, User } from "npm:@supabase/supabase-js@2";
 import {
@@ -151,7 +151,7 @@ export async function runClaim(opts: {
   const stop = verification.body.stop as Record<string, unknown>;
   const verificationMeta = verification.body.verification as Record<string, unknown>;
 
-  const { data, error } = await opts.service.rpc("claim_explore_stop", {
+  const { data, error } = await opts.service.rpc("claim_explore_stop_award_achievements", {
     p_user_id: opts.user.id,
     p_profile_id: validated.request.profileId,
     p_stop_id: validated.request.stopId,

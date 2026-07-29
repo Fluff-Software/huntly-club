@@ -37,13 +37,15 @@ import {
 
 export default function ExploreCollectionScreen() {
   const router = useRouter();
-  const { profileId: profileIdParam, highlightCardId } = useLocalSearchParams<{
+  const { profileId: profileIdParam, highlightCardId, mode } = useLocalSearchParams<{
     profileId?: string;
     highlightCardId?: string;
+    mode?: string;
   }>();
   const { session } = useAuth();
   const { profiles } = usePlayer();
   const { isTablet } = useLayoutScale();
+  const viewingAllProfiles = mode === "all";
 
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null);
   const [cards, setCards] = useState<BinderCardEntry[]>([]);
@@ -60,6 +62,10 @@ export default function ExploreCollectionScreen() {
   const columns = isTablet ? 3 : 2;
 
   useEffect(() => {
+    if (viewingAllProfiles) {
+      setSelectedProfileId(null);
+      return;
+    }
     if (profiles.length === 0) {
       setSelectedProfileId(null);
       return;
@@ -72,7 +78,7 @@ export default function ExploreCollectionScreen() {
     setSelectedProfileId((prev) =>
       prev != null && profiles.some((p) => p.id === prev) ? prev : profiles[0]!.id
     );
-  }, [profiles, profileIdParam]);
+  }, [profiles, profileIdParam, viewingAllProfiles]);
 
   const load = useCallback(
     async (opts?: { soft?: boolean }) => {
@@ -82,7 +88,8 @@ export default function ExploreCollectionScreen() {
         setLoading(false);
         return;
       }
-      if (selectedProfileId == null) {
+
+      if (!viewingAllProfiles && selectedProfileId == null) {
         setError("Select a player profile to view cards.");
         setCards([]);
         setLoading(false);
@@ -91,24 +98,91 @@ export default function ExploreCollectionScreen() {
       if (!opts?.soft) setLoading(true);
       setError(null);
       try {
-        const result = await getExploreCardCollection(selectedProfileId);
-        setCards(
-          result.items.map((item) => ({
-            id: item.card.id,
-            slug: item.card.slug,
-            name: item.card.name,
-            description: item.card.description,
-            category: item.card.category,
-            rarity: item.card.rarity,
-            imageUrl: item.card.imageUrl,
-            sortOrder: item.card.sortOrder ?? 0,
-            habitatWeights: item.card.habitatWeights ?? {},
-            count: item.count,
-            collected: item.collected,
-            firstCollectedAt: item.firstCollectedAt,
-            lastCollectedAt: item.lastCollectedAt,
-          }))
-        );
+        if (viewingAllProfiles) {
+          if (profiles.length === 0) {
+            setError("Create a player profile to view cards.");
+            setCards([]);
+            return;
+          }
+
+          const results = await Promise.all(
+            profiles.map((p) => getExploreCardCollection(p.id))
+          );
+
+          const mergedByCardId = new Map<string, BinderCardEntry>();
+          for (const result of results) {
+            for (const item of result.items) {
+              const id = item.card.id;
+              const existing = mergedByCardId.get(id);
+
+              const base: BinderCardEntry = {
+                id,
+                slug: item.card.slug,
+                name: item.card.name,
+                description: item.card.description,
+                category: item.card.category,
+                rarity: item.card.rarity,
+                imageUrl: item.card.imageUrl,
+                sortOrder: item.card.sortOrder ?? 0,
+                habitatWeights: item.card.habitatWeights ?? {},
+                count: item.count,
+                collected: item.collected,
+                firstCollectedAt: item.firstCollectedAt,
+                lastCollectedAt: item.lastCollectedAt,
+              };
+
+              if (!existing) {
+                mergedByCardId.set(id, base);
+                continue;
+              }
+
+              const first =
+                existing.firstCollectedAt == null ||
+                (item.firstCollectedAt != null &&
+                  new Date(item.firstCollectedAt).getTime() <
+                    new Date(existing.firstCollectedAt).getTime())
+                  ? item.firstCollectedAt
+                  : existing.firstCollectedAt;
+
+              const last =
+                existing.lastCollectedAt == null ||
+                (item.lastCollectedAt != null &&
+                  new Date(item.lastCollectedAt).getTime() >
+                    new Date(existing.lastCollectedAt).getTime())
+                  ? item.lastCollectedAt
+                  : existing.lastCollectedAt;
+
+              mergedByCardId.set(id, {
+                ...existing,
+                count: existing.count + item.count,
+                collected: existing.collected || item.collected || item.count > 0,
+                firstCollectedAt: first,
+                lastCollectedAt: last,
+              });
+            }
+          }
+
+          setCards(Array.from(mergedByCardId.values()));
+        } else {
+          const result = await getExploreCardCollection(selectedProfileId);
+          setCards(
+            result.items.map((item) => ({
+              id: item.card.id,
+              slug: item.card.slug,
+              name: item.card.name,
+              description: item.card.description,
+              category: item.card.category,
+              rarity: item.card.rarity,
+              imageUrl: item.card.imageUrl,
+              sortOrder: item.card.sortOrder ?? 0,
+              habitatWeights: item.card.habitatWeights ?? {},
+              count: item.count,
+              collected: item.collected,
+              firstCollectedAt: item.firstCollectedAt,
+              lastCollectedAt: item.lastCollectedAt,
+            }))
+          );
+        }
       } catch (err: unknown) {
         if (err instanceof ExploreStopsRequestError) {
           setError(
@@ -121,7 +195,7 @@ export default function ExploreCollectionScreen() {
         setLoading(false);
       }
     },
-    [session, selectedProfileId]
+    [session, viewingAllProfiles, profiles, selectedProfileId]
   );
 
   useFocusEffect(
@@ -213,7 +287,7 @@ export default function ExploreCollectionScreen() {
         </View>
       ) : null}
 
-      {profiles.length > 1 ? (
+      {!viewingAllProfiles && profiles.length > 1 && typeof profileIdParam !== "string" ? (
         <View style={styles.chipRow}>
           {profiles.map((p) => (
             <Pressable

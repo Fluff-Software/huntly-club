@@ -346,7 +346,7 @@ describe("claimExploreStop (unit, mocked verify + supabase)", () => {
     }
     expect(rpc).toHaveBeenCalledTimes(1);
     const rpcArgs = rpc.mock.calls[0]!;
-    expect(rpcArgs[0]).toBe("claim_explore_stop");
+    expect(rpcArgs[0]).toBe("claim_explore_stop_award_achievements");
     expect(rpcArgs[1].p_user_id).toBe(fakeUser.id);
     expect(rpcArgs[1].p_verified_distance_metres).toBe(10.5);
     expect(rpcArgs[1].p_stop_id).toBe("stop_x");

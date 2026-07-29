@@ -169,11 +169,9 @@ export function ExploreCardPackReveal({
   const newBadgeOpacity = useSharedValue(0);
   const newBadgeScale = useSharedValue(0.82);
   const ripArmed = useSharedValue(0);
-  const auraOpacity = useSharedValue(0);
 
   const reset = useCallback(() => {
     cancelAnimation(idleBob);
-    cancelAnimation(auraOpacity);
     packScale.value = 0.4;
     packOpacity.value = 0;
     idleBob.value = 0;
@@ -185,7 +183,6 @@ export function ExploreCardPackReveal({
     newBadgeOpacity.value = 0;
     newBadgeScale.value = 0.82;
     ripArmed.value = 0;
-    auraOpacity.value = 0;
     claimStartedRef.current = false;
     setAward(null);
     setClaimError(null);
@@ -204,7 +201,6 @@ export function ExploreCardPackReveal({
     newBadgeOpacity,
     newBadgeScale,
     ripArmed,
-    auraOpacity,
   ]);
 
   useEffect(() => {
@@ -239,18 +235,6 @@ export function ExploreCardPackReveal({
       const profile = rarityRevealProfile(nextAward.card.rarity);
       cardY.value = profile.cardY;
 
-      // Soft glow while the card rises — intensity scales with rarity.
-      auraOpacity.value = withSequence(
-        withTiming(profile.auraPeak, {
-          duration: profile.auraIn,
-          easing: Easing.out(Easing.quad),
-        }),
-        withTiming(0, {
-          duration: profile.auraOut,
-          easing: Easing.in(Easing.quad),
-        })
-      );
-
       // Slide the real card up from behind the pack.
       cardOpacity.value = withTiming(1, { duration: 220 });
       cardY.value = withSpring(0, {
@@ -277,7 +261,7 @@ export function ExploreCardPackReveal({
         }
       })();
     },
-    [auraOpacity, cardOpacity, cardY, cardScale, foilOpacity, newBadgeOpacity, newBadgeScale]
+    [cardOpacity, cardY, cardScale, foilOpacity, newBadgeOpacity, newBadgeScale]
   );
 
   const onCardFlipComplete = useCallback(() => {
@@ -386,11 +370,6 @@ export function ExploreCardPackReveal({
     ],
   }));
 
-  const auraStyle = useAnimatedStyle(() => ({
-    opacity: auraOpacity.value,
-    transform: [{ scale: 1 + auraOpacity.value * 0.35 }],
-  }));
-
   const newBadgeStyle = useAnimatedStyle(() => ({
     opacity: newBadgeOpacity.value,
     transform: [{ scale: newBadgeScale.value }],
@@ -468,12 +447,10 @@ export function ExploreCardPackReveal({
                 )
               ) : null}
               <View style={[styles.revealCard, { width: cardWidth, height: cardHeight }]}>
-                <Animated.View
-                  pointerEvents="none"
-                  style={[styles.cardGlow, { backgroundColor: rarityColor }, auraStyle]}
-                />
                 <ExploreCardFlip
                   autoFlip
+                  interactive
+                  borderColor={rarityColor}
                   autoFlipDelayMs={revealProfile.flipHoldMs}
                   key={award.card.id}
                   onFlipComplete={onCardFlipComplete}
@@ -646,15 +623,6 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(228, 197, 106, 0.45)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 8,
-  },
-  cardGlow: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    borderRadius: 999,
-    zIndex: 0,
   },
   auraOuter: {
     position: "absolute",

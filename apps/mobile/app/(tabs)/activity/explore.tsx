@@ -13,6 +13,7 @@ import { StatusBar } from "expo-status-bar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Location from "expo-location";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ThemedText } from "@/components/ThemedText";
 import {
   ActivityMap,
@@ -61,6 +62,7 @@ const PANEL = "#3D5F45";
 const ACCENT = "#62A94F";
 const FIXED_RADIUS_METRES = 1000;
 const METRES_PER_MILE = 1609.34;
+const EXPLORE_SAFETY_DISMISSED_STORAGE_KEY = "explore_safety_dismissed_v1";
 
 function formatExploreDistanceAway(metres: number): string {
   if (metres < METRES_PER_MILE) {
@@ -83,8 +85,8 @@ type PackSession = {
   latitude: number;
   longitude: number;
   accuracyMetres: number;
-  idempotencyKey: string;
-  profileId: number;
+  /** One or more profiles to claim for (All = every household profile). */
+  profileIds: number[];
 };
 
 
@@ -150,7 +152,7 @@ export default function ExploreScreen() {
   const { session, user } = useAuth();
   const { profiles } = usePlayer();
 
-  const [loc, setLoc] = useState<LocState>({ status: "loading" });
+  const [loc, setLoc] = useState<LocState>({ status: "idle" });
   const [stops, setStops] = useState<ExploreStop[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loadingStops, setLoadingStops] = useState(false);
@@ -161,10 +163,23 @@ export default function ExploreScreen() {
   const [packSession, setPackSession] = useState<PackSession | null>(null);
   /** DEV: preview pack reveal (NEW seal) without a real claim. */
 
-  const [claimedIds, setClaimedIds] = useState<Set<string>>(new Set());
+  const [claimedByProfile, setClaimedByProfile] = useState<Record<number, Set<string>>>(
+    {}
+  );
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null);
+  const [claimedMode, setClaimedMode] = useState<"single" | "all">("single");
   /** Safety gate — must accept before using the map (Pokémon GO–style). */
   const [safetyAccepted, setSafetyAccepted] = useState(false);
+  const persistSafetyAccepted = useCallback(async () => {
+    try {
+      await AsyncStorage.setItem(
+        EXPLORE_SAFETY_DISMISSED_STORAGE_KEY,
+        "1"
+      );
+    } catch {
+      // Ignore — if persistence fails we can still show the prompt.
+    }
+  }, []);
   const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [locationModalRequesting, setLocationModalRequesting] = useState(false);
   /** DEV: freeze GPS and report spoofed coords for claim testing. */
@@ -180,6 +195,24 @@ export default function ExploreScreen() {
       prev != null && profiles.some((p) => p.id === prev) ? prev : profiles[0]!.id
     );
   }, [profiles]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const stored = await AsyncStorage.getItem(
+          EXPLORE_SAFETY_DISMISSED_STORAGE_KEY
+        );
+        if (cancelled) return;
+        if (stored === "1") setSafetyAccepted(true);
+      } catch {
+        // Non-fatal: fall back to showing the safety prompt.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const selected = useMemo(
     () => stops.find((s) => s.stopId === selectedId) ?? null,
@@ -198,22 +231,52 @@ export default function ExploreScreen() {
     distanceToSelectedMetres != null &&
     distanceToSelectedMetres <= EXPLORE_CLAIM_RADIUS_METRES;
 
-  const refreshClaimed = useCallback(async (profileId: number) => {
+  const refreshClaimedForProfiles = useCallback(async (profileIds: number[]) => {
+    if (profileIds.length === 0) {
+      setClaimedByProfile({});
+      return;
+    }
     try {
-      const result = await getClaimedExploreStopIds(profileId);
-      setClaimedIds(new Set(result.stopIds));
+      const results = await Promise.all(
+        profileIds.map(async (id) => {
+          const result = await getClaimedExploreStopIds(id);
+          return [id, new Set(result.stopIds)] as const;
+        })
+      );
+      const next: Record<number, Set<string>> = {};
+      for (const [id, stopIds] of results) next[id] = stopIds;
+      setClaimedByProfile(next);
     } catch {
       // Non-fatal — markers still load without claim history.
+      setClaimedByProfile({});
     }
   }, []);
 
   useEffect(() => {
-    if (!session || selectedProfileId == null) {
-      setClaimedIds(new Set());
+    if (!session) {
+      setClaimedByProfile({});
       return;
     }
-    void refreshClaimed(selectedProfileId);
-  }, [session, selectedProfileId, refreshClaimed]);
+    void refreshClaimedForProfiles(profiles.map((p) => p.id));
+  }, [session, profiles, refreshClaimedForProfiles]);
+
+  /** Markers: single profile = that profile’s claims; All = only fully claimed by everyone. */
+  const claimedIds = useMemo(() => {
+    if (claimedMode === "single") {
+      if (selectedProfileId == null) return new Set<string>();
+      return claimedByProfile[selectedProfileId] ?? new Set<string>();
+    }
+    const sets = profiles
+      .map((p) => claimedByProfile[p.id])
+      .filter((s): s is Set<string> => s != null);
+    if (sets.length === 0 || sets.length < profiles.length) return new Set<string>();
+    const [first, ...rest] = sets;
+    const intersection = new Set<string>();
+    for (const stopId of first!) {
+      if (rest.every((s) => s.has(stopId))) intersection.add(stopId);
+    }
+    return intersection;
+  }, [claimedMode, selectedProfileId, claimedByProfile, profiles]);
 
   useEffect(() => {
     setClaimError(null);
@@ -403,11 +466,6 @@ export default function ExploreScreen() {
   );
 
   useEffect(() => {
-    if (!safetyAccepted) return;
-    void requestLocation();
-  }, [safetyAccepted, requestLocation]);
-
-  useEffect(() => {
     if (loc.status !== "ready") return;
     void fetchStops(loc.latitude, loc.longitude, FIXED_RADIUS_METRES, {
       force: lastFetchAt.current == null,
@@ -415,6 +473,25 @@ export default function ExploreScreen() {
       quiet: lastFetchAt.current != null,
     });
   }, [loc, fetchStops]);
+
+  // After safety is accepted, try to get GPS (may open the location modal).
+  useEffect(() => {
+    if (!safetyAccepted) return;
+    if (loc.status !== "idle") return;
+    void requestLocation();
+  }, [safetyAccepted, loc.status, requestLocation]);
+
+  // If location isn't available yet (dismissed prompt), still show nearby stops
+  // around a fixed Explore test centre so the map isn't empty / "unplayable".
+  useEffect(() => {
+    if (!safetyAccepted) return;
+    if (loc.status === "ready" || loc.status === "loading" || loc.status === "idle") return;
+    void fetchStops(EXPLORE_TEST_AREA_CENTRE.latitude, EXPLORE_TEST_AREA_CENTRE.longitude, FIXED_RADIUS_METRES, {
+      force: lastFetchAt.current == null,
+      merge: lastFetchAt.current != null,
+      quiet: lastFetchAt.current != null,
+    });
+  }, [safetyAccepted, loc.status, fetchStops]);
 
   useEffect(() => {
     if (loc.status !== "ready") return;
@@ -538,8 +615,25 @@ export default function ExploreScreen() {
         setClaimError("Sign in to collect this spot.");
         return;
       }
-      if (selectedProfileId == null) {
+
+      const claimProfileIds =
+        claimedMode === "all"
+          ? profiles.map((p) => p.id)
+          : selectedProfileId != null
+            ? [selectedProfileId]
+            : [];
+
+      if (claimProfileIds.length === 0) {
         setClaimError("Create a player profile to collect cards.");
+        return;
+      }
+
+      // Skip profiles that already claimed this stop.
+      const eligibleProfileIds = claimProfileIds.filter(
+        (id) => !(claimedByProfile[id]?.has(selected.stopId) ?? false)
+      );
+      if (eligibleProfileIds.length === 0) {
+        setClaimError(exploreUserMessage("already_claimed"));
         return;
       }
 
@@ -595,8 +689,7 @@ export default function ExploreScreen() {
         latitude: report.latitude,
         longitude: report.longitude,
         accuracyMetres: report.accuracyMetres,
-        idempotencyKey: newIdempotencyKey(),
-        profileId: selectedProfileId,
+        profileIds: eligibleProfileIds,
       });
     } catch {
       setClaimError("Couldn’t prepare this pack. Please try again.");
@@ -611,6 +704,9 @@ export default function ExploreScreen() {
     user,
     session,
     selectedProfileId,
+    claimedMode,
+    profiles,
+    claimedByProfile,
     loc,
   ]);
 
@@ -618,51 +714,67 @@ export default function ExploreScreen() {
     if (!packSession) {
       throw new Error("Pack session expired. Try collecting again.");
     }
-    const { stop, latitude, longitude, accuracyMetres, idempotencyKey, profileId } =
-      packSession;
+    const { stop, latitude, longitude, accuracyMetres, profileIds } = packSession;
 
-    try {
-      const result = await claimExploreStop({
-        stopId: stop.stopId,
-        generationVersion: stop.generationVersion,
-        osmRevision: stop.osmRevision,
-        profileId,
-        latitude,
-        longitude,
-        accuracyMetres,
-        idempotencyKey,
-      });
+    let firstAward: ExploreAward | null = null;
+    let lastError: Error | null = null;
+    let anySuccess = false;
 
-      if (result.success) {
-        setClaimedIds((prev) => new Set(prev).add(stop.stopId));
-        if (!result.award) {
-          throw new Error("Collected, but no card came back. Check your binder.");
+    for (const profileId of profileIds) {
+      try {
+        const result = await claimExploreStop({
+          stopId: stop.stopId,
+          generationVersion: stop.generationVersion,
+          osmRevision: stop.osmRevision,
+          profileId,
+          latitude,
+          longitude,
+          accuracyMetres,
+          idempotencyKey: newIdempotencyKey(),
+        });
+
+        if (result.success || result.error === "already_claimed") {
+          anySuccess = true;
+          setClaimedByProfile((prev) => {
+            const next = { ...prev };
+            const set = new Set(next[profileId] ?? []);
+            set.add(stop.stopId);
+            next[profileId] = set;
+            return next;
+          });
+          if (result.award) {
+            if (!firstAward || (result.award.isNew && !firstAward.isNew)) {
+              firstAward = result.award;
+            }
+          }
+          continue;
         }
-        return result.award;
-      }
 
-      if (result.error === "already_claimed") {
-        setClaimedIds((prev) => new Set(prev).add(stop.stopId));
-        if (result.award) return result.award;
-        throw new Error(exploreUserMessage("already_claimed"));
-      }
-
-      throw new Error(
-        exploreUserMessage(
-          result.error || "claim_failed",
-          "Couldn’t collect this card. Please try again."
-        )
-      );
-    } catch (err: unknown) {
-      if (err instanceof ExploreStopsRequestError) {
-        throw new Error(
-          exploreUserMessage(err.exploreError.code, err.exploreError.message)
+        lastError = new Error(
+          exploreUserMessage(
+            result.error || "claim_failed",
+            "Couldn’t collect this card. Please try again."
+          )
         );
+      } catch (err: unknown) {
+        if (err instanceof ExploreStopsRequestError) {
+          lastError = new Error(
+            exploreUserMessage(err.exploreError.code, err.exploreError.message)
+          );
+        } else {
+          lastError =
+            err instanceof Error
+              ? err
+              : new Error("Couldn’t collect this card. Please try again.");
+        }
       }
-      throw err instanceof Error
-        ? err
-        : new Error("Couldn’t collect this card. Please try again.");
     }
+
+    if (firstAward) return firstAward;
+    if (anySuccess) {
+      throw new Error("Collected, but no card came back. Check your binder.");
+    }
+    throw lastError ?? new Error("Couldn’t collect this card. Please try again.");
   }, [packSession]);
 
   const closePack = useCallback(() => {
@@ -678,8 +790,14 @@ export default function ExploreScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <ExploreSafetyWarning
         visible={!safetyAccepted}
-        onAccept={() => setSafetyAccepted(true)}
-        onCancel={() => router.back()}
+        onAccept={() => {
+          setSafetyAccepted(true);
+          void persistSafetyAccepted();
+        }}
+        onCancel={() => {
+          setSafetyAccepted(true);
+          void persistSafetyAccepted();
+        }}
       />
       <View style={styles.root}>
         <ActivityMap
@@ -697,7 +815,7 @@ export default function ExploreScreen() {
           onMarkerPress={(id: string) => setSelectedId(id)}
         />
 
-        {(loc.status === "loading" || loadingStops) && (
+        {(loadingStops) && (
           <View style={styles.loadingOverlay}>
             <ActivityIndicator color="#FFF" />
           </View>
@@ -725,7 +843,9 @@ export default function ExploreScreen() {
           <Pressable
             onPress={() => {
               const params: Record<string, string> = {};
-              if (selectedProfileId != null) {
+              if (claimedMode === "all") {
+                params.mode = "all";
+              } else if (selectedProfileId != null) {
                 params.profileId = String(selectedProfileId);
               }
               router.push({
@@ -741,6 +861,49 @@ export default function ExploreScreen() {
             <MaterialIcons name="collections-bookmark" size={22} color="#FFF" />
           </Pressable>
         </View>
+
+        {profiles.length > 1 ? (
+          <View style={[styles.profileChipRow, { top: insets.top + 60 }]}>
+            {profiles.map((p) => {
+              const active = claimedMode === "single" && selectedProfileId === p.id;
+              return (
+                <Pressable
+                  key={p.id}
+                  onPress={() => {
+                    setClaimedMode("single");
+                    setSelectedProfileId(p.id);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Collect cards as ${p.nickname || p.name}`}
+                  style={[styles.profileChip, active && styles.profileChipActive]}
+                >
+                  <ThemedText
+                    lightColor="#FFF"
+                    darkColor="#FFF"
+                    style={styles.profileChipText}
+                    numberOfLines={1}
+                  >
+                    {p.nickname || p.name}
+                  </ThemedText>
+                </Pressable>
+              );
+            })}
+            <Pressable
+              onPress={() => setClaimedMode("all")}
+              accessibilityRole="button"
+              accessibilityLabel="View all profiles"
+              style={[styles.profileChip, claimedMode === "all" && styles.profileChipActive]}
+            >
+              <ThemedText
+                lightColor="#FFF"
+                darkColor="#FFF"
+                style={styles.profileChipText}
+              >
+                All
+              </ThemedText>
+            </Pressable>
+          </View>
+        ) : null}
 
         {false && __DEV__ ? (
           <View style={[styles.devPresetBar, { top: insets.top + 60 }]}>
@@ -781,10 +944,16 @@ export default function ExploreScreen() {
               bottom:
                 (selected ? 240 : showEmptyPanel ? 160 : 28) + insets.bottom,
             },
-            loc.status !== "ready" && styles.myPinButtonDisabled,
+            loc.status === "loading" && styles.myPinButtonDisabled,
           ]}
-          onPress={centreOnUser}
-          disabled={loc.status !== "ready"}
+          onPress={() => {
+            if (loc.status === "ready") {
+              centreOnUser();
+              return;
+            }
+            void requestLocation();
+          }}
+          disabled={loc.status === "loading"}
           accessibilityRole="button"
           accessibilityLabel="Centre map on you"
         >
@@ -850,9 +1019,11 @@ export default function ExploreScreen() {
                   darkColor="rgba(255,255,255,0.7)"
                   style={{ fontSize: 13 }}
                 >
-                  {distanceToSelectedMetres != null
-                    ? formatExploreDistanceAway(distanceToSelectedMetres)
-                    : "Finding your distance…"}
+                  {loc.status !== "ready"
+                    ? "Enable location to collect cards"
+                    : distanceToSelectedMetres != null
+                      ? formatExploreDistanceAway(distanceToSelectedMetres)
+                      : "Finding your distance…"}
                 </ThemedText>
               </View>
               <Pressable
@@ -917,6 +1088,30 @@ export default function ExploreScreen() {
                     ) : null}
                   </View>
                 ) : null}
+                {!alreadyClaimed && loc.status !== "ready" ? (
+                  <View style={styles.closerHint}>
+                    <MaterialIcons name="location-on" size={20} color="#FFE08A" />
+                    <ThemedText
+                      lightColor="#FFE08A"
+                      darkColor="#FFE08A"
+                      style={{ flex: 1, fontSize: 14, lineHeight: 20, fontWeight: "600" }}
+                    >
+                      Turn on location to collect cards
+                    </ThemedText>
+                    <Pressable
+                      onPress={() => void requestLocation()}
+                      style={[styles.enableLocationBtn, loc.status === "loading" && { opacity: 0.7 }]}
+                      disabled={loc.status === "loading"}
+                      accessibilityRole="button"
+                      accessibilityLabel="Enable location"
+                    >
+                      <ThemedText lightColor="#FFF" darkColor="#FFF" style={{ fontWeight: "800", fontSize: 12 }}>
+                        Enable
+                      </ThemedText>
+                    </Pressable>
+                  </View>
+                ) : null}
+
                 {!alreadyClaimed && withinClaimRange ? (
                   <Pressable
                     onPress={() => void openPack()}
@@ -925,11 +1120,16 @@ export default function ExploreScreen() {
                     accessibilityRole="button"
                   >
                     <ThemedText lightColor="#FFF" darkColor="#FFF" style={{ fontWeight: "800" }}>
-                      {claiming ? "Preparing…" : "Collect card"}
+                      {claiming
+                        ? "Preparing…"
+                        : claimedMode === "all"
+                          ? "Collect for everyone"
+                          : "Collect card"}
                     </ThemedText>
                   </Pressable>
                 ) : null}
-                {!alreadyClaimed && !withinClaimRange ? (
+
+                {!alreadyClaimed && loc.status === "ready" && !withinClaimRange ? (
                   <View style={styles.closerHint}>
                     <MaterialIcons name="directions-walk" size={20} color="#FFE08A" />
                     <ThemedText
@@ -1011,6 +1211,35 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  profileChipRow: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    flexDirection: "row",
+    gap: 8,
+    flexWrap: "wrap",
+    alignItems: "center",
+    zIndex: 30,
+    justifyContent: "flex-start",
+  },
+  profileChip: {
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+  },
+  profileChipActive: {
+    backgroundColor: ACCENT,
+    borderColor: "rgba(255,224,138,0.65)",
+  },
+  profileChipText: {
+    fontSize: 12,
+    fontWeight: "800",
+    textAlign: "center",
+    maxWidth: 100,
   },
   myPinButton: {
     position: "absolute",
@@ -1154,6 +1383,17 @@ const styles = StyleSheet.create({
     backgroundColor: ACCENT,
     borderRadius: 14,
     paddingVertical: 14,
+  },
+  enableLocationBtn: {
+    borderRadius: 12,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    backgroundColor: "rgba(98,168,79,0.35)",
+    borderWidth: 1,
+    borderColor: "rgba(255,224,138,0.35)",
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 92,
   },
   awardBox: {
     gap: 6,

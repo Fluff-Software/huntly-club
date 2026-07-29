@@ -14,7 +14,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ExploreCardArt } from "@/components/explore/ExploreCardArt";
 import { ExploreCardFlip } from "@/components/explore/ExploreCardFlip";
-import { EXPLORE_CARD_ART_ASPECT } from "@/constants/exploreBinder";
+import { EXPLORE_CARD_ART_ASPECT, EXPLORE_RARITY_COLORS } from "@/constants/exploreBinder";
 import type { BinderCardEntry } from "@/utils/exploreBinder";
 
 type Props = {
@@ -55,6 +55,11 @@ export function ExploreCardDetail({ card, onClose }: Props) {
           <ExploreCardFlip
             key={`${card.id}-${collected ? "in" : "out"}`}
             interactive={collected}
+            borderColor={
+              collected
+                ? EXPLORE_RARITY_COLORS[card.rarity] ?? "#3B82F6"
+                : "#1A2E20"
+            }
           >
             <ExploreCardArt
               imageUrl={card.imageUrl}
@@ -98,7 +103,8 @@ const styles = StyleSheet.create({
   },
   card: {
     borderRadius: 14,
-    // Allow perspective shadow room during flip
+    // Let the 3D flip extend past the flat card bounds
+    overflow: "visible",
     backgroundColor: "transparent",
   },
   art: {

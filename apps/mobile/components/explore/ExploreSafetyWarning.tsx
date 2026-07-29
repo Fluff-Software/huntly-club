@@ -202,10 +202,10 @@ export function ExploreSafetyWarning({ visible, onAccept, onCancel }: Props) {
               onPress={onCancel}
               style={styles.secondary}
               accessibilityRole="button"
-              accessibilityLabel="Go back"
+              accessibilityLabel="Not now"
             >
               <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.secondaryText}>
-                Go back
+                Not now
               </ThemedText>
             </Pressable>
           </View>

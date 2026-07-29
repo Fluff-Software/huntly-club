@@ -37,8 +37,10 @@ import {
   useSessionsWithMissions,
   type SessionWithActivities,
 } from "@/hooks/useSessionsWithMissions";
+import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useProfileDashboard } from "@/contexts/ProfileDashboardContext";
+import { usePurchases } from "@/contexts/PurchasesContext";
 import { useUser } from "@/contexts/UserContext";
 import { useHomeBootstrap } from "@/contexts/HomeBootstrapContext";
 import {
@@ -115,6 +117,8 @@ export default function HomeScreen() {
   const { scaleW, width } = useLayoutScale();
   const { clubhouseActivityReady, requireClubhouseActivityReady, markClubhouseActivityReady } =
     useHomeBootstrap();
+  const { user, loading: authLoading } = useAuth();
+  const { hasAccess, isLoading: purchasesLoading } = usePurchases();
   const { profiles, loading: profilesLoading } = usePlayer();
   const { preload: preloadProfileDashboard } = useProfileDashboard();
   const { team } = useUser();
@@ -248,6 +252,18 @@ export default function HomeScreen() {
     clubTileReady &&
     teamTileReady;
 
+  // Only prompt once the user has fully landed on home (auth/purchases settled + tiles ready).
+  // RN Modal sits above AuthGuard's overlay, so prompting earlier causes login/loading flicker.
+  const canShowLocationPrompt =
+    !authLoading &&
+    !!user &&
+    !purchasesLoading &&
+    hasAccess &&
+    !isTutorialActive &&
+    activityTilesReady;
+  const canShowLocationPromptRef = useRef(canShowLocationPrompt);
+  canShowLocationPromptRef.current = canShowLocationPrompt;
+
   const handleCampfireReadyChange = useCallback((ready: boolean) => {
     setCampfireTileReady(ready);
   }, []);
@@ -295,15 +311,47 @@ export default function HomeScreen() {
         refreshHomeData();
       }
       scrollRef.current?.scrollTo({ y: 0, animated: false });
-      // Re-check location permission each time screen focuses.
-      getLocationPermissionStatus().then((status) => {
-        setLocationPermission(status);
-        if (status !== "granted") {
-          setLocationModalVisible(true);
-        }
-      });
+
+      // Re-check when returning to home (e.g. from Settings) without tying refresh to ready-state.
+      if (!canShowLocationPromptRef.current) {
+        setLocationModalVisible(false);
+        return;
+      }
+      let cancelled = false;
+      const timer = setTimeout(() => {
+        getLocationPermissionStatus().then((status) => {
+          if (cancelled || !canShowLocationPromptRef.current) return;
+          setLocationPermission(status);
+          setLocationModalVisible(status !== "granted");
+        });
+      }, 1000);
+      return () => {
+        cancelled = true;
+        clearTimeout(timer);
+      };
     }, [isTutorialActive, refreshHomeData])
   );
+
+  // When home first becomes ready after load-in, show the prompt (focus alone may have fired too early).
+  useEffect(() => {
+    if (!canShowLocationPrompt) {
+      setLocationModalVisible(false);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      getLocationPermissionStatus().then((status) => {
+        if (cancelled) return;
+        setLocationPermission(status);
+        setLocationModalVisible(status !== "granted");
+      });
+    }, 1000);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [canShowLocationPrompt]);
 
   const handleLocationRequest = useCallback(async () => {
     if (locationRequesting) return;
@@ -673,7 +721,9 @@ export default function HomeScreen() {
         </ScrollView>
       </SafeAreaView>
 
-      {locationPermission !== "loading" && locationPermission !== "granted" && (
+      {canShowLocationPrompt &&
+        locationPermission !== "loading" &&
+        locationPermission !== "granted" && (
         <LocationPermissionModal
           visible={locationModalVisible}
           permissionStatus={locationPermission}

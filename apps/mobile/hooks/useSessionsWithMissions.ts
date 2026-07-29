@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import type { ImageSourcePropType } from "react-native";
 import { supabase } from "@/services/supabase";
 import type { MissionCardData } from "@/constants/missionCards";
@@ -99,12 +99,21 @@ export function useSessionsWithMissions(
   >(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasLoadedOnceRef = useRef(false);
   const allProfileIds = options?.allProfileIds;
   const extraActivityIds = options?.extraActivityIds;
 
+  const finishLoading = useCallback(() => {
+    hasLoadedOnceRef.current = true;
+    setLoading(false);
+  }, []);
+
   const fetchData = useCallback(async () => {
     setError(null);
-    setLoading(true);
+    // Keep showing existing missions during background refresh (avoids Next Mission flicker).
+    if (!hasLoadedOnceRef.current) {
+      setLoading(true);
+    }
     const today = ukTodayForChapterUnlockGate();
 
     const { data: sessionRows, error: sessionsError } = await supabase
@@ -114,7 +123,7 @@ export function useSessionsWithMissions(
     if (sessionsError) {
       setError(sessionsError.message ?? "Failed to load campfire sessions");
       setSessions([]);
-      setLoading(false);
+      finishLoading();
       return;
     }
 
@@ -148,7 +157,7 @@ export function useSessionsWithMissions(
       } else {
         setCompletedByAnyProfileActivityIds(new Set());
       }
-      setLoading(false);
+      finishLoading();
       return;
     }
 
@@ -163,7 +172,7 @@ export function useSessionsWithMissions(
     if (activitiesError) {
       setError(activitiesError.message ?? "Failed to load missions");
       setSessions([]);
-      setLoading(false);
+      finishLoading();
       return;
     }
 
@@ -239,11 +248,12 @@ export function useSessionsWithMissions(
       setCompletedByAnyProfileActivityIds(new Set());
     }
 
-    setLoading(false);
-  }, [profileId, allProfileIds, extraActivityIds]);
+    finishLoading();
+  }, [profileId, allProfileIds, extraActivityIds, finishLoading]);
 
   useEffect(() => {
-    fetchData();
+    hasLoadedOnceRef.current = false;
+    void fetchData();
   }, [fetchData]);
 
   return {

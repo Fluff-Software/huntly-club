@@ -45,3 +45,12 @@ build-*.ipa
 build-*.apk
 build-*.tar.gz
 huntlyclub.app
+
+# Explore stop-generator local extracts / generated artefacts
+scripts/explore/node_modules/
+scripts/explore/output/*
+!scripts/explore/output/.gitkeep
+scripts/explore/fixtures/local/
+*.osm.pbf
+scripts/explore/data/
+

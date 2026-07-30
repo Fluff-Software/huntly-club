@@ -1,0 +1,17 @@
+node_modules
+npm-debug.log*
+.env
+.env.*
+!.env.example
+output
+coverage
+*.log
+.git
+.DS_Store
+__tests__
+**/*.test.ts
+# Keep fixtures/local OSM extract for Option A bake-in (present on build machine)
+# Do not include unrelated local extracts
+fixtures/local/*
+!fixtures/local/stoke-sneyd-green.geojson
+!fixtures/local/.gitkeep

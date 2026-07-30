@@ -5,18 +5,27 @@ import { useRef, useState, useTransition } from "react";
 import {
   uploadSeasonImage,
   uploadActivityImage,
+  uploadExploreCardImage,
 } from "@/lib/upload-actions";
 import { compressImageFileForUpload } from "@/lib/client-image-resize";
 import { ImageCropModal } from "@/components/ImageCropModal";
-import { MISSION_MEDIA_ASPECT, SEASON_HERO_ASPECT, imageAspectStyle } from "@/lib/image-aspects";
+import {
+  MISSION_MEDIA_ASPECT,
+  SEASON_HERO_ASPECT,
+  PHOTO_REVIEW_ASPECT,
+  imageAspectStyle,
+} from "@/lib/image-aspects";
 
 type ImageUploadFieldProps = {
   name: string;
   label: string;
   prefix?: "heroes" | "chapters";
-  uploadKind?: "season" | "activity";
+  uploadKind?: "season" | "activity" | "explore";
+  /** Used for explore uploads to name the storage object `{slug}.ext`. */
+  slug?: string;
   defaultValue?: string | null;
   help?: string;
+  onUrlChange?: (url: string) => void;
 };
 
 export function ImageUploadField({
@@ -24,8 +33,10 @@ export function ImageUploadField({
   label,
   prefix = "heroes",
   uploadKind = "season",
+  slug,
   defaultValue = "",
   help,
+  onUrlChange,
 }: ImageUploadFieldProps) {
   const [url, setUrl] = useState(defaultValue ?? "");
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -79,10 +90,17 @@ export function ImageUploadField({
       const formData = new FormData();
       formData.set("file", fileToUpload);
       if (uploadKind === "season") formData.set("prefix", prefix);
-      const result =
-        uploadKind === "activity"
-          ? await uploadActivityImage(formData)
-          : await uploadSeasonImage(formData);
+      if (uploadKind === "explore" && slug) formData.set("slug", slug);
+
+      let result: { url?: string; error?: string };
+      if (uploadKind === "activity") {
+        result = await uploadActivityImage(formData);
+      } else if (uploadKind === "explore") {
+        result = await uploadExploreCardImage(formData);
+      } else {
+        result = await uploadSeasonImage(formData);
+      }
+
       if (result.error) {
         setUploadError(result.error);
         return;
@@ -90,12 +108,25 @@ export function ImageUploadField({
       if (result.url) {
         setUrl(result.url);
         setHasValidPreview(true);
+        onUrlChange?.(result.url);
       }
       resetFileInput();
     });
   }
 
-  const previewAspect = uploadKind === "activity" ? MISSION_MEDIA_ASPECT : SEASON_HERO_ASPECT;
+  const previewAspect =
+    uploadKind === "activity"
+      ? MISSION_MEDIA_ASPECT
+      : uploadKind === "explore"
+        ? PHOTO_REVIEW_ASPECT
+        : SEASON_HERO_ASPECT;
+
+  const cropTitle =
+    uploadKind === "season"
+      ? "Crop hero image"
+      : uploadKind === "explore"
+        ? "Crop card artwork"
+        : "Crop activity image";
 
   return (
     <div>
@@ -151,7 +182,7 @@ export function ImageUploadField({
       <ImageCropModal
         open={cropOpen}
         file={pendingFile}
-        title={uploadKind === "season" ? "Crop hero image" : "Crop activity image"}
+        title={cropTitle}
         aspect={previewAspect}
         onCancel={handleCancelCrop}
         onConfirm={handleConfirmCrop}

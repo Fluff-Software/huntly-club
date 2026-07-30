@@ -1,14 +1,17 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import { StyleSheet, View } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
 import {
   Camera,
   GeoJSONSource,
   Layer,
   Map,
+  ViewAnnotation,
   UserLocation,
   type CameraRef,
 } from "@maplibre/maplibre-react-native";
 import { getMapTilerMapStyleUrl } from "@/constants/maptiler";
+import { ActivityMapStopMarkerView } from "./ActivityMapStopMarkerView";
 import {
   buildInitialViewState,
   buildRecenterCameraStop,
@@ -22,10 +25,12 @@ import {
   type ActivityMapProps,
   type ActivityMapRef,
 } from "./types";
+import { useDeferredNativeMount } from "./useDeferredNativeMount";
 
 const ROUTE_SOURCE_ID = "activity-route-source";
 const ROUTE_LAYER_ID = "activity-route-layer";
-const DEV_MAP_STYLE = "https://demotiles.maplibre.org/style.json";
+// Fallback when MapTiler API key isn't configured (keeps the Android map looking polished).
+const DEV_MAP_STYLE = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 
 export const ActivityMap = forwardRef<ActivityMapRef, ActivityMapProps>(function ActivityMap(
   {
@@ -40,17 +45,31 @@ export const ActivityMap = forwardRef<ActivityMapRef, ActivityMapProps>(function
     pitchEnabled = true,
     pointerEvents,
     fitRoute = false,
+    minZoomLevel,
+    maxZoomLevel,
     onRegionChange,
+    markers,
+    onMarkerPress,
   },
   ref
 ) {
   const cameraRef = useRef<CameraRef | null>(null);
+  const canMountNative = useDeferredNativeMount();
   const zoomRef = useRef(
     latitudeDeltaToZoom(initialRegion.latitudeDelta, initialRegion.latitude)
   );
 
   const mapStyle = getMapTilerMapStyleUrl() ?? DEV_MAP_STYLE;
   const shouldFitRoute = fitRoute && route.length >= 2;
+
+  const stopMarkers = useMemo(
+    () => (markers ?? []).filter((m) => m.variant !== "user"),
+    [markers]
+  );
+  const userMarker = useMemo(
+    () => (markers ?? []).find((m) => m.variant === "user") ?? null,
+    [markers]
+  );
 
   const routeGeoJson = useMemo((): GeoJSON.FeatureCollection => {
     if (route.length < 2) {
@@ -77,7 +96,7 @@ export const ActivityMap = forwardRef<ActivityMapRef, ActivityMapProps>(function
   );
 
   useEffect(() => {
-    if (!shouldFitRoute) return;
+    if (!canMountNative || !shouldFitRoute) return;
     const bounds = routeToLngLatBounds(route);
     if (!bounds) return;
     cameraRef.current?.fitBounds(bounds, {
@@ -91,7 +110,7 @@ export const ActivityMap = forwardRef<ActivityMapRef, ActivityMapProps>(function
       pitch: 0,
       duration: 0,
     });
-  }, [route, shouldFitRoute]);
+  }, [canMountNative, route, shouldFitRoute]);
 
   useImperativeHandle(ref, () => ({
     recenter: ({ latitude, longitude, latitudeDelta, longitudeDelta }) => {
@@ -105,6 +124,10 @@ export const ActivityMap = forwardRef<ActivityMapRef, ActivityMapProps>(function
       });
     },
   }));
+
+  if (!canMountNative) {
+    return <View style={[styles.container, style]} pointerEvents={pointerEvents} />;
+  }
 
   return (
     <View style={[styles.container, style]} pointerEvents={pointerEvents}>
@@ -125,7 +148,12 @@ export const ActivityMap = forwardRef<ActivityMapRef, ActivityMapProps>(function
           onRegionChange?.(viewStateToActivityRegion(center, zoom, bounds));
         }}
       >
-        <Camera ref={cameraRef} initialViewState={initialCamera} />
+        <Camera
+          ref={cameraRef}
+          initialViewState={initialCamera}
+          minZoom={minZoomLevel}
+          maxZoom={maxZoomLevel}
+        />
         {showUserLocation ? <UserLocation animated /> : null}
         {route.length >= 2 ? (
           <GeoJSONSource id={ROUTE_SOURCE_ID} data={routeGeoJson}>
@@ -143,6 +171,29 @@ export const ActivityMap = forwardRef<ActivityMapRef, ActivityMapProps>(function
               }}
             />
           </GeoJSONSource>
+        ) : null}
+        {stopMarkers.map((marker) => (
+          <ViewAnnotation
+            key={`${marker.id}-${marker.icon ?? "pin"}`}
+            id={marker.id}
+            lngLat={[marker.longitude, marker.latitude]}
+            anchor="center"
+            onSelect={() => onMarkerPress?.(marker.id)}
+          >
+            <ActivityMapStopMarkerView
+              color={marker.color ?? "#1f9d55"}
+              icon={marker.icon ?? "pin"}
+            />
+          </ViewAnnotation>
+        ))}
+        {userMarker ? (
+          <ViewAnnotation
+            id={userMarker.id}
+            lngLat={[userMarker.longitude, userMarker.latitude]}
+            anchor="bottom"
+          >
+            <MaterialIcons name="location-on" size={40} color="#E03131" />
+          </ViewAnnotation>
         ) : null}
       </Map>
     </View>

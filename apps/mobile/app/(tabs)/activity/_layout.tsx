@@ -81,6 +81,24 @@ export default function ActivityLayout() {
           title: "Scavenger Hunt",
           headerShown: false }}
       />
+      <Stack.Screen
+        name="explore"
+        options={{
+          title: "Explore",
+          headerShown: false }}
+      />
+      <Stack.Screen
+        name="explore-debug"
+        options={{
+          title: "Explore",
+          headerShown: false }}
+      />
+      <Stack.Screen
+        name="explore-collection"
+        options={{
+          title: "Card Binder",
+          headerShown: false }}
+      />
     </Stack>
   );
 }

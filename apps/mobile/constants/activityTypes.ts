@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react";
 import type { MaterialIcons } from "@expo/vector-icons";
 
-export type ActivityTypeKey = "walk" | "cycle" | "mission" | "hunt";
+export type ActivityTypeKey = "walk" | "cycle" | "mission" | "hunt" | "explore";
 
 /** Scavenger hunt catalog data hasn't been merged into production yet — keep the activity hidden from users until it has. */
 export const SCAVENGER_HUNTS_ENABLED = false;
@@ -65,6 +65,15 @@ export const ACTIVITY_TYPES: ActivityTypeMeta[] = [
     route: "/(tabs)/activity/scavenger",
     color: "#8B5A2B",
     tint: "#F3E8DC",
+  },
+  {
+    key: "explore",
+    label: "Explore",
+    description: "Wander nearby spots and collect cards for your binder",
+    icon: "map",
+    route: "/(tabs)/activity/explore",
+    color: "#1F7A4D",
+    tint: "#E2F2E8",
   },
 ];
 

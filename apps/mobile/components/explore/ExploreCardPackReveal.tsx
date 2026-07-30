@@ -681,6 +681,7 @@ const styles = StyleSheet.create({
     maxWidth: 320,
   },
   btnText: {
+    color: "#FFFFFF",
     fontWeight: "800",
     fontSize: 15,
   },

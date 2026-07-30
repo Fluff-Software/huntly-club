@@ -50,25 +50,24 @@
 		13B07F961A680F5B00A75B9A /* HuntlyWorld.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HuntlyWorld.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = HuntlyWorld/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = HuntlyWorld/Info.plist; sourceTree = "<group>"; };
-		14B21CC3DECF44E89F74C5CC /* ExpoWidgetsTarget.entitlements */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = ExpoWidgetsTarget.entitlements; path = ExpoWidgetsTarget.entitlements; sourceTree = "<group>"; };
 		1916B10E15374756A7D248DE /* ExpoWidgetsTarget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = undefined; name = ExpoWidgetsTarget.appex; path = ExpoWidgetsTarget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		386546C58B9A4B3B3694EA67 /* Pods-HuntlyWorld.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HuntlyWorld.debug.xcconfig"; path = "Target Support Files/Pods-HuntlyWorld/Pods-HuntlyWorld.debug.xcconfig"; sourceTree = "<group>"; };
-		3B247D046A6D49E4A4D18745 /* ExpoWidgetsTarget.entitlements */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = ExpoWidgetsTarget.entitlements; path = "/Users/albanhampton/dev/huntly-club/apps/mobile/ios/ExpoWidgetsTarget/ExpoWidgetsTarget.entitlements"; sourceTree = "<group>"; };
+		3B247D046A6D49E4A4D18745 /* ExpoWidgetsTarget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = ExpoWidgetsTarget.entitlements; path = ExpoWidgetsTarget.entitlements; sourceTree = "<group>"; };
 		4A5C95B42F5D4A4F2ACDD2B1 /* libPods-HuntlyWorld.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-HuntlyWorld.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		4B7D42125CFC48E999A5F7A4 /* index.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = index.swift; path = "/Users/albanhampton/dev/huntly-club/apps/mobile/ios/ExpoWidgetsTarget/index.swift"; sourceTree = "<group>"; };
+		4B7D42125CFC48E999A5F7A4 /* index.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = index.swift; path = index.swift; sourceTree = "<group>"; };
 		7161FFF9F76222219F63503B /* libPods-ExpoWidgetsTarget.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ExpoWidgetsTarget.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		79CE644A72BC4BD0334A94EB /* Pods-HuntlyWorld.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HuntlyWorld.release.xcconfig"; path = "Target Support Files/Pods-HuntlyWorld/Pods-HuntlyWorld.release.xcconfig"; sourceTree = "<group>"; };
 		8602BD01D082E47ECDED2395 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-ExpoWidgetsTarget/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		86A229DB24812A0C5B31CA2E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = HuntlyWorld/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		8F5CDF52193C8002EAE94293 /* Pods-ExpoWidgetsTarget.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ExpoWidgetsTarget.release.xcconfig"; path = "Target Support Files/Pods-ExpoWidgetsTarget/Pods-ExpoWidgetsTarget.release.xcconfig"; sourceTree = "<group>"; };
 		9BB40F254498EF7A260E3DDE /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-HuntlyWorld/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		9EC8D16513484ABA830069F6 /* Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = Info.plist; path = "/Users/albanhampton/dev/huntly-club/apps/mobile/ios/ExpoWidgetsTarget/Info.plist"; sourceTree = "<group>"; };
+		9EC8D16513484ABA830069F6 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = Info.plist; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = HuntlyWorld/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = HuntlyWorld/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* HuntlyWorld-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "HuntlyWorld-Bridging-Header.h"; path = "HuntlyWorld/HuntlyWorld-Bridging-Header.h"; sourceTree = "<group>"; };
-		F357482F3A434A0F868AB268 /* ActivityLiveActivity.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = ActivityLiveActivity.swift; path = "/Users/albanhampton/dev/huntly-club/apps/mobile/ios/ExpoWidgetsTarget/ActivityLiveActivity.swift"; sourceTree = "<group>"; };
+		F357482F3A434A0F868AB268 /* ActivityLiveActivity.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = ActivityLiveActivity.swift; path = ActivityLiveActivity.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -200,7 +199,6 @@
 				9EC8D16513484ABA830069F6 /* Info.plist */,
 				4B7D42125CFC48E999A5F7A4 /* index.swift */,
 				F357482F3A434A0F868AB268 /* ActivityLiveActivity.swift */,
-				14B21CC3DECF44E89F74C5CC /* ExpoWidgetsTarget.entitlements */,
 			);
 			name = ExpoWidgetsTarget;
 			path = ExpoWidgetsTarget;

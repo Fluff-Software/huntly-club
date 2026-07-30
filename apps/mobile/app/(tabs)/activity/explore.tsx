@@ -7,12 +7,14 @@ import {
   Pressable,
   StyleSheet,
   View,
+  type LayoutChangeEvent,
 } from "react-native";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
+import { setStatusBarStyle } from "expo-status-bar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Location from "expo-location";
+import * as Updates from "expo-updates";
 import { ThemedText } from "@/components/ThemedText";
 import {
   ActivityMap,
@@ -37,10 +39,14 @@ import {
   EXPLORE_MARKER,
   EXPLORE_MOVE_THRESHOLD_METRES,
   EXPLORE_TEST_AREA_CENTRE,
+  canSpoofExploreLocation,
   isLowConfidenceStop,
   stopHasReviewFlags,
   type ExploreDevGpsPresetId,
 } from "@/constants/exploreDebug";
+
+/** Same gap: FAB → screen bottom (no sheet) and FAB → top of sheet/panel (when open). */
+const MAP_FAB_GAP = 28;
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
 import {
@@ -172,9 +178,12 @@ export default function ExploreScreen() {
   const [safetyAccepted, setSafetyAccepted] = useState(false);
   const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [locationModalRequesting, setLocationModalRequesting] = useState(false);
-  /** DEV: freeze GPS and report spoofed coords for claim testing. */
+  /** DEV / preview: freeze GPS and report spoofed coords for claim testing. */
   const debugSpoofRef = useRef(false);
   const [debugSpoofActive, setDebugSpoofActive] = useState(false);
+  const spoofAllowed = canSpoofExploreLocation(Updates.channel);
+  const [selectedSheetHeight, setSelectedSheetHeight] = useState(0);
+  const [emptyPanelHeight, setEmptyPanelHeight] = useState(0);
 
   useEffect(() => {
     if (profiles.length === 0) {
@@ -310,6 +319,49 @@ export default function ExploreScreen() {
     !loadingStops &&
     loc.status === "ready" &&
     (emptyExploreHint || (visibleStops.length === 0 && !error));
+
+  useEffect(() => {
+    if (!selected) setSelectedSheetHeight(0);
+  }, [selected]);
+
+  useEffect(() => {
+    if (!showEmptyPanel) setEmptyPanelHeight(0);
+  }, [showEmptyPanel]);
+
+  const onSelectedSheetLayout = useCallback((e: LayoutChangeEvent) => {
+    const next = Math.ceil(e.nativeEvent.layout.height);
+    setSelectedSheetHeight((prev) => (prev === next ? prev : next));
+  }, []);
+
+  const onEmptyPanelLayout = useCallback((e: LayoutChangeEvent) => {
+    const next = Math.ceil(e.nativeEvent.layout.height);
+    setEmptyPanelHeight((prev) => (prev === next ? prev : next));
+  }, []);
+
+  const myPinBottom = useMemo(() => {
+    const closedBottom = MAP_FAB_GAP + insets.bottom;
+    // Wait for onLayout before lifting — avoids guessing a height then correcting (jump up/down).
+    if (selected) {
+      if (selectedSheetHeight <= 0) return closedBottom;
+      return selectedSheetHeight + MAP_FAB_GAP;
+    }
+    if (showEmptyPanel) {
+      if (emptyPanelHeight <= 0) return closedBottom;
+      return (
+        emptyPanelHeight +
+        Math.max(insets.bottom, 16) +
+        12 +
+        MAP_FAB_GAP
+      );
+    }
+    return closedBottom;
+  }, [
+    selected,
+    selectedSheetHeight,
+    showEmptyPanel,
+    emptyPanelHeight,
+    insets.bottom,
+  ]);
 
   const initialRegion = useMemo(() => {
     if (loc.status === "ready") {
@@ -550,7 +602,7 @@ export default function ExploreScreen() {
   };
 
   const teleportToSelectedStop = useCallback(() => {
-    if (!__DEV__ || !selected) return;
+    if (!spoofAllowed || !selected) return;
     debugSpoofRef.current = true;
     setDebugSpoofActive(true);
     setClaimError(null);
@@ -566,10 +618,10 @@ export default function ExploreScreen() {
       latitudeDelta: EXPLORE_MAP_DEFAULT_DELTA,
       longitudeDelta: EXPLORE_MAP_DEFAULT_DELTA,
     });
-  }, [selected]);
+  }, [selected, spoofAllowed]);
 
   const spoofToPreset = useCallback((presetId: ExploreDevGpsPresetId) => {
-    if (!__DEV__) return;
+    if (!spoofAllowed) return;
     const preset = EXPLORE_DEV_GPS_PRESETS[presetId];
     debugSpoofRef.current = true;
     setDebugSpoofActive(true);
@@ -587,14 +639,14 @@ export default function ExploreScreen() {
       latitudeDelta: EXPLORE_MAP_DEFAULT_DELTA,
       longitudeDelta: EXPLORE_MAP_DEFAULT_DELTA,
     });
-  }, []);
+  }, [spoofAllowed]);
 
   const clearDebugSpoof = useCallback(() => {
-    if (!__DEV__) return;
+    if (!spoofAllowed) return;
     debugSpoofRef.current = false;
     setDebugSpoofActive(false);
     void requestLocation();
-  }, [requestLocation]);
+  }, [requestLocation, spoofAllowed]);
 
   const openPack = useCallback(async () => {
     if (!selected || claiming || !withinClaimRange || packSession) return;
@@ -633,7 +685,7 @@ export default function ExploreScreen() {
         accuracyMetres: number;
       };
 
-      if (__DEV__ && debugSpoofRef.current && loc.status === "ready") {
+      if (spoofAllowed && debugSpoofRef.current && loc.status === "ready") {
         report = {
           latitude: loc.latitude,
           longitude: loc.longitude,
@@ -698,6 +750,7 @@ export default function ExploreScreen() {
     profiles,
     claimedByProfile,
     loc,
+    spoofAllowed,
   ]);
 
   const commitPackClaim = useCallback(async (): Promise<ExploreAward> => {
@@ -772,9 +825,19 @@ export default function ExploreScreen() {
 
   }, []);
 
+  // Explore needs light status icons on the dark map; restore dark when leaving
+  // so Clubhouse / other light screens stay readable.
+  useFocusEffect(
+    useCallback(() => {
+      setStatusBarStyle("light");
+      return () => {
+        setStatusBarStyle("dark");
+      };
+    }, [])
+  );
+
   return (
     <>
-      <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.root}>
         <ActivityMap
@@ -920,8 +983,7 @@ export default function ExploreScreen() {
           style={[
             styles.myPinButton,
             {
-              bottom:
-                (selected ? 240 : showEmptyPanel ? 160 : 28) + insets.bottom,
+              bottom: myPinBottom,
             },
             loc.status === "loading" && styles.myPinButtonDisabled,
           ]}
@@ -966,6 +1028,7 @@ export default function ExploreScreen() {
               styles.emptyPanel,
               { bottom: Math.max(insets.bottom, 16) + 12 },
             ]}
+            onLayout={onEmptyPanelLayout}
           >
             <MaterialIcons name="explore" size={22} color="#FFE08A" />
             <View style={{ flex: 1, gap: 4 }}>
@@ -986,7 +1049,10 @@ export default function ExploreScreen() {
         ) : null}
 
         {selected ? (
-          <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+          <View
+            style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) }]}
+            onLayout={onSelectedSheetLayout}
+          >
             <View style={styles.sheetHandle} />
             <View style={styles.sheetHeader}>
               <View style={{ flex: 1, gap: 4 }}>
@@ -1006,7 +1072,7 @@ export default function ExploreScreen() {
                 </ThemedText>
               </View>
               <View style={styles.sheetHeaderActions}>
-                {__DEV__ ? (
+                {spoofAllowed ? (
                   <>
                     <Pressable
                       onPress={teleportToSelectedStop}

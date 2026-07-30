@@ -22,6 +22,7 @@ import AnimatedReanimated, {
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
+import { setStatusBarStyle } from "expo-status-bar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { CampfireTile } from "@/components/CampfireTile";
@@ -308,6 +309,7 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      setStatusBarStyle("dark");
       if (!isTutorialActive) {
         refreshHomeData();
       }

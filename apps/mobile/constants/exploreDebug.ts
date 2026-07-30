@@ -111,3 +111,12 @@ export const EXPLORE_MAP_MIN_RADIUS_METRES = 500;
 
 /** Drop merged pins farther than this from the latest map fetch centre. */
 export const EXPLORE_MAP_KEEP_METRES = 3500;
+
+/**
+ * GPS spoof / teleport for Explore testing.
+ * Available in Metro (__DEV__) and on the EAS `preview` channel — not production.
+ */
+export function canSpoofExploreLocation(channel: string | null | undefined): boolean {
+  if (__DEV__) return true;
+  return channel === "preview";
+}

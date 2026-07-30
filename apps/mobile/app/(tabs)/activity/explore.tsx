@@ -8,12 +8,11 @@ import {
   StyleSheet,
   View,
 } from "react-native";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Location from "expo-location";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ThemedText } from "@/components/ThemedText";
 import {
   ActivityMap,
@@ -26,6 +25,7 @@ import { ExploreCardPackReveal } from "@/components/explore/ExploreCardPackRevea
 import { ExploreSafetyWarning } from "@/components/explore/ExploreSafetyWarning";
 import { LocationPermissionModal } from "@/components/explore/LocationPermissionModal";
 import { openLocationSettings } from "@/services/locationService";
+import { getExploreSafetySkipEveryTime } from "@/services/exploreSafetyPreference";
 import {
   EXPLORE_CLAIM_RADIUS_METRES,
   EXPLORE_DEV_GPS_PRESETS,
@@ -62,7 +62,6 @@ const PANEL = "#3D5F45";
 const ACCENT = "#62A94F";
 const FIXED_RADIUS_METRES = 1000;
 const METRES_PER_MILE = 1609.34;
-const EXPLORE_SAFETY_DISMISSED_STORAGE_KEY = "explore_safety_dismissed_v1";
 
 function formatExploreDistanceAway(metres: number): string {
   if (metres < METRES_PER_MILE) {
@@ -168,18 +167,9 @@ export default function ExploreScreen() {
   );
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null);
   const [claimedMode, setClaimedMode] = useState<"single" | "all">("single");
-  /** Safety gate — must accept before using the map (Pokémon GO–style). */
+  /** Safety gate — shown on every Explore visit unless skipped in Settings. */
+  const [safetyReady, setSafetyReady] = useState(false);
   const [safetyAccepted, setSafetyAccepted] = useState(false);
-  const persistSafetyAccepted = useCallback(async () => {
-    try {
-      await AsyncStorage.setItem(
-        EXPLORE_SAFETY_DISMISSED_STORAGE_KEY,
-        "1"
-      );
-    } catch {
-      // Ignore — if persistence fails we can still show the prompt.
-    }
-  }, []);
   const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [locationModalRequesting, setLocationModalRequesting] = useState(false);
   /** DEV: freeze GPS and report spoofed coords for claim testing. */
@@ -196,23 +186,21 @@ export default function ExploreScreen() {
     );
   }, [profiles]);
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const stored = await AsyncStorage.getItem(
-          EXPLORE_SAFETY_DISMISSED_STORAGE_KEY
-        );
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      setSafetyReady(false);
+      void (async () => {
+        const skip = await getExploreSafetySkipEveryTime();
         if (cancelled) return;
-        if (stored === "1") setSafetyAccepted(true);
-      } catch {
-        // Non-fatal: fall back to showing the safety prompt.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+        setSafetyAccepted(skip);
+        setSafetyReady(true);
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [])
+  );
 
   const selected = useMemo(
     () => stops.find((s) => s.stopId === selectedId) ?? null,
@@ -282,6 +270,8 @@ export default function ExploreScreen() {
     setClaimError(null);
     setPackSession(null);
   }, [selectedId]);
+
+  const alreadyClaimed = selected ? claimedIds.has(selected.stopId) : false;
 
   const visibleStops = useMemo(
     () =>
@@ -782,23 +772,10 @@ export default function ExploreScreen() {
 
   }, []);
 
-  const alreadyClaimed = selected ? claimedIds.has(selected.stopId) : false;
-
   return (
     <>
       <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
-      <ExploreSafetyWarning
-        visible={!safetyAccepted}
-        onAccept={() => {
-          setSafetyAccepted(true);
-          void persistSafetyAccepted();
-        }}
-        onCancel={() => {
-          setSafetyAccepted(true);
-          void persistSafetyAccepted();
-        }}
-      />
       <View style={styles.root}>
         <ActivityMap
           ref={mapRef}
@@ -832,7 +809,9 @@ export default function ExploreScreen() {
 
         <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => {
+              router.navigate("/(tabs)");
+            }}
             hitSlop={12}
             accessibilityRole="button"
             accessibilityLabel="Go back"
@@ -1026,15 +1005,43 @@ export default function ExploreScreen() {
                       : "Finding your distance…"}
                 </ThemedText>
               </View>
-              <Pressable
-                onPress={() => setSelectedId(null)}
-                hitSlop={10}
-                accessibilityRole="button"
-                accessibilityLabel="Close"
-                style={styles.closeSheet}
-              >
-                <MaterialIcons name="close" size={22} color="#FFF" />
-              </Pressable>
+              <View style={styles.sheetHeaderActions}>
+                {__DEV__ ? (
+                  <>
+                    <Pressable
+                      onPress={teleportToSelectedStop}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        debugSpoofActive ? "Re-teleport to this spot" : "Teleport to this spot"
+                      }
+                      style={styles.sheetIconBtn}
+                    >
+                      <MaterialIcons name="my-location" size={18} color="#FFE08A" />
+                    </Pressable>
+                    {debugSpoofActive ? (
+                      <Pressable
+                        onPress={clearDebugSpoof}
+                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel="Clear spoofed location"
+                        style={styles.sheetIconBtn}
+                      >
+                        <MaterialIcons name="gps-off" size={18} color="rgba(255,255,255,0.75)" />
+                      </Pressable>
+                    ) : null}
+                  </>
+                ) : null}
+                <Pressable
+                  onPress={() => setSelectedId(null)}
+                  hitSlop={10}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close"
+                  style={styles.closeSheet}
+                >
+                  <MaterialIcons name="close" size={22} color="#FFF" />
+                </Pressable>
+              </View>
             </View>
 
             {packSession ? (
@@ -1056,37 +1063,6 @@ export default function ExploreScreen() {
                   <ThemedText lightColor="#FFD8D8" darkColor="#FFD8D8" style={{ fontSize: 13 }}>
                     {claimError}
                   </ThemedText>
-                ) : null}
-                {__DEV__ ? (
-                  <View style={styles.devRow}>
-                    <Pressable
-                      onPress={teleportToSelectedStop}
-                      style={styles.devBtn}
-                      accessibilityRole="button"
-                      accessibilityLabel="Teleport to this spot"
-                    >
-                      <MaterialIcons name="my-location" size={16} color="#FFE08A" />
-                      <ThemedText lightColor="#FFE08A" darkColor="#FFE08A" style={styles.devBtnText}>
-                        {debugSpoofActive ? "DEV: re-teleport here" : "DEV: teleport here"}
-                      </ThemedText>
-                    </Pressable>
-                    {debugSpoofActive ? (
-                      <Pressable
-                        onPress={clearDebugSpoof}
-                        style={styles.devBtnMuted}
-                        accessibilityRole="button"
-                        accessibilityLabel="Clear spoofed location"
-                      >
-                        <ThemedText
-                          lightColor="rgba(255,255,255,0.7)"
-                          darkColor="rgba(255,255,255,0.7)"
-                          style={styles.devBtnText}
-                        >
-                          Clear
-                        </ThemedText>
-                      </Pressable>
-                    ) : null}
-                  </View>
                 ) : null}
                 {!alreadyClaimed && loc.status !== "ready" ? (
                   <View style={styles.closerHint}>
@@ -1169,6 +1145,17 @@ export default function ExploreScreen() {
             }}
           />
         ) : null}
+
+        <ExploreSafetyWarning
+          visible={safetyReady && !safetyAccepted}
+          onAccept={() => {
+            setSafetyAccepted(true);
+          }}
+          onCancel={() => {
+            setSafetyAccepted(true);
+            router.navigate("/(tabs)");
+          }}
+        />
       </View>
     </>
   );
@@ -1327,6 +1314,19 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 12,
   },
+  sheetHeaderActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  sheetIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.25)",
+  },
   closerHint: {
     flexDirection: "row",
     alignItems: "center",
@@ -1335,11 +1335,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-  },
-  devRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
   },
   devBtn: {
     flexDirection: "row",

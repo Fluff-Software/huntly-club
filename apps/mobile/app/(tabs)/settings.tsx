@@ -38,6 +38,10 @@ import {
   requestLocationPermission,
   openLocationSettings,
 } from "@/services/locationService";
+import {
+  getExploreSafetySkipEveryTime,
+  setExploreSafetySkipEveryTime,
+} from "@/services/exploreSafetyPreference";
 
 const COLORS = {
   darkGreen: "#4F6F52",
@@ -65,9 +69,15 @@ export default function SettingsScreen() {
   const [pushNotificationsToggling, setPushNotificationsToggling] = useState(false);
   const [locationPermission, setLocationPermission] = useState<"granted" | "denied" | "undetermined" | "loading">("loading");
   const [locationToggling, setLocationToggling] = useState(false);
+  const [showExploreSafetyEveryTime, setShowExploreSafetyEveryTime] = useState(true);
+  const [exploreSafetyLoading, setExploreSafetyLoading] = useState(true);
+  const [exploreSafetyToggling, setExploreSafetyToggling] = useState(false);
   const locationScale = useSharedValue(1);
   const locationAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: locationScale.value }] }));
+  const exploreSafetyScale = useSharedValue(1);
+  const exploreSafetyAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: exploreSafetyScale.value }] }));
   const [showRemovalModal, setShowRemovalModal] = useState(false);
   const [removalReason, setRemovalReason] = useState("");
   const [removalSubmitting, setRemovalSubmitting] = useState(false);
@@ -132,6 +142,32 @@ export default function SettingsScreen() {
       setLocationPermission(status);
     });
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getExploreSafetySkipEveryTime().then((skip) => {
+      if (cancelled) return;
+      setShowExploreSafetyEveryTime(!skip);
+      setExploreSafetyLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleExploreSafetyToggle = async () => {
+    if (exploreSafetyToggling || exploreSafetyLoading) return;
+    setExploreSafetyToggling(true);
+    const nextShow = !showExploreSafetyEveryTime;
+    try {
+      await setExploreSafetySkipEveryTime(!nextShow);
+      setShowExploreSafetyEveryTime(nextShow);
+    } catch {
+      Alert.alert("Error", "Failed to update Explore safety preference");
+    } finally {
+      setExploreSafetyToggling(false);
+    }
+  };
 
   const handleLocationToggle = async () => {
     if (locationToggling) return;
@@ -548,6 +584,46 @@ export default function SettingsScreen() {
                 <View style={styles.checkbox}>
                   {locationPermission === "granted" ? (
                     <MaterialIcons name="check" size={scaleW(18)} color={COLORS.darkGreen} />
+                  ) : null}
+                </View>
+              )}
+            </Pressable>
+          </Animated.View>
+          <Animated.View style={exploreSafetyAnimatedStyle}>
+            <Pressable
+              style={styles.prefRow}
+              onPress={() => void handleExploreSafetyToggle()}
+              disabled={exploreSafetyLoading || exploreSafetyToggling}
+              onPressIn={() => {
+                exploreSafetyScale.value = withSpring(0.98, { damping: 15, stiffness: 400 });
+              }}
+              onPressOut={() => {
+                exploreSafetyScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+              }}
+            >
+              <View style={{ flex: 1 }}>
+                <ThemedText style={styles.prefLabel}>
+                  Show Explore safety rules every time
+                </ThemedText>
+                <ThemedText
+                  style={[
+                    styles.prefLabel,
+                    { fontSize: scaleW(12), opacity: 0.7, marginTop: scaleW(2) },
+                  ]}
+                >
+                  Reminder when you open Explore outdoors
+                </ThemedText>
+              </View>
+              {exploreSafetyLoading || exploreSafetyToggling ? (
+                <ActivityIndicator size="small" color={COLORS.darkGreen} />
+              ) : (
+                <View style={styles.checkbox}>
+                  {showExploreSafetyEveryTime ? (
+                    <MaterialIcons
+                      name="check"
+                      size={scaleW(18)}
+                      color={COLORS.darkGreen}
+                    />
                   ) : null}
                 </View>
               )}

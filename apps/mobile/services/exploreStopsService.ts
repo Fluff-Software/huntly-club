@@ -676,6 +676,7 @@ function mapAwardCard(raw: Record<string, unknown>) {
     raw.habitat_weights && typeof raw.habitat_weights === "object" && !Array.isArray(raw.habitat_weights)
       ? (raw.habitat_weights as Record<string, number>)
       : {};
+  const imageRaw = raw.image_url ?? raw.image_path;
   return {
     id: String(raw.id),
     slug: String(raw.slug),
@@ -683,7 +684,10 @@ function mapAwardCard(raw: Record<string, unknown>) {
     description: String(raw.description ?? ""),
     category: String(raw.category),
     rarity: String(raw.rarity),
-    imageUrl: raw.image_url == null ? null : String(raw.image_url),
+    imageUrl:
+      imageRaw == null || imageRaw === ""
+        ? null
+        : String(imageRaw),
     sortOrder: typeof raw.sort_order === "number" ? raw.sort_order : 0,
     habitatWeights: habitat,
   };

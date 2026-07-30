@@ -1,9 +1,12 @@
 /**
  * Safety gate shown when opening Explore — similar intent to Pokémon GO’s
  * “be aware of your surroundings” warning, framed for Huntly families.
+ *
+ * Rendered as an in-screen overlay (not RN Modal) so it cannot outlive the
+ * Explore route when switching tabs.
  */
 import React, { useMemo } from "react";
-import { Modal, Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
@@ -49,7 +52,9 @@ export function ExploreSafetyWarning({ visible, onAccept, onCancel }: Props) {
     () =>
       StyleSheet.create({
         root: {
-          flex: 1,
+          ...StyleSheet.absoluteFillObject,
+          zIndex: 100,
+          elevation: 100,
           backgroundColor: "rgba(6,12,8,0.92)",
           justifyContent: "center",
           paddingHorizontal: scaleW(20),
@@ -151,70 +156,75 @@ export function ExploreSafetyWarning({ visible, onAccept, onCancel }: Props) {
           lineHeight: scaleW(15),
           color: "rgba(255,255,255,0.45)",
         },
+        settingsHint: {
+          textAlign: "center",
+          fontSize: scaleW(12),
+          lineHeight: scaleW(16),
+          color: "rgba(255,255,255,0.55)",
+          fontWeight: "600",
+        },
       }),
     [scaleW, insets.top, insets.bottom]
   );
 
+  if (!visible) return null;
+
   return (
-    <Modal
-      visible={visible}
-      animationType="fade"
-      transparent
-      onRequestClose={onCancel}
-    >
-      <View style={styles.root}>
-        <View style={styles.card} accessibilityRole="summary">
-          <View style={styles.badge}>
-            <MaterialIcons name="warning-amber" size={scaleW(30)} color={ACCENT} />
-          </View>
-          <ThemedText type="heading" lightColor="#FFF" darkColor="#FFF" style={styles.title}>
-            Stay safe while exploring
-          </ThemedText>
-          <ThemedText lightColor="rgba(255,255,255,0.72)" darkColor="rgba(255,255,255,0.72)" style={styles.subtitle}>
-            Huntly World Explore is for real outdoor adventures. Read this before you start.
-          </ThemedText>
-
-          <View style={styles.list}>
-            {SAFETY_POINTS.map((point) => (
-              <View key={point.text} style={styles.row}>
-                <View style={styles.rowIcon}>
-                  <MaterialIcons name={point.icon} size={scaleW(18)} color={ACCENT} />
-                </View>
-                <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.rowText}>
-                  {point.text}
-                </ThemedText>
-              </View>
-            ))}
-          </View>
-
-          <View style={styles.actions}>
-            <Pressable
-              onPress={onAccept}
-              style={styles.primary}
-              accessibilityRole="button"
-              accessibilityLabel="I understand, continue to Explore"
-            >
-              <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.primaryText}>
-                I understand — let’s explore
-              </ThemedText>
-            </Pressable>
-            <Pressable
-              onPress={onCancel}
-              style={styles.secondary}
-              accessibilityRole="button"
-              accessibilityLabel="Not now"
-            >
-              <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.secondaryText}>
-                Not now
-              </ThemedText>
-            </Pressable>
-          </View>
-
-          <ThemedText lightColor="rgba(255,255,255,0.45)" darkColor="rgba(255,255,255,0.45)" style={styles.finePrint}>
-            You are responsible for your own safety. Follow local laws and your family’s rules.
-          </ThemedText>
+    <View style={styles.root} accessibilityViewIsModal>
+      <View style={styles.card} accessibilityRole="summary">
+        <View style={styles.badge}>
+          <MaterialIcons name="warning-amber" size={scaleW(30)} color={ACCENT} />
         </View>
+        <ThemedText type="heading" lightColor="#FFF" darkColor="#FFF" style={styles.title}>
+          Stay safe while exploring
+        </ThemedText>
+        <ThemedText lightColor="rgba(255,255,255,0.72)" darkColor="rgba(255,255,255,0.72)" style={styles.subtitle}>
+          Huntly World Explore is for real outdoor adventures. Read this before you start.
+        </ThemedText>
+
+        <View style={styles.list}>
+          {SAFETY_POINTS.map((point) => (
+            <View key={point.text} style={styles.row}>
+              <View style={styles.rowIcon}>
+                <MaterialIcons name={point.icon} size={scaleW(18)} color={ACCENT} />
+              </View>
+              <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.rowText}>
+                {point.text}
+              </ThemedText>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.actions}>
+          <Pressable
+            onPress={onAccept}
+            style={styles.primary}
+            accessibilityRole="button"
+            accessibilityLabel="I understand, continue to Explore"
+          >
+            <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.primaryText}>
+              I understand — let’s explore
+            </ThemedText>
+          </Pressable>
+          <Pressable
+            onPress={onCancel}
+            style={styles.secondary}
+            accessibilityRole="button"
+            accessibilityLabel="Not now"
+          >
+            <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.secondaryText}>
+              Not now
+            </ThemedText>
+          </Pressable>
+        </View>
+
+        <ThemedText lightColor="rgba(255,255,255,0.45)" darkColor="rgba(255,255,255,0.45)" style={styles.finePrint}>
+          You are responsible for your own safety. Follow local laws and your family’s rules.
+        </ThemedText>
+        <ThemedText lightColor="rgba(255,255,255,0.55)" darkColor="rgba(255,255,255,0.55)" style={styles.settingsHint}>
+          Don’t want to see this every time? Turn it off in Settings.
+        </ThemedText>
       </View>
-    </Modal>
+    </View>
   );
 }

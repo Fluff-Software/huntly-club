@@ -1,12 +1,14 @@
 /**
- * Explore Card Binder — simple vertical card grid for the selected profile.
+ * Explore Card Binder — single scrolling grid of sleeve pockets.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
+  Image,
   Pressable,
+  ScrollView,
   StyleSheet,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -14,29 +16,104 @@ import { StatusBar } from "expo-status-bar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
-import { BinderCardPocket } from "@/components/explore/BinderCardPocket";
+import { BinderCardPocket, fitBinderCardSize } from "@/components/explore/BinderCardPocket";
+import {
+  BinderInteractionProvider,
+  useBinderInteraction,
+} from "@/components/explore/BinderInteractionContext";
+import { BinderFiltersModal } from "@/components/explore/BinderFiltersModal";
+import { BinderPageSheet } from "@/components/explore/BinderPageSheet";
 import { ExploreCardDetail } from "@/components/explore/ExploreCardDetail";
-import { EXPLORE_BINDER_SCREEN_BG } from "@/constants/exploreBinder";
+import { EXPLORE_BINDER_SCREEN_BG, EXPLORE_CARD_ART_ASPECT } from "@/constants/exploreBinder";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
-import { useLayoutScale } from "@/hooks/useLayoutScale";
 import {
   ExploreStopsRequestError,
   exploreUserMessage,
   getExploreCardCollection,
 } from "@/services/exploreStopsService";
 import {
-  BINDER_FILTERS,
+  binderFiltersAreActive,
   completionPercent,
-  filterBinderCards,
+  filterBinderCardsFull,
   totalCopyCount,
   uniqueCollectedCount,
   type BinderCardEntry,
   type BinderCategoryFilter,
+  type BinderSortOption,
+  type BinderStatusFilter,
 } from "@/utils/exploreBinder";
+
+const H_PAD = 12;
+const GRID_GAP = 4;
+const INNER_PAD = 8;
+const COLUMNS = 3;
+
+const DEFAULT_CATEGORY: BinderCategoryFilter = "all";
+const DEFAULT_STATUS: BinderStatusFilter = "all";
+const DEFAULT_SORT: BinderSortOption = "default";
+
+type BinderGridProps = {
+  cards: BinderCardEntry[];
+  columns: number;
+  cardW: number;
+  cardH: number;
+  onOpenCard: (card: BinderCardEntry) => void;
+};
+
+function BinderGrid({ cards, columns, cardW, cardH, onOpenCard }: BinderGridProps) {
+  const { pulledId, highlightId } = useBinderInteraction();
+  const rows: BinderCardEntry[][] = [];
+  for (let i = 0; i < cards.length; i += columns) {
+    rows.push(cards.slice(i, i + columns));
+  }
+
+  return (
+    <View style={styles.pageGrid}>
+      {rows.map((row, rowIdx) => {
+        const rowPulled = row.some((c) => pulledId === c.id);
+        return (
+          <View
+            key={`row-${rowIdx}`}
+            style={[styles.pageRow, { height: cardH }, rowPulled && { zIndex: 20 }]}
+          >
+            {row.map((card) => (
+              <View
+                key={card.id}
+                style={[
+                  styles.cell,
+                  { width: cardW, height: cardH },
+                  pulledId === card.id && { zIndex: 20 },
+                ]}
+              >
+                <BinderCardPocket
+                  card={card}
+                  width={cardW}
+                  height={cardH}
+                  highlighted={highlightId === card.id}
+                  isPulled={pulledId === card.id}
+                  onPress={() => onOpenCard(card)}
+                />
+              </View>
+            ))}
+            {row.length < columns
+              ? Array.from({ length: columns - row.length }).map((_, i) => (
+                  <View
+                    key={`pad-${rowIdx}-${i}`}
+                    style={[styles.cell, { width: cardW, height: cardH }]}
+                  />
+                ))
+              : null}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
 
 export default function ExploreCollectionScreen() {
   const router = useRouter();
+  const { width: windowW } = useWindowDimensions();
   const { profileId: profileIdParam, highlightCardId, mode } = useLocalSearchParams<{
     profileId?: string;
     highlightCardId?: string;
@@ -44,41 +121,60 @@ export default function ExploreCollectionScreen() {
   }>();
   const { session } = useAuth();
   const { profiles } = usePlayer();
-  const { isTablet } = useLayoutScale();
   const viewingAllProfiles = mode === "all";
+  const profileLockedByParam = typeof profileIdParam === "string";
+  const showProfilePicker =
+    !viewingAllProfiles && !profileLockedByParam && profiles.length > 1;
 
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null);
+  const [category, setCategory] = useState<BinderCategoryFilter>(DEFAULT_CATEGORY);
+  const [status, setStatus] = useState<BinderStatusFilter>(DEFAULT_STATUS);
+  const [sort, setSort] = useState<BinderSortOption>(DEFAULT_SORT);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [cards, setCards] = useState<BinderCardEntry[]>([]);
-  const [filter, setFilter] = useState<BinderCategoryFilter>("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<BinderCardEntry | null>(null);
+  const [pulledId, setPulledId] = useState<string | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(
     typeof highlightCardId === "string" ? highlightCardId : null
   );
 
-  const listRef = useRef<FlatList<BinderCardEntry>>(null);
+  const scrollRef = useRef<ScrollView>(null);
 
-  const columns = isTablet ? 3 : 2;
+  const pageWidth = Math.max(0, windowW - H_PAD * 2);
+  const gridWidth = Math.max(0, pageWidth - INNER_PAD * 2);
+  const cellW = gridWidth > 0 ? (gridWidth - GRID_GAP * (COLUMNS - 1)) / COLUMNS : 0;
+  const cardSize = fitBinderCardSize(cellW, cellW / EXPLORE_CARD_ART_ASPECT);
+  const rowStride = cardSize.h + GRID_GAP;
+
+  const resolveDefaultProfileId = useCallback((): number | null => {
+    if (viewingAllProfiles || profiles.length === 0) return null;
+    const requested = typeof profileIdParam === "string" ? Number(profileIdParam) : NaN;
+    if (Number.isFinite(requested) && profiles.some((p) => p.id === requested)) {
+      return requested;
+    }
+    return profiles[0]!.id;
+  }, [profiles, profileIdParam, viewingAllProfiles]);
+
+  const resetFilters = useCallback(() => {
+    setCategory(DEFAULT_CATEGORY);
+    setStatus(DEFAULT_STATUS);
+    setSort(DEFAULT_SORT);
+    setSelectedProfileId(resolveDefaultProfileId());
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [resolveDefaultProfileId]);
 
   useEffect(() => {
     if (viewingAllProfiles) {
       setSelectedProfileId(null);
       return;
     }
-    if (profiles.length === 0) {
-      setSelectedProfileId(null);
-      return;
-    }
-    const requested = typeof profileIdParam === "string" ? Number(profileIdParam) : NaN;
-    if (Number.isFinite(requested) && profiles.some((p) => p.id === requested)) {
-      setSelectedProfileId(requested);
-      return;
-    }
-    setSelectedProfileId((prev) =>
-      prev != null && profiles.some((p) => p.id === prev) ? prev : profiles[0]!.id
-    );
-  }, [profiles, profileIdParam, viewingAllProfiles]);
+    setSelectedProfileId((prev) => {
+      if (prev != null && profiles.some((p) => p.id === prev)) return prev;
+      return resolveDefaultProfileId();
+    });
+  }, [profiles, resolveDefaultProfileId, viewingAllProfiles]);
 
   const load = useCallback(
     async (opts?: { soft?: boolean }) => {
@@ -164,7 +260,7 @@ export default function ExploreCollectionScreen() {
 
           setCards(Array.from(mergedByCardId.values()));
         } else {
-          const result = await getExploreCardCollection(selectedProfileId);
+          const result = await getExploreCardCollection(selectedProfileId!);
           setCards(
             result.items.map((item) => ({
               id: item.card.id,
@@ -201,192 +297,225 @@ export default function ExploreCollectionScreen() {
   useFocusEffect(
     useCallback(() => {
       void load();
-    }, [load])
+      return () => {
+        setFiltersOpen(false);
+        setCategory(DEFAULT_CATEGORY);
+        setStatus(DEFAULT_STATUS);
+        setSort(DEFAULT_SORT);
+        setSelectedProfileId(resolveDefaultProfileId());
+      };
+    }, [load, resolveDefaultProfileId])
   );
 
-  const filtered = useMemo(() => filterBinderCards(cards, filter), [cards, filter]);
+  useEffect(() => {
+    if (loading || cards.length === 0) return;
+    const urls = [
+      ...new Set(
+        cards
+          .map((c) => c.imageUrl)
+          .filter((u): u is string => typeof u === "string" && u.startsWith("http"))
+      ),
+    ];
+    urls.forEach((uri) => {
+      void Image.prefetch(uri).catch(() => undefined);
+    });
+  }, [cards, loading]);
+
+  const filtered = useMemo(
+    () => filterBinderCardsFull(cards, category, status, sort),
+    [cards, category, status, sort]
+  );
+
+  const filtersActive = binderFiltersAreActive(category, status, sort);
+  const profileChangedFromDefault =
+    showProfilePicker &&
+    selectedProfileId != null &&
+    selectedProfileId !== resolveDefaultProfileId();
+  const showFilterBadge = filtersActive || profileChangedFromDefault;
 
   const overallUnique = uniqueCollectedCount(cards);
   const overallTotal = cards.length;
   const overallCopies = totalCopyCount(cards);
   const overallPct = completionPercent(overallUnique, overallTotal);
 
-  // Highlighted card from “View in binder” must be findable — reset category filter.
   useEffect(() => {
     if (!highlightId) return;
-    setFilter("all");
+    setCategory(DEFAULT_CATEGORY);
+    setStatus(DEFAULT_STATUS);
+    setSort(DEFAULT_SORT);
   }, [highlightId]);
 
   useEffect(() => {
     if (!highlightId || filtered.length === 0) return;
-    const itemIndex = filtered.findIndex((c) => c.id === highlightId);
-    if (itemIndex < 0) return;
-    // FlatList with numColumns windows by *row*, not item index.
-    const rowIndex = Math.min(
-      Math.floor(itemIndex / columns),
-      Math.max(0, Math.ceil(filtered.length / columns) - 1)
-    );
-    const frame = requestAnimationFrame(() => {
-      listRef.current?.scrollToIndex({
-        index: rowIndex,
-        animated: true,
-        viewPosition: 0.25,
-      });
+    const idx = filtered.findIndex((c) => c.id === highlightId);
+    if (idx < 0) return;
+
+    const row = Math.floor(idx / COLUMNS);
+    const y = 14 + row * rowStride;
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ y: Math.max(0, y - 8), animated: true });
     });
-    const card = filtered[itemIndex];
-    if (card) setSelected(card);
+    const card = filtered[idx];
+    if (card) {
+      setPulledId(card.id);
+      setSelected(card);
+    }
     const t = setTimeout(() => setHighlightId(null), 2500);
-    return () => {
-      cancelAnimationFrame(frame);
-      clearTimeout(t);
-    };
-  }, [highlightId, filtered, columns]);
+    return () => clearTimeout(t);
+  }, [highlightId, filtered, rowStride]);
 
-  const listHeader = (
-    <View style={styles.listHeader}>
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-          style={styles.iconBtn}
-        >
-          <MaterialIcons name="arrow-back" size={22} color="#FFF" />
-        </Pressable>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <ThemedText type="heading" lightColor="#FFF" darkColor="#FFF" style={styles.title}>
-            Card Binder
-          </ThemedText>
-          <ThemedText
-            lightColor="rgba(255,255,255,0.75)"
-            darkColor="rgba(255,255,255,0.75)"
-            style={styles.subtitle}
-          >
-            {overallTotal > 0
-              ? overallCopies > overallUnique
-                ? `${overallUnique} of ${overallTotal} found · ${overallCopies} cards in total`
-                : `${overallUnique} of ${overallTotal} found`
-              : loading
-                ? "Loading…"
-                : "No cards"}
-          </ThemedText>
-        </View>
-        <Pressable
-          onPress={() => void load({ soft: true })}
-          accessibilityRole="button"
-          accessibilityLabel="Refresh binder"
-          style={styles.iconBtn}
-        >
-          <MaterialIcons name="refresh" size={22} color="#FFF" />
-        </Pressable>
-      </View>
+  function openCard(card: BinderCardEntry) {
+    setPulledId(card.id);
+    setSelected(card);
+  }
 
-      {overallTotal > 0 ? (
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: `${overallPct}%` }]} />
-        </View>
-      ) : null}
+  function closeDetail() {
+    setSelected(null);
+    setPulledId(null);
+  }
 
-      {!viewingAllProfiles && profiles.length > 1 && typeof profileIdParam !== "string" ? (
-        <View style={styles.chipRow}>
-          {profiles.map((p) => (
-            <Pressable
-              key={p.id}
-              onPress={() => setSelectedProfileId(p.id)}
-              accessibilityRole="button"
-              accessibilityState={{ selected: selectedProfileId === p.id }}
-              style={[styles.chip, selectedProfileId === p.id && styles.chipActive]}
-            >
-              <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.chipText} numberOfLines={1}>
-                {p.nickname || p.name}
-              </ThemedText>
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
+  function applyCategory(next: BinderCategoryFilter) {
+    setCategory(next);
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }
 
-      <View style={styles.chipRow}>
-        {BINDER_FILTERS.map((f) => (
-          <Pressable
-            key={f.id}
-            onPress={() => setFilter(f.id)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: filter === f.id }}
-            accessibilityLabel={`Filter ${f.label}`}
-            style={[styles.chip, filter === f.id && styles.chipActive]}
-          >
-            <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.chipText} numberOfLines={1}>
-              {f.label}
-            </ThemedText>
-          </Pressable>
-        ))}
-      </View>
+  function applyStatus(next: BinderStatusFilter) {
+    setStatus(next);
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }
 
-      {error ? (
-        <View style={styles.errorBox}>
-          <ThemedText lightColor="#FFD8D8" darkColor="#FFD8D8" style={{ textAlign: "center" }}>
-            {error}
-          </ThemedText>
-          <Pressable onPress={() => void load()} style={[styles.chip, styles.chipActive, { marginTop: 8 }]}>
-            <ThemedText lightColor="#FFF" darkColor="#FFF">
-              Retry
-            </ThemedText>
-          </Pressable>
-        </View>
-      ) : null}
-    </View>
-  );
+  function applySort(next: BinderSortOption) {
+    setSort(next);
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }
 
   return (
     <>
       <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+        <View style={styles.listHeader}>
+          <View style={styles.header}>
+            <Pressable
+              onPress={() => router.back()}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+              style={styles.iconBtn}
+            >
+              <MaterialIcons name="arrow-back" size={22} color="#FFF" />
+            </Pressable>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <ThemedText type="heading" lightColor="#FFF" darkColor="#FFF" style={styles.title}>
+                Card Binder
+              </ThemedText>
+              <ThemedText
+                lightColor="rgba(255,255,255,0.75)"
+                darkColor="rgba(255,255,255,0.75)"
+                style={styles.subtitle}
+              >
+                {overallTotal > 0
+                  ? overallCopies > overallUnique
+                    ? `${overallUnique} of ${overallTotal} found · ${overallCopies} cards in total`
+                    : `${overallUnique} of ${overallTotal} found`
+                  : loading
+                    ? "Loading…"
+                    : "No cards"}
+              </ThemedText>
+            </View>
+            <Pressable
+              onPress={() => setFiltersOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Open filters"
+              style={styles.iconBtn}
+            >
+              <MaterialIcons name="tune" size={22} color="#FFF" />
+              {showFilterBadge ? <View style={styles.filterDot} /> : null}
+            </Pressable>
+            <Pressable
+              onPress={() => void load({ soft: true })}
+              accessibilityRole="button"
+              accessibilityLabel="Refresh binder"
+              style={styles.iconBtn}
+            >
+              <MaterialIcons name="refresh" size={22} color="#FFF" />
+            </Pressable>
+          </View>
+
+          {overallTotal > 0 ? (
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${overallPct}%` }]} />
+            </View>
+          ) : null}
+
+          {error ? (
+            <View style={styles.errorBox}>
+              <ThemedText lightColor="#FFD8D8" darkColor="#FFD8D8" style={{ textAlign: "center" }}>
+                {error}
+              </ThemedText>
+              <Pressable onPress={() => void load()} style={[styles.retryBtn, { marginTop: 8 }]}>
+                <ThemedText lightColor="#FFF" darkColor="#FFF">
+                  Retry
+                </ThemedText>
+              </Pressable>
+            </View>
+          ) : null}
+        </View>
+
         {loading && cards.length === 0 ? (
           <View style={styles.center}>
-            {listHeader}
             <ActivityIndicator color="#FFF" style={{ marginTop: 40 }} />
           </View>
+        ) : filtered.length === 0 && !loading && !error ? (
+          <ThemedText
+            lightColor="rgba(255,255,255,0.7)"
+            darkColor="rgba(255,255,255,0.7)"
+            style={{ textAlign: "center", marginTop: 24 }}
+          >
+            No cards match these filters.
+          </ThemedText>
         ) : (
-          <FlatList
-            ref={listRef}
-            data={filtered}
-            key={columns}
-            keyExtractor={(item) => item.id}
-            numColumns={columns}
-            ListHeaderComponent={listHeader}
-            contentContainerStyle={styles.listContent}
-            columnWrapperStyle={columns > 1 ? styles.columnWrapper : undefined}
-            renderItem={({ item }) => (
-              <View style={styles.cell}>
-                <BinderCardPocket
-                  card={item}
-                  highlighted={highlightId === item.id}
-                  onPress={() => setSelected(item)}
-                />
-              </View>
-            )}
-            ListEmptyComponent={
-              !loading && !error ? (
-                <ThemedText
-                  lightColor="rgba(255,255,255,0.7)"
-                  darkColor="rgba(255,255,255,0.7)"
-                  style={{ textAlign: "center", marginTop: 24 }}
-                >
-                  No cards in this filter.
-                </ThemedText>
-              ) : null
-            }
-            onScrollToIndexFailed={({ index, averageItemLength }) => {
-              listRef.current?.scrollToOffset({
-                offset: Math.max(0, index * (averageItemLength || 220)),
-                animated: true,
-              });
-            }}
-          />
+          <BinderInteractionProvider pulledId={pulledId} highlightId={highlightId}>
+            <ScrollView
+              ref={scrollRef}
+              style={styles.scroll}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+            >
+              <BinderPageSheet style={styles.sheet}>
+                {cardSize.w > 0 ? (
+                  <BinderGrid
+                    cards={filtered}
+                    columns={COLUMNS}
+                    cardW={cardSize.w}
+                    cardH={cardSize.h}
+                    onOpenCard={openCard}
+                  />
+                ) : null}
+              </BinderPageSheet>
+            </ScrollView>
+          </BinderInteractionProvider>
         )}
 
-        <ExploreCardDetail card={selected} onClose={() => setSelected(null)} />
+        <BinderFiltersModal
+          visible={filtersOpen}
+          onClose={() => setFiltersOpen(false)}
+          onReset={resetFilters}
+          profiles={profiles}
+          showProfilePicker={showProfilePicker}
+          selectedProfileId={selectedProfileId}
+          onSelectProfile={(id) => {
+            setSelectedProfileId(id);
+            scrollRef.current?.scrollTo({ y: 0, animated: false });
+          }}
+          category={category}
+          onSelectCategory={applyCategory}
+          status={status}
+          onSelectStatus={applyStatus}
+          sort={sort}
+          onSelectSort={applySort}
+        />
+
+        <ExploreCardDetail card={selected} onClose={closeDetail} />
       </SafeAreaView>
     </>
   );
@@ -411,6 +540,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.12)",
   },
+  filterDot: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#62A94F",
+  },
   title: { fontSize: 22, lineHeight: 26 },
   subtitle: { fontSize: 12, marginTop: 2 },
   progressTrack: {
@@ -426,31 +564,35 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: "#62A94F",
   },
-  chipRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingBottom: 8,
-  },
-  chip: {
-    backgroundColor: "rgba(255,255,255,0.12)",
+  retryBtn: {
+    backgroundColor: "#62A94F",
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  chipActive: { backgroundColor: "#62A94F" },
-  chipText: { fontSize: 13, fontWeight: "700" },
   errorBox: { paddingHorizontal: 16, paddingVertical: 8, alignItems: "center" },
-  listContent: {
-    paddingBottom: 24,
+  scroll: { flex: 1 },
+  scrollContent: {
+    paddingHorizontal: H_PAD,
+    paddingBottom: 28,
   },
-  columnWrapper: {
-    paddingHorizontal: 8,
-    gap: 8,
+  sheet: {
+    width: "100%",
+    borderRadius: 12,
+    overflow: "visible",
+  },
+  pageGrid: {
+    gap: GRID_GAP,
+    paddingTop: 2,
+  },
+  pageRow: {
+    flexDirection: "row",
+    gap: GRID_GAP,
+    overflow: "visible",
   },
   cell: {
-    flex: 1,
-    marginBottom: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "visible",
   },
 });

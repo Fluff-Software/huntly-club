@@ -1,5 +1,6 @@
 import {
   BINDER_FILTERS,
+  binderFiltersAreActive,
   binderPocketAccessibilityLabel,
   canGoNextPage,
   canGoPreviousPage,
@@ -18,6 +19,7 @@ import {
   PHONE_CARDS_PER_PAGE,
   readableHabitatAffinities,
   sortBinderCards,
+  sortBinderCardsBy,
   TABLET_CARDS_PER_PAGE,
   totalCopyCount,
   uniqueCollectedCount,
@@ -59,10 +61,10 @@ describe("exploreBinder helpers", () => {
     expect(filterBinderCards(sample, "all")).toHaveLength(3);
   });
 
-  it("uses 6 cards per phone page and 9 per tablet page", () => {
+  it("uses 9 cards per page on phone and tablet", () => {
     expect(cardsPerPageForLayout(false)).toBe(PHONE_CARDS_PER_PAGE);
     expect(cardsPerPageForLayout(true)).toBe(TABLET_CARDS_PER_PAGE);
-    expect(PHONE_CARDS_PER_PAGE).toBe(6);
+    expect(PHONE_CARDS_PER_PAGE).toBe(9);
     expect(TABLET_CARDS_PER_PAGE).toBe(9);
   });
 
@@ -70,11 +72,11 @@ describe("exploreBinder helpers", () => {
     const cards = Array.from({ length: 21 }, (_, i) =>
       card({ id: `c${i}`, name: `Card ${i}`, sortOrder: i })
     );
-    expect(pageCount(21, 6)).toBe(4);
-    expect(paginateBinderCards(cards, 6)).toHaveLength(4);
-    expect(paginateBinderCards(cards, 6)[0]).toHaveLength(6);
-    expect(paginateBinderCards(cards, 6)[3]).toHaveLength(3);
     expect(pageCount(21, 9)).toBe(3);
+    expect(paginateBinderCards(cards, 9)).toHaveLength(3);
+    expect(paginateBinderCards(cards, 9)[0]).toHaveLength(9);
+    expect(paginateBinderCards(cards, 9)[2]).toHaveLength(3);
+    expect(pageCount(21, 6)).toBe(4);
   });
 
   it("keeps missing cards in fixed catalogue positions", () => {
@@ -140,6 +142,23 @@ describe("exploreBinder helpers", () => {
     expect(filterBinderByStatus(sample, "collected").map((c) => c.id)).toEqual(["b", "c"]);
     expect(filterBinderByStatus(sample, "missing").map((c) => c.id)).toEqual(["a"]);
     expect(filterBinderCardsFull(sample, "animal", "collected").map((c) => c.id)).toEqual(["b"]);
+  });
+
+  it("sorts by name and rarity", () => {
+    expect(sortBinderCardsBy(sample, "name_asc").map((c) => c.id)).toEqual(["a", "b", "c"]);
+    expect(sortBinderCardsBy(sample, "name_desc").map((c) => c.id)).toEqual(["c", "b", "a"]);
+    const rareFirst = [
+      card({ id: "r", name: "Rare", rarity: "rare", sortOrder: 1 }),
+      card({ id: "c", name: "Common", rarity: "common", sortOrder: 0 }),
+    ];
+    expect(sortBinderCardsBy(rareFirst, "rarity").map((c) => c.id)).toEqual(["r", "c"]);
+  });
+
+  it("reports when non-default filters are active", () => {
+    expect(binderFiltersAreActive("all", "all", "default")).toBe(false);
+    expect(binderFiltersAreActive("animal", "all", "default")).toBe(true);
+    expect(binderFiltersAreActive("all", "collected", "default")).toBe(true);
+    expect(binderFiltersAreActive("all", "all", "name_asc")).toBe(true);
   });
 
   it("summarises category progress and stop habitats", () => {

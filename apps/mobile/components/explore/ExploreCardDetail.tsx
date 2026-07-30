@@ -20,9 +20,11 @@ import type { BinderCardEntry } from "@/utils/exploreBinder";
 type Props = {
   card: BinderCardEntry | null;
   onClose: () => void;
+  /** Called after the modal has begun closing (for sleeve settle). */
+  onCloseComplete?: () => void;
 };
 
-export function ExploreCardDetail({ card, onClose }: Props) {
+export function ExploreCardDetail({ card, onClose, onCloseComplete }: Props) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   if (!card) return null;
@@ -35,15 +37,20 @@ export function ExploreCardDetail({ card, onClose }: Props) {
   const cardWidth = Math.min(width * 0.88, 340);
   const cardHeight = Math.min(height * 0.78, cardWidth / EXPLORE_CARD_ART_ASPECT);
 
+  function handleClose() {
+    onClose();
+    onCloseComplete?.();
+  }
+
   return (
-    <Modal visible animationType="fade" transparent onRequestClose={onClose}>
+    <Modal visible animationType="fade" transparent onRequestClose={handleClose}>
       <GestureHandlerRootView style={styles.root}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Dismiss card">
+        <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} accessibilityLabel="Dismiss card">
           <View style={styles.dim} />
         </Pressable>
 
         <Pressable
-          onPress={onClose}
+          onPress={handleClose}
           accessibilityRole="button"
           accessibilityLabel="Close card"
           style={[styles.closeBtn, { top: insets.top + 10, right: 16 }]}

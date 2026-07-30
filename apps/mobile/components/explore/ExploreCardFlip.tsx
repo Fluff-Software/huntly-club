@@ -190,10 +190,8 @@ export function ExploreCardFlip({
 
   const stageStyle = useAnimatedStyle(() => {
     const t = entrance.value;
-    return {
-      opacity: 0.75 + 0.25 * t,
-      transform: [{ scale: 0.96 + 0.04 * t }],
-    };
+    // Opacity only — avoid scaling during rotateY (causes edge AA fringe).
+    return { opacity: 0.88 + 0.12 * t };
   });
 
   const backStyle = useAnimatedStyle(() => ({
@@ -206,18 +204,30 @@ export function ExploreCardFlip({
 
   const content = (
     <Animated.View style={[styles.stage, style, stageStyle]}>
-      <Animated.View pointerEvents="none" style={[styles.face, backStyle]}>
+      <Animated.View
+        pointerEvents="none"
+        shouldRasterizeIOS
+        renderToHardwareTextureAndroid
+        style={[styles.face, backStyle]}
+      >
         <Image
           source={CARD_BACK}
           style={styles.backImage}
           resizeMode="cover"
+          fadeDuration={0}
           accessibilityIgnoresInvertColors
         />
         {/* Thin rarity frame — sits where the gold line used to be in the PNG. */}
         <View style={[styles.backInnerBorder, { borderColor }]} />
       </Animated.View>
 
-      <Animated.View style={[styles.face, frontStyle]}>{children}</Animated.View>
+      <Animated.View
+        shouldRasterizeIOS
+        renderToHardwareTextureAndroid
+        style={[styles.face, frontStyle]}
+      >
+        {children}
+      </Animated.View>
     </Animated.View>
   );
 
@@ -239,6 +249,8 @@ const styles = StyleSheet.create({
     backfaceVisibility: "hidden",
     borderRadius: 14,
     overflow: "hidden",
+    // Opaque fill under rasterized faces — reduces transparent-edge AA during spin.
+    backgroundColor: "#1A2E20",
   },
   backImage: {
     width: "100%",

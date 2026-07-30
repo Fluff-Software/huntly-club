@@ -86,6 +86,7 @@ export function ExploreCardArt({
         source={CARD_BG}
         style={[styles.bg, !collected && styles.bgLocked]}
         resizeMode="stretch"
+        fadeDuration={0}
         accessibilityIgnoresInvertColors
       />
       {/* Soft lift so the green texture reads through the chrome */}
@@ -149,6 +150,7 @@ export function ExploreCardArt({
                     source={{ uri: imageUrl! }}
                     style={styles.artImage}
                     resizeMode="cover"
+                    fadeDuration={0}
                     onError={() => setFailed(true)}
                     accessibilityIgnoresInvertColors
                   />
@@ -387,6 +389,8 @@ const styles = StyleSheet.create({
   artImage: {
     width: "100%",
     height: "100%",
+    // Bleed past the clip so rotateY / scale sampling doesn't fringe the photo edge.
+    transform: [{ scale: 1.04 }],
   },
   placeholder: {
     flex: 1,

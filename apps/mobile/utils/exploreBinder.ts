@@ -33,15 +33,61 @@ export const BINDER_FILTERS: { id: BinderCategoryFilter; label: string }[] = [
   { id: "flora_wildlife", label: "Flora & Wildlife" },
 ];
 
-export const PHONE_CARDS_PER_PAGE = 6; // 2×3
+export const PHONE_CARDS_PER_PAGE = 9; // 3×3
 export const TABLET_CARDS_PER_PAGE = 9; // 3×3
 
-export function cardsPerPageForLayout(isTablet: boolean): number {
-  return isTablet ? TABLET_CARDS_PER_PAGE : PHONE_CARDS_PER_PAGE;
+export function cardsPerPageForLayout(_isTablet: boolean): number {
+  return TABLET_CARDS_PER_PAGE;
 }
+
+export type BinderSortOption = "default" | "name_asc" | "name_desc" | "rarity" | "recent";
+
+export const BINDER_SORT_OPTIONS: { id: BinderSortOption; label: string }[] = [
+  { id: "default", label: "Binder order" },
+  { id: "name_asc", label: "Name A–Z" },
+  { id: "name_desc", label: "Name Z–A" },
+  { id: "rarity", label: "Rarest first" },
+  { id: "recent", label: "Recently found" },
+];
+
+const RARITY_RANK: Record<string, number> = {
+  very_rare: 0,
+  rare: 1,
+  uncommon: 2,
+  common: 3,
+};
 
 export function sortBinderCards(cards: BinderCardEntry[]): BinderCardEntry[] {
   return [...cards].sort((a, b) => {
+    if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+export function sortBinderCardsBy(
+  cards: BinderCardEntry[],
+  sort: BinderSortOption
+): BinderCardEntry[] {
+  if (sort === "default") return sortBinderCards(cards);
+  if (sort === "name_asc") {
+    return [...cards].sort((a, b) => a.name.localeCompare(b.name));
+  }
+  if (sort === "name_desc") {
+    return [...cards].sort((a, b) => b.name.localeCompare(a.name));
+  }
+  if (sort === "rarity") {
+    return [...cards].sort((a, b) => {
+      const ra = RARITY_RANK[a.rarity] ?? 99;
+      const rb = RARITY_RANK[b.rarity] ?? 99;
+      if (ra !== rb) return ra - rb;
+      return a.name.localeCompare(b.name);
+    });
+  }
+  // recent — collected first by lastCollectedAt desc, then missing by binder order
+  return [...cards].sort((a, b) => {
+    const at = a.lastCollectedAt ? new Date(a.lastCollectedAt).getTime() : 0;
+    const bt = b.lastCollectedAt ? new Date(b.lastCollectedAt).getTime() : 0;
+    if (at !== bt) return bt - at;
     if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
     return a.name.localeCompare(b.name);
   });
@@ -170,9 +216,20 @@ export function filterBinderByStatus(
 export function filterBinderCardsFull(
   cards: BinderCardEntry[],
   category: BinderCategoryFilter,
-  status: BinderStatusFilter = "all"
+  status: BinderStatusFilter = "all",
+  sort: BinderSortOption = "default"
 ): BinderCardEntry[] {
-  return filterBinderByStatus(filterBinderCards(cards, category), status);
+  const byCategory =
+    category === "all" ? cards : cards.filter((c) => c.category === category);
+  return sortBinderCardsBy(filterBinderByStatus(byCategory, status), sort);
+}
+
+export function binderFiltersAreActive(
+  category: BinderCategoryFilter,
+  status: BinderStatusFilter,
+  sort: BinderSortOption
+): boolean {
+  return category !== "all" || status !== "all" || sort !== "default";
 }
 
 export type CategoryProgress = {

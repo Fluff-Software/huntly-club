@@ -15,6 +15,9 @@ export const EXPLORE_CARD_ART_HEIGHT = 1024;
 /** width / height — keep binder + reveal frames matched to the asset. */
 export const EXPLORE_CARD_ART_ASPECT = EXPLORE_CARD_ART_WIDTH / EXPLORE_CARD_ART_HEIGHT;
 
-export const EXPLORE_BINDER_PAGE_BG = "#1F2A24";
-export const EXPLORE_BINDER_POCKET_BG = "#2A3A32";
-export const EXPLORE_BINDER_SCREEN_BG = "#2D4A35";
+/** Charcoal album page (half open zip-binder look). */
+export const EXPLORE_BINDER_SCREEN_BG = "#0C0C0E";
+export const EXPLORE_BINDER_PAGE_BG = "#161618";
+export const EXPLORE_BINDER_POCKET_BG = "#1C1C1F";
+export const EXPLORE_BINDER_SPINE = "#0A0A0C";
+export const EXPLORE_BINDER_SEAL = "#0E0E10";

@@ -27,8 +27,9 @@ type Props = {
   onReset: () => void;
   profiles: BinderFilterProfile[];
   showProfilePicker: boolean;
+  /** `null` shows every player's cards merged together. */
   selectedProfileId: number | null;
-  onSelectProfile: (id: number) => void;
+  onSelectProfile: (id: number | null) => void;
   category: BinderCategoryFilter;
   onSelectCategory: (id: BinderCategoryFilter) => void;
   status: BinderStatusFilter;
@@ -138,6 +139,11 @@ export function BinderFiltersModal({
           >
             {showProfilePicker ? (
               <Section title="Player">
+                <OptionChip
+                  label="All players"
+                  selected={selectedProfileId === null}
+                  onPress={() => onSelectProfile(null)}
+                />
                 {profiles.map((p) => (
                   <OptionChip
                     key={p.id}

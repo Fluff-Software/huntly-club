@@ -18,6 +18,11 @@ export type BinderCardEntry = {
   collected: boolean;
   firstCollectedAt: string | null;
   lastCollectedAt: string | null;
+  /**
+   * Nicknames of household players who own this card.
+   * Only set on the merged "All players" binder view.
+   */
+  collectedBy?: string[];
 };
 
 export const BINDER_CATEGORY_LABELS: Record<Exclude<BinderCategoryFilter, "all">, string> = {

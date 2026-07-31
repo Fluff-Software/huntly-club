@@ -1,8 +1,21 @@
 import {
   ExploreStopsRequestError,
+  claimExploreStop,
   getExploreStopsNear,
 } from "@/services/exploreStopsService";
 import { setDevExploreTransport } from "@/utils/exploreApiConfig";
+
+jest.mock("@/services/supabase", () => ({
+  supabase: {},
+  SUPABASE_URL: "https://example.supabase.co",
+  SUPABASE_ANON_KEY: "anon-key",
+}));
+
+jest.mock("@/services/authService", () => ({
+  getCurrentSession: jest.fn(async () => ({
+    session: { access_token: "token" },
+  })),
+}));
 
 describe("exploreStopsService", () => {
   const originalFetch = global.fetch;
@@ -114,5 +127,62 @@ describe("exploreStopsService", () => {
     ).rejects.toMatchObject({
       exploreError: { code: "not_configured" },
     });
+  });
+
+  describe("claimExploreStop", () => {
+    const request = {
+      stopId: "stop_abc",
+      generationVersion: 2,
+      osmRevision: "rev",
+      profileId: 1,
+      latitude: 53.0442,
+      longitude: -2.1656,
+      accuracyMetres: 8,
+      idempotencyKey: "idem-1",
+    };
+
+    const successBody = JSON.stringify({
+      success: true,
+      claim: {
+        claim_id: "1",
+        stop_id: "stop_abc",
+        generation_version: 2,
+        claimed_at: "2026-07-31T09:00:00Z",
+        verified_distance_metres: 10,
+        profile_id: 1,
+        awarded_card_id: "card_1",
+      },
+    });
+
+    it("retries a gateway failure with the same idempotency key", async () => {
+      setDevExploreTransport("edge");
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValueOnce({ status: 502, text: async () => "Bad Gateway" })
+        .mockResolvedValueOnce({ status: 200, text: async () => successBody });
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const result = await claimExploreStop(request);
+
+      expect(result.success).toBe(true);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const bodies = fetchMock.mock.calls.map((call: unknown[]) =>
+        JSON.parse((call[1] as RequestInit).body as string)
+      );
+      expect(bodies[0].idempotency_key).toBe("idem-1");
+      expect(bodies[1].idempotency_key).toBe("idem-1");
+    }, 20_000);
+
+    it("gives friendly copy once gateway retries are exhausted", async () => {
+      setDevExploreTransport("edge");
+      global.fetch = jest.fn().mockResolvedValue({
+        status: 502,
+        text: async () => "Bad Gateway",
+      }) as unknown as typeof fetch;
+
+      await expect(claimExploreStop(request)).rejects.toMatchObject({
+        exploreError: { code: "backend_unavailable" },
+      });
+    }, 20_000);
   });
 });

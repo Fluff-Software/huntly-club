@@ -215,6 +215,7 @@ export function BinderCardPocket({
                   count={card.count}
                   firstCollectedAt={card.firstCollectedAt}
                   lastCollectedAt={card.lastCollectedAt}
+                  collectedBy={card.collectedBy}
                   collected={collected}
                 />
               </View>

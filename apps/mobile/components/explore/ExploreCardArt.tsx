@@ -38,6 +38,8 @@ type Props = {
   count?: number;
   firstCollectedAt?: string | null;
   lastCollectedAt?: string | null;
+  /** Household players who own this card (All-players binder only). */
+  collectedBy?: string[];
   /** When true, never show a lock — card is owned / unlocked. */
   collected: boolean;
   compact?: boolean;
@@ -51,6 +53,17 @@ function formatFoundDate(iso: string | null | undefined): string | null {
   return d.toLocaleDateString();
 }
 
+function formatCollectedBy(names: string[]): string {
+  const unique = [...new Set(names.map((n) => n.trim()).filter(Boolean))];
+  if (unique.length === 0) return "";
+  if (unique.length === 1) return unique[0]!;
+  if (unique.length === 2) return `${unique[0]} & ${unique[1]}`;
+  if (unique.length === 3) return `${unique[0]}, ${unique[1]} & ${unique[2]}`;
+  const shown = unique.slice(0, 3);
+  const remaining = unique.length - 3;
+  return `${shown.join(", ")} + ${remaining} more`;
+}
+
 export function ExploreCardArt({
   imageUrl,
   name,
@@ -59,6 +72,7 @@ export function ExploreCardArt({
   count = 0,
   firstCollectedAt = null,
   lastCollectedAt: _lastCollectedAt = null,
+  collectedBy = [],
   collected,
   compact = false,
   style,
@@ -74,6 +88,10 @@ export function ExploreCardArt({
   const firstFound = formatFoundDate(firstCollectedAt);
   const copiesLabel =
     collected && count > 0 ? (count === 1 ? "1 copy" : `${count} copies`) : null;
+  const collectedByLabel =
+    collected && collectedBy.length > 0
+      ? `Collected by ${formatCollectedBy(collectedBy)}`
+      : null;
 
   useEffect(() => {
     setFailed(false);
@@ -196,6 +214,16 @@ export function ExploreCardArt({
           {collected ? (
             <>
               <View style={[styles.descRule, compact && styles.descRuleCompact]} />
+              {collectedByLabel ? (
+                <ThemedText
+                  lightColor={INK}
+                  darkColor={INK}
+                  numberOfLines={compact ? 1 : 2}
+                  style={[styles.collectedBy, compact && styles.collectedByCompact]}
+                >
+                  {collectedByLabel}
+                </ThemedText>
+              ) : null}
               <View style={styles.footerStats}>
                 {copiesLabel ? (
                   <ThemedText
@@ -446,6 +474,17 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   descRuleCompact: {
+    marginTop: 1,
+  },
+  collectedBy: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.2,
+    marginTop: 2,
+  },
+  collectedByCompact: {
+    fontSize: 8,
+    letterSpacing: 0.1,
     marginTop: 1,
   },
   footerStats: {

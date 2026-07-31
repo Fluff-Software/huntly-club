@@ -5,6 +5,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Modal,
   Pressable,
   StyleSheet,
@@ -295,6 +296,20 @@ export function ExploreCardPackReveal({
     }
   }, [idleBob, openProgress, onRipComplete, playReveal]);
 
+  const retryClaim = useCallback(async () => {
+    setClaimError(null);
+    setPhase("claiming");
+    try {
+      const nextAward = await onRipComplete();
+      playReveal(nextAward);
+    } catch (err: unknown) {
+      setClaimError(
+        err instanceof Error ? err.message : "Couldn’t collect this card. Please try again."
+      );
+      setPhase("error");
+    }
+  }, [onRipComplete, playReveal]);
+
   const lightHaptic = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, []);
@@ -505,11 +520,34 @@ export function ExploreCardPackReveal({
           ) : null}
         </View>
 
+        {/* The pack is unmounted once a claim fails, so a retry needs its own spinner. */}
+        {phase === "claiming" && !packMounted ? (
+          <View style={[styles.errorStage, { paddingBottom: insets.bottom + 24 }]}>
+            <ActivityIndicator color="#FFF" />
+            <ThemedText
+              lightColor="rgba(255,255,255,0.8)"
+              darkColor="rgba(255,255,255,0.8)"
+              style={styles.errorText}
+            >
+              Collecting your card…
+            </ThemedText>
+          </View>
+        ) : null}
+
         {phase === "error" ? (
           <View style={[styles.errorStage, { paddingBottom: insets.bottom + 24 }]}>
             <ThemedText lightColor="#FFD8D8" darkColor="#FFD8D8" style={styles.errorText}>
               {claimError ?? "Couldn’t collect this card."}
             </ThemedText>
+            <Pressable
+              onPress={() => void retryClaim()}
+              style={[styles.errorPrimaryBtn, { backgroundColor: rarityColor }]}
+              accessibilityRole="button"
+            >
+              <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.btnText}>
+                Try again
+              </ThemedText>
+            </Pressable>
             <Pressable onPress={handleDismiss} style={styles.secondaryBtn} accessibilityRole="button">
               <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.btnText}>
                 Close
@@ -671,6 +709,13 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: "center",
+  },
+  errorPrimaryBtn: {
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
+    alignSelf: "stretch",
+    maxWidth: 320,
   },
   secondaryBtn: {
     borderRadius: 14,

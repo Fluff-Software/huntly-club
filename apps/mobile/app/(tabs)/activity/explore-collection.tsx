@@ -120,13 +120,31 @@ export default function ExploreCollectionScreen() {
     mode?: string;
   }>();
   const { session } = useAuth();
-  const { profiles } = usePlayer();
-  const viewingAllProfiles = mode === "all";
-  const profileLockedByParam = typeof profileIdParam === "string";
-  const showProfilePicker =
-    !viewingAllProfiles && !profileLockedByParam && profiles.length > 1;
+  const { profiles, loading: profilesLoading } = usePlayer();
+  const showProfilePicker = profiles.length > 1;
+
+  const paramProfileId = useMemo(() => {
+    const parsed = typeof profileIdParam === "string" ? Number(profileIdParam) : NaN;
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [profileIdParam]);
+
+  /**
+   * Which collection to show. `null` means every player in the household —
+   * the default when no particular player was asked for, so the binder can't
+   * read empty just because a sibling collected the cards.
+   */
+  const defaultProfileId = useMemo((): number | null => {
+    if (mode === "all") return null;
+    if (paramProfileId != null && profiles.some((p) => p.id === paramProfileId)) {
+      return paramProfileId;
+    }
+    if (profiles.length === 1) return profiles[0]!.id;
+    return null;
+  }, [mode, paramProfileId, profiles]);
 
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null);
+  const profileChosenByUserRef = useRef(false);
+  const viewingAllProfiles = selectedProfileId == null;
   const [category, setCategory] = useState<BinderCategoryFilter>(DEFAULT_CATEGORY);
   const [status, setStatus] = useState<BinderStatusFilter>(DEFAULT_STATUS);
   const [sort, setSort] = useState<BinderSortOption>(DEFAULT_SORT);
@@ -148,33 +166,26 @@ export default function ExploreCollectionScreen() {
   const cardSize = fitBinderCardSize(cellW, cellW / EXPLORE_CARD_ART_ASPECT);
   const rowStride = cardSize.h + GRID_GAP;
 
-  const resolveDefaultProfileId = useCallback((): number | null => {
-    if (viewingAllProfiles || profiles.length === 0) return null;
-    const requested = typeof profileIdParam === "string" ? Number(profileIdParam) : NaN;
-    if (Number.isFinite(requested) && profiles.some((p) => p.id === requested)) {
-      return requested;
-    }
-    return profiles[0]!.id;
-  }, [profiles, profileIdParam, viewingAllProfiles]);
-
   const resetFilters = useCallback(() => {
     setCategory(DEFAULT_CATEGORY);
     setStatus(DEFAULT_STATUS);
     setSort(DEFAULT_SORT);
-    setSelectedProfileId(resolveDefaultProfileId());
+    profileChosenByUserRef.current = false;
+    setSelectedProfileId(defaultProfileId);
     scrollRef.current?.scrollTo({ y: 0, animated: false });
-  }, [resolveDefaultProfileId]);
+  }, [defaultProfileId]);
 
+  // Follow the requested / default player until the user picks one themselves,
+  // and fall back if the chosen profile is no longer in the household.
   useEffect(() => {
-    if (viewingAllProfiles) {
-      setSelectedProfileId(null);
+    const chosenStillExists =
+      selectedProfileId != null && profiles.some((p) => p.id === selectedProfileId);
+    if (profileChosenByUserRef.current && (selectedProfileId == null || chosenStillExists)) {
       return;
     }
-    setSelectedProfileId((prev) => {
-      if (prev != null && profiles.some((p) => p.id === prev)) return prev;
-      return resolveDefaultProfileId();
-    });
-  }, [profiles, resolveDefaultProfileId, viewingAllProfiles]);
+    profileChosenByUserRef.current = false;
+    setSelectedProfileId(defaultProfileId);
+  }, [profiles, defaultProfileId, selectedProfileId]);
 
   const load = useCallback(
     async (opts?: { soft?: boolean }) => {
@@ -185,31 +196,41 @@ export default function ExploreCollectionScreen() {
         return;
       }
 
-      if (!viewingAllProfiles && selectedProfileId == null) {
-        setError("Select a player profile to view cards.");
+      if (profiles.length === 0) {
+        // Profiles are still arriving — keep the spinner rather than flashing
+        // an error the user can't act on.
+        if (profilesLoading) {
+          setError(null);
+          setLoading(true);
+          return;
+        }
+        setError("Create a player profile to view cards.");
         setCards([]);
         setLoading(false);
         return;
       }
+
       if (!opts?.soft) setLoading(true);
       setError(null);
       try {
         if (viewingAllProfiles) {
-          if (profiles.length === 0) {
-            setError("Create a player profile to view cards.");
-            setCards([]);
-            return;
-          }
-
           const results = await Promise.all(
             profiles.map((p) => getExploreCardCollection(p.id))
           );
 
           const mergedByCardId = new Map<string, BinderCardEntry>();
-          for (const result of results) {
+          results.forEach((result, index) => {
+            const profile = profiles[index]!;
+            const collectorName = (profile.nickname || profile.name || "").trim();
+
             for (const item of result.items) {
               const id = item.card.id;
               const existing = mergedByCardId.get(id);
+              const ownsCard = item.collected || item.count > 0;
+              const collectedBy =
+                ownsCard && collectorName
+                  ? [...(existing?.collectedBy ?? []), collectorName]
+                  : existing?.collectedBy;
 
               const base: BinderCardEntry = {
                 id,
@@ -225,6 +246,7 @@ export default function ExploreCollectionScreen() {
                 collected: item.collected,
                 firstCollectedAt: item.firstCollectedAt,
                 lastCollectedAt: item.lastCollectedAt,
+                collectedBy,
               };
 
               if (!existing) {
@@ -254,9 +276,10 @@ export default function ExploreCollectionScreen() {
                 collected: existing.collected || item.collected || item.count > 0,
                 firstCollectedAt: first,
                 lastCollectedAt: last,
+                collectedBy,
               });
             }
-          }
+          });
 
           setCards(Array.from(mergedByCardId.values()));
         } else {
@@ -291,21 +314,49 @@ export default function ExploreCollectionScreen() {
         setLoading(false);
       }
     },
-    [session, viewingAllProfiles, profiles, selectedProfileId]
+    [session, viewingAllProfiles, profiles, profilesLoading, selectedProfileId]
   );
 
+  const loadRef = useRef(load);
+  loadRef.current = load;
+  const defaultProfileIdRef = useRef(defaultProfileId);
+  defaultProfileIdRef.current = defaultProfileId;
+  const playerFilterKeyRef = useRef<string | null>(null);
+
+  // Refresh when landing on the binder (backpack / View in binder). Stable deps so
+  // closing the card modal or load() identity changes do not re-fetch.
   useFocusEffect(
     useCallback(() => {
-      void load();
+      playerFilterKeyRef.current = null;
+      void loadRef.current();
       return () => {
         setFiltersOpen(false);
         setCategory(DEFAULT_CATEGORY);
         setStatus(DEFAULT_STATUS);
         setSort(DEFAULT_SORT);
-        setSelectedProfileId(resolveDefaultProfileId());
+        profileChosenByUserRef.current = false;
+        setSelectedProfileId(defaultProfileIdRef.current);
+        setSelected(null);
+        setPulledId(null);
+        playerFilterKeyRef.current = null;
       };
-    }, [load, resolveDefaultProfileId])
+    }, [])
   );
+
+  // Soft-reload when the player filter changes while staying on the page,
+  // or when household profiles finish loading after landing.
+  useEffect(() => {
+    const key = `${viewingAllProfiles ? "all" : String(selectedProfileId ?? "none")}:${profiles
+      .map((p) => p.id)
+      .join(",")}`;
+    if (playerFilterKeyRef.current == null) {
+      playerFilterKeyRef.current = key;
+      return;
+    }
+    if (playerFilterKeyRef.current === key) return;
+    playerFilterKeyRef.current = key;
+    void loadRef.current({ soft: true });
+  }, [selectedProfileId, viewingAllProfiles, profiles]);
 
   useEffect(() => {
     if (loading || cards.length === 0) return;
@@ -328,15 +379,21 @@ export default function ExploreCollectionScreen() {
 
   const filtersActive = binderFiltersAreActive(category, status, sort);
   const profileChangedFromDefault =
-    showProfilePicker &&
-    selectedProfileId != null &&
-    selectedProfileId !== resolveDefaultProfileId();
+    showProfilePicker && selectedProfileId !== defaultProfileId;
   const showFilterBadge = filtersActive || profileChangedFromDefault;
 
   const overallUnique = uniqueCollectedCount(cards);
   const overallTotal = cards.length;
   const overallCopies = totalCopyCount(cards);
   const overallPct = completionPercent(overallUnique, overallTotal);
+
+  /** Whose binder is on screen — only when a specific player is selected. */
+  const scopeLabel = useMemo(() => {
+    if (profiles.length <= 1 || selectedProfileId == null) return null;
+    const profile = profiles.find((p) => p.id === selectedProfileId);
+    if (!profile) return null;
+    return profile.nickname || profile.name;
+  }, [profiles, selectedProfileId]);
 
   useEffect(() => {
     if (!highlightId) return;
@@ -414,9 +471,14 @@ export default function ExploreCollectionScreen() {
                 style={styles.subtitle}
               >
                 {overallTotal > 0
-                  ? overallCopies > overallUnique
-                    ? `${overallUnique} of ${overallTotal} found · ${overallCopies} cards in total`
-                    : `${overallUnique} of ${overallTotal} found`
+                  ? [
+                      scopeLabel,
+                      overallCopies > overallUnique
+                        ? `${overallUnique} of ${overallTotal} found · ${overallCopies} cards in total`
+                        : `${overallUnique} of ${overallTotal} found`,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")
                   : loading
                     ? "Loading…"
                     : "No cards"}
@@ -430,14 +492,6 @@ export default function ExploreCollectionScreen() {
             >
               <MaterialIcons name="tune" size={22} color="#FFF" />
               {showFilterBadge ? <View style={styles.filterDot} /> : null}
-            </Pressable>
-            <Pressable
-              onPress={() => void load({ soft: true })}
-              accessibilityRole="button"
-              accessibilityLabel="Refresh binder"
-              style={styles.iconBtn}
-            >
-              <MaterialIcons name="refresh" size={22} color="#FFF" />
             </Pressable>
           </View>
 
@@ -463,7 +517,7 @@ export default function ExploreCollectionScreen() {
 
         {loading && cards.length === 0 ? (
           <View style={styles.center}>
-            <ActivityIndicator color="#FFF" style={{ marginTop: 40 }} />
+            <ActivityIndicator color="#FFF" />
           </View>
         ) : filtered.length === 0 && !loading && !error ? (
           <ThemedText
@@ -504,6 +558,7 @@ export default function ExploreCollectionScreen() {
           showProfilePicker={showProfilePicker}
           selectedProfileId={selectedProfileId}
           onSelectProfile={(id) => {
+            profileChosenByUserRef.current = true;
             setSelectedProfileId(id);
             scrollRef.current?.scrollTo({ y: 0, animated: false });
           }}
@@ -523,7 +578,7 @@ export default function ExploreCollectionScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: EXPLORE_BINDER_SCREEN_BG },
-  center: { flex: 1 },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
   listHeader: { paddingBottom: 8 },
   header: {
     flexDirection: "row",

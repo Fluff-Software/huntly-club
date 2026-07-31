@@ -1,4 +1,10 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import React, {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import { StyleSheet, View } from "react-native";
 /** Default provider is Apple MapKit — no Google Maps API key on iOS. */
 import MapView, { Marker, Polyline } from "react-native-maps";
@@ -7,10 +13,52 @@ import {
   ACTIVITY_MAP_RECENTER_DURATION_MS,
   ACTIVITY_MAP_ROUTE_FIT_PADDING,
   ACTIVITY_ROUTE_STROKE_COLOR,
+  type ActivityMapMarker,
   type ActivityMapProps,
   type ActivityMapRef,
 } from "./types";
 import { useDeferredNativeMount } from "./useDeferredNativeMount";
+
+/**
+ * MapKit snapshots an annotation view as soon as it's added, before the SVG
+ * bubble has painted, so a marker frozen from the start can stay blank until
+ * the map redraws. Track changes briefly, then freeze for performance.
+ */
+const MARKER_SNAPSHOT_SETTLE_MS = 600;
+
+function ActivityMapStopMarker({
+  marker,
+  onPress,
+}: {
+  marker: ActivityMapMarker;
+  onPress?: () => void;
+}) {
+  const color = marker.color ?? "#1f9d55";
+  const icon = marker.icon ?? "pin";
+  const [tracksViewChanges, setTracksViewChanges] = useState(true);
+
+  useEffect(() => {
+    setTracksViewChanges(true);
+    const timer = setTimeout(
+      () => setTracksViewChanges(false),
+      MARKER_SNAPSHOT_SETTLE_MS
+    );
+    return () => clearTimeout(timer);
+  }, [color, icon]);
+
+  return (
+    <Marker
+      coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
+      title={marker.title}
+      anchor={{ x: 0.5, y: 0.5 }}
+      zIndex={1}
+      tracksViewChanges={tracksViewChanges}
+      onPress={onPress}
+    >
+      <ActivityMapStopMarkerView color={color} icon={icon} />
+    </Marker>
+  );
+}
 
 /**
  * Stop markers use a plain View + Text bubble (no MaterialIcons children).
@@ -115,21 +163,12 @@ export const ActivityMap = forwardRef<ActivityMapRef, ActivityMapProps>(function
           );
         }
 
-        const color = marker.color ?? "#1f9d55";
-        const icon = marker.icon ?? "pin";
-
         return (
-          <Marker
-            key={`${marker.id}-${icon}-${color}`}
-            coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
-            title={marker.title}
-            anchor={{ x: 0.5, y: 0.5 }}
-            zIndex={1}
-            tracksViewChanges={false}
+          <ActivityMapStopMarker
+            key={`${marker.id}-${marker.icon ?? "pin"}-${marker.color ?? "default"}`}
+            marker={marker}
             onPress={() => onMarkerPress?.(marker.id)}
-          >
-            <ActivityMapStopMarkerView color={color} icon={icon} />
-          </Marker>
+          />
         );
       })}
     </MapView>

@@ -27,10 +27,13 @@ export type ProfileUpdate = TablesUpdate<"profiles"> & {
 };
 
 export const getProfiles = async (userId: string): Promise<Profile[]> => {
+  // Ordered explicitly: Postgres row order shifts as rows are updated, and
+  // several screens treat the first profile as the default player.
   const { data, error } = await supabase
     .from("profiles")
     .select("*")
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .order("id", { ascending: true });
 
   if (error) {
     console.error("Error fetching profiles:", error);

@@ -29,6 +29,9 @@ export { ExploreStopsRequestError };
 
 const DEFAULT_GENERATION_VERSION = 2;
 
+/** Backoff for claims that hit a Supabase gateway/isolate failure. */
+const CLAIM_RETRY_DELAYS_MS = [1_200, 3_000];
+
 /** Short-lived pan cache — avoids repeat Edge calls while panning the same area. */
 const NEARBY_CACHE_TTL_MS = 45_000;
 const NEARBY_CACHE_MAX = 48;
@@ -218,6 +221,9 @@ function friendlyMessage(code: string, fallback: string): string {
     case "invalid_longitude":
       return "We couldn’t read your location. Check GPS and try again.";
     default:
+      if (/^http_5\d\d$/.test(code)) {
+        return "Explore is temporarily unavailable. Please try again in a moment.";
+      }
       return fallback;
   }
 }
@@ -334,6 +340,28 @@ function isMapDataPreparing(payload: unknown): boolean {
   if (!payload || typeof payload !== "object") return false;
   const p = payload as Record<string, unknown>;
   return p.code === "map_data_preparing" || p.error === "map_data_preparing";
+}
+
+/** Supabase kills long / CPU-heavy isolates instead of returning an Explore error. */
+function isWorkerResourceLimit(payload: unknown): boolean {
+  if (!payload || typeof payload !== "object") return false;
+  const p = payload as Record<string, unknown>;
+  return p.code === "WORKER_RESOURCE_LIMIT" || p.error === "WORKER_RESOURCE_LIMIT";
+}
+
+/**
+ * Gateway-level failure with no Explore error body — the isolate was killed,
+ * timed out, or cold-started too slowly. Common on the very first claim in an
+ * area, where the backend also has to acquire map data.
+ */
+function isTransientEdgeFailure(status: number, payload: unknown): boolean {
+  return (
+    status === 502 || status === 503 || status === 504 || isWorkerResourceLimit(payload)
+  );
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function fetchEdgeFunction(
@@ -730,8 +758,25 @@ export async function claimExploreStop(
   let payload: unknown;
 
   if (transport === "edge") {
-    const { data, status } = await fetchEdgeFunction("explore-claim", body);
-    payload = normalizeEdgePayload(data);
+    // Retrying is safe: the same idempotency key replays the original claim and
+    // award rather than drawing a second card.
+    let status = 0;
+    for (let attempt = 0; ; attempt += 1) {
+      const result = await fetchEdgeFunction("explore-claim", body);
+      status = result.status;
+      payload = normalizeEdgePayload(result.data);
+
+      if (!isTransientEdgeFailure(status, payload)) break;
+      if (attempt >= CLAIM_RETRY_DELAYS_MS.length) {
+        throw new ExploreStopsRequestError({
+          code: "backend_unavailable",
+          message: friendlyMessage("backend_unavailable", ""),
+          details: { http_status: status },
+        });
+      }
+      await delay(CLAIM_RETRY_DELAYS_MS[attempt]!);
+    }
+
     if (status === 202 || isMapDataPreparing(payload)) {
       throw new ExploreStopsRequestError(mapBackendError(payload, 202));
     }

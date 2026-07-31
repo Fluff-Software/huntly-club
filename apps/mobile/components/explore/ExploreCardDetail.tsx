@@ -79,6 +79,7 @@ export function ExploreCardDetail({ card, onClose, onCloseComplete }: Props) {
               count={card.count}
               firstCollectedAt={card.firstCollectedAt}
               lastCollectedAt={card.lastCollectedAt}
+              collectedBy={card.collectedBy}
               collected={collected}
               style={styles.art}
             />

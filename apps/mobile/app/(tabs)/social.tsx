@@ -27,7 +27,6 @@ import { useTutorialActive } from "@/hooks/useTutorialActive";
 import { useRefreshWhenTutorialEnds } from "@/hooks/useRefreshWhenTutorialEnds";
 import { getTeamCardConfig } from "@/utils/teamUtils";
 
-const CELEBRATE_IMAGE = require("@/assets/images/celebrate.png");
 const GET_STARTED_ICON_2_IMAGE = require("@/assets/images/get-started-icon-2.png");
 
 const ACHIEVEMENTS_INITIAL = 4;
@@ -41,21 +40,25 @@ const LEADERBOARD_BAR_MIN = 60;
 const LEADERBOARD_BAR_EXTRA = 160;
 
 const ACHIEVEMENT_CARD_COLORS = ["#FFF5E8", "#E8F5F0", "#F0E8FF", "#E8F0FF", "#FFF0F0"];
-const ACHIEVEMENT_ICON_BG = ["#F7A676", "#7FAF8A", "#A8D5E5", "#D4A05A", "#C97B6C"];
 
 type AchievementItem = {
   id: string;
   type: "badge" | "activity";
   title: string;
   points: number;
+  teamId: number;
 };
 
-function mapAchievementsToItems(achievements: { id: number; profile_name: string; message: string; xp: number }[]): AchievementItem[] {
+function mapAchievementsToItems(
+  achievements: { id: number; profile_name: string; message: string; xp: number; team_id: number }[]
+): AchievementItem[] {
   return achievements.slice(0, 10).map((a) => ({
     id: `ach-${a.id}`,
     type: "activity" as const,
     title: `${a.profile_name} ${a.message}`,
-    points: a.xp }));
+    points: a.xp,
+    teamId: a.team_id,
+  }));
 }
 
 export default function SocialScreen() {
@@ -118,7 +121,7 @@ export default function SocialScreen() {
       const [teamData, teamsData, achievements, totals, winner] = await Promise.all([
         getTeamInfo(teamId),
         getAllTeamsWithXp(),
-        getTeamAchievements(teamId),
+        getTeamAchievements(),
         getTeamAchievementTotals(),
         getLastMonthTeamWinner(),
       ]);
@@ -176,6 +179,14 @@ export default function SocialScreen() {
   );
 
   const teamCardConfig = useMemo(() => getTeamCardConfig(teamInfo?.name), [teamInfo?.name]);
+
+  const teamConfigById = useMemo(() => {
+    const map: Record<number, ReturnType<typeof getTeamCardConfig>> = {};
+    for (const team of allTeams) {
+      map[team.id] = getTeamCardConfig(team.name);
+    }
+    return map;
+  }, [allTeams]);
 
   const lastMonthWinnerConfig = useMemo(
     () => (lastMonthWinner ? getTeamCardConfig(lastMonthWinner.team_name) : null),
@@ -370,14 +381,14 @@ export default function SocialScreen() {
               Recent achievements
             </ThemedText>
             <ThemedText style={{ fontSize: scaleW(13), color: "#888", marginBottom: scaleW(8) }}>
-              What your team has been up to
+              What the teams have been up to
             </ThemedText>
           </View>
 
           <View style={{ gap: scaleW(12) }}>
             {visibleAchievements.map((item, index) => {
               const cardBg = ACHIEVEMENT_CARD_COLORS[index % ACHIEVEMENT_CARD_COLORS.length];
-              const iconBg = ACHIEVEMENT_ICON_BG[index % ACHIEVEMENT_ICON_BG.length];
+              const achievementTeamConfig = teamConfigById[item.teamId] ?? teamCardConfig;
               return (
                 <View
                   key={item.id}
@@ -396,24 +407,20 @@ export default function SocialScreen() {
                     elevation: 2,
                     borderWidth: 2,
                     borderColor: "rgba(255,255,255,0.8)" }}>
-                  <View style={{
-                    width: scaleW(48),
-                    height: scaleW(48),
-                    borderRadius: scaleW(24),
-                    backgroundColor: iconBg,
-                    alignItems: "center",
-                    justifyContent: "center" }}>
                     <Image
-                      source={item.type === "badge" ? GET_STARTED_ICON_2_IMAGE : CELEBRATE_IMAGE}
-                      style={{ width: scaleW(28), height: scaleW(28) }}
+                      source={
+                        item.type === "badge"
+                          ? GET_STARTED_ICON_2_IMAGE
+                          : achievementTeamConfig.badgeImage
+                      }
+                      style={{ width: scaleW(48), height: scaleW(48) }}
                       resizeMode="contain"
                     />
-                  </View>
                   <View style={{ flex: 1 }}>
                     <ThemedText style={{ fontSize: scaleW(14), fontWeight: "600", color: "#1a1a1a", lineHeight: scaleW(20) }}>
                       {item.title}
                     </ThemedText>
-                    <ThemedText style={{ fontSize: scaleW(13), fontWeight: "700", color: teamCardConfig.accentColor, marginTop: scaleW(2) }}>
+                    <ThemedText style={{ fontSize: scaleW(13), fontWeight: "700", color: achievementTeamConfig.accentColor, marginTop: scaleW(2) }}>
                       + {item.points} points
                     </ThemedText>
                   </View>
@@ -428,7 +435,7 @@ export default function SocialScreen() {
             )}
             {showNoMoreMessage && (
               <ThemedText style={{ fontSize: scaleW(13), color: "#888", textAlign: "center", marginTop: scaleW(8) }}>
-                You're all caught up! More achievements will appear as your team explores.
+                You're all caught up! More achievements will appear as the teams explore.
               </ThemedText>
             )}
           </View>

@@ -68,6 +68,10 @@ const PANEL = "#3D5F45";
 const ACCENT = "#62A94F";
 const FIXED_RADIUS_METRES = 1000;
 const METRES_PER_MILE = 1609.34;
+/** Cached fix is only good enough to seed the camera if it's recent. */
+const LAST_KNOWN_FIX_MAX_AGE_MS = 5 * 60 * 1000;
+/** Well beyond the zoom-out cap — anything wider is a map layout artefact. */
+const EXPLORE_MAP_MAX_PLAUSIBLE_DELTA = EXPLORE_MAP_DEFAULT_DELTA * 8;
 
 function formatExploreDistanceAway(metres: number): string {
   if (metres < METRES_PER_MILE) {
@@ -101,6 +105,26 @@ function newIdempotencyKey(): string {
     const v = c === "x" ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
+}
+
+/**
+ * iOS MapKit reports a default, often world-sized region while the map lays
+ * out, before `initialRegion` is applied. Fetching for it returns no coverage
+ * and wipes the stops already loaded around the player, so the map looks empty
+ * until the user pans or zooms and triggers a real region change.
+ */
+function isPlausibleMapRegion(region: ActivityMapRegion): boolean {
+  if (!Number.isFinite(region.latitude) || !Number.isFinite(region.longitude)) {
+    return false;
+  }
+  if (
+    region.latitudeDelta > EXPLORE_MAP_MAX_PLAUSIBLE_DELTA ||
+    region.longitudeDelta > EXPLORE_MAP_MAX_PLAUSIBLE_DELTA
+  ) {
+    return false;
+  }
+  // Null Island is MapKit's placeholder centre, never a real Explore location.
+  return Math.abs(region.latitude) > 0.001 || Math.abs(region.longitude) > 0.001;
 }
 
 function radiusMetresFromRegion(region: ActivityMapRegion): number {
@@ -184,6 +208,9 @@ export default function ExploreScreen() {
   const spoofAllowed = canSpoofExploreLocation(Updates.channel);
   const [selectedSheetHeight, setSelectedSheetHeight] = useState(0);
   const [emptyPanelHeight, setEmptyPanelHeight] = useState(0);
+  /** Camera seed for the map. Null until we know where the player is. */
+  const [mapRegion, setMapRegion] = useState<ActivityMapRegion | null>(null);
+  const centredOnUserRef = useRef(false);
 
   useEffect(() => {
     if (profiles.length === 0) {
@@ -307,6 +334,8 @@ export default function ExploreScreen() {
     [visibleStops, claimedIds]
   );
 
+  const locating = loc.status === "idle" || loc.status === "loading";
+
   const outsideCoverage =
     error?.code === "no_coverage" ||
     error?.code === "outside_supported_test_area";
@@ -363,23 +392,48 @@ export default function ExploreScreen() {
     insets.bottom,
   ]);
 
-  const initialRegion = useMemo(() => {
+  // The map camera is only ever seeded from the player's own position. The test
+  // centre is a dev/preview convenience so the map isn't blank without GPS.
+  useEffect(() => {
+    if (mapRegion) return;
     if (loc.status === "ready") {
-      return regionFromCoordinate(
-        { latitude: loc.latitude, longitude: loc.longitude },
-        EXPLORE_MAP_DEFAULT_DELTA
+      centredOnUserRef.current = true;
+      setMapRegion(
+        regionFromCoordinate(
+          { latitude: loc.latitude, longitude: loc.longitude },
+          EXPLORE_MAP_DEFAULT_DELTA
+        )
+      );
+      return;
+    }
+    if (spoofAllowed && (loc.status === "denied" || loc.status === "unavailable")) {
+      setMapRegion(
+        regionFromCoordinate(EXPLORE_TEST_AREA_CENTRE, EXPLORE_MAP_DEFAULT_DELTA)
       );
     }
-    return regionFromCoordinate(EXPLORE_TEST_AREA_CENTRE, EXPLORE_MAP_DEFAULT_DELTA);
-  }, [loc]);
+  }, [loc, mapRegion, spoofAllowed]);
+
+  // Map mounted on the dev test centre — move to the player once GPS arrives.
+  useEffect(() => {
+    if (!mapRegion || centredOnUserRef.current) return;
+    if (loc.status !== "ready") return;
+    centredOnUserRef.current = true;
+    mapRef.current?.recenter({
+      latitude: loc.latitude,
+      longitude: loc.longitude,
+      latitudeDelta: EXPLORE_MAP_DEFAULT_DELTA,
+      longitudeDelta: EXPLORE_MAP_DEFAULT_DELTA,
+    });
+  }, [loc, mapRegion]);
 
   const minZoomLevel = useMemo(
-    () => latitudeDeltaToZoom(EXPLORE_MAP_DEFAULT_DELTA, initialRegion.latitude),
-    [initialRegion.latitude]
+    () => latitudeDeltaToZoom(EXPLORE_MAP_DEFAULT_DELTA, mapRegion?.latitude),
+    [mapRegion?.latitude]
   );
 
   const requestLocation = useCallback(async () => {
     setLoc({ status: "loading" });
+    let haveFix = false;
     try {
       const permission = await Location.requestForegroundPermissionsAsync();
       if (permission.status !== "granted") {
@@ -387,9 +441,24 @@ export default function ExploreScreen() {
         setLocationModalVisible(true);
         return;
       }
+      // Last known fix lands the map on the player straight away; the precise
+      // fix below can take several seconds on a cold GPS.
+      const lastKnown = await Location.getLastKnownPositionAsync({
+        maxAge: LAST_KNOWN_FIX_MAX_AGE_MS,
+      });
+      if (lastKnown && !debugSpoofRef.current) {
+        haveFix = true;
+        setLoc({
+          status: "ready",
+          latitude: lastKnown.coords.latitude,
+          longitude: lastKnown.coords.longitude,
+          accuracy: lastKnown.coords.accuracy,
+        });
+      }
       const position = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
+      if (debugSpoofRef.current) return;
       setLoc({
         status: "ready",
         latitude: position.coords.latitude,
@@ -397,6 +466,7 @@ export default function ExploreScreen() {
         accuracy: position.coords.accuracy,
       });
     } catch {
+      if (haveFix) return;
       setLoc({
         status: "unavailable",
         message: "We couldn’t get your location. Check that Location Services are on, then try again.",
@@ -523,9 +593,10 @@ export default function ExploreScreen() {
     void requestLocation();
   }, [safetyAccepted, loc.status, requestLocation]);
 
-  // If location isn't available yet (dismissed prompt), still show nearby stops
-  // around a fixed Explore test centre so the map isn't empty / "unplayable".
+  // DEV / preview only: without GPS, load stops around the test centre so the
+  // map isn't empty. Real players must never be shown another area's stops.
   useEffect(() => {
+    if (!spoofAllowed) return;
     if (!safetyAccepted) return;
     if (loc.status === "ready" || loc.status === "loading" || loc.status === "idle") return;
     void fetchStops(EXPLORE_TEST_AREA_CENTRE.latitude, EXPLORE_TEST_AREA_CENTRE.longitude, FIXED_RADIUS_METRES, {
@@ -533,7 +604,7 @@ export default function ExploreScreen() {
       merge: lastFetchAt.current != null,
       quiet: lastFetchAt.current != null,
     });
-  }, [safetyAccepted, loc.status, fetchStops]);
+  }, [spoofAllowed, safetyAccepted, loc.status, fetchStops]);
 
   useEffect(() => {
     if (loc.status !== "ready") return;
@@ -577,6 +648,7 @@ export default function ExploreScreen() {
 
   const onMapRegionChange = useCallback(
     (region: ActivityMapRegion) => {
+      if (!isPlausibleMapRegion(region)) return;
       if (mapFetchTimer.current) clearTimeout(mapFetchTimer.current);
       mapFetchTimer.current = setTimeout(() => {
         const radius = radiusMetresFromRegion(region);
@@ -840,20 +912,57 @@ export default function ExploreScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.root}>
-        <ActivityMap
-          ref={mapRef}
-          style={StyleSheet.absoluteFill}
-          route={[]}
-          initialRegion={initialRegion}
-          showUserLocation={loc.status === "ready"}
-          markers={markers}
-          minZoomLevel={minZoomLevel}
-          maxZoomLevel={18}
-          rotateEnabled={false}
-          pitchEnabled={false}
-          onRegionChange={onMapRegionChange}
-          onMarkerPress={(id: string) => setSelectedId(id)}
-        />
+        {mapRegion ? (
+          <ActivityMap
+            ref={mapRef}
+            style={StyleSheet.absoluteFill}
+            route={[]}
+            initialRegion={mapRegion}
+            showUserLocation={loc.status === "ready"}
+            markers={markers}
+            minZoomLevel={minZoomLevel}
+            maxZoomLevel={18}
+            rotateEnabled={false}
+            pitchEnabled={false}
+            onRegionChange={onMapRegionChange}
+            onMarkerPress={(id: string) => setSelectedId(id)}
+          />
+        ) : (
+          <View style={styles.mapPlaceholder}>
+            <MaterialIcons name="location-searching" size={34} color="#FFE08A" />
+            <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.mapPlaceholderTitle}>
+              {locating ? "Finding you on the map…" : "Location needed"}
+            </ThemedText>
+            <ThemedText
+              lightColor="rgba(255,255,255,0.78)"
+              darkColor="rgba(255,255,255,0.78)"
+              style={styles.mapPlaceholderBody}
+            >
+              {locating
+                ? "Explore opens on wherever you are, so spots nearby are ones you can actually walk to."
+                : "Turn on location so Explore can show the spots around you."}
+            </ThemedText>
+            {!locating ? (
+              <Pressable
+                onPress={() => {
+                  if (loc.status === "denied") {
+                    openLocationSettings();
+                    return;
+                  }
+                  void requestLocation();
+                }}
+                style={styles.mapPlaceholderBtn}
+                accessibilityRole="button"
+              >
+                <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.mapPlaceholderBtnText}>
+                  {loc.status === "denied" ? "Open settings" : "Try again"}
+                </ThemedText>
+              </Pressable>
+            ) : (
+              <ActivityIndicator color="#FFF" />
+            )}
+          </View>
+        )}
 
         {(loadingStops) && (
           <View style={styles.loadingOverlay}>
@@ -1237,6 +1346,35 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(0,0,0,0.2)",
+  },
+  mapPlaceholder: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 36,
+    gap: 12,
+    backgroundColor: BG,
+  },
+  mapPlaceholderTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  mapPlaceholderBody: {
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: "center",
+  },
+  mapPlaceholderBtn: {
+    marginTop: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 22,
+    borderRadius: 14,
+    backgroundColor: ACCENT,
+  },
+  mapPlaceholderBtnText: {
+    fontSize: 15,
+    fontWeight: "800",
   },
   mapFetchBadge: {
     position: "absolute",

@@ -1,7 +1,7 @@
 import AccountDeleteForm from "./account-delete-form";
 
 export const metadata = {
-  title: "Request account deletion · Huntly World",
+  title: "Request account deletion · Huntly",
 };
 
 export default function AccountDeletePage() {
@@ -14,8 +14,10 @@ export default function AccountDeletePage() {
               Request account deletion
             </h1>
             <p className="text-sm leading-relaxed text-huntly-slate sm:text-base">
-              We&apos;re sorry to see you go. You can also request account
-              removal from the Settings screen inside the Huntly World app.
+              We&apos;re sorry to see you go. Choose which account you&apos;d
+              like removed below — Huntly, Huntly World, or both. You can also
+              request account removal from the Settings screen inside either
+              app.
             </p>
           </div>
         </div>
@@ -35,8 +37,8 @@ export default function AccountDeletePage() {
                 </li>
                 <li>This action cannot be undone once the request is approved.</li>
                 <li>
-                  You can cancel your removal request within 24 hours of
-                  submitting it from the Settings screen in the app.
+                  For Huntly World, you can cancel your removal request within
+                  24 hours of submitting it from the Settings screen in the app.
                 </li>
               </ul>
             </div>

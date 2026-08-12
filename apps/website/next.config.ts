@@ -14,6 +14,16 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      // Old huntly.app path - matches our consolidated /account-delete page.
+      {
+        source: "/delete-account",
+        destination: "/account-delete",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default withPayload(nextConfig);

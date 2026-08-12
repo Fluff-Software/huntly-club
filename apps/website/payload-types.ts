@@ -89,8 +89,12 @@ export interface Config {
     defaultIDType: number;
   };
   fallbackLocale: null;
-  globals: {};
-  globalsSelect: {};
+  globals: {
+    home: Home;
+  };
+  globalsSelect: {
+    home: HomeSelect<false> | HomeSelect<true>;
+  };
   locale: null;
   widgets: {
     collections: CollectionsWidget;
@@ -204,6 +208,9 @@ export interface Post {
    * Short summary shown on the blog listing page
    */
   excerpt?: string | null;
+  /**
+   * 1536×1024 (3:2). Shown at that ratio on listings and the post page, so keep any text clear of the far left/right edges.
+   */
   coverImage?: (number | null) | Media;
   content: {
     root: {
@@ -459,6 +466,263 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
   batch?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "home".
+ */
+export interface Home {
+  id: number;
+  blocks?:
+    | (
+        | {
+            eyebrow?: string | null;
+            headline: string;
+            body: string;
+            primaryCta: {
+              label: string;
+              href: string;
+            };
+            secondaryCta: {
+              label: string;
+              href: string;
+            };
+            /**
+             * Small line under the buttons, e.g. social proof.
+             */
+            caption?: string | null;
+            /**
+             * First image is shown large; a 2nd and 3rd overlap it as a photo collage.
+             */
+            images?:
+              | {
+                  image: number | Media;
+                  alt: string;
+                  id?: string | null;
+                }[]
+              | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'hero';
+          }
+        | {
+            eyebrow?: string | null;
+            /**
+             * Text before the highlighted word.
+             */
+            headlinePrefix?: string | null;
+            /**
+             * The single word/phrase rendered in gold.
+             */
+            headlineHighlight: string;
+            /**
+             * Text after the highlighted word.
+             */
+            headlineSuffix?: string | null;
+            body: string;
+            features?:
+              | {
+                  heading: string;
+                  description: string;
+                  id?: string | null;
+                }[]
+              | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'mission';
+          }
+        | {
+            backgroundImage: number | Media;
+            quote: string;
+            attribution: string;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'quote';
+          }
+        | {
+            eyebrow?: string | null;
+            heading: string;
+            subtext?: string | null;
+            cards?:
+              | {
+                  photo: number | Media;
+                  brandLabel: string;
+                  brandColor: 'red' | 'green';
+                  title: string;
+                  description: string;
+                  linkLabel: string;
+                  linkHref: string;
+                  id?: string | null;
+                }[]
+              | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'products';
+          }
+        | {
+            heading: string;
+            items?:
+              | {
+                  iconChipColor: 'pink' | 'teal' | 'gold';
+                  heading: string;
+                  description: string;
+                  id?: string | null;
+                }[]
+              | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'features';
+          }
+        | {
+            eyebrow?: string | null;
+            heading: string;
+            body: string;
+            image: number | Media;
+            primaryCta: {
+              label: string;
+              href: string;
+            };
+            secondaryCta: {
+              label: string;
+              href: string;
+            };
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'partnerCta';
+          }
+      )[]
+    | null;
+  _status?: ('draft' | 'published') | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "home_select".
+ */
+export interface HomeSelect<T extends boolean = true> {
+  blocks?:
+    | T
+    | {
+        hero?:
+          | T
+          | {
+              eyebrow?: T;
+              headline?: T;
+              body?: T;
+              primaryCta?:
+                | T
+                | {
+                    label?: T;
+                    href?: T;
+                  };
+              secondaryCta?:
+                | T
+                | {
+                    label?: T;
+                    href?: T;
+                  };
+              caption?: T;
+              images?:
+                | T
+                | {
+                    image?: T;
+                    alt?: T;
+                    id?: T;
+                  };
+              id?: T;
+              blockName?: T;
+            };
+        mission?:
+          | T
+          | {
+              eyebrow?: T;
+              headlinePrefix?: T;
+              headlineHighlight?: T;
+              headlineSuffix?: T;
+              body?: T;
+              features?:
+                | T
+                | {
+                    heading?: T;
+                    description?: T;
+                    id?: T;
+                  };
+              id?: T;
+              blockName?: T;
+            };
+        quote?:
+          | T
+          | {
+              backgroundImage?: T;
+              quote?: T;
+              attribution?: T;
+              id?: T;
+              blockName?: T;
+            };
+        products?:
+          | T
+          | {
+              eyebrow?: T;
+              heading?: T;
+              subtext?: T;
+              cards?:
+                | T
+                | {
+                    photo?: T;
+                    brandLabel?: T;
+                    brandColor?: T;
+                    title?: T;
+                    description?: T;
+                    linkLabel?: T;
+                    linkHref?: T;
+                    id?: T;
+                  };
+              id?: T;
+              blockName?: T;
+            };
+        features?:
+          | T
+          | {
+              heading?: T;
+              items?:
+                | T
+                | {
+                    iconChipColor?: T;
+                    heading?: T;
+                    description?: T;
+                    id?: T;
+                  };
+              id?: T;
+              blockName?: T;
+            };
+        partnerCta?:
+          | T
+          | {
+              eyebrow?: T;
+              heading?: T;
+              body?: T;
+              image?: T;
+              primaryCta?:
+                | T
+                | {
+                    label?: T;
+                    href?: T;
+                  };
+              secondaryCta?:
+                | T
+                | {
+                    label?: T;
+                    href?: T;
+                  };
+              id?: T;
+              blockName?: T;
+            };
+      };
+  _status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

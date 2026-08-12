@@ -10,6 +10,7 @@ import { seoPlugin } from "@payloadcms/plugin-seo";
 import { Users } from "./collections/Users";
 import { Media } from "./collections/Media";
 import { Posts } from "./collections/Posts";
+import { Home } from "./globals/Home";
 
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
@@ -22,6 +23,7 @@ export default buildConfig({
     },
   },
   collections: [Users, Media, Posts],
+  globals: [Home],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || "",
   typescript: {

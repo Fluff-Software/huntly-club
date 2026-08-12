@@ -3,11 +3,11 @@
 @tailwind utilities;
 
 :root {
-  --color-background: #EFEBE3;
+  --color-background: #FBF6EE;
   --color-surface: #FFFFFF;
-  --color-border-subtle: #CFC8BC;
-  --color-text-main: #22282D;
-  --color-text-muted: #495057;
+  --color-border-subtle: #E4D9C0;
+  --color-text-main: #173A2B;
+  --color-text-muted: #5B5647;
 }
 
 body {
@@ -40,6 +40,12 @@ body {
 
 .section {
   @apply mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8;
+}
+
+/* Wider container for the new block-based homepage/huntly-world design,
+   which needs more breathing room than the legacy text-page max-width. */
+.section-wide {
+  @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
 }
 
 .richtext {

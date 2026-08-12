@@ -1,0 +1,33 @@
+# Huntly
+
+> Huntly makes technology that points children outward — real-world outdoor adventures for curious kids aged 4-14. No ads, no in-app purchases. Two products: the Huntly quest app and Huntly World, the seasonal adventure club. Built by Fluff Software in Swindon, UK.
+
+## Products
+
+- [Huntly](https://huntly.world/huntly-app): The outdoor adventure app for kids — bite-size GPS-guided quests that send children hunting for shapes, wildlife and wonder in nature.
+- [Huntly World](https://huntly.world/huntly-world): A story-driven seasonal adventure club for children aged 4-14. Weekly outdoor missions, three team captains (Bears, Foxes, Otters), badges and achievements.
+
+## For parents and educators
+
+- [For parents](https://huntly.world/parents): What Huntly World is, how it works, safety, privacy and data handling.
+- [For schools](https://huntly.world/schools): How schools and clubs can run Huntly World as a group programme.
+- [How it works](https://huntly.world/how-it-works): Step-by-step guide to using Huntly World.
+- [Pricing](https://huntly.world/pricing): Huntly World subscription pricing.
+- [Scouts alternative](https://huntly.world/scouts-alternative): Why families choose Huntly World alongside or instead of traditional scouting.
+- [Teams](https://huntly.world/teams): Meet the three Huntly World team captains.
+
+## For attractions and businesses
+
+- [Partners](https://huntly.world/partners): Bespoke GPS-guided quest experiences for outdoor attractions (farms, tourist sites) — no hardware, done-for-you setup, repeat visits and a new revenue stream.
+
+## Company
+
+- [Blog](https://huntly.world/blog): Articles and updates from the Huntly team.
+- [Contact](https://huntly.world/contact): Get in touch with the Huntly team.
+- [Support](https://huntly.world/support): Help with the Huntly World app.
+- [Feedback](https://huntly.world/feedback): Share feedback about Huntly or Huntly World.
+- [Privacy policy](https://huntly.world/privacy)
+
+## Full sitemap
+
+https://huntly.world/sitemap.xml

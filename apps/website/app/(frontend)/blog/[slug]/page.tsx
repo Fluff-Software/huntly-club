@@ -72,9 +72,29 @@ export default async function BlogPostPage({ params }: Args) {
   if (!post) notFound();
 
   const cover = typeof post.coverImage === "object" ? post.coverImage : null;
+  const url = `https://huntly.world/blog/${post.slug}`;
+
+  const articleSchema = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: post.title,
+    description: post.excerpt || undefined,
+    image: cover?.url ? [cover.url] : undefined,
+    datePublished: post.publishedAt || undefined,
+    dateModified: post.updatedAt || post.publishedAt || undefined,
+    url,
+    mainEntityOfPage: { "@type": "WebPage", "@id": url },
+    author: { "@type": "Organization", name: "Huntly" },
+    publisher: {
+      "@type": "Organization",
+      name: "Huntly",
+      logo: { "@type": "ImageObject", url: "https://huntly.world/logo.webp" },
+    },
+  };
 
   return (
     <div className="section py-12 sm:py-16">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
       <article className="mx-auto max-w-2xl space-y-6">
         <header className="space-y-3">
           <h1 className="font-display text-2xl font-semibold text-huntly-forest sm:text-3xl">{post.title}</h1>

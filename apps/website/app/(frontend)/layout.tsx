@@ -1,34 +1,41 @@
 import type { Metadata, Viewport } from "next";
-import { Nunito } from "next/font/google";
+import { Bricolage_Grotesque, Hanken_Grotesk } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
 import Image from "next/image";
 import Script from "next/script";
 import CookieBanner from "./components/CookieBanner";
+import SiteHeader from "./components/SiteHeader";
 
-const nunito = Nunito({
+const bricolage = Bricolage_Grotesque({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-nunito",
+  variable: "--font-bricolage",
+});
+
+const hanken = Hanken_Grotesk({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-hanken",
 });
 
 const BASE_URL = "https://huntly.world";
-const DEFAULT_TITLE = "Huntly World — The Outdoor Adventure Club for Curious Kids";
+const DEFAULT_TITLE = "Huntly — Getting Kids Back Out Into the Real World";
 const DEFAULT_DESCRIPTION =
-  "Huntly World is a secret adventure club for children aged 4-14. Weekly outdoor missions, story-driven seasons, and real-world challenges — led by Bella, Ollie, and Felix. Join the club.";
+  "Huntly makes technology that points children outward — toward parks, woods, streets and gardens. Two ways to start the adventure: the Huntly app and Huntly World, the adventure club.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
     default: DEFAULT_TITLE,
-    template: "%s | Huntly World",
+    template: "%s | Huntly",
   },
   description: DEFAULT_DESCRIPTION,
   openGraph: {
     title: DEFAULT_TITLE,
     description: DEFAULT_DESCRIPTION,
     url: BASE_URL,
-    siteName: "Huntly World",
+    siteName: "Huntly",
     locale: "en_GB",
     type: "website",
     images: [{ url: "/og-image.png", width: 1200, height: 630 }],
@@ -49,14 +56,6 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-const navLinks = [
-  { href: "/how-it-works", label: "How it works" },
-  { href: "/parents", label: "For parents" },
-  { href: "/schools", label: "For schools" },
-  { href: "/pricing", label: "Pricing" },
-  { href: "/blog", label: "Blog" },
-];
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -65,7 +64,7 @@ export default function RootLayout({
   const gtmId = process.env.NEXT_PUBLIC_GTM_ID;
 
   return (
-    <html lang="en-GB" className={nunito.variable} suppressHydrationWarning>
+    <html lang="en-GB" className={`${bricolage.variable} ${hanken.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{analytics_storage:'denied',ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',wait_for_update:500});try{var c=localStorage.getItem('huntly_cookie_consent');if(c==='granted'){gtag('consent','update',{analytics_storage:'granted',ad_storage:'granted',ad_user_data:'granted',ad_personalization:'granted'});}}catch(e){}` }} />
       </head>
@@ -91,88 +90,106 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         )}
         <CookieBanner />
         <div className="page-shell">
-          <header className="border-b border-huntly-stone/70 bg-huntly-parchment/95 backdrop-blur">
-            <div className="section flex min-w-0 items-center justify-between gap-3 py-3 sm:gap-5 sm:py-4">
-              <Link href="/" className="flex min-w-0 shrink items-center gap-2 sm:gap-3">
-                <div className="relative h-7 w-24 shrink-0 sm:h-8 sm:w-32 md:h-9 md:w-40">
-                  <Image
-                    src="/logo.png"
-                    alt="Huntly World logo"
-                    fill
-                    sizes="(max-width: 640px) 96px, (max-width: 768px) 128px, 160px"
-                    className="object-contain"
-                    priority
-                  />
-                </div>
-                <div className="hidden min-w-0 flex-col leading-tight sm:flex">
-                  <span className="truncate text-base font-bold text-huntly-forest">
-                    Huntly World
-                  </span>
-                  <span className="truncate text-xs text-huntly-slate">
-                    Adventures for curious kids
-                  </span>
-                </div>
-              </Link>
+          <SiteHeader />
 
-              <nav className="flex shrink-0 items-center gap-3 sm:gap-5">
-                {navLinks.map((link) => (
-                  <Link key={link.href} href={link.href} className="nav-link hidden text-sm sm:inline-block">
-                    {link.label}
+          <main className="page-main pt-16 sm:pt-20">{children}</main>
+
+          <footer className="border-t border-brand-green bg-brand-green py-10 text-white/80">
+            <div className="section-wide">
+              <div className="flex flex-col gap-8 sm:flex-row sm:justify-between">
+                <div>
+                  <Link href="/" className="flex items-center">
+                    <Image src="/logo.webp" alt="Huntly" width={251} height={87} className="h-9 w-auto" />
                   </Link>
-                ))}
-                <Link
-                  href="/download"
-                  className="btn-primary whitespace-nowrap px-4 py-2 text-sm sm:px-5 sm:py-2.5 sm:text-sm"
-                >
-                  Join the club
-                </Link>
-              </nav>
-            </div>
-          </header>
+                  <p className="mt-3 max-w-xs text-sm text-white/70">
+                    Real-world adventures for curious kids. Made with care by Fluff Software.
+                  </p>
+                </div>
 
-          <main className="page-main">{children}</main>
+                <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-white/50">Products</p>
+                    <ul className="mt-3 space-y-2 text-sm">
+                      <li>
+                        <Link href="/huntly-app" className="hover:text-white hover:underline underline-offset-2">
+                          Huntly app
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/huntly-world" className="hover:text-white hover:underline underline-offset-2">
+                          Huntly World
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/pricing" className="hover:text-white hover:underline underline-offset-2">
+                          Pricing
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/blog" className="hover:text-white hover:underline underline-offset-2">
+                          Blog
+                        </Link>
+                      </li>
+                    </ul>
+                  </div>
 
-          <footer className="border-t border-huntly-stone/80 bg-huntly-parchment py-6">
-            <div className="section flex flex-col items-start justify-between gap-3 text-sm text-huntly-slate sm:flex-row sm:items-center">
-              <div>
-                <p>© {new Date().getFullYear()} Fluff Software Limited.</p>
-                <p className="mt-1 text-xs text-huntly-slate/90">Adventures for curious kids.</p>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-white/50">Company</p>
+                    <ul className="mt-3 space-y-2 text-sm">
+                      <li>
+                        <Link href="/parents" className="hover:text-white hover:underline underline-offset-2">
+                          For parents
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/schools" className="hover:text-white hover:underline underline-offset-2">
+                          For schools
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/scouts-alternative" className="hover:text-white hover:underline underline-offset-2">
+                          Scouts alternative
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/contact" className="hover:text-white hover:underline underline-offset-2">
+                          Partner with us
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/partners" className="hover:text-white hover:underline underline-offset-2">
+                          Attraction partners
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/feedback" className="hover:text-white hover:underline underline-offset-2">
+                          Feedback
+                        </Link>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-white/50">Legal</p>
+                    <ul className="mt-3 space-y-2 text-sm">
+                      <li>
+                        <Link href="/privacy" className="hover:text-white hover:underline underline-offset-2">
+                          Privacy
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/support" className="hover:text-white hover:underline underline-offset-2">
+                          Support
+                        </Link>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-5">
-                <Link href="/how-it-works" className="underline-offset-2 hover:underline">
-                  How it works
-                </Link>
-                <Link href="/parents" className="underline-offset-2 hover:underline">
-                  For parents
-                </Link>
-                <Link href="/schools" className="underline-offset-2 hover:underline">
-                  For schools
-                </Link>
-                <Link href="/blog" className="underline-offset-2 hover:underline">
-                  Blog
-                </Link>
-                <Link href="/pricing" className="underline-offset-2 hover:underline">
-                  Pricing
-                </Link>
-                <Link href="/scouts-alternative" className="underline-offset-2 hover:underline">
-                  Scouts alternative
-                </Link>
-                <Link href="/contact" className="font-medium text-huntly-forest underline-offset-2 hover:underline">
-                  Get in touch
-                </Link>
-                <Link href="/support" className="underline-offset-2 hover:underline">
-                  Support
-                </Link>
-                <Link href="/privacy" className="underline-offset-2 hover:underline">
-                  Privacy Policy
-                </Link>
-                <Link
-                  href="https://www.huntly.app/"
-                  className="underline-offset-2 hover:underline"
-                >
-                  Also from us: Huntly
-                </Link>
-              </div>
+
+              <p className="mt-10 border-t border-white/10 pt-6 text-xs text-white/50">
+                © {new Date().getFullYear()} Fluff Software Limited. All rights reserved.
+              </p>
             </div>
           </footer>
         </div>

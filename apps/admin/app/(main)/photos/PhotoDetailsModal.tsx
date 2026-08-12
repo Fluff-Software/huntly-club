@@ -4,16 +4,20 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
+import { ImageCropModal, type ImageCropState } from "@/components/ImageCropModal";
+import { PHOTO_REVIEW_ASPECT } from "@/lib/image-aspects";
 import {
   getPhotoDetails,
   denyPhoto,
   moveToForReview,
   deletePhoto,
+  replaceReviewPhotoImage,
   type PhotoDetailsResult,
 } from "./actions";
 import { FullPhotoModal } from "./FullPhotoModal";
 import { ConfirmModal } from "./ConfirmModal";
 import { DenyReasonModal } from "./DenyReasonModal";
+import { EditedPhotoPreviewModal } from "./EditedPhotoPreviewModal";
 
 const STATUS_LABELS: Record<number, string> = {
   0: "For review",
@@ -46,11 +50,28 @@ export function PhotoDetailsModal({
   const [fullPhotoOpen, setFullPhotoOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [denyReasonOpen, setDenyReasonOpen] = useState(false);
+  const [editCropOpen, setEditCropOpen] = useState(false);
+  const [editPendingFile, setEditPendingFile] = useState<File | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editPreviewOpen, setEditPreviewOpen] = useState(false);
+  const [editDraftFile, setEditDraftFile] = useState<File | null>(null);
+  const [editDraftState, setEditDraftState] = useState<ImageCropState | null>(null);
+  const [editOriginalFile, setEditOriginalFile] = useState<File | null>(null);
+  const [editSaveError, setEditSaveError] = useState<string | null>(null);
+  const [editedPhotoUrl, setEditedPhotoUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || !photoId) return;
     setLoading(true);
     setData(null);
+    setEditedPhotoUrl(null);
+    setEditCropOpen(false);
+    setEditPreviewOpen(false);
+    setEditPendingFile(null);
+    setEditDraftFile(null);
+    setEditDraftState(null);
+    setEditOriginalFile(null);
+    setEditSaveError(null);
     getPhotoDetails(photoId).then((result) => {
       setData(result);
       setLoading(false);
@@ -60,15 +81,104 @@ export function PhotoDetailsModal({
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key !== "Escape") return;
+      if (editCropOpen || editPreviewOpen || fullPhotoOpen || denyReasonOpen || deleteConfirmOpen) {
+        return;
+      }
+      onClose();
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose]);
+  }, [
+    open,
+    onClose,
+    editCropOpen,
+    editPreviewOpen,
+    fullPhotoOpen,
+    denyReasonOpen,
+    deleteConfirmOpen,
+  ]);
 
   if (!open) return null;
 
-  const displayPhotoUrl = data?.photo?.photo_url ?? photoUrl;
+  const displayPhotoUrl = editedPhotoUrl ?? data?.photo?.photo_url ?? photoUrl;
+  const editBusy = actionPending || editLoading;
+
+  async function handleStartEdit() {
+    if (editBusy) return;
+    setEditLoading(true);
+    setEditSaveError(null);
+    try {
+      const res = await fetch(displayPhotoUrl);
+      if (!res.ok) throw new Error("Failed to load photo");
+      const blob = await res.blob();
+      const type = blob.type || "image/jpeg";
+      const ext =
+        type === "image/webp" ? "webp" : type === "image/png" ? "png" : "jpg";
+      const file = new File([blob], `photo-${photoId}.${ext}`, { type });
+      setEditOriginalFile(file);
+      setEditPendingFile(file);
+      setEditDraftState(null);
+      setEditCropOpen(true);
+    } catch {
+      setEditSaveError("Could not load photo for editing.");
+    } finally {
+      setEditLoading(false);
+    }
+  }
+
+  function handleCancelEditCrop() {
+    if (actionPending) return;
+    setEditCropOpen(false);
+    setEditPendingFile(null);
+  }
+
+  function handleConfirmEditCrop(croppedFile: File, state?: ImageCropState) {
+    setEditCropOpen(false);
+    setEditPendingFile(null);
+    setEditDraftFile(croppedFile);
+    setEditDraftState(state ?? null);
+    setEditSaveError(null);
+    setEditPreviewOpen(true);
+  }
+
+  function handleKeepEditingDraft() {
+    if (actionPending) return;
+    if (!editOriginalFile) {
+      setEditPreviewOpen(false);
+      return;
+    }
+    setEditPreviewOpen(false);
+    setEditPendingFile(editOriginalFile);
+    setEditCropOpen(true);
+  }
+
+  async function handleSaveDraft() {
+    if (!editDraftFile || actionPending) return;
+    setActionPending(true);
+    setEditSaveError(null);
+    const fd = new FormData();
+    fd.set("file", editDraftFile);
+    const result = await replaceReviewPhotoImage({}, photoId, fd);
+    setActionPending(false);
+    if (result.error) {
+      setEditSaveError(result.error);
+      return;
+    }
+    if (result.url) {
+      setEditedPhotoUrl(result.url);
+      setData((prev) =>
+        prev?.photo
+          ? { ...prev, photo: { ...prev.photo, photo_url: result.url! } }
+          : prev
+      );
+    }
+    setEditPreviewOpen(false);
+    setEditDraftFile(null);
+    setEditDraftState(null);
+    setEditOriginalFile(null);
+    router.refresh();
+  }
 
   return (
     <>
@@ -112,12 +222,36 @@ export function PhotoDetailsModal({
         }}
         pending={actionPending}
       />
+      <ImageCropModal
+        open={editCropOpen}
+        file={editPendingFile}
+        title="Edit photo"
+        aspect={PHOTO_REVIEW_ASPECT}
+        enableBlur
+        confirmLabel="Use edit"
+        initialState={editDraftState ?? undefined}
+        onCancel={handleCancelEditCrop}
+        onConfirm={handleConfirmEditCrop}
+      />
+      <EditedPhotoPreviewModal
+        open={editPreviewOpen}
+        file={editDraftFile}
+        onKeepEditing={handleKeepEditingDraft}
+        onApprove={handleSaveDraft}
+        pending={actionPending}
+        error={editSaveError}
+        confirmLabel="Save"
+        pendingLabel="Saving…"
+      />
       <div
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-0 sm:p-4"
         aria-modal="true"
         role="dialog"
         aria-labelledby="photo-details-title"
-        onClick={onClose}
+        onClick={() => {
+          if (editCropOpen || editPreviewOpen) return;
+          onClose();
+        }}
       >
         <div
           className="flex h-[100dvh] w-full max-w-4xl flex-col overflow-hidden border border-stone-200 bg-white shadow-xl sm:h-auto sm:max-h-[90vh] sm:flex-row sm:rounded-2xl"
@@ -239,13 +373,26 @@ export function PhotoDetailsModal({
               </div>
 
               <div className="border-t border-stone-200 bg-white px-4 py-4 sm:px-6">
+                {editSaveError && !editPreviewOpen && (
+                  <p className="mb-3 text-sm text-red-600" role="alert">
+                    {editSaveError}
+                  </p>
+                )}
                 {data?.photo ? (
                   <div className="flex flex-wrap gap-2">
                     {data.photo.status === STATUS_APPROVED && (
                       <>
                         <button
                           type="button"
-                          disabled={actionPending}
+                          disabled={editBusy}
+                          onClick={handleStartEdit}
+                          className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-huntly-sage focus:ring-offset-2 disabled:opacity-50"
+                        >
+                          {editLoading ? "Loading…" : "Edit"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={editBusy}
                           onClick={() => setDenyReasonOpen(true)}
                           className="rounded-lg border border-red-300 bg-white px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2 disabled:opacity-50"
                         >
@@ -253,7 +400,7 @@ export function PhotoDetailsModal({
                         </button>
                         <button
                           type="button"
-                          disabled={actionPending}
+                          disabled={editBusy}
                           onClick={async () => {
                             setActionPending(true);
                             const result = await moveToForReview({}, photoId);

@@ -47,7 +47,7 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
   const [fullPhotoOpen, setFullPhotoOpen] = useState(false);
   const [denyReasonOpen, setDenyReasonOpen] = useState(false);
   const [approveModalOpen, setApproveModalOpen] = useState(false);
-  const [pendingAction, setPendingAction] = useState<"approve" | "deny" | null>(null);
+  const [pendingAction, setPendingAction] = useState<"approve" | "deny" | "save" | null>(null);
   const [editCropOpen, setEditCropOpen] = useState(false);
   const [editPendingFile, setEditPendingFile] = useState<File | null>(null);
   const [editLoading, setEditLoading] = useState(false);
@@ -56,11 +56,20 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
   const [editDraftState, setEditDraftState] = useState<ImageCropState | null>(null);
   const [editOriginalFile, setEditOriginalFile] = useState<File | null>(null);
   const [editApproveError, setEditApproveError] = useState<string | null>(null);
+  /** Edit opened from Approve flow (then approve) vs standalone Save (stay in review). */
+  const [editIntent, setEditIntent] = useState<"approve" | "save" | null>(null);
 
   const current = photos[0];
   const remaining = photos.length;
+  const reviewBusy =
+    isPending ||
+    editLoading ||
+    editCropOpen ||
+    editPreviewOpen ||
+    approveModalOpen ||
+    denyReasonOpen ||
+    fullPhotoOpen;
 
-  // Defined before useSwipe so the hook can reference them as stable callbacks
   const handleApprove = useCallback(() => {
     if (!current || isPending) return;
     setApproveModalOpen(true);
@@ -77,9 +86,10 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
     });
   }, [current, isPending, photos.length, router, startTransition]);
 
-  const handleApproveEdit = useCallback(async () => {
-    if (!current || isPending) return;
+  const startEditFromUrl = useCallback(async () => {
+    if (!current || isPending) return false;
     setEditLoading(true);
+    setEditApproveError(null);
     try {
       const res = await fetch(current.photo_url);
       if (!res.ok) throw new Error("Failed to load photo");
@@ -90,14 +100,28 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
       const file = new File([blob], `photo-${current.photo_id}.${ext}`, { type });
       setEditOriginalFile(file);
       setEditPendingFile(file);
+      setEditDraftState(null);
       setEditCropOpen(true);
-      setApproveModalOpen(false);
+      return true;
     } catch {
-      // If we can't fetch the image, just keep the approve modal open.
+      return false;
     } finally {
       setEditLoading(false);
     }
   }, [current, isPending]);
+
+  const handleApproveEdit = useCallback(async () => {
+    setEditIntent("approve");
+    const ok = await startEditFromUrl();
+    if (ok) setApproveModalOpen(false);
+  }, [startEditFromUrl]);
+
+  const handleStandaloneEdit = useCallback(async () => {
+    if (!current || reviewBusy) return;
+    setEditIntent("save");
+    const ok = await startEditFromUrl();
+    if (!ok) setEditIntent(null);
+  }, [current, reviewBusy, startEditFromUrl]);
 
   const handleDeny = useCallback(() => {
     if (!current || isPending) return;
@@ -108,7 +132,7 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
     useSwipe({
       onSwipeRight: handleApprove,
       onSwipeLeft: handleDeny,
-      disabled: isPending || !current,
+      disabled: reviewBusy || !current,
     });
 
   const handleDenyConfirm = (reason: string, sendEmail: boolean) => {
@@ -124,7 +148,7 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (!current || isPending) return;
+      if (!current || reviewBusy) return;
       if (e.key === "ArrowLeft") {
         e.preventDefault();
         setDenyReasonOpen(true);
@@ -136,13 +160,29 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [current, isPending, handleApprove]);
+  }, [current, reviewBusy, handleApprove]);
+
+  function clearEditState() {
+    setEditCropOpen(false);
+    setEditPreviewOpen(false);
+    setEditPendingFile(null);
+    setEditDraftFile(null);
+    setEditDraftState(null);
+    setEditOriginalFile(null);
+    setEditApproveError(null);
+    setEditIntent(null);
+  }
 
   function handleCancelEditCrop() {
     if (isPending) return;
+    const intent = editIntent;
     setEditCropOpen(false);
     setEditPendingFile(null);
-    setApproveModalOpen(true);
+    if (intent === "approve") {
+      setApproveModalOpen(true);
+    } else {
+      clearEditState();
+    }
   }
 
   function handleConfirmEditCrop(croppedFile: File, state?: ImageCropState) {
@@ -158,8 +198,10 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
   function handleKeepEditingDraft() {
     if (isPending) return;
     if (!editOriginalFile) {
+      const intent = editIntent;
       setEditPreviewOpen(false);
-      setApproveModalOpen(true);
+      if (intent === "approve") setApproveModalOpen(true);
+      else clearEditState();
       return;
     }
     setEditPreviewOpen(false);
@@ -168,9 +210,10 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
     setEditCropOpen(true);
   }
 
-  function handleApproveDraft() {
+  function handleConfirmEditedDraft() {
     if (!current || !editDraftFile || isPending) return;
-    setPendingAction("approve");
+    const intent = editIntent ?? "approve";
+    setPendingAction(intent === "save" ? "save" : "approve");
     setEditApproveError(null);
     startTransition(async () => {
       const fd = new FormData();
@@ -187,11 +230,14 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
         );
       }
 
+      if (intent === "save") {
+        clearEditState();
+        router.refresh();
+        return;
+      }
+
       await approvePhoto({}, current.photo_id);
-      setEditPreviewOpen(false);
-      setEditDraftFile(null);
-      setEditDraftState(null);
-      setEditOriginalFile(null);
+      clearEditState();
       setPhotos((prev) => prev.slice(1));
       if (photos.length <= 1) router.refresh();
     });
@@ -244,22 +290,22 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
         open={editPreviewOpen}
         file={editDraftFile}
         onKeepEditing={handleKeepEditingDraft}
-        onApprove={handleApproveDraft}
+        onApprove={handleConfirmEditedDraft}
         pending={isPending}
         error={editApproveError}
+        confirmLabel={editIntent === "save" ? "Save" : "Approve"}
+        pendingLabel={editIntent === "save" ? "Saving…" : "Approving…"}
       />
       <div className="mx-auto max-w-lg">
         <p className="mb-4 text-center text-sm text-stone-500">
           {remaining} photo{remaining !== 1 ? "s" : ""} left · Swipe or use arrow keys · ← Deny · Approve →
         </p>
 
-        {/* Swipeable card wrapper */}
         <div
           style={cardStyle}
           {...pointerHandlers}
           className="relative aspect-square overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-lg"
         >
-          {/* Approve overlay (swipe right) */}
           {overlayDirection === "right" && (
             <div
               className="pointer-events-none absolute inset-0 z-10 flex items-start justify-start rounded-2xl bg-emerald-500/80 p-6"
@@ -272,7 +318,6 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
             </div>
           )}
 
-          {/* Deny overlay (swipe left) */}
           {overlayDirection === "left" && (
             <div
               className="pointer-events-none absolute inset-0 z-10 flex items-start justify-end rounded-2xl bg-red-500/80 p-6"
@@ -285,24 +330,38 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
             </div>
           )}
 
-          {/* Loading overlay while server action is in flight */}
           {isPending && (
-            <div className="pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 rounded-2xl bg-white/70 backdrop-blur-sm" aria-live="polite" aria-label={pendingAction === "approve" ? "Approving photo…" : "Denying photo…"}>
+            <div
+              className="pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 rounded-2xl bg-white/70 backdrop-blur-sm"
+              aria-live="polite"
+              aria-label={
+                pendingAction === "approve"
+                  ? "Approving photo…"
+                  : pendingAction === "save"
+                    ? "Saving photo…"
+                    : "Denying photo…"
+              }
+            >
               <svg className="h-10 w-10 animate-spin text-stone-400" fill="none" viewBox="0 0 24 24" aria-hidden>
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
               </svg>
               <span className="text-sm font-medium text-stone-600">
-                {pendingAction === "approve" ? "Approving…" : "Denying…"}
+                {pendingAction === "approve"
+                  ? "Approving…"
+                  : pendingAction === "save"
+                    ? "Saving…"
+                    : "Denying…"}
               </span>
             </div>
           )}
 
-          {/* Click-to-expand — suppressed if pointer moved (drag vs tap) */}
           <button
             type="button"
             className="absolute inset-0 z-0 h-full w-full"
-            onClick={() => { if (!wasDrag()) setFullPhotoOpen(true); }}
+            onClick={() => {
+              if (!wasDrag()) setFullPhotoOpen(true);
+            }}
             aria-label="View full photo"
           >
             <div className="relative h-full w-full bg-stone-100">
@@ -343,11 +402,11 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
           )}
         </p>
 
-        <div className="mt-3 flex items-center justify-center gap-6">
+        <div className="mt-3 flex items-center justify-center gap-4 sm:gap-6">
           <button
             type="button"
             onClick={handleDeny}
-            disabled={isPending}
+            disabled={reviewBusy}
             className="flex size-20 items-center justify-center rounded-full border-2 border-red-300 bg-white text-red-600 shadow-md transition hover:border-red-400 hover:bg-red-50 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2 disabled:opacity-50"
             aria-label="Deny photo"
           >
@@ -355,8 +414,31 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
           </button>
           <button
             type="button"
+            onClick={handleStandaloneEdit}
+            disabled={reviewBusy}
+            className="flex size-14 items-center justify-center rounded-full border-2 border-stone-300 bg-white text-stone-700 shadow-md transition hover:border-stone-400 hover:bg-stone-50 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-huntly-sage focus:ring-offset-2 disabled:opacity-50"
+            aria-label="Edit photo"
+          >
+            {editLoading && editIntent === "save" ? (
+              <svg className="h-6 w-6 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden>
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              </svg>
+            ) : (
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
+              </svg>
+            )}
+          </button>
+          <button
+            type="button"
             onClick={handleApprove}
-            disabled={isPending}
+            disabled={reviewBusy}
             className="flex size-20 items-center justify-center rounded-full border-2 border-emerald-300 bg-white text-emerald-600 shadow-md transition hover:border-emerald-400 hover:bg-emerald-50 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 disabled:opacity-50"
             aria-label="Approve photo"
           >
@@ -365,7 +447,7 @@ export function PhotoReviewCards({ initialPhotos }: Props) {
         </div>
 
         <p className="mt-4 text-center text-xs text-stone-400">
-          ← Deny · Approve → · Click photo to view full size
+          ← Deny · Edit · Approve → · Click photo to view full size
         </p>
       </div>
     </>

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "../../lib/supabase";
 
-type Status = "loading" | "ready" | "invalid" | "success" | "error";
+type Status = "loading" | "confirm" | "ready" | "invalid" | "success" | "error";
 
 /** Deduplicate Strict Mode double-mount so the one-time token_hash is only verified once. */
 const verifyInflight = new Map<
@@ -38,6 +38,11 @@ export default function ResetPasswordPage() {
   const [mfaRequired, setMfaRequired] = useState(false);
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState("");
+  const [pendingToken, setPendingToken] = useState<{
+    tokenHash: string;
+    otpType: "recovery" | "email" | "signup" | "invite" | "magiclink" | "email_change";
+  } | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   async function detectMfaRequirement() {
     const supabase = createClient();
@@ -68,27 +73,21 @@ export default function ResetPasswordPage() {
 
       const supabase = createClient();
 
-      // Prefer token_hash (query) — consumed via POST verifyOtp, safe from email prefetch GETs
+      // Prefer token_hash (query). Held for an explicit user click rather than verified
+      // automatically — some email clients open links to scan them, which would otherwise
+      // burn the one-time token before the person ever clicks it.
       if (tokenHash) {
-        const { error } = await verifyRecoveryToken(
+        setPendingToken({
           tokenHash,
-          otpType as
+          otpType: otpType as
             | "recovery"
             | "email"
             | "signup"
             | "invite"
             | "magiclink"
-            | "email_change"
-        );
-        if (cancelled) return;
-        if (error) {
-          setStatus("invalid");
-          return;
-        }
-        window.history.replaceState(null, "", window.location.pathname);
-        await detectMfaRequirement();
-        if (cancelled) return;
-        setStatus("ready");
+            | "email_change",
+        });
+        setStatus("confirm");
         return;
       }
 
@@ -135,6 +134,28 @@ export default function ResetPasswordPage() {
       cancelled = true;
     };
   }, []);
+
+  const handleContinue = async () => {
+    if (!pendingToken) return;
+    setConfirming(true);
+    try {
+      const { error } = await verifyRecoveryToken(
+        pendingToken.tokenHash,
+        pendingToken.otpType
+      );
+      if (error) {
+        setStatus("invalid");
+        return;
+      }
+      window.history.replaceState(null, "", window.location.pathname);
+      await detectMfaRequirement();
+      setStatus("ready");
+    } catch {
+      setStatus("invalid");
+    } finally {
+      setConfirming(false);
+    }
+  };
 
   const elevateToAal2 = async (supabase: ReturnType<typeof createClient>) => {
     if (!mfaFactorId) {
@@ -221,6 +242,29 @@ export default function ResetPasswordPage() {
       <div className="section flex min-h-[60vh] items-center justify-center">
         <div className="card max-w-md text-center">
           <p className="text-sm leading-relaxed text-huntly-slate">Getting things ready…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === "confirm") {
+    return (
+      <div className="section flex min-h-[60vh] items-center justify-center">
+        <div className="card max-w-md text-center">
+          <h1 className="mb-3 font-display text-2xl font-semibold text-huntly-forest">
+            Reset your password
+          </h1>
+          <p className="mb-6 text-sm leading-relaxed text-huntly-slate">
+            Tap continue to verify this link and set a new password.
+          </p>
+          <button
+            type="button"
+            onClick={handleContinue}
+            disabled={confirming}
+            className="btn-primary w-full py-3"
+          >
+            {confirming ? "Verifying…" : "Continue"}
+          </button>
         </div>
       </div>
     );

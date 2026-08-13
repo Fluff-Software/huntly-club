@@ -1,7 +1,7 @@
 /**
  * Huntly World branded email template.
  * Uses inline styles for broad email-client support.
- * Logo URL: set EMAIL_LOGO_URL in Edge Function secrets (e.g. https://www.huntly.world/logo.png).
+ * Logo URL: set EMAIL_LOGO_URL in Edge Function secrets (e.g. https://www.huntly.app/logo-email.png).
  */
 
 // Huntly brand colors (from apps/mobile/tailwind.config.js)
@@ -16,7 +16,7 @@ const BRAND = {
 } as const;
 
 function getLogoUrl(): string {
-  return Deno.env.get("EMAIL_LOGO_URL") ?? "https://www.huntly.world/logo.png";
+  return Deno.env.get("EMAIL_LOGO_URL") ?? "https://www.huntly.app/logo-email.png";
 }
 
 /**
@@ -42,7 +42,7 @@ export function wrapEmailBody(bodyHtml: string, options?: { showLogo?: boolean }
           <!-- Header with logo -->
           <tr>
             <td style="background: linear-gradient(135deg, ${BRAND.forest} 0%, ${BRAND.leaf} 100%); padding: 28px 24px; text-align: center;">
-              ${showLogo ? `<img src="${logoUrl}" alt="Huntly World" width="160" height="auto" style="display: inline-block; max-height: 48px; width: auto;" />` : ""}
+              ${showLogo ? `<img src="${logoUrl}" alt="Huntly World" width="160" style="display: inline-block; max-height: 48px; width: auto;" />` : ""}
               ${showLogo ? "" : `<span style="font-size: 22px; font-weight: 700; color: ${BRAND.white}; letter-spacing: -0.5px;">Huntly World</span>`}
             </td>
           </tr>

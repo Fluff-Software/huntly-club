@@ -14,8 +14,20 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { EXPLORE_RARITY_COLORS } from "@/constants/exploreBinder";
 import { formatRarityLabel } from "@/utils/exploreBinder";
+import { ExploreCardShineSweep } from "@/components/explore/ExploreCardShine";
 
+/** Locked / undiscovered cards always use this, regardless of rarity. */
 const CARD_BG = require("@/assets/images/explore-card-bg.png");
+const CARD_BG_COMMON = require("@/assets/images/explore-card-bg-common.png");
+const CARD_BG_UNCOMMON = require("@/assets/images/explore-card-bg-uncommon.png");
+const CARD_BG_RARE = require("@/assets/images/explore-card-bg-rare.png");
+const CARD_BG_VERY_RARE = require("@/assets/images/explore-card-bg-very-rare.png");
+const CARD_BG_BY_RARITY: Record<string, unknown> = {
+  common: CARD_BG_COMMON,
+  uncommon: CARD_BG_UNCOMMON,
+  rare: CARD_BG_RARE,
+  very_rare: CARD_BG_VERY_RARE,
+};
 
 const INK = "#1A2A1C";
 const FRAME_EDGE = "#1A2E20";
@@ -24,6 +36,8 @@ const BEVEL_MID = "#7E9678";
 const BEVEL_DARK = "#33483A";
 /** Translucent mint so the textured green bg stays visible. */
 const PANEL_FILL = "rgba(228, 242, 215, 0.72)";
+/** Slightly more opaque than PANEL_FILL for stronger contrast behind body text. */
+const PANEL_FILL_DESC = "rgba(228, 242, 215, 0.85)";
 const PANEL_BORDER = "rgba(50, 90, 55, 0.4)";
 const PANEL_FILL_LOCKED = "rgba(18, 28, 22, 0.78)";
 const PANEL_BORDER_LOCKED = "rgba(255,255,255,0.16)";
@@ -43,6 +57,8 @@ type Props = {
   /** When true, never show a lock — card is owned / unlocked. */
   collected: boolean;
   compact?: boolean;
+  /** Foil shine sweep for rare / very_rare — popup detail view only, not the binder grid. */
+  enableShine?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -75,11 +91,16 @@ export function ExploreCardArt({
   collectedBy = [],
   collected,
   compact = false,
+  enableShine = false,
   style,
 }: Props) {
   const [failed, setFailed] = useState(false);
   const showCatalogueImage = Boolean(imageUrl?.startsWith("http")) && !failed;
   const rarityColor = EXPLORE_RARITY_COLORS[rarity] ?? "#3B82F6";
+  const shineIntensity =
+    rarity === "very_rare" ? "very_rare" : rarity === "rare" ? "rare" : null;
+  const showShine = collected && enableShine && shineIntensity != null;
+  const cardBg = collected ? (CARD_BG_BY_RARITY[rarity] ?? CARD_BG) : CARD_BG;
   const displayName = collected ? name.toUpperCase() : "?????";
   const rarityLabel = collected ? formatRarityLabel(rarity).toUpperCase() : "UNKNOWN";
   const bodyText = collected
@@ -101,7 +122,7 @@ export function ExploreCardArt({
     <View style={[styles.frame, style]}>
       {/* stretch so the full textured bg fills the card (no corner crop) */}
       <Image
-        source={CARD_BG}
+        source={cardBg}
         style={[styles.bg, !collected && styles.bgLocked]}
         resizeMode="stretch"
         fadeDuration={0}
@@ -250,6 +271,8 @@ export function ExploreCardArt({
           ) : null}
         </View>
       </View>
+
+      {showShine ? <ExploreCardShineSweep intensity={shineIntensity!} /> : null}
     </View>
   );
 }
@@ -437,7 +460,7 @@ const styles = StyleSheet.create({
   descBox: {
     flexGrow: 0,
     flexShrink: 0,
-    backgroundColor: PANEL_FILL,
+    backgroundColor: PANEL_FILL_DESC,
     borderWidth: 1.5,
     borderColor: PANEL_BORDER,
     borderRadius: 12,
@@ -460,12 +483,12 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 14,
     lineHeight: 19,
-    fontWeight: "700",
+    fontWeight: "800",
   },
   descriptionCompact: {
     fontSize: 10,
     lineHeight: 13,
-    fontWeight: "700",
+    fontWeight: "800",
   },
   descRule: {
     height: StyleSheet.hairlineWidth,

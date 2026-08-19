@@ -1,6 +1,5 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import { StyleSheet, View } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
 import {
   Camera,
   GeoJSONSource,
@@ -12,6 +11,7 @@ import {
 } from "@maplibre/maplibre-react-native";
 import { getMapTilerMapStyleUrl } from "@/constants/maptiler";
 import { ActivityMapStopMarkerView } from "./ActivityMapStopMarkerView";
+import { ActivityMapUserMarkerView } from "./ActivityMapUserMarkerView";
 import {
   buildInitialViewState,
   buildRecenterCameraStop,
@@ -190,9 +190,9 @@ export const ActivityMap = forwardRef<ActivityMapRef, ActivityMapProps>(function
           <ViewAnnotation
             id={userMarker.id}
             lngLat={[userMarker.longitude, userMarker.latitude]}
-            anchor="bottom"
+            anchor="center"
           >
-            <MaterialIcons name="location-on" size={40} color="#E03131" />
+            <ActivityMapUserMarkerView />
           </ViewAnnotation>
         ) : null}
       </Map>

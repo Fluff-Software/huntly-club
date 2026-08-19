@@ -11,11 +11,15 @@ import {
 } from "react-native";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { setStatusBarStyle } from "expo-status-bar";
+import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
+import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
 import * as Updates from "expo-updates";
 import { ThemedText } from "@/components/ThemedText";
+import { ExploreNearbyStopBanner } from "@/components/explore/ExploreNearbyStopBanner";
 import {
   ActivityMap,
   latitudeDeltaToZoom,
@@ -317,22 +321,77 @@ export default function ExploreScreen() {
     [stops]
   );
 
-  const markers = useMemo(
-    () =>
-      visibleStops.map((s) => {
-        const claimed = claimedIds.has(s.stopId);
-        return {
-          id: s.stopId,
-          latitude: s.latitude,
-          longitude: s.longitude,
-          color: playerStopColor(claimed),
-          title: claimed ? "Collected" : "Explore spot",
-          variant: "stop" as const,
-          icon: claimed ? ("check" as const) : ("lock" as const),
-        };
-      }),
-    [visibleStops, claimedIds]
+  /** Nearest not-yet-claimed stop currently within unlock range, regardless of selection. */
+  const nearbyUnlockableStop = useMemo(() => {
+    if (loc.status !== "ready") return null;
+    let closest: ExploreStop | null = null;
+    let closestDist = Infinity;
+    for (const s of visibleStops) {
+      if (claimedIds.has(s.stopId)) continue;
+      const d = metersBetween(
+        { latitude: loc.latitude, longitude: loc.longitude },
+        { latitude: s.latitude, longitude: s.longitude }
+      );
+      if (d <= EXPLORE_CLAIM_RADIUS_METRES && d < closestDist) {
+        closest = s;
+        closestDist = d;
+      }
+    }
+    return closest;
+  }, [loc, visibleStops, claimedIds]);
+
+  const [nearStopBannerVisible, setNearStopBannerVisible] = useState(false);
+  const lastNearbyStopIdRef = useRef<string | null>(null);
+  const nearStopBannerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const nearbyId = nearbyUnlockableStop?.stopId ?? null;
+    if (nearbyId && nearbyId !== lastNearbyStopIdRef.current) {
+      lastNearbyStopIdRef.current = nearbyId;
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setNearStopBannerVisible(true);
+      if (nearStopBannerTimeoutRef.current) clearTimeout(nearStopBannerTimeoutRef.current);
+      nearStopBannerTimeoutRef.current = setTimeout(() => {
+        setNearStopBannerVisible(false);
+      }, 3200);
+    } else if (!nearbyId) {
+      lastNearbyStopIdRef.current = null;
+    }
+  }, [nearbyUnlockableStop]);
+
+  useEffect(
+    () => () => {
+      if (nearStopBannerTimeoutRef.current) clearTimeout(nearStopBannerTimeoutRef.current);
+    },
+    []
   );
+
+  const markers = useMemo(() => {
+    const stopMarkers = visibleStops.map((s) => {
+      const claimed = claimedIds.has(s.stopId);
+      return {
+        id: s.stopId,
+        latitude: s.latitude,
+        longitude: s.longitude,
+        color: playerStopColor(claimed),
+        title: claimed ? "Collected" : "Explore spot",
+        variant: "stop" as const,
+        icon: claimed ? ("check" as const) : ("lock" as const),
+      };
+    });
+    if (loc.status !== "ready") return stopMarkers;
+    // Rendered last so it stacks above pack pins instead of getting lost behind them.
+    return [
+      ...stopMarkers,
+      {
+        id: "user-location",
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        title: "You",
+        variant: "user" as const,
+      },
+    ];
+  }, [visibleStops, claimedIds, loc]);
 
   const locating = loc.status === "idle" || loc.status === "loading";
 
@@ -908,6 +967,17 @@ export default function ExploreScreen() {
     }, [])
   );
 
+  // Keep the screen awake while walking around the map — no fumbling to wake
+  // it back up mid-hunt. Released the moment you leave this screen.
+  useFocusEffect(
+    useCallback(() => {
+      void activateKeepAwakeAsync("explore-map");
+      return () => {
+        deactivateKeepAwake("explore-map");
+      };
+    }, [])
+  );
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -918,7 +988,6 @@ export default function ExploreScreen() {
             style={StyleSheet.absoluteFill}
             route={[]}
             initialRegion={mapRegion}
-            showUserLocation={loc.status === "ready"}
             markers={markers}
             minZoomLevel={minZoomLevel}
             maxZoomLevel={18}
@@ -927,7 +996,18 @@ export default function ExploreScreen() {
             onRegionChange={onMapRegionChange}
             onMarkerPress={(id: string) => setSelectedId(id)}
           />
-        ) : (
+        ) : null}
+
+        {mapRegion ? (
+          // Scrim so the light status bar icons stay readable over light map tiles.
+          <LinearGradient
+            pointerEvents="none"
+            colors={["rgba(0,0,0,0.45)", "rgba(0,0,0,0)"]}
+            style={[styles.topScrim, { height: insets.top + 56 }]}
+          />
+        ) : null}
+
+        {!mapRegion && (
           <View style={styles.mapPlaceholder}>
             <MaterialIcons name="location-searching" size={34} color="#FFE08A" />
             <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.mapPlaceholderTitle}>
@@ -1012,6 +1092,12 @@ export default function ExploreScreen() {
             <MaterialIcons name="collections-bookmark" size={22} color="#FFF" />
           </Pressable>
         </View>
+
+        <ExploreNearbyStopBanner
+          visible={nearStopBannerVisible}
+          label="You're close enough to unlock a stop"
+          top={insets.top + (__DEV__ ? 112 : 64)}
+        />
 
         {profiles.length > 1 ? (
           <View style={[styles.profileChipRow, { top: insets.top + 60 }]}>
@@ -1385,6 +1471,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  topScrim: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
   },
   topBar: {
     position: "absolute",

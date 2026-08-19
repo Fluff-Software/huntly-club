@@ -81,6 +81,7 @@ export function ExploreCardDetail({ card, onClose, onCloseComplete }: Props) {
               lastCollectedAt={card.lastCollectedAt}
               collectedBy={card.collectedBy}
               collected={collected}
+              enableShine
               style={styles.art}
             />
           </ExploreCardFlip>

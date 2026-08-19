@@ -9,6 +9,7 @@ import { StyleSheet, View } from "react-native";
 /** Default provider is Apple MapKit — no Google Maps API key on iOS. */
 import MapView, { Marker, Polyline } from "react-native-maps";
 import { ActivityMapStopMarkerView } from "./ActivityMapStopMarkerView";
+import { ActivityMapUserMarkerView } from "./ActivityMapUserMarkerView";
 import {
   ACTIVITY_MAP_RECENTER_DURATION_MS,
   ACTIVITY_MAP_ROUTE_FIT_PADDING,
@@ -155,11 +156,12 @@ export const ActivityMap = forwardRef<ActivityMapRef, ActivityMapProps>(function
               key={marker.id}
               coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
               title={marker.title ?? "You"}
-              pinColor="#E03131"
+              anchor={{ x: 0.5, y: 0.5 }}
               zIndex={1000}
-              tracksViewChanges={false}
-              onPress={() => onMarkerPress?.(marker.id)}
-            />
+              tracksViewChanges
+            >
+              <ActivityMapUserMarkerView />
+            </Marker>
           );
         }
 

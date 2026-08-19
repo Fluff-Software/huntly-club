@@ -55,6 +55,8 @@ function rarityRevealProfile(rarity: string): {
   hapticStyle: Haptics.ImpactFeedbackStyle;
   /** Hold on the card back before flipping to the front. */
   flipHoldMs: number;
+  /** Duration of the back→front spin (ms). */
+  flipSpinMs: number;
 } {
   switch (rarity) {
     case "very_rare":
@@ -63,11 +65,12 @@ function rarityRevealProfile(rarity: string): {
         auraIn: 260,
         auraOut: 720,
         cardY: 150,
-        springDamping: 11,
-        springStiffness: 78,
+        springDamping: 16,
+        springStiffness: 140,
         hapticBeats: 3,
         hapticStyle: Haptics.ImpactFeedbackStyle.Heavy,
         flipHoldMs: 3400,
+        flipSpinMs: 920,
       };
     case "rare":
       return {
@@ -75,11 +78,12 @@ function rarityRevealProfile(rarity: string): {
         auraIn: 220,
         auraOut: 540,
         cardY: 135,
-        springDamping: 12,
-        springStiffness: 90,
+        springDamping: 17,
+        springStiffness: 160,
         hapticBeats: 2,
         hapticStyle: Haptics.ImpactFeedbackStyle.Medium,
-        flipHoldMs: 3000,
+        flipHoldMs: 2600,
+        flipSpinMs: 820,
       };
     case "uncommon":
       return {
@@ -87,11 +91,12 @@ function rarityRevealProfile(rarity: string): {
         auraIn: 190,
         auraOut: 460,
         cardY: 125,
-        springDamping: 13,
-        springStiffness: 100,
+        springDamping: 18,
+        springStiffness: 180,
         hapticBeats: 1,
         hapticStyle: Haptics.ImpactFeedbackStyle.Medium,
-        flipHoldMs: 2600,
+        flipHoldMs: 1400,
+        flipSpinMs: 700,
       };
     default:
       return {
@@ -99,14 +104,19 @@ function rarityRevealProfile(rarity: string): {
         auraIn: 160,
         auraOut: 380,
         cardY: 120,
-        springDamping: 14,
-        springStiffness: 110,
+        springDamping: 19,
+        springStiffness: 200,
         hapticBeats: 1,
         hapticStyle: Haptics.ImpactFeedbackStyle.Light,
-        flipHoldMs: 2400,
+        flipHoldMs: 900,
+        flipSpinMs: 600,
       };
   }
 }
+
+/** Torn pack foil fade — kept short & rarity-independent so the pack never hangs around. */
+const FOIL_FADE_MS = 260;
+const PACK_UNMOUNT_MS = 300;
 
 type Phase = "enter" | "ready" | "ripping" | "claiming" | "reveal" | "error";
 
@@ -169,7 +179,7 @@ export function ExploreCardPackReveal({
   const cardScale = useSharedValue(0.92);
   const newBadgeOpacity = useSharedValue(0);
   const newBadgeScale = useSharedValue(0.82);
-  const ripArmed = useSharedValue(0);
+  const ripTick = useSharedValue(0);
 
   const reset = useCallback(() => {
     cancelAnimation(idleBob);
@@ -183,7 +193,7 @@ export function ExploreCardPackReveal({
     cardScale.value = 0.92;
     newBadgeOpacity.value = 0;
     newBadgeScale.value = 0.82;
-    ripArmed.value = 0;
+    ripTick.value = 0;
     claimStartedRef.current = false;
     setAward(null);
     setClaimError(null);
@@ -201,7 +211,7 @@ export function ExploreCardPackReveal({
     cardScale,
     newBadgeOpacity,
     newBadgeScale,
-    ripArmed,
+    ripTick,
   ]);
 
   useEffect(() => {
@@ -248,11 +258,12 @@ export function ExploreCardPackReveal({
       });
 
       // Pack stays so the torn top sits above the rising card, then foil clears.
+      // Kept short & the same for every rarity so the empty pack never lingers.
       foilOpacity.value = withTiming(0, {
-        duration: 520,
+        duration: FOIL_FADE_MS,
         easing: Easing.in(Easing.cubic),
       });
-      setTimeout(() => setPackMounted(false), 560);
+      setTimeout(() => setPackMounted(false), PACK_UNMOUNT_MS);
 
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       void (async () => {
@@ -310,15 +321,17 @@ export function ExploreCardPackReveal({
     }
   }, [onRipComplete, playReveal]);
 
-  const lightHaptic = useCallback(() => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, []);
   const selectionHaptic = useCallback(() => {
     void Haptics.selectionAsync();
   }, []);
   const mediumRipHaptic = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }, []);
+
+  // Fires a quick selection tick every RIP_TICK_STEP of progress while
+  // dragging, so the seal "unzips" under the finger instead of just
+  // buzzing twice.
+  const RIP_TICK_STEP = 0.07;
 
   const pan = useMemo(
     () =>
@@ -327,7 +340,7 @@ export function ExploreCardPackReveal({
         .activeOffsetX([-8, 8])
         .failOffsetY([-48, 48])
         .onBegin(() => {
-          ripArmed.value = 0;
+          ripTick.value = 0;
           runOnJS(setPhase)("ripping");
           runOnJS(selectionHaptic)();
         })
@@ -337,13 +350,10 @@ export function ExploreCardPackReveal({
           const fromY = Math.max(0, -e.translationY / (RIP_THRESHOLD * 1.2));
           const progress = Math.min(1, Math.max(fromX, fromY * 0.45));
           openProgress.value = progress;
-          if (progress > 0.22 && ripArmed.value === 0) {
-            ripArmed.value = 1;
-            runOnJS(lightHaptic)();
-          }
-          if (progress > 0.58 && ripArmed.value === 1) {
-            ripArmed.value = 2;
-            runOnJS(lightHaptic)();
+          const tickIndex = Math.floor(progress / RIP_TICK_STEP);
+          if (tickIndex > ripTick.value) {
+            ripTick.value = tickIndex;
+            runOnJS(selectionHaptic)();
           }
         })
         .onEnd((e) => {
@@ -356,11 +366,11 @@ export function ExploreCardPackReveal({
             runOnJS(finishRipAndClaim)();
           } else {
             openProgress.value = withSpring(0, { damping: 16, stiffness: 180 });
-            ripArmed.value = 0;
+            ripTick.value = 0;
             runOnJS(setPhase)("ready");
           }
         }),
-    [phase, openProgress, finishRipAndClaim, selectionHaptic, lightHaptic, mediumRipHaptic, ripArmed]
+    [phase, openProgress, finishRipAndClaim, selectionHaptic, mediumRipHaptic, ripTick]
   );
 
   const handleDismiss = useCallback(() => {
@@ -467,6 +477,7 @@ export function ExploreCardPackReveal({
                   interactive
                   borderColor={rarityColor}
                   autoFlipDelayMs={revealProfile.flipHoldMs}
+                  autoFlipDurationMs={revealProfile.flipSpinMs}
                   key={award.card.id}
                   onFlipComplete={onCardFlipComplete}
                 >

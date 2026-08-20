@@ -30,6 +30,7 @@ import {
 import { ExploreCardPackReveal } from "@/components/explore/ExploreCardPackReveal";
 import { ExploreSafetyWarning } from "@/components/explore/ExploreSafetyWarning";
 import { LocationPermissionModal } from "@/components/explore/LocationPermissionModal";
+import { ExploreProfileSelectModal } from "@/components/explore/ExploreProfileSelectModal";
 import { openLocationSettings } from "@/services/locationService";
 import { getExploreSafetySkipEveryTime } from "@/services/exploreSafetyPreference";
 import {
@@ -206,6 +207,7 @@ export default function ExploreScreen() {
   const [safetyAccepted, setSafetyAccepted] = useState(false);
   const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [locationModalRequesting, setLocationModalRequesting] = useState(false);
+  const [profileModalVisible, setProfileModalVisible] = useState(false);
   /** DEV / preview: freeze GPS and report spoofed coords for claim testing. */
   const debugSpoofRef = useRef(false);
   const [debugSpoofActive, setDebugSpoofActive] = useState(false);
@@ -1071,76 +1073,59 @@ export default function ExploreScreen() {
           >
             <MaterialIcons name="arrow-back" size={24} color="#FFF" />
           </Pressable>
-          <Pressable
-            onPress={() => {
-              const params: Record<string, string> = {};
-              if (claimedMode === "all") {
-                params.mode = "all";
-              } else if (selectedProfileId != null) {
-                params.profileId = String(selectedProfileId);
-              }
-              router.push({
-                pathname: "/(tabs)/activity/explore-collection",
-                params,
-              });
-            }}
-            hitSlop={12}
-            accessibilityRole="button"
-            accessibilityLabel="Open card binder"
-            style={styles.iconBtn}
-          >
-            <MaterialIcons name="collections-bookmark" size={22} color="#FFF" />
-          </Pressable>
+          <View style={styles.topBarRight}>
+            {profiles.length > 1 ? (
+              <Pressable
+                onPress={() => setProfileModalVisible(true)}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="Choose your profile"
+                style={styles.iconBtn}
+              >
+                <MaterialIcons name="switch-account" size={22} color="#FFF" />
+              </Pressable>
+            ) : null}
+            <Pressable
+              onPress={() => {
+                const params: Record<string, string> = {};
+                if (claimedMode === "all") {
+                  params.mode = "all";
+                } else if (selectedProfileId != null) {
+                  params.profileId = String(selectedProfileId);
+                }
+                router.push({
+                  pathname: "/(tabs)/activity/explore-collection",
+                  params,
+                });
+              }}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Open card binder"
+              style={styles.iconBtn}
+            >
+              <MaterialIcons name="collections-bookmark" size={22} color="#FFF" />
+            </Pressable>
+          </View>
         </View>
 
         <ExploreNearbyStopBanner
           visible={nearStopBannerVisible}
           label="You're close enough to unlock a stop"
-          top={insets.top + (__DEV__ ? 112 : 64)}
+          top={insets.top + 64}
         />
 
-        {profiles.length > 1 ? (
-          <View style={[styles.profileChipRow, { top: insets.top + 60 }]}>
-            {profiles.map((p) => {
-              const active = claimedMode === "single" && selectedProfileId === p.id;
-              return (
-                <Pressable
-                  key={p.id}
-                  onPress={() => {
-                    setClaimedMode("single");
-                    setSelectedProfileId(p.id);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Collect cards as ${p.nickname || p.name}`}
-                  style={[styles.profileChip, active && styles.profileChipActive]}
-                >
-                  <ThemedText
-                    lightColor="#FFF"
-                    darkColor="#FFF"
-                    style={styles.profileChipText}
-                    numberOfLines={1}
-                  >
-                    {p.nickname || p.name}
-                  </ThemedText>
-                </Pressable>
-              );
-            })}
-            <Pressable
-              onPress={() => setClaimedMode("all")}
-              accessibilityRole="button"
-              accessibilityLabel="View all profiles"
-              style={[styles.profileChip, claimedMode === "all" && styles.profileChipActive]}
-            >
-              <ThemedText
-                lightColor="#FFF"
-                darkColor="#FFF"
-                style={styles.profileChipText}
-              >
-                All
-              </ThemedText>
-            </Pressable>
-          </View>
-        ) : null}
+        <ExploreProfileSelectModal
+          visible={profileModalVisible}
+          profiles={profiles}
+          claimedMode={claimedMode}
+          selectedProfileId={selectedProfileId}
+          onSelectProfile={(id) => {
+            setClaimedMode("single");
+            setSelectedProfileId(id);
+          }}
+          onSelectAll={() => setClaimedMode("all")}
+          onDismiss={() => setProfileModalVisible(false)}
+        />
 
         {false && __DEV__ ? (
           <View style={[styles.devPresetBar, { top: insets.top + 60 }]}>
@@ -1487,6 +1472,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
+  topBarRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
   iconBtn: {
     width: 44,
     height: 44,
@@ -1494,35 +1484,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(0,0,0,0.45)",
-  },
-  profileChipRow: {
-    position: "absolute",
-    left: 16,
-    right: 16,
-    flexDirection: "row",
-    gap: 8,
-    flexWrap: "wrap",
-    alignItems: "center",
-    zIndex: 30,
-    justifyContent: "flex-start",
-  },
-  profileChip: {
-    paddingVertical: 7,
-    paddingHorizontal: 10,
-    borderRadius: 16,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.18)",
-  },
-  profileChipActive: {
-    backgroundColor: ACCENT,
-    borderColor: "rgba(255,224,138,0.65)",
-  },
-  profileChipText: {
-    fontSize: 12,
-    fontWeight: "800",
-    textAlign: "center",
-    maxWidth: 100,
   },
   myPinButton: {
     position: "absolute",

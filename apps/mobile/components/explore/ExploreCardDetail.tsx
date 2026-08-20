@@ -23,19 +23,11 @@ type Props = {
   onClose: () => void;
   /** Called after the modal has begun closing (for sleeve settle). */
   onCloseComplete?: () => void;
-  /** Provided only when trading is eligible (single-profile view). */
+  /** Provided only when trading is eligible for this card right now. */
   onTrade?: (card: BinderCardEntry) => void;
-  /** Shown instead of the trade button when count >= 5 but onTrade is omitted. */
-  tradeUnavailableHint?: string;
 };
 
-export function ExploreCardDetail({
-  card,
-  onClose,
-  onCloseComplete,
-  onTrade,
-  tradeUnavailableHint,
-}: Props) {
+export function ExploreCardDetail({ card, onClose, onCloseComplete, onTrade }: Props) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   if (!card) return null;
@@ -98,31 +90,23 @@ export function ExploreCardDetail({
           </ExploreCardFlip>
         </View>
 
-        {collected && card.count >= 5 ? (
-          onTrade ? (
+        {onTrade ? (
+          <View
+            pointerEvents="box-none"
+            style={[styles.tradeBtnWrap, { bottom: insets.bottom + 20 }]}
+          >
             <Pressable
               onPress={() => onTrade(card)}
               accessibilityRole="button"
               accessibilityLabel={`Trade 5 ${card.name} for a pack`}
-              style={[styles.tradeBtn, { marginTop: 18 }]}
+              style={styles.tradeBtn}
             >
               <MaterialIcons name="swap-horiz" size={18} color="#FFF" />
               <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.tradeBtnText}>
                 Trade 5 for a pack
               </ThemedText>
             </Pressable>
-          ) : tradeUnavailableHint ? (
-            <View style={[styles.tradeHint, { marginTop: 18 }]}>
-              <MaterialIcons name="info-outline" size={14} color="rgba(255,255,255,0.75)" />
-              <ThemedText
-                lightColor="rgba(255,255,255,0.75)"
-                darkColor="rgba(255,255,255,0.75)"
-                style={styles.tradeHintText}
-              >
-                {tradeUnavailableHint}
-              </ThemedText>
-            </View>
-          ) : null
+          </View>
         ) : null}
       </GestureHandlerRootView>
     </Modal>
@@ -158,6 +142,13 @@ const styles = StyleSheet.create({
   art: {
     borderRadius: 0,
   },
+  tradeBtnWrap: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    zIndex: 15,
+  },
   tradeBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -166,18 +157,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 24,
     backgroundColor: "#62A94F",
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 6,
   },
   tradeBtnText: {
     fontWeight: "800",
-  },
-  tradeHint: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    maxWidth: 260,
-  },
-  tradeHintText: {
-    fontSize: 12,
-    textAlign: "center",
   },
 });

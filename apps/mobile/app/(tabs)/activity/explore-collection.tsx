@@ -163,7 +163,14 @@ export default function ExploreCollectionScreen() {
   const [highlightId, setHighlightId] = useState<string | null>(
     typeof highlightCardId === "string" ? highlightCardId : null
   );
-  const [tradeSession, setTradeSession] = useState<{ card: BinderCardEntry } | null>(null);
+  const [tradeSession, setTradeSession] = useState<
+    { card: BinderCardEntry; profileId: number } | null
+  >(null);
+  /** Per-card copies owned by each individual profile, so trading can work
+   * from "All players" view without making the user switch profiles first. */
+  const perCardOwnersRef = useRef<
+    Map<string, { profileId: number; name: string; count: number }[]>
+  >(new Map());
 
   const scrollRef = useRef<ScrollView>(null);
 
@@ -226,6 +233,10 @@ export default function ExploreCollectionScreen() {
           );
 
           const mergedByCardId = new Map<string, BinderCardEntry>();
+          const perCardOwners = new Map<
+            string,
+            { profileId: number; name: string; count: number }[]
+          >();
           results.forEach((result, index) => {
             const profile = profiles[index]!;
             const collectorName = (profile.nickname || profile.name || "").trim();
@@ -234,6 +245,11 @@ export default function ExploreCollectionScreen() {
               const id = item.card.id;
               const existing = mergedByCardId.get(id);
               const ownsCard = item.collected || item.count > 0;
+              if (item.count > 0) {
+                const owners = perCardOwners.get(id) ?? [];
+                owners.push({ profileId: profile.id, name: collectorName, count: item.count });
+                perCardOwners.set(id, owners);
+              }
               const collectedBy =
                 ownsCard && collectorName
                   ? [...(existing?.collectedBy ?? []), collectorName]
@@ -288,9 +304,24 @@ export default function ExploreCollectionScreen() {
             }
           });
 
+          perCardOwnersRef.current = perCardOwners;
           setCards(Array.from(mergedByCardId.values()));
         } else {
           const result = await getExploreCardCollection(selectedProfileId!);
+          const profile = profiles.find((p) => p.id === selectedProfileId);
+          const collectorName = (profile?.nickname || profile?.name || "").trim();
+          const perCardOwners = new Map<
+            string,
+            { profileId: number; name: string; count: number }[]
+          >();
+          for (const item of result.items) {
+            if (item.count > 0) {
+              perCardOwners.set(item.card.id, [
+                { profileId: selectedProfileId!, name: collectorName, count: item.count },
+              ]);
+            }
+          }
+          perCardOwnersRef.current = perCardOwners;
           setCards(
             result.items.map((item) => ({
               id: item.card.id,
@@ -438,32 +469,57 @@ export default function ExploreCollectionScreen() {
     setPulledId(null);
   }
 
+  /** Which profile(s) actually hold 5+ copies of this card — works the same
+   * whether viewing a single profile or "All players" merged. */
+  function tradeCandidatesFor(card: BinderCardEntry) {
+    return (perCardOwnersRef.current.get(card.id) ?? []).filter((o) => o.count >= 5);
+  }
+
+  function startTrade(card: BinderCardEntry, profileId: number) {
+    // Close first so the popup never shows a now-stale count while the
+    // trade is in flight.
+    closeDetail();
+    setTradeSession({ card, profileId });
+  }
+
   function handleTrade(card: BinderCardEntry) {
+    const candidates = tradeCandidatesFor(card);
+    if (candidates.length === 0) return;
+
+    if (candidates.length === 1) {
+      const only = candidates[0]!;
+      Alert.alert(
+        "Trade 5 cards?",
+        `Trade 5 ${card.name} for a brand-new pack? This can't be undone.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Trade", onPress: () => startTrade(card, only.profileId) },
+        ]
+      );
+      return;
+    }
+
+    // More than one player has 5+ copies — ask which one is trading.
     Alert.alert(
-      "Trade 5 cards?",
-      `Trade 5 ${card.name} for a brand-new pack? This can't be undone.`,
+      "Trade 5 cards",
+      `${card.name} — whose copies are trading?`,
       [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Trade",
-          onPress: () => {
-            // Close first so the popup never shows a now-stale count while
-            // the trade is in flight.
-            closeDetail();
-            setTradeSession({ card });
-          },
-        },
+        ...candidates.map((c) => ({
+          text: c.name || "Player",
+          onPress: () => startTrade(card, c.profileId),
+        })),
+        { text: "Cancel", style: "cancel" as const },
       ]
     );
   }
 
   const commitTradeClaim = useCallback(async (): Promise<ExploreAward> => {
-    if (!tradeSession || selectedProfileId == null) {
+    if (!tradeSession) {
       throw new Error("Trade session expired. Try again from the binder.");
     }
     try {
       const result = await tradeExploreCards({
-        profileId: selectedProfileId,
+        profileId: tradeSession.profileId,
         cardId: tradeSession.card.id,
         idempotencyKey: newIdempotencyKey(),
       });
@@ -480,7 +536,7 @@ export default function ExploreCollectionScreen() {
       }
       throw err instanceof Error ? err : new Error("Couldn’t complete the trade. Please try again.");
     }
-  }, [tradeSession, selectedProfileId, load]);
+  }, [tradeSession, load]);
 
   function applyCategory(next: BinderCategoryFilter) {
     setCategory(next);
@@ -627,15 +683,12 @@ export default function ExploreCollectionScreen() {
         <ExploreCardDetail
           card={selected}
           onClose={closeDetail}
-          onTrade={!viewingAllProfiles ? handleTrade : undefined}
-          tradeUnavailableHint={
-            viewingAllProfiles
-              ? "Switch to one player’s binder (filter icon above) to trade this card"
-              : undefined
+          onTrade={
+            selected && tradeCandidatesFor(selected).length > 0 ? handleTrade : undefined
           }
         />
 
-        {tradeSession && selectedProfileId != null ? (
+        {tradeSession ? (
           <ExploreCardPackReveal
             visible
             onRipComplete={commitTradeClaim}

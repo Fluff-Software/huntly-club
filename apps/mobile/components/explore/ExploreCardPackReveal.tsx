@@ -340,9 +340,22 @@ export function ExploreCardPackReveal({
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }, []);
 
+  // Android silently drops/cancels vibration calls fired faster than
+  // roughly every 60-100ms, which a fast swipe hits easily if a tick fires
+  // on every animation frame — gate the actual native call by time so each
+  // one has room to land, on top of the progress-based trigger below.
+  const lastTickAtRef = useRef(0);
+  const TICK_MIN_INTERVAL_MS = 70;
+  const zipperTickHaptic = useCallback(() => {
+    const now = Date.now();
+    if (now - lastTickAtRef.current < TICK_MIN_INTERVAL_MS) return;
+    lastTickAtRef.current = now;
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, []);
+
   // Fires a quick tick every RIP_TICK_STEP of progress while dragging, so
   // the seal "unzips" under the finger instead of just buzzing twice.
-  const RIP_TICK_STEP = 0.07;
+  const RIP_TICK_STEP = 0.12;
 
   const pan = useMemo(
     () =>
@@ -364,7 +377,7 @@ export function ExploreCardPackReveal({
           const tickIndex = Math.floor(progress / RIP_TICK_STEP);
           if (tickIndex > ripTick.value) {
             ripTick.value = tickIndex;
-            runOnJS(selectionHaptic)();
+            runOnJS(zipperTickHaptic)();
           }
         })
         .onEnd((e) => {
@@ -381,7 +394,15 @@ export function ExploreCardPackReveal({
             runOnJS(setPhase)("ready");
           }
         }),
-    [phase, openProgress, finishRipAndClaim, selectionHaptic, mediumRipHaptic, ripTick]
+    [
+      phase,
+      openProgress,
+      finishRipAndClaim,
+      selectionHaptic,
+      zipperTickHaptic,
+      mediumRipHaptic,
+      ripTick,
+    ]
   );
 
   const handleDismiss = useCallback(() => {

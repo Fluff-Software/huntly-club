@@ -357,10 +357,18 @@ export function ExploreCardPackReveal({
   // the seal "unzips" under the finger instead of just buzzing twice.
   const RIP_TICK_STEP = 0.18;
 
+  // Stays true across enter -> ready -> ripping (onBegin flips phase to
+  // "ripping" mid-touch). Using raw `phase` as the memo dep below would
+  // recreate the whole Gesture.Pan() the instant a drag starts — handing
+  // GestureDetector a brand-new config while the finger is still down,
+  // which can silently drop onUpdate for the rest of that touch on
+  // Android. This stays referentially the same through the whole drag.
+  const canRip = phase === "enter" || phase === "ready" || phase === "ripping";
+
   const pan = useMemo(
     () =>
       Gesture.Pan()
-        .enabled(phase === "enter" || phase === "ready" || phase === "ripping")
+        .enabled(canRip)
         .activeOffsetX([-8, 8])
         .failOffsetY([-48, 48])
         .onBegin(() => {
@@ -395,7 +403,7 @@ export function ExploreCardPackReveal({
           }
         }),
     [
-      phase,
+      canRip,
       openProgress,
       finishRipAndClaim,
       selectionHaptic,

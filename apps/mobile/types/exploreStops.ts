@@ -123,6 +123,9 @@ export type ExploreStopsErrorCode =
   | "cached_tile_invalid"
   | "padded_radius_too_large"
   | "too_many_missing_tiles"
+  | "insufficient_copies"
+  | "invalid_card"
+  | "trade_failed"
   | string;
 
 export type ExploreStopsError = {
@@ -232,6 +235,35 @@ export type ExploreAward = {
   count: number;
   matchedEnvironments: string[];
 };
+
+export type ExploreTradeRequest = {
+  profileId: number;
+  cardId: string;
+  idempotencyKey: string;
+};
+
+export type ExploreTradeRecord = {
+  tradeId: string;
+  profileId: number;
+  tradedCardId: string;
+  awardedCardId: string | null;
+  tradedCount: number;
+  createdAt: string;
+};
+
+export type ExploreTradeSuccess = {
+  success: true;
+  trade: ExploreTradeRecord;
+  award: ExploreAward;
+  idempotentReplay?: boolean;
+};
+
+export type ExploreTradeFailure = {
+  success: false;
+  error: ExploreStopsErrorCode;
+};
+
+export type ExploreTradeResponse = ExploreTradeSuccess | ExploreTradeFailure;
 
 export type ExploreClaimedStopsResponse = {
   success: true;

@@ -15,6 +15,8 @@ import {
   type ExploreStopsRequest,
   type ExploreStopsResponse,
   type ExploreTestArea,
+  type ExploreTradeRequest,
+  type ExploreTradeResponse,
   type ExploreVerifyRequest,
   type ExploreVerifyResponse,
 } from "@/types/exploreStops";
@@ -207,6 +209,12 @@ function friendlyMessage(code: string, fallback: string): string {
       return "Choose a player profile to collect cards.";
     case "claim_failed":
       return "Couldn’t collect this card. Please try again.";
+    case "insufficient_copies":
+      return "You need 5 copies of this card to trade it — someone may have just traded them.";
+    case "invalid_card":
+      return "That card can’t be traded right now.";
+    case "trade_failed":
+      return "Couldn’t complete the trade. Please try again.";
     case "backend_unavailable":
       return "Explore is temporarily unavailable. Please try again in a moment.";
     case "invalid_response":
@@ -876,6 +884,68 @@ export async function claimExploreStop(
     success: true,
     claim: mapClaimRecord(raw.claim as Record<string, unknown>),
     award: mapAward(raw.award),
+    idempotentReplay: raw.idempotent_replay === true,
+  };
+}
+
+/**
+ * Trade 5 duplicate copies of one card for a freshly-drawn, guaranteed
+ * different card. No geo/rate-limit gating needed (unlike claimExploreStop),
+ * so this calls the RPC directly rather than going through an Edge Function.
+ */
+export async function tradeExploreCards(
+  request: ExploreTradeRequest
+): Promise<ExploreTradeResponse> {
+  await getAccessTokenOrThrow();
+
+  const { data, error } = await supabase.rpc("trade_explore_cards_award_achievements", {
+    p_profile_id: request.profileId,
+    p_card_id: request.cardId,
+    p_idempotency_key: request.idempotencyKey,
+  });
+
+  if (error) {
+    throw new ExploreStopsRequestError({
+      code: "trade_failed",
+      message: `Could not trade cards: ${error.message}`,
+    });
+  }
+
+  const raw = data as Record<string, unknown> | null;
+  if (!raw || typeof raw.success !== "boolean") {
+    throw new ExploreStopsRequestError({
+      code: "invalid_response",
+      message: "Explore trade response was unexpected.",
+    });
+  }
+
+  if (!raw.success) {
+    return {
+      success: false,
+      error: typeof raw.error === "string" ? raw.error : "trade_failed",
+    };
+  }
+
+  const award = mapAward(raw.award);
+  if (!raw.trade || typeof raw.trade !== "object" || !award) {
+    throw new ExploreStopsRequestError({
+      code: "invalid_response",
+      message: "Explore trade succeeded without a usable payload.",
+    });
+  }
+
+  const t = raw.trade as Record<string, unknown>;
+  return {
+    success: true,
+    trade: {
+      tradeId: String(t.trade_id),
+      profileId: Number(t.profile_id),
+      tradedCardId: String(t.traded_card_id),
+      awardedCardId: t.awarded_card_id == null ? null : String(t.awarded_card_id),
+      tradedCount: Number(t.traded_count ?? 5),
+      createdAt: String(t.created_at),
+    },
+    award,
     idempotentReplay: raw.idempotent_replay === true,
   };
 }

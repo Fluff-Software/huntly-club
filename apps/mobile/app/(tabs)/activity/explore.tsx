@@ -62,6 +62,7 @@ import {
   getExploreStopsNear,
 } from "@/services/exploreStopsService";
 import { metersBetween } from "@/services/trackingSessionService";
+import { newIdempotencyKey } from "@/utils/idempotency";
 import type {
   ExploreAward,
   ExploreStop,
@@ -103,14 +104,6 @@ type PackSession = {
   profileIds: number[];
 };
 
-
-function newIdempotencyKey(): string {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
 
 /**
  * iOS MapKit reports a default, often world-sized region while the map lays

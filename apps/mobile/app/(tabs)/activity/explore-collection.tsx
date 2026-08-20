@@ -4,6 +4,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Pressable,
   ScrollView,
@@ -24,6 +25,7 @@ import {
 import { BinderFiltersModal } from "@/components/explore/BinderFiltersModal";
 import { BinderPageSheet } from "@/components/explore/BinderPageSheet";
 import { ExploreCardDetail } from "@/components/explore/ExploreCardDetail";
+import { ExploreCardPackReveal } from "@/components/explore/ExploreCardPackReveal";
 import { EXPLORE_BINDER_SCREEN_BG, EXPLORE_CARD_ART_ASPECT } from "@/constants/exploreBinder";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
@@ -31,7 +33,10 @@ import {
   ExploreStopsRequestError,
   exploreUserMessage,
   getExploreCardCollection,
+  tradeExploreCards,
 } from "@/services/exploreStopsService";
+import { newIdempotencyKey } from "@/utils/idempotency";
+import type { ExploreAward } from "@/types/exploreStops";
 import {
   binderFiltersAreActive,
   completionPercent,
@@ -158,6 +163,7 @@ export default function ExploreCollectionScreen() {
   const [highlightId, setHighlightId] = useState<string | null>(
     typeof highlightCardId === "string" ? highlightCardId : null
   );
+  const [tradeSession, setTradeSession] = useState<{ card: BinderCardEntry } | null>(null);
 
   const scrollRef = useRef<ScrollView>(null);
 
@@ -432,6 +438,50 @@ export default function ExploreCollectionScreen() {
     setPulledId(null);
   }
 
+  function handleTrade(card: BinderCardEntry) {
+    Alert.alert(
+      "Trade 5 cards?",
+      `Trade 5 ${card.name} for a brand-new pack? This can't be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Trade",
+          onPress: () => {
+            // Close first so the popup never shows a now-stale count while
+            // the trade is in flight.
+            closeDetail();
+            setTradeSession({ card });
+          },
+        },
+      ]
+    );
+  }
+
+  const commitTradeClaim = useCallback(async (): Promise<ExploreAward> => {
+    if (!tradeSession || selectedProfileId == null) {
+      throw new Error("Trade session expired. Try again from the binder.");
+    }
+    try {
+      const result = await tradeExploreCards({
+        profileId: selectedProfileId,
+        cardId: tradeSession.card.id,
+        idempotencyKey: newIdempotencyKey(),
+      });
+      if (result.success) {
+        void load({ soft: true });
+        return result.award;
+      }
+      throw new Error(
+        exploreUserMessage(result.error, "Couldn’t complete the trade. Please try again.")
+      );
+    } catch (err: unknown) {
+      if (err instanceof ExploreStopsRequestError) {
+        throw new Error(exploreUserMessage(err.exploreError.code, err.exploreError.message));
+      }
+      throw err instanceof Error ? err : new Error("Couldn’t complete the trade. Please try again.");
+    }
+  }, [tradeSession, selectedProfileId, load]);
+
   function applyCategory(next: BinderCategoryFilter) {
     setCategory(next);
     scrollRef.current?.scrollTo({ y: 0, animated: false });
@@ -574,7 +624,23 @@ export default function ExploreCollectionScreen() {
           onSelectSort={applySort}
         />
 
-        <ExploreCardDetail card={selected} onClose={closeDetail} />
+        <ExploreCardDetail
+          card={selected}
+          onClose={closeDetail}
+          onTrade={!viewingAllProfiles ? handleTrade : undefined}
+        />
+
+        {tradeSession && selectedProfileId != null ? (
+          <ExploreCardPackReveal
+            visible
+            onRipComplete={commitTradeClaim}
+            onClose={() => setTradeSession(null)}
+            onViewBinder={(award) => {
+              setTradeSession(null);
+              setHighlightId(award.card.id);
+            }}
+          />
+        ) : null}
       </SafeAreaView>
     </>
   );

@@ -12,6 +12,7 @@ import {
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ThemedText } from "@/components/ThemedText";
 import { ExploreCardArt } from "@/components/explore/ExploreCardArt";
 import { ExploreCardFlip } from "@/components/explore/ExploreCardFlip";
 import { EXPLORE_CARD_ART_ASPECT, EXPLORE_RARITY_COLORS } from "@/constants/exploreBinder";
@@ -22,9 +23,11 @@ type Props = {
   onClose: () => void;
   /** Called after the modal has begun closing (for sleeve settle). */
   onCloseComplete?: () => void;
+  /** Provided only when trading is eligible (single-profile view). */
+  onTrade?: (card: BinderCardEntry) => void;
 };
 
-export function ExploreCardDetail({ card, onClose, onCloseComplete }: Props) {
+export function ExploreCardDetail({ card, onClose, onCloseComplete, onTrade }: Props) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   if (!card) return null;
@@ -86,6 +89,20 @@ export function ExploreCardDetail({ card, onClose, onCloseComplete }: Props) {
             />
           </ExploreCardFlip>
         </View>
+
+        {onTrade && collected && card.count >= 5 ? (
+          <Pressable
+            onPress={() => onTrade(card)}
+            accessibilityRole="button"
+            accessibilityLabel={`Trade 5 ${card.name} for a pack`}
+            style={[styles.tradeBtn, { marginTop: 18 }]}
+          >
+            <MaterialIcons name="swap-horiz" size={18} color="#FFF" />
+            <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.tradeBtnText}>
+              Trade 5 for a pack
+            </ThemedText>
+          </Pressable>
+        ) : null}
       </GestureHandlerRootView>
     </Modal>
   );
@@ -119,5 +136,17 @@ const styles = StyleSheet.create({
   },
   art: {
     borderRadius: 0,
+  },
+  tradeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 24,
+    backgroundColor: "#62A94F",
+  },
+  tradeBtnText: {
+    fontWeight: "800",
   },
 });

@@ -199,6 +199,10 @@ export function ExploreCardPackReveal({
   const [packMounted, setPackMounted] = useState(true);
   /** Show “NEW CARD!” once the face is revealed (new finds only). */
   const [showNewBadge, setShowNewBadge] = useState(false);
+  /** Only start the shine sweep once the card has actually spun into view —
+   * mounting it earlier (while the back face is showing) would leave it
+   * mid-cycle by the time the front becomes visible. */
+  const [shineReady, setShineReady] = useState(false);
   const claimStartedRef = useRef(false);
   const awardRef = useRef<ExploreAward | null>(null);
 
@@ -253,6 +257,7 @@ export function ExploreCardPackReveal({
     setClaimError(null);
     setPackMounted(true);
     setShowNewBadge(false);
+    setShineReady(false);
     setPhase("enter");
   }, [
     packScale,
@@ -302,6 +307,7 @@ export function ExploreCardPackReveal({
       setAward(nextAward);
       setPhase("reveal");
       setShowNewBadge(false);
+      setShineReady(false);
       newBadgeOpacity.value = 0;
       newBadgeScale.value = 0.82;
 
@@ -339,6 +345,8 @@ export function ExploreCardPackReveal({
   );
 
   const onCardFlipComplete = useCallback(() => {
+    // Any rarity worth shining gets it, new find or not.
+    setShineReady(true);
     if (awardRef.current?.isNew !== true) return;
     setShowNewBadge(true);
     newBadgeOpacity.value = withTiming(1, { duration: 240 });
@@ -599,6 +607,7 @@ export function ExploreCardPackReveal({
                     firstCollectedAt={award.isNew ? new Date().toISOString() : null}
                     lastCollectedAt={new Date().toISOString()}
                     collected
+                    enableShine={shineReady}
                     style={styles.revealArt}
                   />
                 </ExploreCardFlip>

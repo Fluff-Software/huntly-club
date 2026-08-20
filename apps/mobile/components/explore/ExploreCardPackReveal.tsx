@@ -229,6 +229,11 @@ export function ExploreCardPackReveal({
   const newBadgeOpacity = useSharedValue(0);
   const newBadgeScale = useSharedValue(0.82);
   const ripTick = useSharedValue(0);
+  /** UI-thread timestamp gate so we don't even attempt runOnJS faster than
+   * the throttle allows — on a 120Hz device onUpdate can fire twice as
+   * often as 60Hz, and queuing runOnJS calls we know we'll immediately
+   * throttle away still floods the bridge / native vibration queue. */
+  const lastTickAtMs = useSharedValue(0);
 
   const reset = useCallback(() => {
     cancelAnimation(idleBob);
@@ -400,13 +405,9 @@ export function ExploreCardPackReveal({
     );
   }, [isIOS]);
 
-  const lastTickAtRef = useRef(0);
   const zipperTickHaptic = useCallback(() => {
-    const now = Date.now();
-    if (now - lastTickAtRef.current < TICK_MIN_INTERVAL_MS) return;
-    lastTickAtRef.current = now;
     void Haptics.impactAsync(TICK_HAPTIC_STYLE);
-  }, [TICK_HAPTIC_STYLE, TICK_MIN_INTERVAL_MS]);
+  }, [TICK_HAPTIC_STYLE]);
 
   // Stays true across enter -> ready -> ripping (onBegin flips phase to
   // "ripping" mid-touch). Using raw `phase` as the memo dep below would
@@ -436,7 +437,14 @@ export function ExploreCardPackReveal({
           const tickIndex = Math.floor(progress / RIP_TICK_STEP);
           if (tickIndex > ripTick.value) {
             ripTick.value = tickIndex;
-            runOnJS(zipperTickHaptic)();
+            // Gate here, on the UI thread, so we don't queue a runOnJS call
+            // at all when we know it'd be within the throttle window —
+            // stops the bridge/native vibration queue from ever backing up.
+            const now = Date.now();
+            if (now - lastTickAtMs.value >= TICK_MIN_INTERVAL_MS) {
+              lastTickAtMs.value = now;
+              runOnJS(zipperTickHaptic)();
+            }
           }
         })
         .onEnd((e) => {
@@ -461,6 +469,8 @@ export function ExploreCardPackReveal({
       zipperTickHaptic,
       mediumRipHaptic,
       ripTick,
+      lastTickAtMs,
+      TICK_MIN_INTERVAL_MS,
     ]
   );
 

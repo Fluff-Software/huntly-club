@@ -11,6 +11,7 @@ import Animated, {
   withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/AuthContext";
+import { useHomeBootstrap } from "@/contexts/HomeBootstrapContext";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useUser } from "@/contexts/UserContext";
 import { useSignUpOptional } from "@/contexts/SignUpContext";
@@ -103,6 +104,7 @@ export default function TabLayout() {
   const pathname = usePathname();
   const segments = useSegments();
   const { user } = useAuth();
+  const { clubhouseActivityRequired, clubhouseActivityReady } = useHomeBootstrap();
   const { profiles, loading: profilesLoading } = usePlayer();
   const { userData, loading: userLoading } = useUser();
   const { scaleW, isTablet } = useLayoutScale();
@@ -134,8 +136,13 @@ export default function TabLayout() {
     };
   }, []);
 
+  // Wait for the Clubhouse tiles too (when it's the landing tab) so the tab
+  // bar and the Clubhouse content reveal together instead of the bar
+  // popping in first and pushing the still-loading content up.
   const showTabBar =
-    tabBarNavigationReady && (!user?.id || !profilesLoading);
+    tabBarNavigationReady &&
+    (!user?.id || !profilesLoading) &&
+    (!clubhouseActivityRequired || clubhouseActivityReady);
 
   // If user has no team set, send them to add explorers first, then team selection (matches AuthGuard)
   useEffect(() => {

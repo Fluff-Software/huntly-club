@@ -8,7 +8,7 @@ import { useExploreAreaWarmup } from "@/hooks/useExploreAreaWarmup";
 import { getProfiles, getUserData } from "@/services/profileService";
 import type { Profile } from "@/services/profileService";
 import { REQUIRE_EMAIL_VERIFICATION } from "@/constants/auth";
-const LOADER_BACKGROUND = "#F4F0EB";
+const LOADER_BACKGROUND = "#FFF8DC";
 
 function routeAfterSignupCheck(
   router: ReturnType<typeof useRouter>,

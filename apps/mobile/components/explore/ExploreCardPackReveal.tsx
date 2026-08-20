@@ -136,6 +136,53 @@ const ACCENT = "#B8F000";
 const NEW_GOLD = "#E4C56A";
 const NEW_GOLD_SOFT = "#F3E2A8";
 
+/**
+ * Isolated from ExploreCardPackReveal's own re-renders (e.g. the
+ * "NEW DISCOVERY" badge toggling showNewBadge well after these buttons
+ * first mount) — an unrelated state update forcing every ThemedText in the
+ * tree to re-reconcile at once has been linked to a word silently going
+ * missing on this exact button (intermittent, cross-platform). Memoizing
+ * means this subtree only re-renders when something it actually uses
+ * changes.
+ */
+const RevealActions = React.memo(function RevealActions({
+  award,
+  rarityColor,
+  bottomInset,
+  onViewBinder,
+  onDismiss,
+}: {
+  award: ExploreAward;
+  rarityColor: string;
+  bottomInset: number;
+  onViewBinder: (award: ExploreAward) => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <View
+      style={[styles.revealActions, { paddingBottom: bottomInset + 24 }]}
+      pointerEvents="box-none"
+    >
+      <View style={styles.actions}>
+        <Pressable
+          onPress={() => onViewBinder(award)}
+          style={[styles.primaryBtn, { backgroundColor: rarityColor }]}
+          accessibilityRole="button"
+        >
+          <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.btnText}>
+            View in binder
+          </ThemedText>
+        </Pressable>
+        <Pressable onPress={onDismiss} style={styles.secondaryBtn} accessibilityRole="button">
+          <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.btnText}>
+            Keep exploring
+          </ThemedText>
+        </Pressable>
+      </View>
+    </View>
+  );
+});
+
 export function ExploreCardPackReveal({
   visible,
   onRipComplete,
@@ -614,27 +661,13 @@ export function ExploreCardPackReveal({
         ) : null}
 
         {phase === "reveal" && award ? (
-          <View
-            style={[styles.revealActions, { paddingBottom: insets.bottom + 24 }]}
-            pointerEvents="box-none"
-          >
-            <View style={styles.actions}>
-              <Pressable
-                onPress={() => onViewBinder(award)}
-                style={[styles.primaryBtn, { backgroundColor: rarityColor }]}
-                accessibilityRole="button"
-              >
-                <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.btnText}>
-                  View in binder
-                </ThemedText>
-              </Pressable>
-              <Pressable onPress={handleDismiss} style={styles.secondaryBtn} accessibilityRole="button">
-                <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.btnText}>
-                  Keep exploring
-                </ThemedText>
-              </Pressable>
-            </View>
-          </View>
+          <RevealActions
+            award={award}
+            rarityColor={rarityColor}
+            bottomInset={insets.bottom}
+            onViewBinder={onViewBinder}
+            onDismiss={handleDismiss}
+          />
         ) : null}
 
         {canCloseWithoutClaim || phase === "reveal" ? (

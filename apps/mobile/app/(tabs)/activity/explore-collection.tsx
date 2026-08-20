@@ -492,7 +492,10 @@ export default function ExploreCollectionScreen() {
 
     if (candidates.length === 1) {
       const only = candidates[0]!;
-      Alert.alert(`Trade 5 ${card.name}?`, TRADE_EXPLAINER, [
+      // In a single-profile view it's obviously "you"; only name the
+      // player when viewing the merged "All players" binder.
+      const who = viewingAllProfiles ? ` for ${only.name || "this player"}` : "";
+      Alert.alert(`Trade 5 ${card.name}${who}?`, TRADE_EXPLAINER, [
         { text: "Cancel", style: "cancel" },
         { text: "Trade", onPress: () => startTrade(card, only.profileId) },
       ]);
@@ -691,6 +694,9 @@ export default function ExploreCollectionScreen() {
               ? (() => {
                   const candidates = tradeCandidatesFor(selected);
                   if (candidates.length === 0) return undefined;
+                  if (!viewingAllProfiles) {
+                    return "You can trade 5 copies of this card for a new pack";
+                  }
                   if (candidates.length === 1) {
                     return `${candidates[0]!.name || "This player"} can trade 5 copies of this card for a new pack`;
                   }

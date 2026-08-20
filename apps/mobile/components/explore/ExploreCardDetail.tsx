@@ -105,16 +105,23 @@ export function ExploreCardDetail({
             accessibilityLabel={`Trade 5 ${card.name} for a pack`}
             style={[styles.tradeBanner, { maxWidth: cardWidth }]}
           >
-            <MaterialIcons name="swap-horiz" size={16} color="#B8F000" />
-            <ThemedText
-              lightColor="#FFF"
-              darkColor="#FFF"
-              style={styles.tradeBannerText}
-              numberOfLines={2}
-            >
-              {tradeLabel}
-            </ThemedText>
-            <MaterialIcons name="chevron-right" size={16} color="#B8F000" />
+            <View style={styles.tradeBannerContent}>
+              <MaterialIcons
+                name="swap-horiz"
+                size={20}
+                color="#B8F000"
+                style={styles.tradeBannerIcon}
+              />
+              <ThemedText
+                lightColor="#FFF"
+                darkColor="#FFF"
+                style={styles.tradeBannerText}
+                numberOfLines={2}
+              >
+                {tradeLabel}
+              </ThemedText>
+            </View>
+            <MaterialIcons name="chevron-right" size={26} color="#B8F000" />
           </Pressable>
         ) : null}
       </GestureHandlerRootView>
@@ -155,16 +162,22 @@ const styles = StyleSheet.create({
     marginTop: 14,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: 18,
     backgroundColor: "rgba(20,24,20,0.92)",
     borderWidth: 1,
     borderColor: "rgba(184,240,0,0.35)",
   },
-  tradeBannerText: {
+  tradeBannerContent: {
     flex: 1,
+    alignItems: "center",
+  },
+  tradeBannerIcon: {
+    marginBottom: 4,
+  },
+  tradeBannerText: {
     fontSize: 13,
     fontWeight: "700",
     textAlign: "center",

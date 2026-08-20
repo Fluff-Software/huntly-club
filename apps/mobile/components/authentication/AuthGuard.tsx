@@ -8,7 +8,7 @@ import { useExploreAreaWarmup } from "@/hooks/useExploreAreaWarmup";
 import { getProfiles, getUserData } from "@/services/profileService";
 import type { Profile } from "@/services/profileService";
 import { REQUIRE_EMAIL_VERIFICATION } from "@/constants/auth";
-const LOADER_BACKGROUND = "#4F6F52";
+const LOADER_BACKGROUND = "#F4F0EB";
 
 function routeAfterSignupCheck(
   router: ReturnType<typeof useRouter>,
@@ -31,7 +31,7 @@ async function resolveSignupState(userId: string) {
   const userData = await getUserData(userId);
   return { profiles, userData };
 }
-const LOADER_SPINNER = "#F4F0EB";
+const LOADER_SPINNER = "#4F6F52";
 
 type AuthGuardProps = {
   children: React.ReactNode;

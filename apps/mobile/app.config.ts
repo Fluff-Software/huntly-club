@@ -261,6 +261,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   splash: {
     image: "./assets/images/logo.png",
     resizeMode: "contain",
-    backgroundColor: "#4F6F52"
+    backgroundColor: "#114094"
   },
 });

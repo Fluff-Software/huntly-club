@@ -59,7 +59,7 @@ import type { ImageSourcePropType } from "react-native";
 import { getLocationPermissionStatus, requestLocationPermission, openLocationSettings } from "@/services/locationService";
 import { LocationPermissionModal } from "@/components/explore/LocationPermissionModal";
 
-const CREAM = "#FFF8DC";
+const CREAM = "#F4F0EB";
 const HUNTLY_GREEN = "#4F6F52";
 const DEFAULT_HEADER_GRADIENT = ["#4F6F52", "#7FB069"] as const;
 const DEFAULT_MISSION_IMAGE = require("@/assets/images/laser-fortress.jpg");

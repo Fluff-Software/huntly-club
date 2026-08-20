@@ -25,6 +25,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
+import { setStatusBarStyle } from "expo-status-bar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
@@ -214,6 +215,14 @@ export function ExploreCardPackReveal({
     ripTick,
   ]);
 
+  // Android's Modal presents in its own window and can reset the system
+  // status bar style set by the screen underneath — re-assert light icons
+  // so the clock/battery stay readable against the pack's dark background.
+  useEffect(() => {
+    if (!visible) return;
+    setStatusBarStyle("light");
+  }, [visible]);
+
   useEffect(() => {
     if (!visible) {
       reset();
@@ -321,16 +330,18 @@ export function ExploreCardPackReveal({
     }
   }, [onRipComplete, playReveal]);
 
+  // Haptics.selectionAsync() maps to a near-imperceptible system tick on
+  // most Android devices (unlike iOS) — impactAsync reliably drives the
+  // vibration motor on both platforms, so use it everywhere here.
   const selectionHaptic = useCallback(() => {
-    void Haptics.selectionAsync();
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, []);
   const mediumRipHaptic = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }, []);
 
-  // Fires a quick selection tick every RIP_TICK_STEP of progress while
-  // dragging, so the seal "unzips" under the finger instead of just
-  // buzzing twice.
+  // Fires a quick tick every RIP_TICK_STEP of progress while dragging, so
+  // the seal "unzips" under the finger instead of just buzzing twice.
   const RIP_TICK_STEP = 0.07;
 
   const pan = useMemo(
@@ -425,7 +436,13 @@ export function ExploreCardPackReveal({
       phase === "reveal");
 
   return (
-    <Modal visible={visible} animationType="fade" transparent onRequestClose={handleDismiss}>
+    <Modal
+      visible={visible}
+      animationType="fade"
+      transparent
+      statusBarTranslucent
+      onRequestClose={handleDismiss}
+    >
       <GestureHandlerRootView style={styles.root}>
         <View style={styles.dim} />
 

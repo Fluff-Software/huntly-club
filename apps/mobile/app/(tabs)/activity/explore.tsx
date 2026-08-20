@@ -1053,10 +1053,7 @@ export default function ExploreScreen() {
         )}
 
         {mapFetchPending && !loadingStops ? (
-          <View
-            style={[styles.mapFetchBadge, { top: insets.top + 12 }]}
-            pointerEvents="none"
-          >
+          <View style={styles.mapFetchBadge} pointerEvents="none">
             <ActivityIndicator color="#FFF" size="small" />
           </View>
         ) : null}
@@ -1448,14 +1445,9 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   mapFetchBadge: {
-    position: "absolute",
-    right: 16,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.45)",
   },
   topScrim: {
     position: "absolute",

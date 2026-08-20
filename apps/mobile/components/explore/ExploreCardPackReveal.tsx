@@ -330,10 +330,6 @@ export function ExploreCardPackReveal({
     }
   }, [onRipComplete, playReveal]);
 
-  // Haptics.selectionAsync() maps to Android's near-imperceptible system
-  // tick, and even ImpactFeedbackStyle.Light maps to EFFECT_TICK — also
-  // deliberately weak/silent on a lot of Android hardware. Medium maps to
-  // EFFECT_CLICK, which reliably produces a real buzz on both platforms.
   const selectionHaptic = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }, []);
@@ -341,12 +337,15 @@ export function ExploreCardPackReveal({
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }, []);
 
-  // Android silently drops/cancels vibration calls fired faster than
-  // roughly every 60-100ms, which a fast swipe hits easily if a tick fires
-  // on every animation frame — gate the actual native call by time so each
-  // one has room to land, on top of the progress-based trigger below.
+  // expo-haptics on Android calls Vibrator.vibrate() with a short custom
+  // waveform (Medium is ~43ms) rather than an OS predefined effect — and a
+  // new vibrate() call immediately cancels whatever pulse is still playing.
+  // A tick fired every frame during a fast swipe cuts every prior pulse off
+  // before it's ever felt, which is why only the final, uninterrupted call
+  // (rip-complete) came through. Gate calls far enough apart that each
+  // pulse has time to finish before the next one can cancel it.
   const lastTickAtRef = useRef(0);
-  const TICK_MIN_INTERVAL_MS = 70;
+  const TICK_MIN_INTERVAL_MS = 140;
   const zipperTickHaptic = useCallback(() => {
     const now = Date.now();
     if (now - lastTickAtRef.current < TICK_MIN_INTERVAL_MS) return;
@@ -356,7 +355,7 @@ export function ExploreCardPackReveal({
 
   // Fires a quick tick every RIP_TICK_STEP of progress while dragging, so
   // the seal "unzips" under the finger instead of just buzzing twice.
-  const RIP_TICK_STEP = 0.12;
+  const RIP_TICK_STEP = 0.18;
 
   const pan = useMemo(
     () =>

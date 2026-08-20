@@ -19,6 +19,8 @@ import {
   type ExploreTradeResponse,
   type ExploreVerifyRequest,
   type ExploreVerifyResponse,
+  type ExplorePackRecord,
+  type ExploreOpenPackResponse,
 } from "@/types/exploreStops";
 import { getCurrentSession } from "@/services/authService";
 import { SUPABASE_ANON_KEY, SUPABASE_URL, supabase } from "@/services/supabase";
@@ -215,6 +217,9 @@ function friendlyMessage(code: string, fallback: string): string {
       return "That card can’t be traded right now.";
     case "trade_failed":
       return "Couldn’t complete the trade. Please try again.";
+    case "invalid_pack":
+    case "pack_not_found":
+      return "That pack couldn’t be found. It may have already been opened.";
     case "backend_unavailable":
       return "Explore is temporarily unavailable. Please try again in a moment.";
     case "invalid_response":
@@ -761,6 +766,7 @@ export async function claimExploreStop(
       accuracy_metres: request.accuracyMetres,
     },
     idempotency_key: request.idempotencyKey,
+    defer_reveal: request.deferReveal ?? false,
   };
 
   let payload: unknown;
@@ -885,6 +891,8 @@ export async function claimExploreStop(
     claim: mapClaimRecord(raw.claim as Record<string, unknown>),
     award: mapAward(raw.award),
     idempotentReplay: raw.idempotent_replay === true,
+    banked: raw.banked === true,
+    packId: raw.pack_id == null ? undefined : String(raw.pack_id),
   };
 }
 
@@ -902,6 +910,7 @@ export async function tradeExploreCards(
     p_profile_id: request.profileId,
     p_card_id: request.cardId,
     p_idempotency_key: request.idempotencyKey,
+    p_defer_reveal: request.deferReveal ?? false,
   });
 
   if (error) {
@@ -927,7 +936,8 @@ export async function tradeExploreCards(
   }
 
   const award = mapAward(raw.award);
-  if (!raw.trade || typeof raw.trade !== "object" || !award) {
+  const banked = raw.banked === true;
+  if (!raw.trade || typeof raw.trade !== "object" || (!award && !banked)) {
     throw new ExploreStopsRequestError({
       code: "invalid_response",
       message: "Explore trade succeeded without a usable payload.",
@@ -944,6 +954,97 @@ export async function tradeExploreCards(
       awardedCardId: t.awarded_card_id == null ? null : String(t.awarded_card_id),
       tradedCount: Number(t.traded_count ?? 5),
       createdAt: String(t.created_at),
+    },
+    award,
+    banked,
+    packId:
+      raw.pack && typeof raw.pack === "object"
+        ? String((raw.pack as Record<string, unknown>).pack_id)
+        : undefined,
+    idempotentReplay: raw.idempotent_replay === true,
+  };
+}
+
+function mapPackRow(raw: Record<string, unknown>): ExplorePackRecord {
+  return {
+    id: String(raw.id),
+    profileId: Number(raw.profile_id),
+    source: raw.source === "trade" ? "trade" : "stop_claim",
+    status: raw.status === "opened" ? "opened" : "unopened",
+    bankedAt: String(raw.banked_at),
+    openedAt: raw.opened_at == null ? null : String(raw.opened_at),
+  };
+}
+
+/** Unopened packs banked for a profile, oldest first. */
+export async function getBankedPacks(profileId: number): Promise<ExplorePackRecord[]> {
+  await getAccessTokenOrThrow();
+
+  const { data, error } = await supabase
+    .from("explore_profile_packs")
+    .select("id, profile_id, source, status, banked_at, opened_at")
+    .eq("profile_id", profileId)
+    .eq("status", "unopened")
+    .order("banked_at", { ascending: true });
+
+  if (error) {
+    throw new ExploreStopsRequestError({
+      code: "invalid_response",
+      message: `Could not load banked packs: ${error.message}`,
+    });
+  }
+
+  return (data ?? []).map((row) => mapPackRow(row as Record<string, unknown>));
+}
+
+/** Draw the deferred card for a banked pack. */
+export async function openExplorePack(packId: string): Promise<ExploreOpenPackResponse> {
+  await getAccessTokenOrThrow();
+
+  const { data, error } = await supabase.rpc("open_explore_pack_award_achievements", {
+    p_pack_id: packId,
+  });
+
+  if (error) {
+    throw new ExploreStopsRequestError({
+      code: "pack_not_found",
+      message: `Could not open this pack: ${error.message}`,
+    });
+  }
+
+  const raw = data as Record<string, unknown> | null;
+  if (!raw || typeof raw.success !== "boolean") {
+    throw new ExploreStopsRequestError({
+      code: "invalid_response",
+      message: "Explore pack-open response was unexpected.",
+    });
+  }
+
+  if (!raw.success) {
+    return {
+      success: false,
+      error: typeof raw.error === "string" ? raw.error : "pack_not_found",
+    };
+  }
+
+  const award = mapAward(raw.award);
+  if (!raw.pack || typeof raw.pack !== "object" || !award) {
+    throw new ExploreStopsRequestError({
+      code: "invalid_response",
+      message: "Explore pack-open succeeded without a usable payload.",
+    });
+  }
+
+  const p = raw.pack as Record<string, unknown>;
+  return {
+    success: true,
+    pack: {
+      id: String(p.pack_id),
+      profileId: Number(p.profile_id),
+      source: p.source === "trade" ? "trade" : "stop_claim",
+      status: p.status === "opened" ? "opened" : "unopened",
+      bankedAt: String(p.banked_at ?? ""),
+      openedAt: p.opened_at == null ? null : String(p.opened_at),
     },
     award,
     idempotentReplay: raw.idempotent_replay === true,

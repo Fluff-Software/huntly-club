@@ -60,6 +60,7 @@ import {
   exploreUserMessage,
   getClaimedExploreStopIds,
   getExploreStopsNear,
+  openExplorePack,
 } from "@/services/exploreStopsService";
 import { metersBetween } from "@/services/trackingSessionService";
 import { newIdempotencyKey } from "@/utils/idempotency";
@@ -97,11 +98,12 @@ type LocState =
 
 type PackSession = {
   stop: ExploreStop;
-  latitude: number;
-  longitude: number;
-  accuracyMetres: number;
-  /** One or more profiles to claim for (All = every household profile). */
-  profileIds: number[];
+  /**
+   * One unopened pack already banked per eligible profile (claiming for
+   * "all" pays for every profile up front; only the first is ripped here --
+   * the rest stay banked, ready to open later from each profile's binder).
+   */
+  packIds: { profileId: number; packId: string }[];
 };
 
 
@@ -851,14 +853,67 @@ export default function ExploreScreen() {
         return;
       }
 
-      // Open the pack only — claim waits until the user finishes the rip.
-      setPackSession({
-        stop: selected,
-        latitude: report.latitude,
-        longitude: report.longitude,
-        accuracyMetres: report.accuracyMetres,
-        profileIds: eligibleProfileIds,
-      });
+      // Bank a pack for every eligible profile up front, then open the
+      // first one ready to rip. Closing without ripping isn't a separate
+      // "save" action -- the pack is already banked either way.
+      let anySuccess = false;
+      let lastError: Error | null = null;
+      const packIds: { profileId: number; packId: string }[] = [];
+
+      for (const profileId of eligibleProfileIds) {
+        try {
+          const result = await claimExploreStop({
+            stopId: selected.stopId,
+            generationVersion: selected.generationVersion,
+            osmRevision: selected.osmRevision,
+            profileId,
+            latitude: report.latitude,
+            longitude: report.longitude,
+            accuracyMetres: report.accuracyMetres,
+            idempotencyKey: newIdempotencyKey(),
+            deferReveal: true,
+          });
+
+          if (result.success || result.error === "already_claimed") {
+            anySuccess = true;
+            setClaimedByProfile((prev) => {
+              const next = { ...prev };
+              const set = new Set(next[profileId] ?? []);
+              set.add(selected.stopId);
+              next[profileId] = set;
+              return next;
+            });
+            if (result.success && result.packId) {
+              packIds.push({ profileId, packId: result.packId });
+            }
+            continue;
+          }
+
+          lastError = new Error(
+            exploreUserMessage(
+              result.error || "claim_failed",
+              "Couldn’t collect this card. Please try again."
+            )
+          );
+        } catch (err: unknown) {
+          lastError =
+            err instanceof ExploreStopsRequestError
+              ? new Error(exploreUserMessage(err.exploreError.code, err.exploreError.message))
+              : err instanceof Error
+                ? err
+                : new Error("Couldn’t collect this card. Please try again.");
+        }
+      }
+
+      if (packIds.length > 0) {
+        setPackSession({ stop: selected, packIds });
+        return;
+      }
+      setClaimError(
+        anySuccess
+          ? "Collected, but no pack came back. Check your binder."
+          : (lastError ?? new Error("Couldn’t collect this card. Please try again.")).message
+      );
     } catch {
       setClaimError("Couldn’t prepare this pack. Please try again.");
     } finally {
@@ -880,75 +935,26 @@ export default function ExploreScreen() {
   ]);
 
   const commitPackClaim = useCallback(async (): Promise<ExploreAward> => {
-    if (!packSession) {
+    const first = packSession?.packIds[0];
+    if (!first) {
       throw new Error("Pack session expired. Try collecting again.");
     }
-    const { stop, latitude, longitude, accuracyMetres, profileIds } = packSession;
-
-    let firstAward: ExploreAward | null = null;
-    let lastError: Error | null = null;
-    let anySuccess = false;
-
-    for (const profileId of profileIds) {
-      try {
-        const result = await claimExploreStop({
-          stopId: stop.stopId,
-          generationVersion: stop.generationVersion,
-          osmRevision: stop.osmRevision,
-          profileId,
-          latitude,
-          longitude,
-          accuracyMetres,
-          idempotencyKey: newIdempotencyKey(),
-        });
-
-        if (result.success || result.error === "already_claimed") {
-          anySuccess = true;
-          setClaimedByProfile((prev) => {
-            const next = { ...prev };
-            const set = new Set(next[profileId] ?? []);
-            set.add(stop.stopId);
-            next[profileId] = set;
-            return next;
-          });
-          if (result.award) {
-            if (!firstAward || (result.award.isNew && !firstAward.isNew)) {
-              firstAward = result.award;
-            }
-          }
-          continue;
-        }
-
-        lastError = new Error(
-          exploreUserMessage(
-            result.error || "claim_failed",
-            "Couldn’t collect this card. Please try again."
-          )
-        );
-      } catch (err: unknown) {
-        if (err instanceof ExploreStopsRequestError) {
-          lastError = new Error(
-            exploreUserMessage(err.exploreError.code, err.exploreError.message)
-          );
-        } else {
-          lastError =
-            err instanceof Error
-              ? err
-              : new Error("Couldn’t collect this card. Please try again.");
-        }
+    try {
+      const result = await openExplorePack(first.packId);
+      if (result.success) return result.award;
+      throw new Error(
+        exploreUserMessage(result.error, "Couldn’t collect this card. Please try again.")
+      );
+    } catch (err: unknown) {
+      if (err instanceof ExploreStopsRequestError) {
+        throw new Error(exploreUserMessage(err.exploreError.code, err.exploreError.message));
       }
+      throw err instanceof Error ? err : new Error("Couldn’t collect this card. Please try again.");
     }
-
-    if (firstAward) return firstAward;
-    if (anySuccess) {
-      throw new Error("Collected, but no card came back. Check your binder.");
-    }
-    throw lastError ?? new Error("Couldn’t collect this card. Please try again.");
   }, [packSession]);
 
   const closePack = useCallback(() => {
     setPackSession(null);
-
   }, []);
 
   // Explore needs light status icons on the dark map; restore dark when leaving

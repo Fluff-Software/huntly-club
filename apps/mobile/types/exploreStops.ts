@@ -126,6 +126,8 @@ export type ExploreStopsErrorCode =
   | "insufficient_copies"
   | "invalid_card"
   | "trade_failed"
+  | "invalid_pack"
+  | "pack_not_found"
   | string;
 
 export type ExploreStopsError = {
@@ -188,6 +190,8 @@ export type ExploreClaimRequest = {
   longitude: number;
   accuracyMetres: number;
   idempotencyKey: string;
+  /** Skip the draw and bank an unopened pack instead of revealing now. */
+  deferReveal?: boolean;
 };
 
 export type ExploreClaimRecord = {
@@ -205,6 +209,9 @@ export type ExploreClaimSuccess = {
   claim: ExploreClaimRecord;
   award?: ExploreAward;
   idempotentReplay?: boolean;
+  banked?: boolean;
+  /** Set when `banked` is true -- id of the unopened pack to open later. */
+  packId?: string;
 };
 
 export type ExploreClaimFailure = {
@@ -240,6 +247,8 @@ export type ExploreTradeRequest = {
   profileId: number;
   cardId: string;
   idempotencyKey: string;
+  /** Skip the draw and bank an unopened pack instead of revealing now. */
+  deferReveal?: boolean;
 };
 
 export type ExploreTradeRecord = {
@@ -254,8 +263,12 @@ export type ExploreTradeRecord = {
 export type ExploreTradeSuccess = {
   success: true;
   trade: ExploreTradeRecord;
-  award: ExploreAward;
+  /** Absent when `banked` is true -- the replacement card hasn't been drawn yet. */
+  award?: ExploreAward;
   idempotentReplay?: boolean;
+  banked?: boolean;
+  /** Set when `banked` is true -- id of the unopened pack to open later. */
+  packId?: string;
 };
 
 export type ExploreTradeFailure = {
@@ -264,6 +277,31 @@ export type ExploreTradeFailure = {
 };
 
 export type ExploreTradeResponse = ExploreTradeSuccess | ExploreTradeFailure;
+
+/** A banked pack awaiting a deferred open. */
+export type ExplorePackRecord = {
+  id: string;
+  profileId: number;
+  source: "stop_claim" | "trade";
+  status: "unopened" | "opened";
+  bankedAt: string;
+  openedAt: string | null;
+  awardedCard?: ExploreAwardCard;
+};
+
+export type ExploreOpenPackSuccess = {
+  success: true;
+  pack: ExplorePackRecord;
+  award: ExploreAward;
+  idempotentReplay?: boolean;
+};
+
+export type ExploreOpenPackFailure = {
+  success: false;
+  error: ExploreStopsErrorCode;
+};
+
+export type ExploreOpenPackResponse = ExploreOpenPackSuccess | ExploreOpenPackFailure;
 
 export type ExploreClaimedStopsResponse = {
   success: true;

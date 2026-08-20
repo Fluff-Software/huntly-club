@@ -127,6 +127,9 @@ type Props = {
   onRipComplete: () => Promise<ExploreAward>;
   onClose: () => void;
   onViewBinder: (award: ExploreAward) => void;
+  /** When set with onOpenNext, the reveal offers an "Open next" action instead of closing. */
+  queueRemaining?: number;
+  onOpenNext?: () => void;
 };
 
 /** Horizontal swipe across the top strip to finish the tear. */
@@ -152,22 +155,38 @@ const RevealActions = React.memo(function RevealActions({
   bottomInset,
   onViewBinder,
   onDismiss,
+  queueRemaining,
+  onOpenNext,
 }: {
   award: ExploreAward;
   rarityColor: string;
   bottomInset: number;
   onViewBinder: (award: ExploreAward) => void;
   onDismiss: () => void;
+  queueRemaining?: number;
+  onOpenNext?: () => void;
 }) {
+  const hasNext = (queueRemaining ?? 0) > 0 && !!onOpenNext;
   return (
     <View
       style={[styles.revealActions, { paddingBottom: bottomInset + 24 }]}
       pointerEvents="box-none"
     >
       <View style={styles.actions}>
+        {hasNext ? (
+          <Pressable
+            onPress={onOpenNext}
+            style={[styles.primaryBtn, { backgroundColor: rarityColor }]}
+            accessibilityRole="button"
+          >
+            <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.btnText}>
+              Open next ({queueRemaining} left)
+            </ThemedText>
+          </Pressable>
+        ) : null}
         <Pressable
           onPress={() => onViewBinder(award)}
-          style={[styles.primaryBtn, { backgroundColor: rarityColor }]}
+          style={[hasNext ? styles.secondaryBtn : styles.primaryBtn, !hasNext && { backgroundColor: rarityColor }]}
           accessibilityRole="button"
         >
           <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.btnText}>
@@ -176,7 +195,7 @@ const RevealActions = React.memo(function RevealActions({
         </Pressable>
         <Pressable onPress={onDismiss} style={styles.secondaryBtn} accessibilityRole="button">
           <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.btnText}>
-            Keep exploring
+            {hasNext ? "Done for now" : "Keep exploring"}
           </ThemedText>
         </Pressable>
       </View>
@@ -189,6 +208,8 @@ export function ExploreCardPackReveal({
   onRipComplete,
   onClose,
   onViewBinder,
+  queueRemaining,
+  onOpenNext,
 }: Props) {
   const { width: screenW, height: screenH } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -690,6 +711,8 @@ export function ExploreCardPackReveal({
             bottomInset={insets.bottom}
             onViewBinder={onViewBinder}
             onDismiss={handleDismiss}
+            queueRemaining={queueRemaining}
+            onOpenNext={onOpenNext}
           />
         ) : null}
 

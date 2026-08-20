@@ -32,11 +32,13 @@ import { usePlayer } from "@/contexts/PlayerContext";
 import {
   ExploreStopsRequestError,
   exploreUserMessage,
+  getBankedPacks,
   getExploreCardCollection,
+  openExplorePack,
   tradeExploreCards,
 } from "@/services/exploreStopsService";
 import { newIdempotencyKey } from "@/utils/idempotency";
-import type { ExploreAward } from "@/types/exploreStops";
+import type { ExploreAward, ExplorePackRecord } from "@/types/exploreStops";
 import {
   binderFiltersAreActive,
   completionPercent,
@@ -164,8 +166,15 @@ export default function ExploreCollectionScreen() {
     typeof highlightCardId === "string" ? highlightCardId : null
   );
   const [tradeSession, setTradeSession] = useState<
-    { card: BinderCardEntry; profileId: number } | null
+    { card: BinderCardEntry; profileId: number; packId: string } | null
   >(null);
+  /** Banked, unopened packs per profile -- packs belong to one profile each,
+   * so this is tracked per-profile even in the merged "all players" view. */
+  const [bankedPacksByProfile, setBankedPacksByProfile] = useState<
+    Map<number, ExplorePackRecord[]>
+  >(new Map());
+  const [packQueue, setPackQueue] = useState<ExplorePackRecord[] | null>(null);
+  const [packQueueIndex, setPackQueueIndex] = useState(0);
   /** Per-card copies owned by each individual profile, so trading can work
    * from "All players" view without making the user switch profiles first. */
   const perCardOwnersRef = useRef<
@@ -357,6 +366,34 @@ export default function ExploreCollectionScreen() {
 
   const loadRef = useRef(load);
   loadRef.current = load;
+
+  const loadBankedPacks = useCallback(async () => {
+    if (profiles.length === 0) {
+      setBankedPacksByProfile(new Map());
+      return;
+    }
+    try {
+      const entries = await Promise.all(
+        profiles.map(async (p) => [p.id, await getBankedPacks(p.id)] as const)
+      );
+      setBankedPacksByProfile(new Map(entries));
+    } catch {
+      // Best-effort -- the inventory banner just won't show this refresh.
+    }
+  }, [profiles]);
+
+  useEffect(() => {
+    void loadBankedPacks();
+  }, [loadBankedPacks]);
+
+  /** Profiles with at least one banked pack, for the merged "all players" banner. */
+  const profilesWithPacks = useMemo(
+    () =>
+      profiles
+        .map((p) => ({ profile: p, packs: bankedPacksByProfile.get(p.id) ?? [] }))
+        .filter((entry) => entry.packs.length > 0),
+    [profiles, bankedPacksByProfile]
+  );
   const defaultProfileIdRef = useRef(defaultProfileId);
   defaultProfileIdRef.current = defaultProfileId;
   const playerFilterKeyRef = useRef<string | null>(null);
@@ -476,11 +513,41 @@ export default function ExploreCollectionScreen() {
     return (perCardOwnersRef.current.get(card.id) ?? []).filter((o) => o.count >= 6);
   }
 
-  function startTrade(card: BinderCardEntry, profileId: number) {
+  /**
+   * Pays the trade cost and banks an unopened pack right away, then opens
+   * the reveal ready to rip. Closing the reveal without ripping isn't a
+   * separate "save" action -- the pack is already banked, so it just stays
+   * that way and shows up in the "packs waiting" banner.
+   */
+  async function startTrade(card: BinderCardEntry, profileId: number) {
     // Close first so the popup never shows a now-stale count while the
     // trade is in flight.
     closeDetail();
-    setTradeSession({ card, profileId });
+    try {
+      const result = await tradeExploreCards({
+        profileId,
+        cardId: card.id,
+        idempotencyKey: newIdempotencyKey(),
+        deferReveal: true,
+      });
+      if (result.success && result.packId) {
+        void load({ soft: true });
+        setTradeSession({ card, profileId, packId: result.packId });
+        return;
+      }
+      Alert.alert(
+        "Couldn’t start trade",
+        !result.success
+          ? exploreUserMessage(result.error, "Please try again.")
+          : "Please try again."
+      );
+    } catch (err: unknown) {
+      const message =
+        err instanceof ExploreStopsRequestError
+          ? exploreUserMessage(err.exploreError.code, err.exploreError.message)
+          : "Please try again.";
+      Alert.alert("Couldn’t start trade", message);
+    }
   }
 
   const TRADE_EXPLAINER =
@@ -497,7 +564,7 @@ export default function ExploreCollectionScreen() {
       const who = viewingAllProfiles ? ` for ${only.name || "this player"}` : "";
       Alert.alert(`Trade 5 ${card.name}${who}?`, TRADE_EXPLAINER, [
         { text: "Cancel", style: "cancel" },
-        { text: "Trade", onPress: () => startTrade(card, only.profileId) },
+        { text: "Trade", onPress: () => void startTrade(card, only.profileId) },
       ]);
       return;
     }
@@ -509,7 +576,7 @@ export default function ExploreCollectionScreen() {
       [
         ...candidates.map((c) => ({
           text: c.name || "Player",
-          onPress: () => startTrade(card, c.profileId),
+          onPress: () => void startTrade(card, c.profileId),
         })),
         { text: "Cancel", style: "cancel" as const },
       ]
@@ -521,25 +588,77 @@ export default function ExploreCollectionScreen() {
       throw new Error("Trade session expired. Try again from the binder.");
     }
     try {
-      const result = await tradeExploreCards({
-        profileId: tradeSession.profileId,
-        cardId: tradeSession.card.id,
-        idempotencyKey: newIdempotencyKey(),
-      });
+      const result = await openExplorePack(tradeSession.packId);
       if (result.success) {
         void load({ soft: true });
         return result.award;
       }
       throw new Error(
-        exploreUserMessage(result.error, "Couldn’t complete the trade. Please try again.")
+        exploreUserMessage(result.error, "Couldn’t open this pack. Please try again.")
       );
     } catch (err: unknown) {
       if (err instanceof ExploreStopsRequestError) {
         throw new Error(exploreUserMessage(err.exploreError.code, err.exploreError.message));
       }
-      throw err instanceof Error ? err : new Error("Couldn’t complete the trade. Please try again.");
+      throw err instanceof Error ? err : new Error("Couldn’t open this pack. Please try again.");
     }
   }, [tradeSession, load]);
+
+  function openPackQueueFor(packs: ExplorePackRecord[]) {
+    if (packs.length === 0) return;
+    setPackQueueIndex(0);
+    setPackQueue(packs);
+  }
+
+  function handleOpenPacksBanner() {
+    if (!viewingAllProfiles) {
+      openPackQueueFor(bankedPacksByProfile.get(selectedProfileId ?? -1) ?? []);
+      return;
+    }
+    if (profilesWithPacks.length === 1) {
+      openPackQueueFor(profilesWithPacks[0]!.packs);
+      return;
+    }
+    Alert.alert(
+      "Open saved packs",
+      "Whose packs would you like to open?",
+      [
+        ...profilesWithPacks.map((entry) => ({
+          text: `${entry.profile.nickname || entry.profile.name || "Player"} (${entry.packs.length})`,
+          onPress: () => openPackQueueFor(entry.packs),
+        })),
+        { text: "Cancel", style: "cancel" as const },
+      ]
+    );
+  }
+
+  const commitPackFromQueue = useCallback(async (): Promise<ExploreAward> => {
+    const pack = packQueue?.[packQueueIndex];
+    if (!pack) {
+      throw new Error("Pack queue expired. Try again from your binder.");
+    }
+    try {
+      const result = await openExplorePack(pack.id);
+      if (result.success) {
+        void load({ soft: true });
+        return result.award;
+      }
+      throw new Error(
+        exploreUserMessage(result.error, "Couldn’t open this pack. Please try again.")
+      );
+    } catch (err: unknown) {
+      if (err instanceof ExploreStopsRequestError) {
+        throw new Error(exploreUserMessage(err.exploreError.code, err.exploreError.message));
+      }
+      throw err instanceof Error ? err : new Error("Couldn’t open this pack. Please try again.");
+    }
+  }, [packQueue, packQueueIndex, load]);
+
+  function closePackQueue() {
+    setPackQueue(null);
+    setPackQueueIndex(0);
+    void loadBankedPacks();
+  }
 
   function applyCategory(next: BinderCategoryFilter) {
     setCategory(next);
@@ -624,6 +743,35 @@ export default function ExploreCollectionScreen() {
             </View>
           ) : null}
         </View>
+
+        {(() => {
+          const packCount = viewingAllProfiles
+            ? profilesWithPacks.reduce((sum, e) => sum + e.packs.length, 0)
+            : (bankedPacksByProfile.get(selectedProfileId ?? -1) ?? []).length;
+          if (packCount === 0) return null;
+          const label =
+            viewingAllProfiles && profilesWithPacks.length === 1
+              ? `${profilesWithPacks[0]!.profile.nickname || profilesWithPacks[0]!.profile.name || "This player"} has ${packCount} pack${packCount === 1 ? "" : "s"} waiting — Open`
+              : `${packCount} pack${packCount === 1 ? "" : "s"} waiting — Open`;
+          return (
+            <Pressable
+              onPress={handleOpenPacksBanner}
+              accessibilityRole="button"
+              accessibilityLabel={label}
+              style={styles.packBanner}
+            >
+              <View style={styles.packBannerIconSlot}>
+                <MaterialIcons name="inventory-2" size={18} color="#B8F000" />
+              </View>
+              <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.packBannerText}>
+                {label}
+              </ThemedText>
+              <View style={styles.packBannerIconSlot}>
+                <MaterialIcons name="chevron-right" size={20} color="#B8F000" />
+              </View>
+            </Pressable>
+          );
+        })()}
 
         {loading && cards.length === 0 ? (
           <View style={styles.center}>
@@ -710,9 +858,29 @@ export default function ExploreCollectionScreen() {
           <ExploreCardPackReveal
             visible
             onRipComplete={commitTradeClaim}
-            onClose={() => setTradeSession(null)}
+            onClose={() => {
+              setTradeSession(null);
+              // Closing without ripping leaves the pack banked -- refresh
+              // so the "packs waiting" banner picks it up immediately.
+              void loadBankedPacks();
+            }}
             onViewBinder={(award) => {
               setTradeSession(null);
+              setHighlightId(award.card.id);
+            }}
+          />
+        ) : null}
+
+        {packQueue && packQueue[packQueueIndex] ? (
+          <ExploreCardPackReveal
+            key={packQueue[packQueueIndex]!.id}
+            visible
+            onRipComplete={commitPackFromQueue}
+            onClose={closePackQueue}
+            queueRemaining={packQueue.length - packQueueIndex - 1}
+            onOpenNext={() => setPackQueueIndex((i) => i + 1)}
+            onViewBinder={(award) => {
+              closePackQueue();
               setHighlightId(award.card.id);
             }}
           />
@@ -772,6 +940,28 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   errorBox: { paddingHorizontal: 16, paddingVertical: 8, alignItems: "center" },
+  packBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 12,
+    marginBottom: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    backgroundColor: "rgba(20,24,20,0.92)",
+    borderWidth: 1,
+    borderColor: "rgba(184,240,0,0.35)",
+  },
+  packBannerIconSlot: {
+    width: 24,
+    alignItems: "center",
+  },
+  packBannerText: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 14,
+    fontWeight: "700",
+  },
   scroll: { flex: 1 },
   scrollContent: {
     paddingHorizontal: H_PAD,

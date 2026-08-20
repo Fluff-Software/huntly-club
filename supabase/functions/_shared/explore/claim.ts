@@ -13,6 +13,7 @@ import {
 export type ClaimRequest = VerifyRequest & {
   profileId: number;
   idempotencyKey: string | null;
+  deferReveal: boolean;
 };
 
 export function validateClaimBody(body: unknown):
@@ -54,6 +55,7 @@ export function validateClaimBody(body: unknown):
       ...verified.request,
       profileId,
       idempotencyKey,
+      deferReveal: raw.defer_reveal === true,
     },
   };
 }
@@ -163,6 +165,7 @@ export async function runClaim(opts: {
     p_source_type: stop.source_type,
     p_environment_profile: stop.environment_profile,
     p_idempotency_key: validated.request.idempotencyKey,
+    p_defer_reveal: validated.request.deferReveal,
   });
 
   if (error) {
@@ -196,6 +199,11 @@ export async function runClaim(opts: {
     };
   }
 
+  const pack =
+    payload.pack && typeof payload.pack === "object"
+      ? (payload.pack as Record<string, unknown>)
+      : null;
+
   return {
     status: 200,
     body: {
@@ -203,6 +211,8 @@ export async function runClaim(opts: {
       claim: mapClaimRow(payload.claim as Record<string, unknown>),
       ...(mapAward(payload.award) ? { award: mapAward(payload.award) } : {}),
       ...(payload.idempotent_replay === true ? { idempotent_replay: true } : {}),
+      ...(payload.banked === true ? { banked: true } : {}),
+      ...(pack ? { pack_id: String(pack.pack_id) } : {}),
     },
   };
 }

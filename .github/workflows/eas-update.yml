@@ -51,8 +51,9 @@ jobs:
           EXPO_PUBLIC_REVENUECAT_IOS_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY }}
           EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY }}
           EXPO_PUBLIC_MAPTILER_API_KEY: ${{ secrets.EXPO_PUBLIC_MAPTILER_API_KEY }}
+          UPDATE_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
-          eas update --channel production --message "${{ github.event.head_commit.message }}" --platform android --non-interactive
+          eas update --channel production --message "$UPDATE_MESSAGE" --platform android --non-interactive
 
       - name: Publish EAS Update (iOS)
         working-directory: apps/mobile
@@ -64,8 +65,9 @@ jobs:
           EXPO_PUBLIC_REVENUECAT_IOS_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY }}
           EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY }}
           EXPO_PUBLIC_MAPTILER_API_KEY: ${{ secrets.EXPO_PUBLIC_MAPTILER_API_KEY }}
+          UPDATE_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
-          eas update --channel production --message "${{ github.event.head_commit.message }}" --platform ios --non-interactive
+          eas update --channel production --message "$UPDATE_MESSAGE" --platform ios --non-interactive
 
   update-preview:
     name: Publish EAS Update (preview)
@@ -108,8 +110,9 @@ jobs:
           EXPO_PUBLIC_REVENUECAT_IOS_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY }}
           EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY }}
           EXPO_PUBLIC_MAPTILER_API_KEY: ${{ secrets.EXPO_PUBLIC_MAPTILER_API_KEY }}
+          UPDATE_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
-          eas update --channel preview --message "${{ github.event.head_commit.message }}" --platform android --non-interactive
+          eas update --channel preview --message "$UPDATE_MESSAGE" --platform android --non-interactive
 
       - name: Publish EAS Update (iOS)
         working-directory: apps/mobile
@@ -121,5 +124,6 @@ jobs:
           EXPO_PUBLIC_REVENUECAT_IOS_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY }}
           EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY }}
           EXPO_PUBLIC_MAPTILER_API_KEY: ${{ secrets.EXPO_PUBLIC_MAPTILER_API_KEY }}
+          UPDATE_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
-          eas update --channel preview --message "${{ github.event.head_commit.message }}" --platform ios --non-interactive
+          eas update --channel preview --message "$UPDATE_MESSAGE" --platform ios --non-interactive

@@ -14,7 +14,7 @@ import {
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { MaterialIcons } from "@expo/vector-icons";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
 import { BinderCardPocket, fitBinderCardSize } from "@/components/explore/BinderCardPocket";
 import {
@@ -113,6 +113,7 @@ function BinderGrid({ cards, columns, cardW, cardH, onOpenCard }: BinderGridProp
 
 export default function ExploreCollectionScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { width: windowW } = useWindowDimensions();
   const { profileId: profileIdParam, highlightCardId, mode } = useLocalSearchParams<{
     profileId?: string;
@@ -532,7 +533,10 @@ export default function ExploreCollectionScreen() {
             <ScrollView
               ref={scrollRef}
               style={styles.scroll}
-              contentContainerStyle={styles.scrollContent}
+              contentContainerStyle={[
+                styles.scrollContent,
+                { paddingBottom: styles.scrollContent.paddingBottom + insets.bottom },
+              ]}
               showsVerticalScrollIndicator={false}
             >
               <BinderPageSheet style={styles.sheet}>

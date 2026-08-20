@@ -69,21 +69,6 @@ export function ExploreCardDetail({
           <MaterialIcons name="close" size={22} color="#FFF" />
         </Pressable>
 
-        {onTrade && tradeLabel ? (
-          <Pressable
-            onPress={() => onTrade(card)}
-            accessibilityRole="button"
-            accessibilityLabel={`Trade 5 ${card.name} for a pack`}
-            style={[styles.tradeBanner, { top: insets.top + 64 }]}
-          >
-            <MaterialIcons name="swap-horiz" size={18} color="#1A2A1C" />
-            <ThemedText style={styles.tradeBannerText} numberOfLines={2}>
-              {tradeLabel}
-            </ThemedText>
-            <MaterialIcons name="chevron-right" size={18} color="#1A2A1C" />
-          </Pressable>
-        ) : null}
-
         <View style={[styles.card, { width: cardWidth, height: cardHeight }]}>
           <ExploreCardFlip
             key={`${card.id}-${collected ? "in" : "out"}`}
@@ -112,6 +97,26 @@ export function ExploreCardDetail({
             />
           </ExploreCardFlip>
         </View>
+
+        {onTrade && tradeLabel ? (
+          <Pressable
+            onPress={() => onTrade(card)}
+            accessibilityRole="button"
+            accessibilityLabel={`Trade 5 ${card.name} for a pack`}
+            style={[styles.tradeBanner, { maxWidth: cardWidth }]}
+          >
+            <MaterialIcons name="swap-horiz" size={16} color="#B8F000" />
+            <ThemedText
+              lightColor="#FFF"
+              darkColor="#FFF"
+              style={styles.tradeBannerText}
+              numberOfLines={2}
+            >
+              {tradeLabel}
+            </ThemedText>
+            <MaterialIcons name="chevron-right" size={16} color="#B8F000" />
+          </Pressable>
+        ) : null}
       </GestureHandlerRootView>
     </Modal>
   );
@@ -147,27 +152,21 @@ const styles = StyleSheet.create({
     borderRadius: 0,
   },
   tradeBanner: {
-    position: "absolute",
-    left: 16,
-    right: 76,
-    zIndex: 15,
+    marginTop: 14,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 18,
-    backgroundColor: "#B8F000",
-    shadowColor: "#000",
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 5,
+    backgroundColor: "rgba(20,24,20,0.92)",
+    borderWidth: 1,
+    borderColor: "rgba(184,240,0,0.35)",
   },
   tradeBannerText: {
     flex: 1,
     fontSize: 13,
     fontWeight: "700",
-    color: "#1A2A1C",
+    textAlign: "center",
   },
 });

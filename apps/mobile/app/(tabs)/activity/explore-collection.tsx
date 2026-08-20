@@ -469,10 +469,11 @@ export default function ExploreCollectionScreen() {
     setPulledId(null);
   }
 
-  /** Which profile(s) actually hold 5+ copies of this card — works the same
-   * whether viewing a single profile or "All players" merged. */
+  /** Which profile(s) actually hold 6+ copies of this card (trading costs 5,
+   * requiring 6 so no one ever ends up with 0) — works the same whether
+   * viewing a single profile or "All players" merged. */
   function tradeCandidatesFor(card: BinderCardEntry) {
-    return (perCardOwnersRef.current.get(card.id) ?? []).filter((o) => o.count >= 5);
+    return (perCardOwnersRef.current.get(card.id) ?? []).filter((o) => o.count >= 6);
   }
 
   function startTrade(card: BinderCardEntry, profileId: number) {
@@ -482,27 +483,26 @@ export default function ExploreCollectionScreen() {
     setTradeSession({ card, profileId });
   }
 
+  const TRADE_EXPLAINER =
+    "Trade 5 copies for a brand-new pack. Guaranteed: you won't get this card back. This can't be undone.";
+
   function handleTrade(card: BinderCardEntry) {
     const candidates = tradeCandidatesFor(card);
     if (candidates.length === 0) return;
 
     if (candidates.length === 1) {
       const only = candidates[0]!;
-      Alert.alert(
-        "Trade 5 cards?",
-        `Trade 5 ${card.name} for a brand-new pack? This can't be undone.`,
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Trade", onPress: () => startTrade(card, only.profileId) },
-        ]
-      );
+      Alert.alert(`Trade 5 ${card.name}?`, TRADE_EXPLAINER, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Trade", onPress: () => startTrade(card, only.profileId) },
+      ]);
       return;
     }
 
-    // More than one player has 5+ copies — ask which one is trading.
+    // More than one player has 6+ copies — ask which one is trading.
     Alert.alert(
-      "Trade 5 cards",
-      `${card.name} — whose copies are trading?`,
+      `Trade 5 ${card.name}?`,
+      `${TRADE_EXPLAINER}\n\nWhose copies are trading?`,
       [
         ...candidates.map((c) => ({
           text: c.name || "Player",
@@ -685,6 +685,18 @@ export default function ExploreCollectionScreen() {
           onClose={closeDetail}
           onTrade={
             selected && tradeCandidatesFor(selected).length > 0 ? handleTrade : undefined
+          }
+          tradeLabel={
+            selected
+              ? (() => {
+                  const candidates = tradeCandidatesFor(selected);
+                  if (candidates.length === 0) return undefined;
+                  if (candidates.length === 1) {
+                    return `${candidates[0]!.name || "This player"} can trade 5 copies of this card for a new pack`;
+                  }
+                  return "Trade 5 copies of this card for a new pack";
+                })()
+              : undefined
           }
         />
 

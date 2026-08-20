@@ -25,9 +25,17 @@ type Props = {
   onCloseComplete?: () => void;
   /** Provided only when trading is eligible for this card right now. */
   onTrade?: (card: BinderCardEntry) => void;
+  /** e.g. "Artistic Deer can trade 5 copies of this card for a new pack". */
+  tradeLabel?: string;
 };
 
-export function ExploreCardDetail({ card, onClose, onCloseComplete, onTrade }: Props) {
+export function ExploreCardDetail({
+  card,
+  onClose,
+  onCloseComplete,
+  onTrade,
+  tradeLabel,
+}: Props) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   if (!card) return null;
@@ -61,6 +69,21 @@ export function ExploreCardDetail({ card, onClose, onCloseComplete, onTrade }: P
           <MaterialIcons name="close" size={22} color="#FFF" />
         </Pressable>
 
+        {onTrade && tradeLabel ? (
+          <Pressable
+            onPress={() => onTrade(card)}
+            accessibilityRole="button"
+            accessibilityLabel={`Trade 5 ${card.name} for a pack`}
+            style={[styles.tradeBanner, { top: insets.top + 64 }]}
+          >
+            <MaterialIcons name="swap-horiz" size={18} color="#1A2A1C" />
+            <ThemedText style={styles.tradeBannerText} numberOfLines={2}>
+              {tradeLabel}
+            </ThemedText>
+            <MaterialIcons name="chevron-right" size={18} color="#1A2A1C" />
+          </Pressable>
+        ) : null}
+
         <View style={[styles.card, { width: cardWidth, height: cardHeight }]}>
           <ExploreCardFlip
             key={`${card.id}-${collected ? "in" : "out"}`}
@@ -89,25 +112,6 @@ export function ExploreCardDetail({ card, onClose, onCloseComplete, onTrade }: P
             />
           </ExploreCardFlip>
         </View>
-
-        {onTrade ? (
-          <View
-            pointerEvents="box-none"
-            style={[styles.tradeBtnWrap, { bottom: insets.bottom + 20 }]}
-          >
-            <Pressable
-              onPress={() => onTrade(card)}
-              accessibilityRole="button"
-              accessibilityLabel={`Trade 5 ${card.name} for a pack`}
-              style={styles.tradeBtn}
-            >
-              <MaterialIcons name="swap-horiz" size={18} color="#FFF" />
-              <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.tradeBtnText}>
-                Trade 5 for a pack
-              </ThemedText>
-            </Pressable>
-          </View>
-        ) : null}
       </GestureHandlerRootView>
     </Modal>
   );
@@ -142,28 +146,28 @@ const styles = StyleSheet.create({
   art: {
     borderRadius: 0,
   },
-  tradeBtnWrap: {
+  tradeBanner: {
     position: "absolute",
-    left: 0,
-    right: 0,
-    alignItems: "center",
+    left: 16,
+    right: 76,
     zIndex: 15,
-  },
-  tradeBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 24,
-    backgroundColor: "#62A94F",
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    backgroundColor: "#B8F000",
     shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 6,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 5,
   },
-  tradeBtnText: {
-    fontWeight: "800",
+  tradeBannerText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#1A2A1C",
   },
 });

@@ -210,7 +210,7 @@ function friendlyMessage(code: string, fallback: string): string {
     case "claim_failed":
       return "Couldn’t collect this card. Please try again.";
     case "insufficient_copies":
-      return "You need 5 copies of this card to trade it — someone may have just traded them.";
+      return "You need 6 copies of this card to trade — someone may have just traded them.";
     case "invalid_card":
       return "That card can’t be traded right now.";
     case "trade_failed":

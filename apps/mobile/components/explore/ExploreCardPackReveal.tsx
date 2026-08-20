@@ -330,11 +330,12 @@ export function ExploreCardPackReveal({
     }
   }, [onRipComplete, playReveal]);
 
-  // Haptics.selectionAsync() maps to a near-imperceptible system tick on
-  // most Android devices (unlike iOS) — impactAsync reliably drives the
-  // vibration motor on both platforms, so use it everywhere here.
+  // Haptics.selectionAsync() maps to Android's near-imperceptible system
+  // tick, and even ImpactFeedbackStyle.Light maps to EFFECT_TICK — also
+  // deliberately weak/silent on a lot of Android hardware. Medium maps to
+  // EFFECT_CLICK, which reliably produces a real buzz on both platforms.
   const selectionHaptic = useCallback(() => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }, []);
   const mediumRipHaptic = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -350,7 +351,7 @@ export function ExploreCardPackReveal({
     const now = Date.now();
     if (now - lastTickAtRef.current < TICK_MIN_INTERVAL_MS) return;
     lastTickAtRef.current = now;
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }, []);
 
   // Fires a quick tick every RIP_TICK_STEP of progress while dragging, so

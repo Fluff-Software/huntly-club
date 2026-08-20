@@ -45,7 +45,13 @@ export function cardsPerPageForLayout(_isTablet: boolean): number {
   return TABLET_CARDS_PER_PAGE;
 }
 
-export type BinderSortOption = "default" | "name_asc" | "name_desc" | "rarity" | "recent";
+export type BinderSortOption =
+  | "default"
+  | "name_asc"
+  | "name_desc"
+  | "rarity"
+  | "recent"
+  | "copies_desc";
 
 export const BINDER_SORT_OPTIONS: { id: BinderSortOption; label: string }[] = [
   { id: "default", label: "Binder order" },
@@ -53,6 +59,7 @@ export const BINDER_SORT_OPTIONS: { id: BinderSortOption; label: string }[] = [
   { id: "name_desc", label: "Name Z–A" },
   { id: "rarity", label: "Rarest first" },
   { id: "recent", label: "Recently found" },
+  { id: "copies_desc", label: "Most duplicates" },
 ];
 
 const RARITY_RANK: Record<string, number> = {
@@ -85,6 +92,12 @@ export function sortBinderCardsBy(
       const ra = RARITY_RANK[a.rarity] ?? 99;
       const rb = RARITY_RANK[b.rarity] ?? 99;
       if (ra !== rb) return ra - rb;
+      return a.name.localeCompare(b.name);
+    });
+  }
+  if (sort === "copies_desc") {
+    return [...cards].sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
       return a.name.localeCompare(b.name);
     });
   }

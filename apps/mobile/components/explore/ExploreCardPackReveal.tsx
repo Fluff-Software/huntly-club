@@ -7,6 +7,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   View,
@@ -377,32 +378,35 @@ export function ExploreCardPackReveal({
     }
   }, [onRipComplete, playReveal]);
 
-  const selectionHaptic = useCallback(() => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  }, []);
-  const mediumRipHaptic = useCallback(() => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  }, []);
+  // iOS's Taptic Engine queues distinct impactAsync calls properly even in
+  // fast succession and Medium reads as weak on it, so iOS gets Heavy,
+  // tightly-spaced ticks for a real "zip" feel. Android's Vibrator instead
+  // cancels whatever pulse is still playing the instant a new vibrate()
+  // call lands — Medium + wide spacing is what's confirmed working there;
+  // tightening it back up would reintroduce the dropped-tick bug.
+  const isIOS = Platform.OS === "ios";
+  const TICK_HAPTIC_STYLE = isIOS
+    ? Haptics.ImpactFeedbackStyle.Heavy
+    : Haptics.ImpactFeedbackStyle.Medium;
+  const TICK_MIN_INTERVAL_MS = isIOS ? 45 : 140;
+  const RIP_TICK_STEP = isIOS ? 0.06 : 0.18;
 
-  // expo-haptics on Android calls Vibrator.vibrate() with a short custom
-  // waveform (Medium is ~43ms) rather than an OS predefined effect — and a
-  // new vibrate() call immediately cancels whatever pulse is still playing.
-  // A tick fired every frame during a fast swipe cuts every prior pulse off
-  // before it's ever felt, which is why only the final, uninterrupted call
-  // (rip-complete) came through. Gate calls far enough apart that each
-  // pulse has time to finish before the next one can cancel it.
+  const selectionHaptic = useCallback(() => {
+    void Haptics.impactAsync(TICK_HAPTIC_STYLE);
+  }, [TICK_HAPTIC_STYLE]);
+  const mediumRipHaptic = useCallback(() => {
+    void Haptics.impactAsync(
+      isIOS ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Medium
+    );
+  }, [isIOS]);
+
   const lastTickAtRef = useRef(0);
-  const TICK_MIN_INTERVAL_MS = 140;
   const zipperTickHaptic = useCallback(() => {
     const now = Date.now();
     if (now - lastTickAtRef.current < TICK_MIN_INTERVAL_MS) return;
     lastTickAtRef.current = now;
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  }, []);
-
-  // Fires a quick tick every RIP_TICK_STEP of progress while dragging, so
-  // the seal "unzips" under the finger instead of just buzzing twice.
-  const RIP_TICK_STEP = 0.18;
+    void Haptics.impactAsync(TICK_HAPTIC_STYLE);
+  }, [TICK_HAPTIC_STYLE, TICK_MIN_INTERVAL_MS]);
 
   // Stays true across enter -> ready -> ripping (onBegin flips phase to
   // "ripping" mid-touch). Using raw `phase` as the memo dep below would

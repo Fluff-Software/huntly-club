@@ -628,6 +628,11 @@ export default function ExploreCollectionScreen() {
           card={selected}
           onClose={closeDetail}
           onTrade={!viewingAllProfiles ? handleTrade : undefined}
+          tradeUnavailableHint={
+            viewingAllProfiles
+              ? "Switch to one player’s binder (filter icon above) to trade this card"
+              : undefined
+          }
         />
 
         {tradeSession && selectedProfileId != null ? (

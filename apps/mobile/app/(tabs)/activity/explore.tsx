@@ -1053,7 +1053,7 @@ export default function ExploreScreen() {
 
         {mapFetchPending && !loadingStops ? (
           <View style={styles.mapFetchBadge} pointerEvents="none">
-            <ActivityIndicator color="#FFF" size="small" />
+            <ActivityIndicator color={ACCENT} size="small" />
           </View>
         ) : null}
 

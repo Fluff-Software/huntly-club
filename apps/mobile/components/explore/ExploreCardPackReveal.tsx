@@ -170,12 +170,24 @@ const RevealActions = React.memo(function RevealActions({
           style={[styles.primaryBtn, { backgroundColor: rarityColor }]}
           accessibilityRole="button"
         >
-          <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.btnText}>
+          <ThemedText
+            key={award.card.id}
+            lightColor="#FFF"
+            darkColor="#FFF"
+            style={styles.btnText}
+            numberOfLines={1}
+          >
             View in binder
           </ThemedText>
         </Pressable>
         <Pressable onPress={onDismiss} style={styles.secondaryBtn} accessibilityRole="button">
-          <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.btnText}>
+          <ThemedText
+            key={award.card.id}
+            lightColor="#FFF"
+            darkColor="#FFF"
+            style={styles.btnText}
+            numberOfLines={1}
+          >
             Keep exploring
           </ThemedText>
         </Pressable>

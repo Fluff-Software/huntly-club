@@ -2,7 +2,7 @@
  * Explore trading-card face — Yu-Gi-Oh-style layout on the textured card bg:
  * outer frame → name → rarity → art window → description + found footer.
  */
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Image,
   StyleSheet,
@@ -15,6 +15,10 @@ import { ThemedText } from "@/components/ThemedText";
 import { EXPLORE_RARITY_COLORS } from "@/constants/exploreBinder";
 import { formatRarityLabel } from "@/utils/exploreBinder";
 import { ExploreCardShineSweep } from "@/components/explore/ExploreCardShine";
+
+/** Retries before an image load gives up and shows "Artwork coming soon". */
+const MAX_IMAGE_RETRIES = 2;
+const IMAGE_RETRY_DELAY_MS = 700;
 
 /** Locked / undiscovered cards always use this, regardless of rarity. */
 const CARD_BG = require("@/assets/images/explore-card-bg.png");
@@ -95,6 +99,9 @@ export function ExploreCardArt({
   style,
 }: Props) {
   const [failed, setFailed] = useState(false);
+  /** Bumped on each retry to force the Image to remount and re-request. */
+  const [retryKey, setRetryKey] = useState(0);
+  const retryCountRef = useRef(0);
   const showCatalogueImage = Boolean(imageUrl?.startsWith("http")) && !failed;
   const rarityColor = EXPLORE_RARITY_COLORS[rarity] ?? "#3B82F6";
   const shineIntensity =
@@ -116,7 +123,27 @@ export function ExploreCardArt({
 
   useEffect(() => {
     setFailed(false);
+    setRetryKey(0);
+    retryCountRef.current = 0;
   }, [imageUrl]);
+
+  // Filtering/sorting the binder can suddenly mount dozens of these at once
+  // (the grid isn't virtualized), which can burst past the device's
+  // concurrent-connection limit and fail a handful of loads transiently.
+  // Retry a couple of times with backoff before settling on the permanent
+  // "coming soon" placeholder. Remounting via `key` is required -- simply
+  // re-rendering with the same source uri won't retrigger a fresh request.
+  const handleImageError = useCallback(() => {
+    if (retryCountRef.current < MAX_IMAGE_RETRIES) {
+      retryCountRef.current += 1;
+      const attempt = retryCountRef.current;
+      setTimeout(() => {
+        setRetryKey((k) => k + 1);
+      }, IMAGE_RETRY_DELAY_MS * attempt);
+      return;
+    }
+    setFailed(true);
+  }, []);
 
   return (
     <View style={[styles.frame, style]}>
@@ -186,11 +213,12 @@ export function ExploreCardArt({
               <View style={[styles.artWindow, !collected && styles.artWindowLocked]}>
                 {collected && showCatalogueImage ? (
                   <Image
+                    key={retryKey}
                     source={{ uri: imageUrl! }}
                     style={styles.artImage}
                     resizeMode="cover"
                     fadeDuration={0}
-                    onError={() => setFailed(true)}
+                    onError={handleImageError}
                     accessibilityIgnoresInvertColors
                   />
                 ) : (

@@ -4,9 +4,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  FlatList,
   Image,
   Pressable,
-  ScrollView,
   StyleSheet,
   useWindowDimensions,
   View,
@@ -53,60 +53,52 @@ const DEFAULT_CATEGORY: BinderCategoryFilter = "all";
 const DEFAULT_STATUS: BinderStatusFilter = "all";
 const DEFAULT_SORT: BinderSortOption = "default";
 
-type BinderGridProps = {
-  cards: BinderCardEntry[];
+/** Groups filtered cards into fixed-size rows for the virtualized grid. */
+function groupIntoRows(cards: BinderCardEntry[], columns: number): BinderCardEntry[][] {
+  const rows: BinderCardEntry[][] = [];
+  for (let i = 0; i < cards.length; i += columns) {
+    rows.push(cards.slice(i, i + columns));
+  }
+  return rows;
+}
+
+type BinderGridRowProps = {
+  row: BinderCardEntry[];
   columns: number;
   cardW: number;
   cardH: number;
   onOpenCard: (card: BinderCardEntry) => void;
 };
 
-function BinderGrid({ cards, columns, cardW, cardH, onOpenCard }: BinderGridProps) {
+function BinderGridRow({ row, columns, cardW, cardH, onOpenCard }: BinderGridRowProps) {
   const { pulledId, highlightId } = useBinderInteraction();
-  const rows: BinderCardEntry[][] = [];
-  for (let i = 0; i < cards.length; i += columns) {
-    rows.push(cards.slice(i, i + columns));
-  }
-
+  const rowPulled = row.some((c) => pulledId === c.id);
   return (
-    <View style={styles.pageGrid}>
-      {rows.map((row, rowIdx) => {
-        const rowPulled = row.some((c) => pulledId === c.id);
-        return (
-          <View
-            key={`row-${rowIdx}`}
-            style={[styles.pageRow, { height: cardH }, rowPulled && { zIndex: 20 }]}
-          >
-            {row.map((card) => (
-              <View
-                key={card.id}
-                style={[
-                  styles.cell,
-                  { width: cardW, height: cardH },
-                  pulledId === card.id && { zIndex: 20 },
-                ]}
-              >
-                <BinderCardPocket
-                  card={card}
-                  width={cardW}
-                  height={cardH}
-                  highlighted={highlightId === card.id}
-                  isPulled={pulledId === card.id}
-                  onPress={() => onOpenCard(card)}
-                />
-              </View>
-            ))}
-            {row.length < columns
-              ? Array.from({ length: columns - row.length }).map((_, i) => (
-                  <View
-                    key={`pad-${rowIdx}-${i}`}
-                    style={[styles.cell, { width: cardW, height: cardH }]}
-                  />
-                ))
-              : null}
-          </View>
-        );
-      })}
+    <View style={[styles.pageRow, { height: cardH }, rowPulled && { zIndex: 20 }]}>
+      {row.map((card) => (
+        <View
+          key={card.id}
+          style={[
+            styles.cell,
+            { width: cardW, height: cardH },
+            pulledId === card.id && { zIndex: 20 },
+          ]}
+        >
+          <BinderCardPocket
+            card={card}
+            width={cardW}
+            height={cardH}
+            highlighted={highlightId === card.id}
+            isPulled={pulledId === card.id}
+            onPress={() => onOpenCard(card)}
+          />
+        </View>
+      ))}
+      {row.length < columns
+        ? Array.from({ length: columns - row.length }).map((_, i) => (
+            <View key={`pad-${i}`} style={[styles.cell, { width: cardW, height: cardH }]} />
+          ))
+        : null}
     </View>
   );
 }
@@ -159,7 +151,7 @@ export default function ExploreCollectionScreen() {
     typeof highlightCardId === "string" ? highlightCardId : null
   );
 
-  const scrollRef = useRef<ScrollView>(null);
+  const listRef = useRef<FlatList<BinderCardEntry[]>>(null);
 
   const pageWidth = Math.max(0, windowW - H_PAD * 2);
   const gridWidth = Math.max(0, pageWidth - INNER_PAD * 2);
@@ -173,7 +165,7 @@ export default function ExploreCollectionScreen() {
     setSort(DEFAULT_SORT);
     profileChosenByUserRef.current = false;
     setSelectedProfileId(defaultProfileId);
-    scrollRef.current?.scrollTo({ y: 0, animated: false });
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
   }, [defaultProfileId]);
 
   // Follow the requested / default player until the user picks one themselves,
@@ -378,6 +370,8 @@ export default function ExploreCollectionScreen() {
     [cards, category, status, sort]
   );
 
+  const rows = useMemo(() => groupIntoRows(filtered, COLUMNS), [filtered]);
+
   const filtersActive = binderFiltersAreActive(category, status, sort);
   const profileChangedFromDefault =
     showProfilePicker && selectedProfileId !== defaultProfileId;
@@ -411,7 +405,7 @@ export default function ExploreCollectionScreen() {
     const row = Math.floor(idx / COLUMNS);
     const y = 14 + row * rowStride;
     requestAnimationFrame(() => {
-      scrollRef.current?.scrollTo({ y: Math.max(0, y - 8), animated: true });
+      listRef.current?.scrollToOffset({ offset: Math.max(0, y - 8), animated: true });
     });
     const card = filtered[idx];
     if (card) {
@@ -434,17 +428,17 @@ export default function ExploreCollectionScreen() {
 
   function applyCategory(next: BinderCategoryFilter) {
     setCategory(next);
-    scrollRef.current?.scrollTo({ y: 0, animated: false });
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
   }
 
   function applyStatus(next: BinderStatusFilter) {
     setStatus(next);
-    scrollRef.current?.scrollTo({ y: 0, animated: false });
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
   }
 
   function applySort(next: BinderSortOption) {
     setSort(next);
-    scrollRef.current?.scrollTo({ y: 0, animated: false });
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
   }
 
   return (
@@ -529,29 +523,41 @@ export default function ExploreCollectionScreen() {
             No cards match these filters.
           </ThemedText>
         ) : (
-          <BinderInteractionProvider pulledId={pulledId} highlightId={highlightId}>
-            <ScrollView
-              ref={scrollRef}
-              style={styles.scroll}
-              contentContainerStyle={[
-                styles.scrollContent,
-                { paddingBottom: styles.scrollContent.paddingBottom + insets.bottom },
-              ]}
-              showsVerticalScrollIndicator={false}
-            >
+          <View style={styles.pageWrap}>
+            <BinderInteractionProvider pulledId={pulledId} highlightId={highlightId}>
               <BinderPageSheet style={styles.sheet}>
                 {cardSize.w > 0 ? (
-                  <BinderGrid
-                    cards={filtered}
-                    columns={COLUMNS}
-                    cardW={cardSize.w}
-                    cardH={cardSize.h}
-                    onOpenCard={openCard}
+                  <FlatList
+                    ref={listRef}
+                    data={rows}
+                    keyExtractor={(_, index) => `row-${index}`}
+                    renderItem={({ item }) => (
+                      <BinderGridRow
+                        row={item}
+                        columns={COLUMNS}
+                        cardW={cardSize.w}
+                        cardH={cardSize.h}
+                        onOpenCard={openCard}
+                      />
+                    )}
+                    getItemLayout={(_, index) => ({
+                      length: rowStride,
+                      offset: rowStride * index,
+                      index,
+                    })}
+                    ItemSeparatorComponent={() => <View style={{ height: GRID_GAP }} />}
+                    contentContainerStyle={{
+                      paddingTop: 2,
+                      paddingBottom: 28 + insets.bottom,
+                    }}
+                    showsVerticalScrollIndicator={false}
+                    initialNumToRender={8}
+                    removeClippedSubviews
                   />
                 ) : null}
               </BinderPageSheet>
-            </ScrollView>
-          </BinderInteractionProvider>
+            </BinderInteractionProvider>
+          </View>
         )}
 
         <BinderFiltersModal
@@ -564,7 +570,7 @@ export default function ExploreCollectionScreen() {
           onSelectProfile={(id) => {
             profileChosenByUserRef.current = true;
             setSelectedProfileId(id);
-            scrollRef.current?.scrollTo({ y: 0, animated: false });
+            listRef.current?.scrollToOffset({ offset: 0, animated: false });
           }}
           category={category}
           onSelectCategory={applyCategory}
@@ -630,19 +636,14 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   errorBox: { paddingHorizontal: 16, paddingVertical: 8, alignItems: "center" },
-  scroll: { flex: 1 },
-  scrollContent: {
+  pageWrap: {
+    flex: 1,
     paddingHorizontal: H_PAD,
-    paddingBottom: 28,
   },
   sheet: {
     width: "100%",
     borderRadius: 12,
     overflow: "visible",
-  },
-  pageGrid: {
-    gap: GRID_GAP,
-    paddingTop: 2,
   },
   pageRow: {
     flexDirection: "row",

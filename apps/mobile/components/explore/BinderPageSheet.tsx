@@ -23,6 +23,7 @@ export function BinderPageSheet({ children, style }: Props) {
 
 const styles = StyleSheet.create({
   outer: {
+    flex: 1,
     width: "100%",
     overflow: "visible",
   },
@@ -32,6 +33,7 @@ const styles = StyleSheet.create({
     backgroundColor: EXPLORE_BINDER_PAGE_BG,
   },
   page: {
+    flex: 1,
     paddingHorizontal: 8,
     paddingBottom: 8,
     paddingTop: 14,

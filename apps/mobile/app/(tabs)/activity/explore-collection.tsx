@@ -29,16 +29,16 @@ import { ExploreCardPackReveal } from "@/components/explore/ExploreCardPackRevea
 import { EXPLORE_BINDER_SCREEN_BG, EXPLORE_CARD_ART_ASPECT } from "@/constants/exploreBinder";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { useBankedPacksByProfile } from "@/hooks/useBankedPacksByProfile";
 import {
   ExploreStopsRequestError,
   exploreUserMessage,
-  getBankedPacks,
   getExploreCardCollection,
   openExplorePack,
   tradeExploreCards,
 } from "@/services/exploreStopsService";
 import { newIdempotencyKey } from "@/utils/idempotency";
-import type { ExploreAward, ExplorePackRecord } from "@/types/exploreStops";
+import type { ExploreAward } from "@/types/exploreStops";
 import {
   binderFiltersAreActive,
   completionPercent,
@@ -160,13 +160,7 @@ export default function ExploreCollectionScreen() {
   const [tradeSession, setTradeSession] = useState<
     { card: BinderCardEntry; profileId: number; packId: string } | null
   >(null);
-  /** Banked, unopened packs per profile -- packs belong to one profile each,
-   * so this is tracked per-profile even in the merged "all players" view. */
-  const [bankedPacksByProfile, setBankedPacksByProfile] = useState<
-    Map<number, ExplorePackRecord[]>
-  >(new Map());
-  const [packQueue, setPackQueue] = useState<ExplorePackRecord[] | null>(null);
-  const [packQueueIndex, setPackQueueIndex] = useState(0);
+  const { bankedPacksByProfile, refresh: refreshBankedPacks } = useBankedPacksByProfile();
   /** Per-card copies owned by each individual profile, so trading can work
    * from "All players" view without making the user switch profiles first. */
   const perCardOwnersRef = useRef<
@@ -358,34 +352,19 @@ export default function ExploreCollectionScreen() {
 
   const loadRef = useRef(load);
   loadRef.current = load;
+  const refreshBankedPacksRef = useRef(refreshBankedPacks);
+  refreshBankedPacksRef.current = refreshBankedPacks;
 
-  const loadBankedPacks = useCallback(async () => {
-    if (profiles.length === 0) {
-      setBankedPacksByProfile(new Map());
-      return;
+  /** Total banked packs relevant to the current view, for the badge count. */
+  const bankedPackCount = useMemo(() => {
+    if (!viewingAllProfiles) {
+      return (bankedPacksByProfile.get(selectedProfileId ?? -1) ?? []).length;
     }
-    try {
-      const entries = await Promise.all(
-        profiles.map(async (p) => [p.id, await getBankedPacks(p.id)] as const)
-      );
-      setBankedPacksByProfile(new Map(entries));
-    } catch {
-      // Best-effort -- the inventory banner just won't show this refresh.
-    }
-  }, [profiles]);
+    let total = 0;
+    for (const packs of bankedPacksByProfile.values()) total += packs.length;
+    return total;
+  }, [viewingAllProfiles, selectedProfileId, bankedPacksByProfile]);
 
-  useEffect(() => {
-    void loadBankedPacks();
-  }, [loadBankedPacks]);
-
-  /** Profiles with at least one banked pack, for the merged "all players" banner. */
-  const profilesWithPacks = useMemo(
-    () =>
-      profiles
-        .map((p) => ({ profile: p, packs: bankedPacksByProfile.get(p.id) ?? [] }))
-        .filter((entry) => entry.packs.length > 0),
-    [profiles, bankedPacksByProfile]
-  );
   const defaultProfileIdRef = useRef(defaultProfileId);
   defaultProfileIdRef.current = defaultProfileId;
   const playerFilterKeyRef = useRef<string | null>(null);
@@ -396,6 +375,7 @@ export default function ExploreCollectionScreen() {
     useCallback(() => {
       playerFilterKeyRef.current = null;
       void loadRef.current();
+      void refreshBankedPacksRef.current();
       return () => {
         setFiltersOpen(false);
         setCategory(DEFAULT_CATEGORY);
@@ -598,60 +578,11 @@ export default function ExploreCollectionScreen() {
     }
   }, [tradeSession, load]);
 
-  function openPackQueueFor(packs: ExplorePackRecord[]) {
-    if (packs.length === 0) return;
-    setPackQueueIndex(0);
-    setPackQueue(packs);
-  }
-
-  function handleOpenPacksBanner() {
-    if (!viewingAllProfiles) {
-      openPackQueueFor(bankedPacksByProfile.get(selectedProfileId ?? -1) ?? []);
-      return;
-    }
-    if (profilesWithPacks.length === 1) {
-      openPackQueueFor(profilesWithPacks[0]!.packs);
-      return;
-    }
-    Alert.alert(
-      "Open saved packs",
-      "Whose packs would you like to open?",
-      [
-        ...profilesWithPacks.map((entry) => ({
-          text: `${entry.profile.nickname || entry.profile.name || "Player"} (${entry.packs.length})`,
-          onPress: () => openPackQueueFor(entry.packs),
-        })),
-        { text: "Cancel", style: "cancel" as const },
-      ]
-    );
-  }
-
-  const commitPackFromQueue = useCallback(async (): Promise<ExploreAward> => {
-    const pack = packQueue?.[packQueueIndex];
-    if (!pack) {
-      throw new Error("Pack queue expired. Try again from your binder.");
-    }
-    try {
-      const result = await openExplorePack(pack.id);
-      if (result.success) {
-        void load({ soft: true });
-        return result.award;
-      }
-      throw new Error(
-        exploreUserMessage(result.error, "Couldn’t open this pack. Please try again.")
-      );
-    } catch (err: unknown) {
-      if (err instanceof ExploreStopsRequestError) {
-        throw new Error(exploreUserMessage(err.exploreError.code, err.exploreError.message));
-      }
-      throw err instanceof Error ? err : new Error("Couldn’t open this pack. Please try again.");
-    }
-  }, [packQueue, packQueueIndex, load]);
-
-  function closePackQueue() {
-    setPackQueue(null);
-    setPackQueueIndex(0);
-    void loadBankedPacks();
+  function openPacksInventory() {
+    router.push({
+      pathname: "/(tabs)/activity/explore-packs",
+      params: viewingAllProfiles ? {} : { profileId: String(selectedProfileId) },
+    });
   }
 
   function applyCategory(next: BinderCategoryFilter) {
@@ -707,6 +638,21 @@ export default function ExploreCollectionScreen() {
                     : "No cards"}
               </ThemedText>
             </View>
+            {bankedPackCount > 0 ? (
+              <Pressable
+                onPress={openPacksInventory}
+                accessibilityRole="button"
+                accessibilityLabel={`${bankedPackCount} pack${bankedPackCount === 1 ? "" : "s"} waiting — Open`}
+                style={styles.iconBtn}
+              >
+                <MaterialIcons name="inventory-2" size={20} color="#B8F000" />
+                <View style={styles.packCountBadge}>
+                  <ThemedText lightColor="#132414" darkColor="#132414" style={styles.packCountText}>
+                    {bankedPackCount}
+                  </ThemedText>
+                </View>
+              </Pressable>
+            ) : null}
             <Pressable
               onPress={() => setFiltersOpen(true)}
               accessibilityRole="button"
@@ -737,35 +683,6 @@ export default function ExploreCollectionScreen() {
             </View>
           ) : null}
         </View>
-
-        {(() => {
-          const packCount = viewingAllProfiles
-            ? profilesWithPacks.reduce((sum, e) => sum + e.packs.length, 0)
-            : (bankedPacksByProfile.get(selectedProfileId ?? -1) ?? []).length;
-          if (packCount === 0) return null;
-          const label =
-            viewingAllProfiles && profilesWithPacks.length === 1
-              ? `${profilesWithPacks[0]!.profile.nickname || profilesWithPacks[0]!.profile.name || "This player"} has ${packCount} pack${packCount === 1 ? "" : "s"} waiting — Open`
-              : `${packCount} pack${packCount === 1 ? "" : "s"} waiting — Open`;
-          return (
-            <Pressable
-              onPress={handleOpenPacksBanner}
-              accessibilityRole="button"
-              accessibilityLabel={label}
-              style={styles.packBanner}
-            >
-              <View style={styles.packBannerIconSlot}>
-                <MaterialIcons name="inventory-2" size={18} color="#B8F000" />
-              </View>
-              <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.packBannerText}>
-                {label}
-              </ThemedText>
-              <View style={styles.packBannerIconSlot}>
-                <MaterialIcons name="chevron-right" size={20} color="#B8F000" />
-              </View>
-            </Pressable>
-          );
-        })()}
 
         {loading && cards.length === 0 ? (
           <View style={styles.center}>
@@ -867,8 +784,8 @@ export default function ExploreCollectionScreen() {
             onClose={() => {
               setTradeSession(null);
               // Closing without ripping leaves the pack banked -- refresh
-              // so the "packs waiting" banner picks it up immediately.
-              void loadBankedPacks();
+              // so the pack badge picks it up immediately.
+              void refreshBankedPacks();
             }}
             onViewBinder={(award) => {
               setTradeSession(null);
@@ -877,20 +794,6 @@ export default function ExploreCollectionScreen() {
           />
         ) : null}
 
-        {packQueue && packQueue[packQueueIndex] ? (
-          <ExploreCardPackReveal
-            key={packQueue[packQueueIndex]!.id}
-            visible
-            onRipComplete={commitPackFromQueue}
-            onClose={closePackQueue}
-            queueRemaining={packQueue.length - packQueueIndex - 1}
-            onOpenNext={() => setPackQueueIndex((i) => i + 1)}
-            onViewBinder={(award) => {
-              closePackQueue();
-              setHighlightId(award.card.id);
-            }}
-          />
-        ) : null}
       </SafeAreaView>
     </>
   );
@@ -924,6 +827,25 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: "#62A94F",
   },
+  packCountBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#B8F000",
+    borderWidth: 1,
+    borderColor: EXPLORE_BINDER_SCREEN_BG,
+  },
+  packCountText: {
+    fontSize: 11,
+    fontWeight: "800",
+    lineHeight: 14,
+  },
   title: { fontSize: 22, lineHeight: 26 },
   subtitle: { fontSize: 12, marginTop: 2 },
   progressTrack: {
@@ -949,28 +871,6 @@ const styles = StyleSheet.create({
   pageWrap: {
     flex: 1,
     paddingHorizontal: H_PAD,
-  },
-  packBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginHorizontal: 12,
-    marginBottom: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    backgroundColor: "rgba(20,24,20,0.92)",
-    borderWidth: 1,
-    borderColor: "rgba(184,240,0,0.35)",
-  },
-  packBannerIconSlot: {
-    width: 24,
-    alignItems: "center",
-  },
-  packBannerText: {
-    flex: 1,
-    textAlign: "center",
-    fontSize: 14,
-    fontWeight: "700",
   },
   sheet: {
     width: "100%",

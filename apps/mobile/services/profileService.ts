@@ -96,18 +96,25 @@ export type UserDataRow = {
   first_mission_activity_id: number | null;
   /** True for accounts grandfathered in before the subscription requirement launched. */
   subscription_exempt: boolean;
+  /** Separate from weekly_email: gates general/admin broadcast emails, not mission announcements. */
+  general_email: boolean;
 };
 
 const USER_DATA_SELECT_FULL =
-  "user_id, team, weekly_email, last_seen_season_id, start_mission_step, first_mission_activity_id, subscription_exempt";
+  "user_id, team, weekly_email, last_seen_season_id, start_mission_step, first_mission_activity_id, subscription_exempt, general_email";
 const USER_DATA_SELECT_BASE =
   "user_id, team, weekly_email, last_seen_season_id, start_mission_step";
 
-// first_mission_activity_id and subscription_exempt are newer columns that may not exist yet in
-// every environment; fall back to the base columns rather than breaking user_data reads entirely.
+// first_mission_activity_id, subscription_exempt, and general_email are newer columns that may
+// not exist yet in every environment; fall back to the base columns rather than breaking
+// user_data reads entirely.
 function isMissingOptionalColumnError(error: { message?: string }): boolean {
   const message = error.message ?? "";
-  return message.includes("first_mission_activity_id") || message.includes("subscription_exempt");
+  return (
+    message.includes("first_mission_activity_id") ||
+    message.includes("subscription_exempt") ||
+    message.includes("general_email")
+  );
 }
 
 /** Get user_data for the given user (team may be null). */
@@ -133,8 +140,14 @@ export const getUserData = async (userId: string): Promise<UserDataRow | null> =
 
     if (!fallbackError) {
       // subscription_exempt defaults to false (not grandfathered) when we can't confirm it,
-      // so a schema hiccup never accidentally grants free access.
-      return { ...fallbackData, first_mission_activity_id: null, subscription_exempt: false };
+      // so a schema hiccup never accidentally grants free access. general_email defaults to
+      // true (matches the column's own DB default) so a schema hiccup never silently unsubscribes.
+      return {
+        ...fallbackData,
+        first_mission_activity_id: null,
+        subscription_exempt: false,
+        general_email: true,
+      };
     }
     if (fallbackError.code === "PGRST116") return null;
     console.error("Error fetching user_data (fallback):", fallbackError);
@@ -168,6 +181,19 @@ export const updateUserDataWeeklyEmail = async (userId: string, weeklyEmail: boo
   if (error) {
     console.error("Error updating user_data weekly_email:", error);
     throw new Error(`Failed to update weekly email preference: ${error.message}`);
+  }
+};
+
+/** Update the authenticated user's general_email preference in user_data. */
+export const updateUserDataGeneralEmail = async (userId: string, generalEmail: boolean): Promise<void> => {
+  const { error } = await supabase
+    .from("user_data")
+    .update({ general_email: generalEmail })
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("Error updating user_data general_email:", error);
+    throw new Error(`Failed to update general email preference: ${error.message}`);
   }
 };
 

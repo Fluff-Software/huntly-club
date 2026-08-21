@@ -14,8 +14,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
-const BATCH_SIZE = 100;
 type DenoLike = {
   env: { get: (key: string) => string | undefined };
   serve: (handler: (req: Request) => Response | Promise<Response>) => void;
@@ -29,63 +27,17 @@ function jsonResponse(body: object, status: number, headers?: HeadersInit) {
   });
 }
 
-type ChapterRow = { id: number; title: string | null; season_id: number; week_number: number | null };
-type SeasonRow = { id: number; name: string | null };
-type ActivityRow = { title: string; reminder_message: string | null };
+type MissionRow = { id: number; title: string; reminder_message: string | null };
 type UserDataRow = { user_id: string };
+type ProfileRow = { id: number; user_id: string };
 
-async function sendPushToAllEnabledDevices(
-  admin: ReturnType<typeof createClient>,
-  payload: { title: string; body: string; data: Record<string, unknown> }
-): Promise<number> {
-  const { data: tokens, error: tokensError } = await admin
-    .from("push_tokens")
-    .select("expo_push_token")
-    .eq("enabled", true);
-
-  if (tokensError) {
-    console.error("send-weekly-chapter-reminder: error loading tokens", tokensError.message);
-    throw new Error("Could not load push tokens.");
+async function parseBody(req: Request): Promise<{ dryRun: boolean }> {
+  try {
+    const body = (await req.json()) as { dryRun?: unknown };
+    return { dryRun: body?.dryRun === true };
+  } catch {
+    return { dryRun: false };
   }
-
-  const tokenList = (tokens ?? [])
-    .map((r: { expo_push_token: string }) => r.expo_push_token)
-    .filter(Boolean);
-  if (tokenList.length === 0) return 0;
-
-  const messages = tokenList.map((to: string) => ({
-    to,
-    sound: "default" as const,
-    title: payload.title,
-    body: payload.body,
-    data: payload.data,
-  }));
-
-  let sent = 0;
-  for (let i = 0; i < messages.length; i += BATCH_SIZE) {
-    const batch = messages.slice(i, i + BATCH_SIZE);
-    const res = await fetch(EXPO_PUSH_URL, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Accept-encoding": "gzip, deflate",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(batch),
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      console.error("send-weekly-chapter-reminder: Expo API error", res.status, text);
-      throw new Error("Failed to send push notifications.");
-    }
-
-    const result = (await res.json()) as { data?: { status?: string }[] };
-    const receipts = Array.isArray(result?.data) ? result.data : [];
-    sent += receipts.filter((r) => r?.status === "ok").length;
-  }
-
-  return sent;
 }
 
 deno.serve(async (req) => {
@@ -97,127 +49,138 @@ deno.serve(async (req) => {
   }
 
   try {
+    const { dryRun } = await parseBody(req);
+
     const supabaseUrl = deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    const unlockDateForReminder = reminderUnlockDateForSend();
-    if (!unlockDateForReminder) {
+    const targetDate = reminderUnlockDateForSend();
+    if (!targetDate) {
       return jsonResponse(
         { success: true, count: 0, skipped: true, reason: "before_8am_uk" },
         200
       );
     }
 
-    const { data: latestSeason, error: seasonError } = await admin
-      .from("seasons")
-      .select("id, name")
-      .order("id", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    // Missions (activities) released yesterday, regardless of chapter/campfire linkage.
+    const { data: missionRows, error: missionsError } = await admin
+      .from("activities")
+      .select("id, title, reminder_message")
+      .eq("content_status", "published")
+      .eq("release_date", targetDate)
+      .order("id", { ascending: true });
 
-    if (seasonError || !latestSeason) {
-      return jsonResponse({ error: "Failed to load season." }, 500);
+    if (missionsError) {
+      console.error("send-weekly-chapter-reminder: error loading missions", missionsError.message);
+      return jsonResponse({ error: "Failed to load missions." }, 500);
     }
 
-    const { data: chapter, error: chapterError } = await admin
-      .from("chapters")
-      .select("id, title, season_id, week_number, unlock_date")
-      .eq("season_id", (latestSeason as SeasonRow).id)
-      .eq("unlock_date", unlockDateForReminder)
-      .order("week_number", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const missions: MissionRow[] = (missionRows ?? [])
+      .map((a: any) => ({
+        id: Number(a.id),
+        title: String(a.title ?? ""),
+        reminder_message: a.reminder_message != null ? String(a.reminder_message) : null,
+      }))
+      .filter((a: MissionRow) => a.title.trim() !== "");
 
-    if (chapterError || !chapter) {
+    if (missions.length === 0) {
       return jsonResponse(
-        { success: true, count: 0, skipped: true, reason: "no_chapter_unlocked_yesterday" },
+        { success: true, count: 0, skipped: true, reason: "no_missions_released_yesterday" },
         200
       );
     }
 
-    const { data: existing } = await admin
-      .from("chapter_notification_send_log")
-      .select("id")
-      .eq("chapter_id", (chapter as ChapterRow).id)
-      .eq("kind", "reminder")
-      .maybeSingle();
-    if (existing) {
-      return jsonResponse({ success: true, count: 0, skipped: true }, 200);
+    // Idempotency: only send once per calendar day (skipped for dry runs so they can be re-tested).
+    if (!dryRun) {
+      const { data: existing } = await admin
+        .from("mission_notification_send_log")
+        .select("id")
+        .eq("notify_date", targetDate)
+        .eq("kind", "reminder")
+        .maybeSingle();
+      if (existing) {
+        return jsonResponse({ success: true, count: 0, skipped: true }, 200);
+      }
     }
 
-    const { data: caRows, error: caError } = await admin
-      .from("chapter_activities")
-      .select("order, activities(title, reminder_message)")
-      .eq("chapter_id", (chapter as ChapterRow).id)
-      .order("order", { ascending: true });
+    const missionIds = missions.map((m) => m.id);
 
-    if (caError) {
-      console.error("send-weekly-chapter-reminder: error loading chapter activities", caError.message);
-      return jsonResponse({ error: "Failed to load chapter activities." }, 500);
+    // Households that finished at least one of yesterday's missions are exempt from the nudge.
+    const { data: progressRows, error: progressError } = await admin
+      .from("user_activity_progress")
+      .select("profile_id")
+      .in("activity_id", missionIds)
+      .not("completed_at", "is", null);
+
+    if (progressError) {
+      console.error("send-weekly-chapter-reminder: error loading progress", progressError.message);
+      return jsonResponse({ error: "Failed to load mission progress." }, 500);
     }
 
-    const missions: ActivityRow[] = (caRows ?? [])
-      .map((r: any) => (Array.isArray(r.activities) ? r.activities[0] : r.activities))
-      .filter(Boolean)
-      .map((a: any) => ({
-        title: String(a.title ?? ""),
-        reminder_message: a.reminder_message != null ? String(a.reminder_message) : null,
-      }))
-      .filter((a: ActivityRow) => a.title.trim() !== "");
+    const completedProfileIds = [
+      ...new Set((progressRows ?? []).map((r: { profile_id: number }) => r.profile_id)),
+    ];
 
-    const seasonName = (latestSeason as SeasonRow).name ?? null;
-    const chapterTitle = (chapter as ChapterRow).title ?? "New chapter";
-    const weekNumber = (chapter as ChapterRow).week_number;
-    const chapterLabel =
-      typeof weekNumber === "number" ? `Week ${weekNumber}: ${chapterTitle}` : chapterTitle;
+    const completedUserIds = new Set<string>();
+    if (completedProfileIds.length > 0) {
+      const { data: profileRows, error: profilesError } = await admin
+        .from("profiles")
+        .select("id, user_id")
+        .in("id", completedProfileIds);
 
-    const subject = "Reminder: your new Huntly World chapter is waiting";
+      if (profilesError) {
+        console.error("send-weekly-chapter-reminder: error loading profiles", profilesError.message);
+        return jsonResponse({ error: "Failed to load profiles." }, 500);
+      }
+
+      for (const row of (profileRows ?? []) as ProfileRow[]) {
+        if (row.user_id) completedUserIds.add(row.user_id);
+      }
+    }
+
+    const subject =
+      missions.length === 1
+        ? "Don’t miss this week’s Huntly World mission"
+        : "Don’t miss this week’s Huntly World missions";
     const intro = `
       <p style="margin: 0 0 16px; color: #36454F;">Hi there,</p>
       <p style="margin: 0 0 16px; color: #36454F;">
-        Just a quick reminder: there’s a new chapter waiting for you in Huntly World${
-          seasonName ? ` for <strong>${seasonName}</strong>` : ""
-        }.
+        Just a quick reminder: ${
+          missions.length === 1
+            ? "there’s a mission waiting for you in Huntly World."
+            : "there are new missions waiting for you in Huntly World."
+        }
       </p>
-      <p style="margin: 0 0 16px; color: #36454F;"><strong>${chapterLabel}</strong></p>
-      <p style="margin: 0 0 16px; color: #36454F;">Here are this week’s mission reminders:</p>
+      <p style="margin: 0 0 16px; color: #36454F;">Here’s what’s waiting:</p>
     `;
 
-    const listItems =
-      missions.length === 0
-        ? `<p style="margin: 0; color: #36454F;">Open the app to see this week’s missions.</p>`
-        : `
-          <ul style="margin: 0 0 16px; padding-left: 18px; color: #36454F;">
-            ${missions
-              .map((m) => {
-                const msg = (m.reminder_message ?? "").trim();
-                const safeMsg = msg ? msg.replace(/\n/g, "<br/>") : "Open the app for details.";
-                return `<li style="margin: 0 0 10px;"><strong>${m.title}</strong><br/>${safeMsg}</li>`;
-              })
-              .join("")}
-          </ul>
-        `;
+    const listItems = `
+      <ul style="margin: 0 0 16px; padding-left: 18px; color: #36454F;">
+        ${missions
+          .map((m) => {
+            const msg = (m.reminder_message ?? "").trim();
+            const safeMsg = msg ? msg.replace(/\n/g, "<br/>") : "Open the app for details.";
+            return `<li style="margin: 0 0 10px;"><strong>${m.title}</strong><br/>${safeMsg}</li>`;
+          })
+          .join("")}
+      </ul>
+    `;
 
     const htmlPart = wrapEmailBody(intro + listItems);
     const textPartLines: string[] = [];
     textPartLines.push("Hi there,", "");
     textPartLines.push(
-      `Just a quick reminder: there’s a new chapter waiting for you in Huntly World${
-        seasonName ? ` for ${seasonName}` : ""
-      }.`
+      missions.length === 1
+        ? "Just a quick reminder: there’s a mission waiting for you in Huntly World."
+        : "Just a quick reminder: there are new missions waiting for you in Huntly World."
     );
-    textPartLines.push("", chapterLabel, "");
-    textPartLines.push("Mission reminders:");
-    if (missions.length === 0) {
-      textPartLines.push("- Open the app to see this week’s missions.");
-    } else {
-      for (const m of missions) {
-        const msg = (m.reminder_message ?? "").trim();
-        textPartLines.push(`- ${m.title}${msg ? `: ${msg}` : ""}`);
-      }
+    textPartLines.push("", "What’s waiting:");
+    for (const m of missions) {
+      const msg = (m.reminder_message ?? "").trim();
+      textPartLines.push(`- ${m.title}${msg ? `: ${msg}` : ""}`);
     }
     textPartLines.push("", "— The Huntly World team");
     const textPart = textPartLines.join("\n");
@@ -232,11 +195,29 @@ deno.serve(async (req) => {
       return jsonResponse({ error: "Could not load recipients." }, 500);
     }
 
+    const recipients = ((users ?? []) as UserDataRow[]).filter(
+      (row) => row.user_id && !completedUserIds.has(row.user_id)
+    );
+
+    if (dryRun) {
+      return jsonResponse(
+        {
+          success: true,
+          dryRun: true,
+          targetDate,
+          missions: missions.map((m) => ({ id: m.id, title: m.title })),
+          totalWeeklyEmailUsers: (users ?? []).length,
+          eligibleRecipientCount: recipients.length,
+          subject,
+        },
+        200
+      );
+    }
+
     const replyTo = deno.env.get("MAILJET_REPLY_TO");
     let emailSent = 0;
-    for (const row of (users ?? []) as UserDataRow[]) {
+    for (const row of recipients) {
       const userId = row.user_id;
-      if (!userId) continue;
       const { data: userResult, error: userError } = await admin.auth.admin.getUserById(userId);
       const to = userResult?.user?.email?.trim().toLowerCase() ?? "";
       if (userError || !to) continue;
@@ -254,24 +235,18 @@ deno.serve(async (req) => {
       }
     }
 
-    // Push (generic reminder).
-    const pushTitle = "Reminder";
-    const pushBody = "A new chapter is waiting to be explored — jump back in when you’re ready.";
-    const pushSent = await sendPushToAllEnabledDevices(admin, {
-      title: pushTitle,
-      body: pushBody,
-      data: { chapterId: (chapter as ChapterRow).id, screen: "story" },
-    });
+    // Push is intentionally skipped here: push_tokens is device-keyed, not account-keyed, so
+    // there's no way to target only households that haven't finished a mission yet — an
+    // untargeted broadcast would nudge people who already completed it too.
 
-    await admin.from("chapter_notification_send_log").insert({
-      chapter_id: (chapter as ChapterRow).id,
+    await admin.from("mission_notification_send_log").insert({
+      notify_date: targetDate,
       kind: "reminder",
     });
 
-    return jsonResponse({ success: true, emailCount: emailSent, pushCount: pushSent }, 200);
+    return jsonResponse({ success: true, emailCount: emailSent }, 200);
   } catch (e) {
     console.error("send-weekly-chapter-reminder error:", e);
     return jsonResponse({ error: "Something went wrong. Please try again." }, 500);
   }
 });
-

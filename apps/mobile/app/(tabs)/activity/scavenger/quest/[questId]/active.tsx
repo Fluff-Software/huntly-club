@@ -57,7 +57,6 @@ import {
   type ScavengerQuestItem,
   type ScavengerQuestState,
 } from "@/services/scavengerService";
-import { hapticNotification, hapticSelection } from "@/utils/haptics";
 import { startActiveHuntSession } from "@/services/activeHuntSessionService";
 import {
   getBlockingAdventure,
@@ -223,7 +222,7 @@ export default function ScavengerActiveScreen() {
   };
 
   const afterMarkedFound = async (item: ScavengerQuestItem) => {
-    void hapticNotification(Haptics.NotificationFeedbackType.Success);
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setSelected(null);
     setShowHint(false);
     setTriviaOpen(false);
@@ -295,7 +294,7 @@ export default function ScavengerActiveScreen() {
         return;
       }
       if (!result.is_correct) {
-        void hapticNotification(Haptics.NotificationFeedbackType.Error);
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         setTriviaError("Not quite—have another go!");
         return;
       }
@@ -400,7 +399,7 @@ export default function ScavengerActiveScreen() {
               return (
                 <Pressable
                   onPress={() => {
-                    void hapticSelection();
+                    void Haptics.selectionAsync();
                     setSelected(item);
                     setShowHint(false);
                   }}

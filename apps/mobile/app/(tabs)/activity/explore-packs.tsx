@@ -15,10 +15,11 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
 import { ExploreCardPackReveal } from "@/components/explore/ExploreCardPackReveal";
+import { EXPLORE_PACK_ART_BY_SOURCE } from "@/constants/exploreBinder";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useBankedPacksByProfile } from "@/hooks/useBankedPacksByProfile";
 import { openExplorePack, exploreUserMessage, ExploreStopsRequestError } from "@/services/exploreStopsService";
@@ -30,11 +31,6 @@ const COLUMNS = 2;
 
 /** Native pixel size of explore-pack-full.png (see ExploreCardPackReveal.tsx). */
 const PACK_ASPECT = 501 / 1024;
-
-const PACK_ART_BY_SOURCE: Record<ExplorePackRecord["source"], number> = {
-  stop_claim: require("@/assets/images/explore-pack-full.png"),
-  trade: require("@/assets/images/explore-pack-trade.png"),
-};
 
 /** Collapses same-source packs into one tile with a duplicate count. */
 function groupBySource(
@@ -152,7 +148,7 @@ export default function ExplorePacksScreen() {
               {sections.map(({ profile, packs }) => (
                 <View key={profile.id} style={styles.section}>
                   <View style={styles.sectionLabel}>
-                    <MaterialIcons name="inventory-2" size={16} color="#B8F000" />
+                    <MaterialCommunityIcons name="cards" size={16} color="#B8F000" />
                     <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.sectionTitle}>
                       {(profile.nickname || profile.name || "Player") + "’s packs"}
                     </ThemedText>
@@ -170,7 +166,7 @@ export default function ExplorePacksScreen() {
                       >
                         <View style={styles.tile}>
                           <Image
-                            source={PACK_ART_BY_SOURCE[group.source]}
+                            source={EXPLORE_PACK_ART_BY_SOURCE[group.source]}
                             style={styles.tileImage}
                             resizeMode="contain"
                           />
@@ -200,6 +196,7 @@ export default function ExplorePacksScreen() {
         <ExploreCardPackReveal
           key={packQueue[packQueueIndex]!.id}
           visible
+          packSource={EXPLORE_PACK_ART_BY_SOURCE[packQueue[packQueueIndex]!.source]}
           onRipComplete={commitPackFromQueue}
           onClose={closeQueue}
           queueRemaining={packQueue.length - packQueueIndex - 1}

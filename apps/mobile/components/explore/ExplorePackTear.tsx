@@ -13,8 +13,6 @@ import Animated, {
   type SharedValue,
 } from "react-native-reanimated";
 
-const PACK_FULL = require("@/assets/images/explore-pack-full.png");
-
 /** Vertical foil strips for the Image progressive-rip fallback. */
 const FALLBACK_STRIPS = 12;
 
@@ -24,6 +22,8 @@ export type PackTearProps = {
   splitY: number;
   openProgress: SharedValue<number>;
   foilOpacity: SharedValue<number>;
+  /** Pack art to render — varies by pack source (stop claim, trade, ...). */
+  packSource: number;
 };
 
 function hasSkiaNative(): boolean {
@@ -59,6 +59,7 @@ function FallbackStrip({
   splitY,
   openProgress,
   foilOpacity,
+  packSource,
 }: {
   index: number;
   stripW: number;
@@ -67,6 +68,7 @@ function FallbackStrip({
   splitY: number;
   openProgress: SharedValue<number>;
   foilOpacity: SharedValue<number>;
+  packSource: number;
 }) {
   const x0 = stripW * index;
   const x1 = x0 + stripW;
@@ -118,7 +120,7 @@ function FallbackStrip({
       ]}
     >
       <Image
-        source={PACK_FULL}
+        source={packSource}
         style={{ width, height, marginLeft: -x0 }}
         resizeMode="stretch"
         accessibilityIgnoresInvertColors
@@ -134,6 +136,7 @@ function PackTearImageFallback({
   splitY,
   openProgress,
   foilOpacity,
+  packSource,
 }: PackTearProps) {
   const stripW = width / FALLBACK_STRIPS;
 
@@ -157,7 +160,7 @@ function PackTearImageFallback({
         ]}
       >
         <Image
-          source={PACK_FULL}
+          source={packSource}
           style={{ width, height, marginTop: -splitY }}
           resizeMode="stretch"
           accessibilityIgnoresInvertColors
@@ -169,6 +172,7 @@ function PackTearImageFallback({
         height={height}
         openProgress={openProgress}
         foilOpacity={foilOpacity}
+        packSource={packSource}
       />
 
       {Array.from({ length: FALLBACK_STRIPS }, (_, i) => (
@@ -181,6 +185,7 @@ function PackTearImageFallback({
           splitY={splitY}
           openProgress={openProgress}
           foilOpacity={foilOpacity}
+          packSource={packSource}
         />
       ))}
     </View>
@@ -192,11 +197,13 @@ function SealedImage({
   height,
   openProgress,
   foilOpacity,
+  packSource,
 }: {
   width: number;
   height: number;
   openProgress: SharedValue<number>;
   foilOpacity: SharedValue<number>;
+  packSource: number;
 }) {
   const wrapStyle = useAnimatedStyle(() => {
     const p = openProgress.value;
@@ -232,7 +239,7 @@ function SealedImage({
       ]}
     >
       <Animated.Image
-        source={PACK_FULL}
+        source={packSource}
         style={[{ width, height }, imageStyle]}
         resizeMode="stretch"
         accessibilityIgnoresInvertColors

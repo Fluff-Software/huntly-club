@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
 import { BinderCardPocket, fitBinderCardSize } from "@/components/explore/BinderCardPocket";
@@ -26,7 +26,11 @@ import { BinderFiltersModal } from "@/components/explore/BinderFiltersModal";
 import { BinderPageSheet } from "@/components/explore/BinderPageSheet";
 import { ExploreCardDetail } from "@/components/explore/ExploreCardDetail";
 import { ExploreCardPackReveal } from "@/components/explore/ExploreCardPackReveal";
-import { EXPLORE_BINDER_SCREEN_BG, EXPLORE_CARD_ART_ASPECT } from "@/constants/exploreBinder";
+import {
+  EXPLORE_BINDER_SCREEN_BG,
+  EXPLORE_CARD_ART_ASPECT,
+  EXPLORE_PACK_ART_BY_SOURCE,
+} from "@/constants/exploreBinder";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useBankedPacksByProfile } from "@/hooks/useBankedPacksByProfile";
@@ -645,7 +649,7 @@ export default function ExploreCollectionScreen() {
                 accessibilityLabel={`${bankedPackCount} pack${bankedPackCount === 1 ? "" : "s"} waiting — Open`}
                 style={styles.iconBtn}
               >
-                <MaterialIcons name="inventory-2" size={20} color="#B8F000" />
+                <MaterialCommunityIcons name="cards" size={20} color="#B8F000" />
                 <View style={styles.packCountBadge}>
                   <ThemedText lightColor="#132414" darkColor="#132414" style={styles.packCountText}>
                     {bankedPackCount}
@@ -780,6 +784,7 @@ export default function ExploreCollectionScreen() {
         {tradeSession ? (
           <ExploreCardPackReveal
             visible
+            packSource={EXPLORE_PACK_ART_BY_SOURCE.trade}
             onRipComplete={commitTradeClaim}
             onClose={() => {
               setTradeSession(null);

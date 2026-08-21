@@ -46,6 +46,8 @@ const PACK_NATIVE_H = 1024;
 const PACK_SPLIT_Y = 74;
 const PACK_SPLIT_RATIO = PACK_SPLIT_Y / PACK_NATIVE_H;
 
+const DEFAULT_PACK_SOURCE = require("@/assets/images/explore-pack-full.png");
+
 function rarityRevealProfile(rarity: string): {
   auraPeak: number;
   auraIn: number;
@@ -138,6 +140,12 @@ type Props = {
    * flow and don't need the extra label.
    */
   onSaveForLater?: () => void;
+  /**
+   * Pack art shown in the rip/reveal animation — should match the tile the
+   * player tapped (stop-claim vs. trade art, etc). Defaults to the
+   * original stop-claim pack for call sites that only ever open that kind.
+   */
+  packSource?: number;
 };
 
 /** Horizontal swipe across the top strip to finish the tear. */
@@ -231,6 +239,7 @@ export function ExploreCardPackReveal({
   queueRemaining,
   onOpenNext,
   onSaveForLater,
+  packSource = DEFAULT_PACK_SOURCE,
 }: Props) {
   const { width: screenW, height: screenH } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -674,6 +683,7 @@ export function ExploreCardPackReveal({
                 splitY={displayTopH}
                 openProgress={openProgress}
                 foilOpacity={foilOpacity}
+                packSource={packSource}
               />
 
               {/* Transparent hit target over the SWIPE HERE strip */}

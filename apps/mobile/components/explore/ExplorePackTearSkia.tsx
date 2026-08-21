@@ -24,8 +24,6 @@ import {
   type SharedValue,
 } from "react-native-reanimated";
 
-const PACK_FULL = require("@/assets/images/explore-pack-full.png");
-
 /** How many vertical foil strips peel independently along the seal. */
 const STRIP_COUNT = 16;
 
@@ -36,6 +34,8 @@ type Props = {
   splitY: number;
   openProgress: SharedValue<number>;
   foilOpacity: SharedValue<number>;
+  /** Pack art to render — varies by pack source (stop claim, trade, ...). */
+  packSource: number;
 };
 
 /** Deterministic irregular tear along y = splitY. */
@@ -155,8 +155,9 @@ export function ExplorePackTearSkia({
   splitY,
   openProgress,
   foilOpacity,
+  packSource,
 }: Props) {
-  const packImage = useImage(PACK_FULL);
+  const packImage = useImage(packSource);
   const peelPad = Math.max(140, splitY * 3.2);
 
   const bottomClip = useMemo(

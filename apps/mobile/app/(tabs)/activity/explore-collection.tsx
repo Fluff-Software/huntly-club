@@ -529,7 +529,7 @@ export default function ExploreCollectionScreen() {
   }
 
   const TRADE_EXPLAINER =
-    "Trade 5 copies for a brand-new pack. Guaranteed: you won't get this card back. This can't be undone.";
+    "Trade 5 copies for a brand-new pack with better odds of a rare card. Guaranteed: you won't get this card back. This can't be undone.";
 
   function handleTrade(card: BinderCardEntry) {
     const candidates = tradeCandidatesFor(card);

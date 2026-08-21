@@ -289,10 +289,13 @@ export function ExploreCardPackReveal({
   // Android's Modal presents in its own window and can reset the system
   // status bar style set by the screen underneath — re-assert light icons
   // so the clock/battery stay readable against the pack's dark background.
+  // Keyed on phase too: the reveal transition alone has been observed to
+  // reset it again on Android, and the original visible-only effect never
+  // re-fires to fix that.
   useEffect(() => {
     if (!visible) return;
     setStatusBarStyle("light");
-  }, [visible]);
+  }, [visible, phase]);
 
   useEffect(() => {
     if (!visible) {

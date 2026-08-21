@@ -10,7 +10,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  useWindowDimensions,
   View,
 } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
@@ -38,9 +37,24 @@ const PACK_ART_BY_SOURCE: Record<ExplorePackRecord["source"], number> = {
   trade: require("@/assets/images/explore-pack-trade.png"),
 };
 
+/** Collapses same-source packs into one tile with a duplicate count. */
+function groupBySource(
+  packs: ExplorePackRecord[]
+): { source: ExplorePackRecord["source"]; packs: ExplorePackRecord[] }[] {
+  const bySource = new Map<ExplorePackRecord["source"], ExplorePackRecord[]>();
+  for (const pack of packs) {
+    const list = bySource.get(pack.source) ?? [];
+    list.push(pack);
+    bySource.set(pack.source, list);
+  }
+  return Array.from(bySource.entries()).map(([source, sourcePacks]) => ({
+    source,
+    packs: sourcePacks,
+  }));
+}
+
 export default function ExplorePacksScreen() {
   const router = useRouter();
-  const { width: windowW } = useWindowDimensions();
   const { profileId: profileIdParam } = useLocalSearchParams<{ profileId?: string }>();
   const { profiles, loading: profilesLoading } = usePlayer();
   const { bankedPacksByProfile, refresh } = useBankedPacksByProfile();
@@ -65,13 +79,12 @@ export default function ExplorePacksScreen() {
   const [packQueue, setPackQueue] = useState<ExplorePackRecord[] | null>(null);
   const [packQueueIndex, setPackQueueIndex] = useState(0);
 
-  const tileWidth = (windowW - H_PAD * 2 - 8 * 2 - GRID_GAP * (COLUMNS - 1)) / COLUMNS;
-  const tileHeight = tileWidth / PACK_ASPECT;
-
-  function openTile(profilePacks: ExplorePackRecord[], tapped: ExplorePackRecord) {
-    const rest = profilePacks.filter((p) => p.id !== tapped.id);
+  /** Opens the tapped group's packs first, then the rest of that profile's packs. */
+  function openTile(profilePacks: ExplorePackRecord[], group: ExplorePackRecord[]) {
+    const groupIds = new Set(group.map((p) => p.id));
+    const rest = profilePacks.filter((p) => !groupIds.has(p.id));
     setPackQueueIndex(0);
-    setPackQueue([tapped, ...rest]);
+    setPackQueue([...group, ...rest]);
   }
 
   function closeQueue() {
@@ -143,22 +156,22 @@ export default function ExplorePacksScreen() {
                     {(profile.nickname || profile.name || "Player") + "’s packs"}
                   </ThemedText>
                   <View style={styles.grid}>
-                    {packs.map((pack) => (
+                    {groupBySource(packs).map((group) => (
                       <Pressable
-                        key={pack.id}
-                        onPress={() => openTile(packs, pack)}
+                        key={group.source}
+                        onPress={() => openTile(packs, group.packs)}
                         accessibilityRole="button"
-                        accessibilityLabel={`Open pack from ${
-                          pack.source === "trade" ? "a trade" : "a stop"
-                        }`}
-                        style={[styles.tile, { width: tileWidth, height: tileHeight }]}
+                        accessibilityLabel={`Open ${group.packs.length} pack${
+                          group.packs.length === 1 ? "" : "s"
+                        } from ${group.source === "trade" ? "trades" : "stops"}`}
+                        style={styles.tile}
                       >
                         <Image
-                          source={PACK_ART_BY_SOURCE[pack.source]}
+                          source={PACK_ART_BY_SOURCE[group.source]}
                           style={styles.tileImage}
                           resizeMode="contain"
                         />
-                        {pack.source === "trade" ? (
+                        {group.source === "trade" ? (
                           <View style={styles.sourceTag}>
                             <ThemedText
                               lightColor="#132414"
@@ -166,6 +179,17 @@ export default function ExplorePacksScreen() {
                               style={styles.sourceTagText}
                             >
                               Traded
+                            </ThemedText>
+                          </View>
+                        ) : null}
+                        {group.packs.length > 1 ? (
+                          <View style={styles.countBadge}>
+                            <ThemedText
+                              lightColor="#132414"
+                              darkColor="#132414"
+                              style={styles.countBadgeText}
+                            >
+                              {group.packs.length}
                             </ThemedText>
                           </View>
                         ) : null}
@@ -239,6 +263,8 @@ const styles = StyleSheet.create({
     gap: GRID_GAP,
   },
   tile: {
+    width: `${100 / COLUMNS - 3}%`,
+    aspectRatio: PACK_ASPECT,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -249,7 +275,7 @@ const styles = StyleSheet.create({
   sourceTag: {
     position: "absolute",
     top: 8,
-    right: 8,
+    left: 8,
     backgroundColor: "#B8F000",
     borderRadius: 10,
     paddingHorizontal: 8,
@@ -257,6 +283,22 @@ const styles = StyleSheet.create({
   },
   sourceTagText: {
     fontSize: 11,
+    fontWeight: "800",
+  },
+  countBadge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    paddingHorizontal: 5,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFF",
+  },
+  countBadgeText: {
+    fontSize: 12,
     fontWeight: "800",
   },
 });

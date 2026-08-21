@@ -53,6 +53,7 @@ import {
   getConflictingHuntSession,
   routeForBlockingAdventure,
 } from "@/utils/adventureSessionGuard";
+import { hapticImpact } from "@/utils/haptics";
 
 const PROFILE_KEY = "scavenger_selected_profile_id";
 const ATTRACTION_FG = "#1A2E1E";
@@ -225,7 +226,7 @@ export default function ScavengerQuestOverviewScreen() {
 
   const start = async () => {
     if (!questId || !profileId) return;
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    void hapticImpact(Haptics.ImpactFeedbackStyle.Medium);
     if (state?.complete) {
       confirmRestart();
       return;

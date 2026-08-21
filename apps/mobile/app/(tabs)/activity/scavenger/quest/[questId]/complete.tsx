@@ -20,6 +20,7 @@ import {
   scavengerShadow,
 } from "@/constants/scavengerTheme";
 import { fetchQuestById, type ScavengerQuest } from "@/services/scavengerService";
+import { hapticNotification } from "@/utils/haptics";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -40,7 +41,7 @@ export default function ScavengerCompleteScreen() {
 
   useEffect(() => {
     if (!quest) return;
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    void hapticNotification(Haptics.NotificationFeedbackType.Success);
     const t = setTimeout(() => confettiRef.current?.start?.(), 120);
     return () => clearTimeout(t);
   }, [quest]);

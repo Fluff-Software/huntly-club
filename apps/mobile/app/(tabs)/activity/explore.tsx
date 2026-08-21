@@ -62,6 +62,7 @@ import {
   getExploreStopsNear,
 } from "@/services/exploreStopsService";
 import { metersBetween } from "@/services/trackingSessionService";
+import { hapticNotification } from "@/utils/haptics";
 import type {
   ExploreAward,
   ExploreStop,
@@ -350,7 +351,7 @@ export default function ExploreScreen() {
     const nearbyId = nearbyUnlockableStop?.stopId ?? null;
     if (nearbyId && nearbyId !== lastNearbyStopIdRef.current) {
       lastNearbyStopIdRef.current = nearbyId;
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      void hapticNotification(Haptics.NotificationFeedbackType.Success);
       setNearStopBannerVisible(true);
       if (nearStopBannerTimeoutRef.current) clearTimeout(nearStopBannerTimeoutRef.current);
       nearStopBannerTimeoutRef.current = setTimeout(() => {

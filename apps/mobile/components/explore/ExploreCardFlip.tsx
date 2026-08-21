@@ -16,6 +16,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
+import { hapticImpact, hapticSelection } from "@/utils/haptics";
 
 const CARD_BACK = require("@/assets/images/explore-card-back.png");
 const DEFAULT_INNER_BORDER = "#3B82F6";
@@ -67,11 +68,11 @@ export function ExploreCardFlip({
   const entrance = useSharedValue(entranceTwist && !autoFlip ? 0 : 1);
 
   const lightHaptic = useCallback(() => {
-    void Haptics.selectionAsync();
+    void hapticSelection();
   }, []);
 
   const mediumHaptic = useCallback(() => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    void hapticImpact(Haptics.ImpactFeedbackStyle.Medium);
   }, []);
 
   const markInteractive = useCallback(() => {

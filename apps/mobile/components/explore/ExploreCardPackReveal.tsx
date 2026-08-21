@@ -37,6 +37,7 @@ import {
   packTearStyles,
 } from "@/components/explore/ExplorePackTear";
 import { EXPLORE_CARD_ART_ASPECT, EXPLORE_RARITY_COLORS } from "@/constants/exploreBinder";
+import { hapticImpact, hapticNotification } from "@/utils/haptics";
 import type { ExploreAward } from "@/types/exploreStops";
 
 /** Native pixel size of explore-pack-full.png */
@@ -170,12 +171,24 @@ const RevealActions = React.memo(function RevealActions({
           style={[styles.primaryBtn, { backgroundColor: rarityColor }]}
           accessibilityRole="button"
         >
-          <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.btnText}>
+          <ThemedText
+            key={award.card.id}
+            lightColor="#FFF"
+            darkColor="#FFF"
+            style={styles.btnText}
+            numberOfLines={1}
+          >
             View in binder
           </ThemedText>
         </Pressable>
         <Pressable onPress={onDismiss} style={styles.secondaryBtn} accessibilityRole="button">
-          <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.btnText}>
+          <ThemedText
+            key={award.card.id}
+            lightColor="#FFF"
+            darkColor="#FFF"
+            style={styles.btnText}
+            numberOfLines={1}
+          >
             Keep exploring
           </ThemedText>
         </Pressable>
@@ -333,10 +346,10 @@ export function ExploreCardPackReveal({
       });
       setTimeout(() => setPackMounted(false), PACK_UNMOUNT_MS);
 
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      void hapticNotification(Haptics.NotificationFeedbackType.Success);
       void (async () => {
         for (let i = 0; i < profile.hapticBeats; i++) {
-          await Haptics.impactAsync(profile.hapticStyle);
+          await hapticImpact(profile.hapticStyle);
           await new Promise((r) => setTimeout(r, 90));
         }
       })();
@@ -351,7 +364,7 @@ export function ExploreCardPackReveal({
     setShowNewBadge(true);
     newBadgeOpacity.value = withTiming(1, { duration: 240 });
     newBadgeScale.value = withSpring(1, { damping: 11, stiffness: 170 });
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    void hapticNotification(Haptics.NotificationFeedbackType.Success);
   }, [newBadgeOpacity, newBadgeScale]);
 
   const finishRipAndClaim = useCallback(async () => {
@@ -363,7 +376,7 @@ export function ExploreCardPackReveal({
 
     // Finish the tear; keep the pack mounted so the card can rise behind it.
     openProgress.value = withTiming(1, { duration: 280, easing: Easing.out(Easing.cubic) });
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    void hapticNotification(Haptics.NotificationFeedbackType.Success);
 
     try {
       const nextAward = await onRipComplete();
@@ -393,10 +406,13 @@ export function ExploreCardPackReveal({
 
   // iOS's Taptic Engine queues distinct impactAsync calls properly even in
   // fast succession and Medium reads as weak on it, so iOS gets Heavy,
-  // tightly-spaced ticks for a real "zip" feel. Android's Vibrator instead
-  // cancels whatever pulse is still playing the instant a new vibrate()
-  // call lands — Medium + wide spacing is what's confirmed working there;
-  // tightening it back up would reintroduce the dropped-tick bug.
+  // tightly-spaced ticks for a real "zip" feel. Android instead goes through
+  // performAndroidHapticsAsync (semantic View.performHapticFeedback()
+  // constants, not the raw Vibrator API impactAsync uses under the hood on
+  // Android -- Vibrator calls are known to be dropped entirely on some
+  // devices). Medium + wide spacing is what's confirmed working on Android;
+  // tightening it back up would reintroduce the dropped-tick bug seen there
+  // pre-migration.
   const isIOS = Platform.OS === "ios";
   const TICK_HAPTIC_STYLE = isIOS
     ? Haptics.ImpactFeedbackStyle.Heavy
@@ -405,16 +421,17 @@ export function ExploreCardPackReveal({
   const RIP_TICK_STEP = isIOS ? 0.06 : 0.18;
 
   const selectionHaptic = useCallback(() => {
-    void Haptics.impactAsync(TICK_HAPTIC_STYLE);
+    void hapticImpact(TICK_HAPTIC_STYLE, Haptics.AndroidHaptics.Gesture_Start);
   }, [TICK_HAPTIC_STYLE]);
   const mediumRipHaptic = useCallback(() => {
-    void Haptics.impactAsync(
-      isIOS ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Medium
+    void hapticImpact(
+      isIOS ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Medium,
+      Haptics.AndroidHaptics.Confirm
     );
   }, [isIOS]);
 
   const zipperTickHaptic = useCallback(() => {
-    void Haptics.impactAsync(TICK_HAPTIC_STYLE);
+    void hapticImpact(TICK_HAPTIC_STYLE, Haptics.AndroidHaptics.Segment_Frequent_Tick);
   }, [TICK_HAPTIC_STYLE]);
 
   // Stays true across enter -> ready -> ripping (onBegin flips phase to

@@ -12,6 +12,7 @@ import {
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ThemedText } from "@/components/ThemedText";
 import { ExploreCardArt } from "@/components/explore/ExploreCardArt";
 import { ExploreCardFlip } from "@/components/explore/ExploreCardFlip";
 import { EXPLORE_CARD_ART_ASPECT, EXPLORE_RARITY_COLORS } from "@/constants/exploreBinder";
@@ -22,9 +23,19 @@ type Props = {
   onClose: () => void;
   /** Called after the modal has begun closing (for sleeve settle). */
   onCloseComplete?: () => void;
+  /** Provided only when trading is eligible for this card right now. */
+  onTrade?: (card: BinderCardEntry) => void;
+  /** e.g. "Artistic Deer can trade 5 copies of this card for a new pack". */
+  tradeLabel?: string;
 };
 
-export function ExploreCardDetail({ card, onClose, onCloseComplete }: Props) {
+export function ExploreCardDetail({
+  card,
+  onClose,
+  onCloseComplete,
+  onTrade,
+  tradeLabel,
+}: Props) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   if (!card) return null;
@@ -86,6 +97,33 @@ export function ExploreCardDetail({ card, onClose, onCloseComplete }: Props) {
             />
           </ExploreCardFlip>
         </View>
+
+        {onTrade && tradeLabel ? (
+          <Pressable
+            onPress={() => onTrade(card)}
+            accessibilityRole="button"
+            accessibilityLabel={`Trade 5 ${card.name} for a pack`}
+            style={[styles.tradeBanner, { maxWidth: cardWidth }]}
+          >
+            <View style={styles.tradeBannerContent}>
+              <MaterialIcons
+                name="swap-horiz"
+                size={20}
+                color="#B8F000"
+                style={styles.tradeBannerIcon}
+              />
+              <ThemedText
+                lightColor="#FFF"
+                darkColor="#FFF"
+                style={styles.tradeBannerText}
+                numberOfLines={2}
+              >
+                {tradeLabel}
+              </ThemedText>
+            </View>
+            <MaterialIcons name="chevron-right" size={26} color="#B8F000" />
+          </Pressable>
+        ) : null}
       </GestureHandlerRootView>
     </Modal>
   );
@@ -119,5 +157,29 @@ const styles = StyleSheet.create({
   },
   art: {
     borderRadius: 0,
+  },
+  tradeBanner: {
+    marginTop: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    backgroundColor: "rgba(20,24,20,0.92)",
+    borderWidth: 1,
+    borderColor: "rgba(184,240,0,0.35)",
+  },
+  tradeBannerContent: {
+    flex: 1,
+    alignItems: "center",
+  },
+  tradeBannerIcon: {
+    marginBottom: 4,
+  },
+  tradeBannerText: {
+    fontSize: 13,
+    fontWeight: "700",
+    textAlign: "center",
   },
 });

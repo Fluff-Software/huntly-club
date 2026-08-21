@@ -1368,6 +1368,7 @@ export default function ExploreScreen() {
           <ExploreCardPackReveal
             visible
             onRipComplete={commitPackClaim}
+            onSaveForLater={() => closePack()}
             onClose={() => {
               closePack();
             }}

@@ -130,6 +130,14 @@ type Props = {
   /** When set with onOpenNext, the reveal offers an "Open next" action instead of closing. */
   queueRemaining?: number;
   onOpenNext?: () => void;
+  /**
+   * The pack is already banked by the time this opens (claim/trade happens
+   * up front) -- closing before ripping always "saves" it either way. When
+   * set, labels that explicitly instead of leaving it as a bare close icon.
+   * Stops only for now; trades already got a simplified Trade/Cancel-only
+   * flow and don't need the extra label.
+   */
+  onSaveForLater?: () => void;
 };
 
 /** Horizontal swipe across the top strip to finish the tear. */
@@ -222,6 +230,7 @@ export function ExploreCardPackReveal({
   onViewBinder,
   queueRemaining,
   onOpenNext,
+  onSaveForLater,
 }: Props) {
   const { width: screenW, height: screenH } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -731,6 +740,20 @@ export function ExploreCardPackReveal({
           />
         ) : null}
 
+        {onSaveForLater && (phase === "enter" || phase === "ready") ? (
+          <Pressable
+            onPress={onSaveForLater}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Save this pack for later"
+            style={[styles.saveForLaterBtn, { bottom: insets.bottom + 28 }]}
+          >
+            <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.saveForLaterText}>
+              Save for later
+            </ThemedText>
+          </Pressable>
+        ) : null}
+
         {canCloseWithoutClaim || phase === "reveal" ? (
           <Pressable
             onPress={handleDismiss}
@@ -880,6 +903,22 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "800",
     fontSize: 15,
+  },
+  saveForLaterBtn: {
+    position: "absolute",
+    alignSelf: "center",
+    zIndex: 50,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  saveForLaterText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 13,
   },
   closeBtn: {
     position: "absolute",

@@ -311,7 +311,7 @@ export default function ScavengerActiveScreen() {
 
   return (
     <>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
         <LinearGradient

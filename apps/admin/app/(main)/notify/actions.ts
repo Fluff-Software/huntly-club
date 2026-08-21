@@ -46,10 +46,37 @@ export async function sendAdminPush(message: string): Promise<SendResult> {
   return callFunction("send-admin-push", { message: text });
 }
 
-export async function sendAdminEmail(subject: string, message: string): Promise<SendResult> {
+export async function sendAdminEmail(subject: string, bodyHtml: string): Promise<SendResult> {
   const title = subject.trim();
-  const text = message.trim();
-  if (!text) return { success: false, error: "Message is required." };
-  return callFunction("send-admin-email", { subject: title, message: text });
+  const html = bodyHtml.trim();
+  if (!html) return { success: false, error: "Message is required." };
+  return callFunction("send-admin-email", { subject: title, bodyHtml: html });
+}
+
+export async function sendAdminEmailTest(
+  subject: string,
+  bodyHtml: string,
+  testEmail: string
+): Promise<SendResult> {
+  const title = subject.trim();
+  const html = bodyHtml.trim();
+  const to = testEmail.trim();
+  if (!html) return { success: false, error: "Message is required." };
+  if (!to) return { success: false, error: "Test email address is required." };
+  return callFunction("send-admin-email", { subject: title, bodyHtml: html, testEmail: to });
+}
+
+type PreviewResult = { success: boolean; html?: string; subject?: string; error?: string };
+
+export async function previewAdminEmail(subject: string, bodyHtml: string): Promise<PreviewResult> {
+  const title = subject.trim();
+  const html = bodyHtml.trim();
+  if (!html) return { success: false, error: "Message is required." };
+  const result = await callFunction("send-admin-email", {
+    subject: title,
+    bodyHtml: html,
+    preview: true,
+  });
+  return result as PreviewResult;
 }
 

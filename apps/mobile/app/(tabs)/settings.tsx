@@ -54,7 +54,7 @@ const COLORS = {
 export default function SettingsScreen() {
   const { user, signOut } = useAuth();
   // const { userData, updateWeeklyEmail, updateStartMissionStep } = useUser();
-  const { userData, updateWeeklyEmail } = useUser();
+  const { userData, updateWeeklyEmail, updateGeneralEmail } = useUser();
   const router = useRouter();
   const { pushWithReturn } = useNavigationReturn();
   const { scaleW } = useLayoutScale();
@@ -64,6 +64,8 @@ export default function SettingsScreen() {
   // const setReplayTutorialRequested = signUpContext?.setReplayTutorialRequested;
   const weeklyEmail = userData?.weekly_email ?? true;
   const [weeklyEmailToggling, setWeeklyEmailToggling] = useState(false);
+  const generalEmail = userData?.general_email ?? true;
+  const [generalEmailToggling, setGeneralEmailToggling] = useState(false);
   const [pushNotifications, setPushNotifications] = useState(false);
   const [pushNotificationsLoading, setPushNotificationsLoading] = useState(true);
   const [pushNotificationsToggling, setPushNotificationsToggling] = useState(false);
@@ -86,6 +88,7 @@ export default function SettingsScreen() {
 
   const signOutScale = useSharedValue(1);
   const weeklyEmailScale = useSharedValue(1);
+  const generalEmailScale = useSharedValue(1);
   const pushScale = useSharedValue(1);
   const privacyScale = useSharedValue(1);
   // const tutorialScale = useSharedValue(1);
@@ -93,6 +96,8 @@ export default function SettingsScreen() {
     transform: [{ scale: signOutScale.value }] }));
   const weeklyEmailAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: weeklyEmailScale.value }] }));
+  const generalEmailAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: generalEmailScale.value }] }));
   const pushAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pushScale.value }] }));
   const privacyAnimatedStyle = useAnimatedStyle(() => ({
@@ -509,6 +514,44 @@ export default function SettingsScreen() {
               ) : (
                 <View style={styles.checkbox}>
                   {weeklyEmail ? (
+                    <MaterialIcons
+                      name="check"
+                      size={scaleW(18)}
+                      color={COLORS.darkGreen}
+                    />
+                  ) : null}
+                </View>
+              )}
+            </Pressable>
+          </Animated.View>
+          <Animated.View style={generalEmailAnimatedStyle}>
+            <Pressable
+              style={styles.prefRow}
+              onPress={async () => {
+                if (generalEmailToggling) return;
+                setGeneralEmailToggling(true);
+                try {
+                  await updateGeneralEmail(!generalEmail);
+                } catch {
+                  Alert.alert("Error", "Failed to update general email preference");
+                } finally {
+                  setGeneralEmailToggling(false);
+                }
+              }}
+              disabled={generalEmailToggling}
+              onPressIn={() => {
+                generalEmailScale.value = withSpring(0.98, { damping: 15, stiffness: 400 });
+              }}
+              onPressOut={() => {
+                generalEmailScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+              }}
+            >
+              <ThemedText style={styles.prefLabel}>Receive general Huntly World updates</ThemedText>
+              {generalEmailToggling ? (
+                <ActivityIndicator size="small" color={COLORS.darkGreen} />
+              ) : (
+                <View style={styles.checkbox}>
+                  {generalEmail ? (
                     <MaterialIcons
                       name="check"
                       size={scaleW(18)}

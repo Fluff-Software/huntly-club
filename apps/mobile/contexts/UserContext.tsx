@@ -15,6 +15,7 @@ import {
   updateUserDataFirstMissionActivityId,
   updateUserDataStartMissionStep,
   updateUserDataWeeklyEmail,
+  updateUserDataGeneralEmail,
   Team,
 } from "@/services/profileService";
 import { getTotalXpForProfileIds } from "@/services/teamActivityService";
@@ -23,6 +24,7 @@ type UserData = {
   user_id: string;
   team: number | null;
   weekly_email: boolean;
+  general_email: boolean;
   last_seen_season_id: number | null;
   start_mission_step: number;
   first_mission_activity_id: number | null;
@@ -40,6 +42,8 @@ type UserContextType = {
   refreshUserData: () => Promise<void>;
   /** Update weekly email preference and refresh user data. */
   updateWeeklyEmail: (enabled: boolean) => Promise<void>;
+  /** Update general (admin broadcast) email preference and refresh user data. */
+  updateGeneralEmail: (enabled: boolean) => Promise<void>;
   /** Persist latest season announcement seen by the user. */
   updateLastSeenSeasonId: (seasonId: number) => Promise<void>;
   /** Persist mission-first onboarding step. */
@@ -143,6 +147,15 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     [user?.id, refreshUserData]
   );
 
+  const updateGeneralEmail = useCallback(
+    async (enabled: boolean) => {
+      if (!user?.id) return;
+      await updateUserDataGeneralEmail(user.id, enabled);
+      await refreshUserData();
+    },
+    [user?.id, refreshUserData]
+  );
+
   const updateLastSeenSeasonId = useCallback(
     async (seasonId: number) => {
       if (!user?.id) return;
@@ -182,6 +195,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       pointsEarned,
       refreshUserData,
       updateWeeklyEmail,
+      updateGeneralEmail,
       updateLastSeenSeasonId,
       updateStartMissionStep,
       updateFirstMissionActivityId,
@@ -194,6 +208,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       pointsEarned,
       refreshUserData,
       updateWeeklyEmail,
+      updateGeneralEmail,
       updateLastSeenSeasonId,
       updateStartMissionStep,
       updateFirstMissionActivityId,

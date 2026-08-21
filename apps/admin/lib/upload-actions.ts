@@ -131,6 +131,13 @@ export async function uploadSlideImage(
   return uploadImage(formData, "story-slides", prefix);
 }
 
+/** Upload an image embedded in a mass-email compose body into the public email-assets bucket. */
+export async function uploadEmailImage(
+  formData: FormData
+): Promise<{ url?: string; error?: string }> {
+  return uploadImage(formData, "email-assets", "compose");
+}
+
 const RESOURCE_ALLOWED_TYPES = [
   "application/pdf",
   "image/jpeg",

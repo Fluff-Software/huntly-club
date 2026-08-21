@@ -14,12 +14,11 @@ import {
 } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
-import { BinderPageSheet } from "@/components/explore/BinderPageSheet";
 import { ExploreCardPackReveal } from "@/components/explore/ExploreCardPackReveal";
-import { EXPLORE_BINDER_SCREEN_BG } from "@/constants/exploreBinder";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useBankedPacksByProfile } from "@/hooks/useBankedPacksByProfile";
 import { openExplorePack, exploreUserMessage, ExploreStopsRequestError } from "@/services/exploreStopsService";
@@ -116,45 +115,48 @@ export default function ExplorePacksScreen() {
     <>
       <StatusBar style="light" />
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-        <View style={styles.header}>
-          <Pressable
-            onPress={() => router.back()}
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
-            style={styles.iconBtn}
-          >
-            <MaterialIcons name="arrow-back" size={22} color="#FFF" />
-          </Pressable>
-          <ThemedText type="heading" lightColor="#FFF" darkColor="#FFF" style={styles.title}>
-            Packs Waiting
-          </ThemedText>
-        </View>
-
-        {profilesLoading && sections.length === 0 ? (
-          <View style={styles.center}>
-            <ActivityIndicator color="#FFF" />
+      <LinearGradient colors={["#1B2E22", "#0C1710"]} style={{ flex: 1 }}>
+        <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
+          <View style={styles.header}>
+            <Pressable
+              onPress={() => router.back()}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+              style={styles.iconBtn}
+            >
+              <MaterialIcons name="arrow-back" size={22} color="#FFF" />
+            </Pressable>
+            <ThemedText type="heading" lightColor="#FFF" darkColor="#FFF" style={styles.title}>
+              Packs Waiting
+            </ThemedText>
           </View>
-        ) : sections.length === 0 ? (
-          <ThemedText
-            lightColor="rgba(255,255,255,0.7)"
-            darkColor="rgba(255,255,255,0.7)"
-            style={{ textAlign: "center", marginTop: 24 }}
-          >
-            No packs waiting right now.
-          </ThemedText>
-        ) : (
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{ paddingHorizontal: H_PAD, paddingBottom: 28 }}
-            showsVerticalScrollIndicator={false}
-          >
-            <BinderPageSheet style={styles.sheet}>
+
+          {profilesLoading && sections.length === 0 ? (
+            <View style={styles.center}>
+              <ActivityIndicator color="#FFF" />
+            </View>
+          ) : sections.length === 0 ? (
+            <ThemedText
+              lightColor="rgba(255,255,255,0.7)"
+              darkColor="rgba(255,255,255,0.7)"
+              style={{ textAlign: "center", marginTop: 24 }}
+            >
+              No packs waiting right now.
+            </ThemedText>
+          ) : (
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ paddingHorizontal: H_PAD, paddingBottom: 28 }}
+              showsVerticalScrollIndicator={false}
+            >
               {sections.map(({ profile, packs }) => (
                 <View key={profile.id} style={styles.section}>
-                  <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.sectionTitle}>
-                    {(profile.nickname || profile.name || "Player") + "’s packs"}
-                  </ThemedText>
+                  <View style={styles.sectionLabel}>
+                    <MaterialIcons name="inventory-2" size={16} color="#B8F000" />
+                    <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.sectionTitle}>
+                      {(profile.nickname || profile.name || "Player") + "’s packs"}
+                    </ThemedText>
+                  </View>
                   <View style={styles.grid}>
                     {groupBySource(packs).map((group) => (
                       <Pressable
@@ -164,68 +166,58 @@ export default function ExplorePacksScreen() {
                         accessibilityLabel={`Open ${group.packs.length} pack${
                           group.packs.length === 1 ? "" : "s"
                         } from ${group.source === "trade" ? "trades" : "stops"}`}
-                        style={styles.tile}
+                        style={styles.tileCard}
                       >
-                        <Image
-                          source={PACK_ART_BY_SOURCE[group.source]}
-                          style={styles.tileImage}
-                          resizeMode="contain"
-                        />
-                        {group.source === "trade" ? (
-                          <View style={styles.sourceTag}>
-                            <ThemedText
-                              lightColor="#132414"
-                              darkColor="#132414"
-                              style={styles.sourceTagText}
-                            >
-                              Traded
-                            </ThemedText>
-                          </View>
-                        ) : null}
-                        {group.packs.length > 1 ? (
-                          <View style={styles.countBadge}>
-                            <ThemedText
-                              lightColor="#132414"
-                              darkColor="#132414"
-                              style={styles.countBadgeText}
-                            >
-                              {group.packs.length}
-                            </ThemedText>
-                          </View>
-                        ) : null}
+                        <View style={styles.tile}>
+                          <Image
+                            source={PACK_ART_BY_SOURCE[group.source]}
+                            style={styles.tileImage}
+                            resizeMode="contain"
+                          />
+                          {group.packs.length > 1 ? (
+                            <View style={styles.countBadge}>
+                              <ThemedText
+                                lightColor="#132414"
+                                darkColor="#132414"
+                                style={styles.countBadgeText}
+                              >
+                                {group.packs.length}
+                              </ThemedText>
+                            </View>
+                          ) : null}
+                        </View>
                       </Pressable>
                     ))}
                   </View>
                 </View>
               ))}
-            </BinderPageSheet>
-          </ScrollView>
-        )}
+            </ScrollView>
+          )}
+        </SafeAreaView>
+      </LinearGradient>
 
-        {packQueue && packQueue[packQueueIndex] ? (
-          <ExploreCardPackReveal
-            key={packQueue[packQueueIndex]!.id}
-            visible
-            onRipComplete={commitPackFromQueue}
-            onClose={closeQueue}
-            queueRemaining={packQueue.length - packQueueIndex - 1}
-            onOpenNext={() => setPackQueueIndex((i) => i + 1)}
-            onViewBinder={(award) => {
-              closeQueue();
-              router.push({
-                pathname: "/(tabs)/activity/explore-collection",
-                params: { highlightCardId: award.card.id },
-              });
-            }}
-          />
-        ) : null}
-      </SafeAreaView>
+      {packQueue && packQueue[packQueueIndex] ? (
+        <ExploreCardPackReveal
+          key={packQueue[packQueueIndex]!.id}
+          visible
+          onRipComplete={commitPackFromQueue}
+          onClose={closeQueue}
+          queueRemaining={packQueue.length - packQueueIndex - 1}
+          onOpenNext={() => setPackQueueIndex((i) => i + 1)}
+          onViewBinder={(award) => {
+            closeQueue();
+            router.push({
+              pathname: "/(tabs)/activity/explore-collection",
+              params: { highlightCardId: award.card.id },
+            });
+          }}
+        />
+      ) : null}
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: EXPLORE_BINDER_SCREEN_BG },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   header: {
     flexDirection: "row",
@@ -243,27 +235,41 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.12)",
   },
   title: { fontSize: 22, lineHeight: 26 },
-  sheet: {
-    width: "100%",
-    borderRadius: 12,
-    overflow: "visible",
-  },
   section: {
-    paddingTop: 16,
-    paddingHorizontal: 8,
+    marginBottom: 20,
+  },
+  sectionLabel: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(20,24,20,0.92)",
+    borderWidth: 1,
+    borderColor: "rgba(184,240,0,0.35)",
+    borderRadius: 14,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    marginBottom: 14,
   },
   sectionTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    marginBottom: 10,
+    fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: 0.3,
   },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: GRID_GAP,
   },
-  tile: {
+  tileCard: {
     width: `${100 / COLUMNS - 3}%`,
+    borderRadius: 18,
+    padding: 10,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  tile: {
     aspectRatio: PACK_ASPECT,
     alignItems: "center",
     justifyContent: "center",
@@ -272,30 +278,19 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  sourceTag: {
-    position: "absolute",
-    top: 8,
-    left: 8,
-    backgroundColor: "#B8F000",
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  sourceTagText: {
-    fontSize: 11,
-    fontWeight: "800",
-  },
   countBadge: {
     position: "absolute",
-    top: 8,
-    right: 8,
-    minWidth: 22,
-    height: 22,
-    borderRadius: 11,
-    paddingHorizontal: 5,
+    top: -6,
+    right: -6,
+    minWidth: 24,
+    height: 24,
+    borderRadius: 12,
+    paddingHorizontal: 6,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFF",
+    backgroundColor: "#B8F000",
+    borderWidth: 2,
+    borderColor: "#0C1710",
   },
   countBadgeText: {
     fontSize: 12,

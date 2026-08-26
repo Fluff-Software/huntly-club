@@ -12,9 +12,9 @@ drop index if exists "public"."campfire_sessions_live_started_at_idx";
 
 drop index if exists "public"."campfire_sessions_scheduled_at_idx";
 
-alter table "public"."campfire_sessions" drop column "live_ended_at";
+alter table "public"."campfire_sessions" drop column if exists "live_ended_at";
 
-alter table "public"."campfire_sessions" drop column "live_started_at";
+alter table "public"."campfire_sessions" drop column if exists "live_started_at";
 
 alter table "public"."user_data" add column "first_mission_activity_id" bigint;
 

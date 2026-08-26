@@ -43,7 +43,7 @@ const faqs = [
   {
     question: "Is Huntly World safe for children?",
     answer:
-      "Yes. The app contains no advertising, no social features, and no stranger interaction. Missions are parent-guided outdoor activities. See our For Parents page for full details on safety and privacy.",
+      "Yes. The app contains no advertising, no social features, and no stranger interaction. Missions are parent-guided outdoor activities. Real names are never made public, and every photo submission is reviewed and approved by a person before it's visible to others. See our For Parents page for full details on safety and privacy.",
   },
 ];
 

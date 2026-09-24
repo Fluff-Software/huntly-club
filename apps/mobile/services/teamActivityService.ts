@@ -222,33 +222,39 @@ export interface TeamAchievementEntry {
 }
 
 /**
- * Fetches user_achievements for a team (current month only), merged with
- * temporary submissions credited to that team. profile_name is resolved from
- * profile_public (nickname) or temporary display_name.
+ * Fetches user_achievements for the current month (all teams, or one team if
+ * teamId is passed), merged with temporary submissions. profile_name is
+ * resolved from profile_public (nickname) or temporary display_name.
  */
 export const getTeamAchievements = async (
-  teamId: number,
+  teamId?: number | null,
   limit: number = 20
 ): Promise<TeamAchievementEntry[]> => {
   const { from, to } = getCurrentMonthRange();
+  let achievementsQuery = supabase
+    .from("user_achievements")
+    .select("id, profile_id, team_id, source, source_id, message, xp, created_at")
+    .gte("created_at", from)
+    .lte("created_at", to)
+    .order("created_at", { ascending: false, nullsFirst: false })
+    .order("id", { ascending: false })
+    .limit(limit);
+  let tempQuery = supabase
+    .from("temporary_submissions")
+    .select("id, display_name, team_id, xp, submitted_at")
+    .gte("submitted_at", from)
+    .lte("submitted_at", to)
+    .order("submitted_at", { ascending: false })
+    .limit(limit);
+
+  if (teamId != null) {
+    achievementsQuery = achievementsQuery.eq("team_id", teamId);
+    tempQuery = tempQuery.eq("team_id", teamId);
+  }
+
   const [achievementsResult, tempResult] = await Promise.all([
-    supabase
-      .from("user_achievements")
-      .select("id, profile_id, team_id, source, source_id, message, xp, created_at")
-      .eq("team_id", teamId)
-      .gte("created_at", from)
-      .lte("created_at", to)
-      .order("created_at", { ascending: false, nullsFirst: false })
-      .order("id", { ascending: false })
-      .limit(limit),
-    supabase
-      .from("temporary_submissions")
-      .select("id, display_name, team_id, xp, submitted_at")
-      .eq("team_id", teamId)
-      .gte("submitted_at", from)
-      .lte("submitted_at", to)
-      .order("submitted_at", { ascending: false })
-      .limit(limit),
+    achievementsQuery,
+    tempQuery,
   ]);
 
   if (achievementsResult.error) {

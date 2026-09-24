@@ -3,6 +3,8 @@ declare namespace NodeJS {
   interface ProcessEnv {
     EXPO_PUBLIC_MAPTILER_API_KEY?: string;
     EXPO_PUBLIC_MAPTILER_STYLE_ID?: string;
+    EXPO_PUBLIC_EXPLORE_API_URL?: string;
+    EXPO_PUBLIC_EXPLORE_TRANSPORT?: string;
   }
 }
 

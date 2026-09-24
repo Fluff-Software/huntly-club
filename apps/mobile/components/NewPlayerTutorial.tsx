@@ -226,6 +226,13 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: CREAM,
     width: "100%",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 6,
   },
   cardCentered: {
     alignItems: "center",

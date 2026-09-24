@@ -56,6 +56,57 @@ export async function uploadActivityImage(
   return uploadImage(formData, "activity-images", "activities");
 }
 
+const EXPLORE_CARD_MAX_SIZE = 5 * 1024 * 1024;
+const EXPLORE_CARD_ALLOWED = ["image/jpeg", "image/png", "image/webp"];
+
+/**
+ * Upload art for an Explore catalogue card into the public explore-card-images bucket.
+ * Prefer `{slug}.webp` when a slug is provided; otherwise a timestamped filename.
+ */
+export async function uploadExploreCardImage(
+  formData: FormData
+): Promise<{ url?: string; error?: string }> {
+  const file = formData.get("file") as File | null;
+  if (!file?.size) return { error: "No file provided" };
+
+  if (!EXPLORE_CARD_ALLOWED.includes(file.type)) {
+    return { error: "Invalid file type. Use JPEG, PNG or WebP." };
+  }
+  if (file.size > EXPLORE_CARD_MAX_SIZE) {
+    return { error: "File too large. Maximum size is 5MB." };
+  }
+
+  const slugRaw = (formData.get("slug") as string | null)?.trim() ?? "";
+  const slug = slugRaw
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  try {
+    const supabase = createServerSupabaseClient();
+    const ext = file.name.split(".").pop()?.toLowerCase() || "webp";
+    const path = slug ? `${slug}.${ext}` : `card-${Date.now()}.${ext}`;
+
+    const { error } = await supabase.storage
+      .from("explore-card-images")
+      .upload(path, file, {
+        contentType: file.type,
+        upsert: true,
+      });
+
+    if (error) return { error: error.message };
+
+    const { data: urlData } = supabase.storage
+      .from("explore-card-images")
+      .getPublicUrl(path);
+    return { url: urlData.publicUrl };
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Upload failed",
+    };
+  }
+}
+
 export async function uploadTemporarySubmissionPhoto(
   formData: FormData
 ): Promise<{ url?: string; error?: string }> {

@@ -1,13 +1,19 @@
 name: EAS Update
 
+# Auto-publish on push to main is paused: the Explore feature (PR #75) adds
+# native dependencies (@shopify/react-native-skia, expo-keep-awake) that
+# aren't in the currently-live App Store/Play build. An OTA update referencing
+# them would crash existing installs. Re-enable the `main` push trigger below
+# once a new native build with those deps has shipped, or run this workflow
+# manually (workflow_dispatch) for a deliberate one-off update in the meantime.
 on:
   push:
     branches:
-      - main
       - develop
     paths:
       - 'apps/mobile/**'
       - '.github/workflows/eas-update.yml'
+  workflow_dispatch:
 
 jobs:
   update-production:

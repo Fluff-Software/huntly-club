@@ -29,6 +29,7 @@ const ANDROID_APPLICATION_ID = 'software.fluff.huntlyclub';
 const maptilerApiKey = process.env.EXPO_PUBLIC_MAPTILER_API_KEY?.trim();
 
 const isEasBuild = process.env.EAS_BUILD === "true" || process.env.EAS_BUILD === "1";
+const appVersion = require("./package.json").version as string;
 if (isEasBuild && process.env.EAS_BUILD_PLATFORM === "android" && !maptilerApiKey) {
   throw new Error(
     "EAS Android build: EXPO_PUBLIC_MAPTILER_API_KEY is unset. " +
@@ -80,7 +81,7 @@ const adaptiveIcon: Record<AppVariant, string> = {
 export default ({ config }: ConfigContext): ExpoConfig => ({
   name: appName[variant],
   slug: "huntly-club",
-  version: "1.1.0",
+  version: appVersion,
   orientation: "portrait",
   icon: icon[variant],
   scheme: "huntlyclub",
@@ -143,9 +144,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     output: "static",
     favicon: "./assets/images/favicon.png",
   },
-  runtimeVersion: {
-    policy: "appVersion",
-  },
+  // Bare workflow (committed ios/android) requires an explicit runtime version string —
+  // `policy: "appVersion"` is managed-workflow only and fails EAS iOS/Android builds.
+  runtimeVersion: appVersion,
   updates: {
     url: "https://u.expo.dev/" + (process.env.EXPO_PUBLIC_EAS_PROJECT_ID ?? ""),
     checkAutomatically: "NEVER",
@@ -260,6 +261,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   splash: {
     image: "./assets/images/logo.png",
     resizeMode: "contain",
-    backgroundColor: "#4F6F52"
+    backgroundColor: "#114094"
   },
 });

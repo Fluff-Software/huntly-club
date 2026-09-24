@@ -1,9 +1,20 @@
-import React from "react";
+import React, { useMemo, useRef } from "react";
 import { StyleSheet, View } from "react-native";
+import {
+  Camera,
+  Map,
+  ViewAnnotation,
+  UserLocation,
+  type CameraRef,
+} from "@maplibre/maplibre-react-native";
 import { MaterialIcons } from "@expo/vector-icons";
+import { getMapTilerMapStyleUrl } from "@/constants/maptiler";
 import type { ScavengerQuestItem } from "@/services/scavengerService";
-import { ThemedText } from "@/components/ThemedText";
-import { SCAVENGER_GREEN } from "@/constants/scavengerTheme";
+import { SCAVENGER_CHECK } from "@/constants/scavengerTheme";
+import { useDeferredNativeMount } from "@/components/activity-map/useDeferredNativeMount";
+
+const DEV_MAP_STYLE = "https://demotiles.maplibre.org/style.json";
+const UNFOUND_PIN = "#E8743B";
 
 type Props = {
   items: ScavengerQuestItem[];
@@ -12,34 +23,55 @@ type Props = {
   userCoords?: { latitude: number; longitude: number } | null;
 };
 
-/**
- * react-native-maps is excluded from Android autolinking in this app (MapLibre is used
- * instead, see ActivityMap.android.tsx) — QuestItemsMap.ios.tsx can't run here. This is a
- * placeholder until the pin/marker view gets a MapLibre implementation; list view still works.
- */
-export function QuestItemsMap(_props: Props) {
+/** Map mode for hunts whose items carry coordinates — Android (MapLibre). */
+export function QuestItemsMap({ items, foundIds, onMarkerPress, userCoords }: Props) {
+  const cameraRef = useRef<CameraRef | null>(null);
+  const canMountNative = useDeferredNativeMount();
+
+  const located = useMemo(
+    () => items.filter((i) => i.lat != null && i.lng != null),
+    [items]
+  );
+  const first = located[0];
+
+  const mapStyle = getMapTilerMapStyleUrl() ?? DEV_MAP_STYLE;
+
+  const centerLat = userCoords?.latitude ?? first?.lat ?? 0;
+  const centerLng = userCoords?.longitude ?? first?.lng ?? 0;
+
+  if (!canMountNative) {
+    return <View style={styles.map} />;
+  }
+
   return (
-    <View style={styles.container}>
-      <MaterialIcons name="map" size={40} color={SCAVENGER_GREEN} />
-      <ThemedText style={styles.text}>
-        Map view isn't available on this device yet — use the list view to keep exploring.
-      </ThemedText>
-    </View>
+    <Map style={styles.map} mapStyle={mapStyle} logo={false} attribution>
+      <Camera
+        ref={cameraRef}
+        initialViewState={{
+          center: [centerLng, centerLat],
+          zoom: 14,
+        }}
+      />
+      <UserLocation animated />
+      {located.map((item) => (
+        <ViewAnnotation
+          key={item.id}
+          id={item.id}
+          lngLat={[item.lng!, item.lat!]}
+          anchor="bottom"
+          onSelect={() => onMarkerPress(item)}
+        >
+          <MaterialIcons
+            name="location-on"
+            size={32}
+            color={foundIds.has(item.id) ? SCAVENGER_CHECK : UNFOUND_PIN}
+          />
+        </ViewAnnotation>
+      ))}
+    </Map>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-    gap: 12,
-  },
-  text: {
-    textAlign: "center",
-    color: "#5a6a5c",
-    fontSize: 14,
-    lineHeight: 20,
-  },
+  map: { flex: 1 },
 });

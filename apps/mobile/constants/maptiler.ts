@@ -3,8 +3,8 @@
  * @see apps/mobile/.env.example — account setup and key restrictions
  */
 
-/** Default style for activity maps (trails, parks, footpaths). Override via EXPO_PUBLIC_MAPTILER_STYLE_ID. */
-export const DEFAULT_MAPTILER_STYLE_ID = "openstreetmap";
+/** Default style for activity maps. Override via EXPO_PUBLIC_MAPTILER_STYLE_ID. */
+export const DEFAULT_MAPTILER_STYLE_ID = "streets-v2";
 
 export function getMapTilerStyleId(): string {
   return process.env.EXPO_PUBLIC_MAPTILER_STYLE_ID?.trim() || DEFAULT_MAPTILER_STYLE_ID;

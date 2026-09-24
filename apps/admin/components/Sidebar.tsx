@@ -16,6 +16,7 @@ const nav = [
   { href: "/mission-completions", label: "Mission Completions" },
   { href: "/categories", label: "Categories" },
   { href: "/resources", label: "Resources" },
+  { href: "/explore-cards", label: "Explore Cards" },
   { href: "/photos", label: "Photos" },
   { href: "/waitlist", label: "Waitlist" },
   { href: "/feedback", label: "Feedback" },

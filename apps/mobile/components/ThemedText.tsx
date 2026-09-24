@@ -17,6 +17,42 @@ export type ThemedTextProps = TextProps & {
 
 const LINE_HEIGHT_MULTIPLIER = 1.4;
 
+function typeClassesWithoutColor(type: NonNullable<ThemedTextProps["type"]>) {
+  switch (type) {
+    case "title":
+      return "text-3xl font-bold font-jua";
+    case "heading":
+      return "text-2xl font-bold font-jua";
+    case "subtitle":
+      return "text-xl font-semibold font-jua";
+    case "defaultSemiBold":
+      return "text-base font-semibold font-comic-neue";
+    case "default":
+      return "text-base font-comic-neue";
+    case "body":
+      return "text-sm font-comic-neue";
+    case "caption":
+      return "text-xs font-comic-neue";
+    case "link":
+      return "text-base font-medium font-comic-neue";
+    default:
+      return "text-base font-comic-neue";
+  }
+}
+
+function typeColorClass(type: NonNullable<ThemedTextProps["type"]>) {
+  switch (type) {
+    case "body":
+      return "text-huntly-charcoal";
+    case "caption":
+      return "text-huntly-brown";
+    case "link":
+      return "text-huntly-leaf";
+    default:
+      return "text-huntly-forest";
+  }
+}
+
 export function ThemedText({
   style,
   lightColor,
@@ -25,33 +61,17 @@ export function ThemedText({
   className,
   ...rest
 }: ThemedTextProps) {
+  const hasExplicitColor = lightColor != null || darkColor != null;
   const color = useThemeColor(
     { light: lightColor ?? darkColor, dark: darkColor ?? lightColor },
     "text"
   );
 
-  const getTypeClasses = () => {
-    switch (type) {
-      case "title":
-        return "text-3xl font-bold text-huntly-forest font-jua";
-      case "heading":
-        return "text-2xl font-bold text-huntly-forest font-jua";
-      case "subtitle":
-        return "text-xl font-semibold text-huntly-forest font-jua";
-      case "defaultSemiBold":
-        return "text-base font-semibold text-huntly-forest font-comic-neue";
-      case "default":
-        return "text-base text-huntly-forest font-comic-neue";
-      case "body":
-        return "text-sm text-huntly-charcoal font-comic-neue";
-      case "caption":
-        return "text-xs text-huntly-brown font-comic-neue";
-      case "link":
-        return "text-base text-huntly-leaf font-medium font-comic-neue";
-      default:
-        return "text-base text-huntly-forest font-comic-neue";
-    }
-  };
+  // NativeWind color utilities can override the style color prop. Skip type
+  // text-* classes when lightColor/darkColor is set so white-on-button CTAs stay visible.
+  const typeClassName = hasExplicitColor
+    ? typeClassesWithoutColor(type)
+    : `${typeClassesWithoutColor(type)} ${typeColorClass(type)}`;
 
   // Extract fontSize from style if provided, calculate proportional lineHeight
   const flatStyle = StyleSheet.flatten(style) || {};
@@ -62,7 +82,7 @@ export function ThemedText({
 
   return (
     <Text
-      className={`${getTypeClasses()} ${className || ""}`}
+      className={`${typeClassName} ${className || ""}`}
       style={[{ color }, lineHeightStyle, style]}
       {...rest}
     />

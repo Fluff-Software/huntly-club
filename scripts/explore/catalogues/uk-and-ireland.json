@@ -1,0 +1,52 @@
+{
+  "region_id": "uk-and-ireland",
+  "name": "United Kingdom and Republic of Ireland",
+  "notes": "National catalogue (Step 10.4). Source is Geofabrik britain-and-ireland PBF — not Overpass. Final points must lie inside approved coverage polygons (GB + IE admin), not merely the extract envelope. Isle of Man and Channel Islands are EXCLUDED. Do not activate until validation, storage, and query benchmarks pass. Keep stoke-on-trent active until explicit national activation retires the overlapping Stoke catalogue.",
+  "pipeline": "pbf",
+  "geofabrik": {
+    "dataset": "britain-and-ireland",
+    "download_url": "https://download.geofabrik.de/europe/britain-and-ireland-latest.osm.pbf",
+    "page_url": "https://download.geofabrik.de/europe/britain-and-ireland.html"
+  },
+  "coverage_policy": {
+    "include": [
+      "England",
+      "Scotland",
+      "Wales",
+      "Northern Ireland",
+      "Republic of Ireland",
+      "inhabited offshore islands belonging to the above (e.g. Isle of Wight, Anglesey, Outer Hebrides, Orkney, Shetland, Irish coastal islands within ROI/UK admin)"
+    ],
+    "exclude": [
+      "Isle of Man (Crown Dependency — not UK or ROI)",
+      "Channel Islands / Bailiwicks of Jersey and Guernsey (not UK or ROI)",
+      "any other territory outside UK or Republic of Ireland admin polygons"
+    ],
+    "polygons_path": "catalogues/coverage/uk-and-ireland.geojson",
+    "inclusion_rule": "point-in-polygon against approved multipolygon(s); chunk bboxes are processing aids only"
+  },
+  "bounding_box": {
+    "min_latitude": 49.5,
+    "min_longitude": -11.2,
+    "max_latitude": 61.1,
+    "max_longitude": 2.1
+  },
+  "source_geojson": "",
+  "source_pbf_dir": "data/osm/geofabrik/britain-and-ireland",
+  "source_revision": "2026-07-24_7093f494b688",
+  "generation_version": 2,
+  "output_dir": "output/catalogues/uk-and-ireland",
+  "chunking": {
+    "core_span_degrees": 0.02,
+    "pad_metres": 400,
+    "partition_span_degrees": 2.0,
+    "workers_default": 4,
+    "output_format": "ndjson",
+    "global_spacing": "grid-neighbour",
+    "notes": "0.02° chosen after London tile cost (~7 min / 0.02° at ~45k features). Prefer regional partition PBFs for chunk extracts."
+  },
+  "attribution": "© OpenStreetMap contributors",
+  "licence": "ODbL 1.0",
+  "attribution_url": "https://www.openstreetmap.org/copyright",
+  "distributor": "Geofabrik GmbH (extract distributor, not data owner)"
+}

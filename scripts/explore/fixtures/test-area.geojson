@@ -1,0 +1,274 @@
+{
+  "type": "FeatureCollection",
+  "name": "explore-step2-test-area",
+  "licence": "ODbL (OpenStreetMap-style fixture). Synthetic features for Huntly Explore Step 2 tests — not a full OSM extract.",
+  "attribution": "Contains OpenStreetMap-like tagging conventions. © OpenStreetMap contributors when replacing with real extracts.",
+  "bbox": [-0.298, 51.452, -0.282, 51.462],
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "fixture/park-meadow",
+        "name": "Meadow Test Park",
+        "leisure": "park",
+        "explore_role": "source",
+        "explore_source": "park"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-0.294, 51.454],
+            [-0.286, 51.454],
+            [-0.286, 51.459],
+            [-0.294, 51.459],
+            [-0.294, 51.454]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "fixture/footpath-meadow",
+        "name": "Meadow Path",
+        "highway": "footway",
+        "foot": "designated",
+        "explore_role": "source",
+        "explore_source": "footpath"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-0.2935, 51.4545],
+          [-0.291, 51.4555],
+          [-0.289, 51.4565],
+          [-0.287, 51.4575],
+          [-0.2865, 51.4585]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "fixture/path-east",
+        "name": "East Path",
+        "highway": "path",
+        "foot": "yes",
+        "explore_role": "source",
+        "explore_source": "path"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-0.2855, 51.453],
+          [-0.2845, 51.455],
+          [-0.2835, 51.457],
+          [-0.2828, 51.459],
+          [-0.2825, 51.461]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "fixture/plaza-north",
+        "name": "North Plaza",
+        "highway": "pedestrian",
+        "explore_role": "source",
+        "explore_source": "plaza"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-0.291, 51.4602],
+            [-0.289, 51.4602],
+            [-0.289, 51.4612],
+            [-0.291, 51.4612],
+            [-0.291, 51.4602]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "fixture/pond",
+        "name": "Test Pond",
+        "natural": "water",
+        "explore_role": "hazard"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-0.2905, 51.4568],
+            [-0.2895, 51.4568],
+            [-0.2895, 51.4574],
+            [-0.2905, 51.4574],
+            [-0.2905, 51.4568]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "fixture/motorway",
+        "name": "Test Motorway",
+        "highway": "motorway",
+        "explore_role": "hazard"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-0.2975, 51.4525],
+          [-0.292, 51.4525],
+          [-0.286, 51.4525],
+          [-0.2825, 51.4525]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "fixture/railway",
+        "name": "Test Railway",
+        "railway": "rail",
+        "explore_role": "hazard"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-0.297, 51.4615],
+          [-0.293, 51.4615],
+          [-0.289, 51.4615]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "fixture/private-garden",
+        "name": "Private Garden",
+        "leisure": "garden",
+        "access": "private",
+        "explore_role": "hazard"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-0.297, 51.455],
+            [-0.2955, 51.455],
+            [-0.2955, 51.4562],
+            [-0.297, 51.4562],
+            [-0.297, 51.455]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "fixture/building-cafe",
+        "name": "Cafe Building",
+        "building": "yes",
+        "amenity": "cafe",
+        "explore_role": "hazard"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-0.2882, 51.455],
+            [-0.2876, 51.455],
+            [-0.2876, 51.4554],
+            [-0.2882, 51.4554],
+            [-0.2882, 51.455]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "fixture/woodland",
+        "name": "West Wood",
+        "natural": "wood",
+        "explore_role": "environment"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-0.2975, 51.457],
+            [-0.295, 51.457],
+            [-0.295, 51.4595],
+            [-0.2975, 51.4595],
+            [-0.2975, 51.457]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "fixture/grass",
+        "name": "Grass strip",
+        "landuse": "grass",
+        "explore_role": "environment"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-0.285, 51.4542],
+            [-0.283, 51.4542],
+            [-0.283, 51.455],
+            [-0.285, 51.455],
+            [-0.285, 51.4542]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "fixture/bad-footpath-private",
+        "name": "Private Drive Path",
+        "highway": "footway",
+        "access": "private",
+        "explore_role": "hazard"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-0.2965, 51.4552],
+          [-0.296, 51.4556],
+          [-0.2957, 51.456]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "fixture/motorway-adjacent-path",
+        "name": "Unsafe roadside path",
+        "highway": "footway",
+        "explore_role": "source",
+        "explore_source": "footpath"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-0.295, 51.4526],
+          [-0.292, 51.4526],
+          [-0.289, 51.4526],
+          [-0.286, 51.4526]
+        ]
+      }
+    }
+  ]
+}

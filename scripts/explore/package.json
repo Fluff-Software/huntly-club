@@ -1,0 +1,60 @@
+{
+  "name": "@huntly-club/explore-stop-generator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Isolated deterministic Explore stop-generator + hosted HTTP API (Steps 2–10)",
+  "type": "module",
+  "scripts": {
+    "generate": "node --import tsx run.ts",
+    "generate:fixture": "node --import tsx run.ts -- --fixture",
+    "generate:catalogue": "node --import tsx generate-catalogue.ts",
+    "validate:catalogue": "node --import tsx validate-catalogue.ts",
+    "validate:catalogue:national": "node --import tsx validate-catalogue-national.ts",
+    "import:catalogue": "node --import tsx import-catalogue.ts",
+    "import:catalogue:national": "node --import tsx import-catalogue-national.ts",
+    "preflight:import:national": "node --import tsx preflight-import-national.ts",
+    "status:import:national": "node --import tsx status-import-national.ts",
+    "activate:catalogue:national": "node --import tsx activate-catalogue-national.ts",
+    "benchmark:catalogue:national": "node --import tsx benchmark-catalogue-national.ts",
+    "prepare:osm": "node --import tsx prepare-osm.ts",
+    "prepare:pbf": "node --import tsx prepare-pbf.ts",
+    "check:pbf-tools": "node --import tsx check-pbf-tools.ts",
+    "preflight:catalogue": "node --import tsx preflight-catalogue.ts",
+    "extract:coverage": "node --import tsx extract-coverage.ts",
+    "extract:partitions": "node --import tsx extract-partitions.ts",
+    "parity:stoke": "node --import tsx parity-stoke.ts",
+    "benchmark:catalogue": "node --import tsx benchmark-catalogue.ts",
+    "benchmark:catalogue:optimised": "node --import tsx benchmark-catalogue-optimised.ts",
+    "benchmark:workers": "node --import tsx benchmark-workers.ts",
+    "status:catalogue": "node --import tsx status-catalogue.ts",
+    "generate:catalogue:national": "node --import tsx generate-catalogue-national.ts",
+    "serve": "node --import tsx serve.ts",
+    "serve:dev": "node --import tsx serve.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/serve.js",
+    "smoke": "node --import tsx smoke-test.ts",
+    "smoke:edge": "node --import tsx smoke-edge.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.110.8",
+    "@turf/turf": "^7.3.5",
+    "dotenv": "^17.4.2",
+    "pg": "^8.22.0",
+    "pg-copy-streams": "^7.0.0",
+    "rbush": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "@types/pg": "^8.20.0",
+    "@types/pg-copy-streams": "^1.2.5",
+    "@types/rbush": "^4.0.0",
+    "tsx": "^4.23.1",
+    "typescript": "~5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

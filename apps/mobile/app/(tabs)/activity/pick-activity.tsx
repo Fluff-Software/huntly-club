@@ -9,6 +9,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAvailableActivityTypes } from "@/constants/activityTypes";
+import { useExploreRegionSupport } from "@/hooks/useExploreRegionSupport";
 
 const BG = "#2D4A35";
 const CARD_BG = "#3D5F45";
@@ -18,7 +19,10 @@ export default function PickActivityScreen() {
   const router = useRouter();
   const { scaleW } = useLayoutScale();
   const { user } = useAuth();
-  const activityTypes = getAvailableActivityTypes(Platform.OS, user?.email);
+  const { isSupported: exploreSupported } = useExploreRegionSupport();
+  const activityTypes = getAvailableActivityTypes(Platform.OS, user?.email).filter(
+    (type) => type.key !== "explore" || exploreSupported
+  );
 
   return (
     <>

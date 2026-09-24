@@ -7,7 +7,10 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "env": { "APP_VARIANT": "development" }
+      "env": {
+        "APP_VARIANT": "development",
+        "EXPO_PUBLIC_EXPLORE_TRANSPORT": "edge"
+      }
     },
     "development-simulator": {
       "developmentClient": true,
@@ -15,7 +18,10 @@
       "ios": {
         "simulator": true
       },
-      "env": { "APP_VARIANT": "development" }
+      "env": {
+        "APP_VARIANT": "development",
+        "EXPO_PUBLIC_EXPLORE_TRANSPORT": "edge"
+      }
     },
     "preview": {
       "distribution": "internal",

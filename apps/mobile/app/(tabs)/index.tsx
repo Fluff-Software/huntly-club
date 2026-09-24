@@ -28,6 +28,9 @@ import { CampfireTile } from "@/components/CampfireTile";
 import { CaptainQuoteCard } from "@/components/CaptainQuoteCard";
 import { TeamRaceCard } from "@/components/clubhouse/TeamRaceCard";
 import { ThingsToDoRow } from "@/components/clubhouse/ThingsToDoRow";
+import { ExplorePromoCard } from "@/components/clubhouse/ExplorePromoCard";
+import { useExploreRegionSupport } from "@/hooks/useExploreRegionSupport";
+import { LocationPermissionModal } from "@/components/explore/LocationPermissionModal";
 import { AdventureTile } from "@/components/AdventureTile";
 import { PastAdventuresTile } from "@/components/PastAdventuresTile";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
@@ -41,6 +44,13 @@ import { usePlayer } from "@/contexts/PlayerContext";
 import { useProfileDashboard } from "@/contexts/ProfileDashboardContext";
 import { useUser } from "@/contexts/UserContext";
 import { useHomeBootstrap } from "@/contexts/HomeBootstrapContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { usePurchases } from "@/contexts/PurchasesContext";
+import {
+  getLocationPermissionStatus,
+  requestLocationPermission,
+  openLocationSettings,
+} from "@/services/locationService";
 import {
   getRandomClubPhotos,
   type ClubPhotoCardItem,
@@ -137,6 +147,14 @@ export default function HomeScreen() {
   const hasRevealedActivityTilesRef = useRef(false);
   const isTutorialActive = useTutorialActive();
   const teamCardConfig = team ? getTeamCardConfig(team.name) : null;
+  const { user, loading: authLoading } = useAuth();
+  const { hasAccess, isLoading: purchasesLoading } = usePurchases();
+  const { isSupported: showExplorePromo } = useExploreRegionSupport();
+  const [locationPermission, setLocationPermission] = useState<
+    "loading" | "granted" | "denied" | "undetermined"
+  >("loading");
+  const [locationModalVisible, setLocationModalVisible] = useState(false);
+  const [locationRequesting, setLocationRequesting] = useState(false);
 
   useEffect(() => {
     if (!profilesLoading && profiles.length > 0) {
@@ -242,6 +260,18 @@ export default function HomeScreen() {
     clubTileReady &&
     teamTileReady;
 
+  // Only prompt once the user has fully landed on home (auth/purchases settled + tiles ready).
+  // RN Modal sits above AuthGuard's overlay, so prompting earlier causes login/loading flicker.
+  const canShowLocationPrompt =
+    !authLoading &&
+    !!user &&
+    !purchasesLoading &&
+    hasAccess &&
+    !isTutorialActive &&
+    activityTilesReady;
+  const canShowLocationPromptRef = useRef(canShowLocationPrompt);
+  canShowLocationPromptRef.current = canShowLocationPrompt;
+
   const handleCampfireReadyChange = useCallback((ready: boolean) => {
     setCampfireTileReady(ready);
   }, []);
@@ -289,8 +319,64 @@ export default function HomeScreen() {
         refreshHomeData();
       }
       scrollRef.current?.scrollTo({ y: 0, animated: false });
+
+      // Re-check when returning to home (e.g. from Settings) without tying refresh to ready-state.
+      if (!canShowLocationPromptRef.current) {
+        setLocationModalVisible(false);
+        return;
+      }
+      let cancelled = false;
+      const timer = setTimeout(() => {
+        getLocationPermissionStatus().then((status) => {
+          if (cancelled || !canShowLocationPromptRef.current) return;
+          setLocationPermission(status);
+          setLocationModalVisible(status !== "granted");
+        });
+      }, 1000);
+      return () => {
+        cancelled = true;
+        clearTimeout(timer);
+      };
     }, [isTutorialActive, refreshHomeData])
   );
+
+  // When home first becomes ready after load-in, show the prompt (focus alone may have fired too early).
+  useEffect(() => {
+    if (!canShowLocationPrompt) {
+      setLocationModalVisible(false);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      getLocationPermissionStatus().then((status) => {
+        if (cancelled) return;
+        setLocationPermission(status);
+        setLocationModalVisible(status !== "granted");
+      });
+    }, 1000);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [canShowLocationPrompt]);
+
+  const handleLocationRequest = useCallback(async () => {
+    if (locationRequesting) return;
+    if (locationPermission === "denied") {
+      openLocationSettings();
+      setLocationModalVisible(false);
+      return;
+    }
+    setLocationRequesting(true);
+    try {
+      const result = await requestLocationPermission();
+      setLocationPermission(result);
+      if (result === "granted") setLocationModalVisible(false);
+    } finally {
+      setLocationRequesting(false);
+    }
+  }, [locationRequesting, locationPermission]);
 
   useRefreshWhenTutorialEnds(refreshHomeData);
 
@@ -512,6 +598,8 @@ export default function HomeScreen() {
                 </View>
               ) : null}
 
+              {showExplorePromo && <ExplorePromoCard />}
+
               <ThingsToDoRow />
 
               {teamCardConfig && <CaptainQuoteCard teamName={team?.name} />}
@@ -642,6 +730,18 @@ export default function HomeScreen() {
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      {canShowLocationPrompt &&
+        locationPermission !== "loading" &&
+        locationPermission !== "granted" && (
+        <LocationPermissionModal
+          visible={locationModalVisible}
+          permissionStatus={locationPermission}
+          requesting={locationRequesting}
+          onEnable={handleLocationRequest}
+          onDismiss={() => setLocationModalVisible(false)}
+        />
+      )}
     </View>
   );
 }

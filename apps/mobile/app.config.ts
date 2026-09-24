@@ -36,6 +36,17 @@ if (isEasBuild && process.env.EAS_BUILD_PLATFORM === "android" && !maptilerApiKe
   );
 }
 
+// Preview/production use Supabase Edge Explore — localhost Node URL is forbidden.
+if (isEasBuild && (variant === "preview" || variant === "production")) {
+  const exploreUrl = process.env.EXPO_PUBLIC_EXPLORE_API_URL?.trim() ?? "";
+  if (exploreUrl && /localhost|127\.0\.0\.1|10\.0\.2\.2|192\.168\./i.test(exploreUrl)) {
+    throw new Error(
+      `EAS ${variant} build: EXPO_PUBLIC_EXPLORE_API_URL must not be localhost (got ${exploreUrl}). ` +
+        "Production Explore uses Supabase Edge Functions (no Cloud Run URL required)."
+    );
+  }
+}
+
 const androidPackage: Record<AppVariant, string> = {
   production: ANDROID_APPLICATION_ID,
   preview: ANDROID_APPLICATION_ID,
@@ -236,6 +247,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   extra: {
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
     supabaseAnon: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+    exploreApiUrl: process.env.EXPO_PUBLIC_EXPLORE_API_URL,
     eas: {
       projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID,
     },

@@ -11,6 +11,14 @@ if (!supabaseUrl || !supabaseAnon) {
   console.error('Missing Supabase configuration. Please set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY environment variables.');
 }
 
+/** Public project URL (no trailing slash). Used for direct Edge Function fetch. */
+export const SUPABASE_URL: string | undefined = supabaseUrl
+  ? String(supabaseUrl).replace(/\/$/, "")
+  : undefined;
+export const SUPABASE_ANON_KEY: string | undefined = supabaseAnon
+  ? String(supabaseAnon)
+  : undefined;
+
 export const supabase = createClient(
   supabaseUrl!,
   supabaseAnon!,

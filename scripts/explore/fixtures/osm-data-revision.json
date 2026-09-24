@@ -1,0 +1,18 @@
+{
+  "region_id": "stoke-sneyd-green",
+  "region_label": "Sneyd Green / Mornington Road, Stoke-on-Trent ST1 6EN (~1.7 km box)",
+  "bounding_box": {
+    "min_latitude": 53.0367,
+    "min_longitude": -2.1776,
+    "max_latitude": 53.0518,
+    "max_longitude": -2.1535
+  },
+  "prepared_at": "2026-07-23T00:00:00.000Z",
+  "osm_snapshot_at": "2026-07-23",
+  "osm_data_revision": "2026-07-23",
+  "generator_version": 2,
+  "licence": "ODbL 1.0",
+  "attribution": "© OpenStreetMap contributors",
+  "source_file_name": "stoke-sneyd-green.geojson",
+  "notes": "Prepared via npm run prepare:osm. Runtime hash is computed from the GeoJSON file at startup. Do not call Overpass from the hosted API."
+}

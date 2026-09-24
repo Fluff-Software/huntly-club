@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "dist",
+    "rootDir": ".",
+    "declaration": false,
+    "sourceMap": true,
+    "types": ["node"]
+  },
+  "include": ["./**/*.ts"],
+  "exclude": [
+    "__tests__",
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "smoke-test.ts",
+    "run.ts",
+    "prepare-osm.ts",
+    "overpass-to-geojson.ts",
+    "review-map.ts",
+    "review-sample.ts"
+  ]
+}

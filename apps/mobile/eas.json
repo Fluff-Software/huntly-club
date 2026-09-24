@@ -28,9 +28,25 @@
       "channel": "preview",
       "env": { "APP_VARIANT": "preview" }
     },
+    "preview-simulator": {
+      "distribution": "internal",
+      "channel": "preview",
+      "ios": {
+        "simulator": true
+      },
+      "env": { "APP_VARIANT": "preview" }
+    },
     "production": {
       "autoIncrement": true,
       "channel": "production",
+      "env": { "APP_VARIANT": "production" }
+    },
+    "production-apk": {
+      "distribution": "internal",
+      "channel": "production",
+      "android": {
+        "buildType": "apk"
+      },
       "env": { "APP_VARIANT": "production" }
     }
   },

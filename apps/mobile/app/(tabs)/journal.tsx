@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useNavigationReturn } from "@/contexts/NavigationReturnContext";
+import { useExploreRegionSupport } from "@/hooks/useExploreRegionSupport";
 
 const BACKPACK_BG = require("@/assets/images/backpack-bg.png");
 
@@ -117,6 +118,7 @@ function BackpackTile({
 export default function BackpackScreen() {
   const { scaleW } = useLayoutScale();
   const { pushWithReturn } = useNavigationReturn();
+  const { isSupported: exploreSupported } = useExploreRegionSupport();
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
@@ -155,21 +157,23 @@ export default function BackpackScreen() {
             }}
             onPress={() => pushWithReturn("/(tabs)/resources")}
           />
-          <BackpackTile
-            title="Card Binder"
-            subtitle="View the cards you've discovered"
-            cta="Open binder"
-            bgColor="#4A7C59"
-            art={require("@/assets/images/backpack-card-binder.png")}
-            artStyle={{
-              width: scaleW(108),
-              height: scaleW(128),
-              right: -scaleW(14),
-              bottom: -scaleW(16),
-              rotate: "6deg",
-            }}
-            onPress={() => pushWithReturn("/(tabs)/activity/explore-collection")}
-          />
+          {exploreSupported && (
+            <BackpackTile
+              title="Card Binder"
+              subtitle="View the cards you've discovered"
+              cta="Open binder"
+              bgColor="#4A7C59"
+              art={require("@/assets/images/backpack-card-binder.png")}
+              artStyle={{
+                width: scaleW(108),
+                height: scaleW(128),
+                right: -scaleW(14),
+                bottom: -scaleW(16),
+                rotate: "6deg",
+              }}
+              onPress={() => pushWithReturn("/(tabs)/activity/explore-collection")}
+            />
+          )}
         </View>
       </ImageBackground>
     </SafeAreaView>

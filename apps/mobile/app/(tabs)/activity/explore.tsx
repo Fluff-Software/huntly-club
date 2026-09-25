@@ -206,7 +206,7 @@ export default function ExploreScreen() {
   /** DEV / preview: freeze GPS and report spoofed coords for claim testing. */
   const debugSpoofRef = useRef(false);
   const [debugSpoofActive, setDebugSpoofActive] = useState(false);
-  const spoofAllowed = canSpoofExploreLocation(Updates.channel);
+  const spoofAllowed = canSpoofExploreLocation(Updates.channel, user?.email);
   const [selectedSheetHeight, setSelectedSheetHeight] = useState(0);
   const [emptyPanelHeight, setEmptyPanelHeight] = useState(0);
   /** Camera seed for the map. Null until we know where the player is. */

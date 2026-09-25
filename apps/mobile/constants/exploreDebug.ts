@@ -112,11 +112,19 @@ export const EXPLORE_MAP_MIN_RADIUS_METRES = 500;
 /** Drop merged pins farther than this from the latest map fetch centre. */
 export const EXPLORE_MAP_KEEP_METRES = 3500;
 
+/** Domain allowed to use the GPS teleport/spoof tool outside local Metro dev. */
+const EXPLORE_SPOOF_PREVIEW_DOMAIN = "@fluff.software";
+
 /**
  * GPS spoof / teleport for Explore testing.
- * Available in Metro (__DEV__) and on the EAS `preview` channel — not production.
+ * Available in Metro (__DEV__) unconditionally; on the EAS `preview` channel
+ * only for @fluff.software staff — never in production.
  */
-export function canSpoofExploreLocation(channel: string | null | undefined): boolean {
+export function canSpoofExploreLocation(
+  channel: string | null | undefined,
+  userEmail?: string | null
+): boolean {
   if (__DEV__) return true;
-  return channel === "preview";
+  if (channel !== "preview") return false;
+  return Boolean(userEmail?.toLowerCase().endsWith(EXPLORE_SPOOF_PREVIEW_DOMAIN));
 }

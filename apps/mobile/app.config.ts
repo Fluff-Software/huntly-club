@@ -144,8 +144,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     output: "static",
     favicon: "./assets/images/favicon.png",
   },
-  // Bare workflow (committed ios/android) requires an explicit runtime version string —
-  // `policy: "appVersion"` is managed-workflow only and fails EAS iOS/Android builds.
   runtimeVersion: appVersion,
   updates: {
     url: "https://u.expo.dev/" + (process.env.EXPO_PUBLIC_EAS_PROJECT_ID ?? ""),
@@ -241,6 +239,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         supportsPictureInPicture: false,
       },
     ],
+    "./plugins/withAndroidLocationNotification",
   ],
   experiments: {
     typedRoutes: true,

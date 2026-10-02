@@ -57,7 +57,7 @@ jobs:
           EXPO_PUBLIC_REVENUECAT_IOS_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY }}
           EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY }}
           EXPO_PUBLIC_MAPTILER_API_KEY: ${{ secrets.EXPO_PUBLIC_MAPTILER_API_KEY }}
-          UPDATE_MESSAGE: ${{ github.event.head_commit.message }}
+          UPDATE_MESSAGE: ${{ github.event.head_commit.message || format('Manual update from {0}', github.sha) }}
         run: |
           eas update --channel production --message "$UPDATE_MESSAGE" --platform android --non-interactive
 
@@ -71,7 +71,7 @@ jobs:
           EXPO_PUBLIC_REVENUECAT_IOS_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY }}
           EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY }}
           EXPO_PUBLIC_MAPTILER_API_KEY: ${{ secrets.EXPO_PUBLIC_MAPTILER_API_KEY }}
-          UPDATE_MESSAGE: ${{ github.event.head_commit.message }}
+          UPDATE_MESSAGE: ${{ github.event.head_commit.message || format('Manual update from {0}', github.sha) }}
         run: |
           eas update --channel production --message "$UPDATE_MESSAGE" --platform ios --non-interactive
 
@@ -116,7 +116,7 @@ jobs:
           EXPO_PUBLIC_REVENUECAT_IOS_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY }}
           EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY }}
           EXPO_PUBLIC_MAPTILER_API_KEY: ${{ secrets.EXPO_PUBLIC_MAPTILER_API_KEY }}
-          UPDATE_MESSAGE: ${{ github.event.head_commit.message }}
+          UPDATE_MESSAGE: ${{ github.event.head_commit.message || format('Manual update from {0}', github.sha) }}
         run: |
           eas update --channel preview --message "$UPDATE_MESSAGE" --platform android --non-interactive
 
@@ -130,6 +130,6 @@ jobs:
           EXPO_PUBLIC_REVENUECAT_IOS_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY }}
           EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY }}
           EXPO_PUBLIC_MAPTILER_API_KEY: ${{ secrets.EXPO_PUBLIC_MAPTILER_API_KEY }}
-          UPDATE_MESSAGE: ${{ github.event.head_commit.message }}
+          UPDATE_MESSAGE: ${{ github.event.head_commit.message || format('Manual update from {0}', github.sha) }}
         run: |
           eas update --channel preview --message "$UPDATE_MESSAGE" --platform ios --non-interactive

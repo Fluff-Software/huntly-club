@@ -338,6 +338,7 @@ export default function ExploreScreen() {
   }, [loc, visibleStops, claimedIds]);
 
   const [nearStopBannerVisible, setNearStopBannerVisible] = useState(false);
+  const [nearStopBannerStopId, setNearStopBannerStopId] = useState<string | null>(null);
   const lastNearbyStopIdRef = useRef<string | null>(null);
   const nearStopBannerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -346,15 +347,24 @@ export default function ExploreScreen() {
     if (nearbyId && nearbyId !== lastNearbyStopIdRef.current) {
       lastNearbyStopIdRef.current = nearbyId;
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setNearStopBannerStopId(nearbyId);
       setNearStopBannerVisible(true);
       if (nearStopBannerTimeoutRef.current) clearTimeout(nearStopBannerTimeoutRef.current);
+      // Long enough to read and tap it, since tapping now opens the collect sheet.
       nearStopBannerTimeoutRef.current = setTimeout(() => {
         setNearStopBannerVisible(false);
-      }, 3200);
+      }, 6000);
     } else if (!nearbyId) {
       lastNearbyStopIdRef.current = null;
     }
   }, [nearbyUnlockableStop]);
+
+  const openNearStopFromBanner = useCallback(() => {
+    if (!nearStopBannerStopId) return;
+    if (nearStopBannerTimeoutRef.current) clearTimeout(nearStopBannerTimeoutRef.current);
+    setNearStopBannerVisible(false);
+    setSelectedId(nearStopBannerStopId);
+  }, [nearStopBannerStopId]);
 
   useEffect(
     () => () => {
@@ -1108,6 +1118,7 @@ export default function ExploreScreen() {
           visible={nearStopBannerVisible}
           label="You're close enough to unlock a stop"
           top={insets.top + 64}
+          onPress={openNearStopFromBanner}
         />
 
         <ExploreProfileSelectModal

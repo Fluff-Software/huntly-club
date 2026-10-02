@@ -1,9 +1,10 @@
 /**
  * Top dropdown banner — "you're close enough to unlock a stop".
- * Purely presentational: parent owns the visible/label timing.
+ * Parent owns the visible/label timing; tapping it calls `onPress` so the
+ * parent can open the stop's collect sheet.
  */
 import React, { useEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet } from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -17,9 +18,10 @@ type Props = {
   visible: boolean;
   label: string;
   top: number;
+  onPress?: () => void;
 };
 
-export function ExploreNearbyStopBanner({ visible, label, top }: Props) {
+export function ExploreNearbyStopBanner({ visible, label, top, onPress }: Props) {
   const progress = useSharedValue(0);
 
   useEffect(() => {
@@ -36,16 +38,23 @@ export function ExploreNearbyStopBanner({ visible, label, top }: Props) {
 
   return (
     <Animated.View
-      pointerEvents="none"
+      pointerEvents={visible && onPress ? "box-none" : "none"}
       style={[styles.wrap, { top }, animatedStyle]}
       accessibilityLiveRegion="polite"
     >
-      <View style={styles.pill}>
+      <Pressable
+        onPress={onPress}
+        disabled={!onPress}
+        accessibilityRole={onPress ? "button" : undefined}
+        accessibilityLabel={onPress ? `${label}. Tap to collect.` : label}
+        style={styles.pill}
+      >
         <MaterialIcons name="vibration" size={18} color="#B8F000" />
         <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.label}>
           {label}
         </ThemedText>
-      </View>
+        {onPress ? <MaterialIcons name="chevron-right" size={18} color="#B8F000" /> : null}
+      </Pressable>
     </Animated.View>
   );
 }

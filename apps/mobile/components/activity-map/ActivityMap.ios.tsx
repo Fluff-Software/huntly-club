@@ -157,7 +157,9 @@ export const ActivityMap = forwardRef<ActivityMapRef, ActivityMapProps>(function
               coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
               title={marker.title ?? "You"}
               anchor={{ x: 0.5, y: 0.5 }}
-              zIndex={1000}
+              // Below the stop pins (zIndex 1). This 64pt view is hit-tested like any
+              // annotation, so above them it swallowed taps on every stop near the player.
+              zIndex={0}
               tracksViewChanges
             >
               <ActivityMapUserMarkerView />

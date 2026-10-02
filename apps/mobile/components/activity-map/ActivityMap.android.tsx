@@ -223,7 +223,10 @@ export const ActivityMap = forwardRef<ActivityMapRef, ActivityMapProps>(function
             id={marker.id}
             lngLat={[marker.longitude, marker.latitude]}
             anchor="center"
-            onSelect={() => onMarkerPress?.(marker.id)}
+            // onSelect only fires on the unselected -> selected transition, and native
+            // selection survives our sheet being closed, so re-tapping a marker would
+            // do nothing. onPress fires on every tap.
+            onPress={() => onMarkerPress?.(marker.id)}
           >
             <ActivityMapStopMarkerView
               color={marker.color ?? "#1f9d55"}

@@ -74,6 +74,7 @@ export function ExploreCardDetail({
             key={`${card.id}-${collected ? "in" : "out"}`}
             interactive={collected}
             entranceTwist
+            rarity={card.rarity}
             borderColor={
               collected
                 ? EXPLORE_RARITY_COLORS[card.rarity] ?? "#3B82F6"

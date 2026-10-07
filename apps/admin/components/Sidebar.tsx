@@ -17,6 +17,8 @@ const nav = [
   { href: "/categories", label: "Categories" },
   { href: "/resources", label: "Resources" },
   { href: "/explore-cards", label: "Explore Cards" },
+  { href: "/explore-events", label: "Explore Events" },
+  { href: "/app-themes", label: "App Themes" },
   { href: "/photos", label: "Photos" },
   { href: "/waitlist", label: "Waitlist" },
   { href: "/feedback", label: "Feedback" },

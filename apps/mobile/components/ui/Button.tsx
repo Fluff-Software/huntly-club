@@ -1,6 +1,7 @@
 import React from "react";
 import { Pressable, ActivityIndicator, PressableProps } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
+import { useAppTheme } from "@/contexts/AppThemeContext";
 
 type ButtonVariant = "primary" | "secondary" | "danger" | "cancel" | "badge" | "white";
 type ButtonSize = "small" | "medium" | "large";
@@ -61,12 +62,13 @@ export function Button({
   className = "",
   ...pressableProps
 }: ButtonProps) {
+  const { c } = useAppTheme();
   const baseStyles = "rounded-xl justify-center items-center shadow-soft";
   const variantStyle = variantStyles[variant];
   const sizeStyle = sizeStyles[size];
   const combinedClassName = `${baseStyles} ${variantStyle} ${sizeStyle} ${className}`;
   const textColor = textColorByVariant[variant];
-  const loadingColor = loadingColorByVariant[variant];
+  const loadingColor = c(loadingColorByVariant[variant]);
   const textSize = textSizeByButtonSize[size];
 
   return (

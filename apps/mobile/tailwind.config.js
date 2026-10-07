@@ -8,25 +8,25 @@ module.exports = {
         // Huntly World brand colors based on design images
         huntly: {
           // Primary greens from nature theme
-          forest: "#2D5A27", // Dark green for headers and navigation
-          leaf: "#4A7C59", // Medium green for cards and accents
-          sage: "#7FB069", // Light green for backgrounds
-          mint: "#A8D5BA", // Very light green for subtle backgrounds
+          forest: "rgb(var(--huntly-forest) / <alpha-value>)", // Dark green for headers and navigation
+          leaf: "rgb(var(--huntly-leaf) / <alpha-value>)", // Medium green for cards and accents
+          sage: "rgb(var(--huntly-sage) / <alpha-value>)", // Light green for backgrounds
+          mint: "rgb(var(--huntly-mint) / <alpha-value>)", // Very light green for subtle backgrounds
 
           // Warm yellows and oranges
-          sunshine: "#FFD93D", // Bright yellow for highlights
-          amber: "#FFA500", // Orange for buttons and CTAs
-          peach: "#FFB347", // Light orange for backgrounds
+          sunshine: "rgb(var(--huntly-sunshine) / <alpha-value>)", // Bright yellow for highlights
+          amber: "rgb(var(--huntly-amber) / <alpha-value>)", // Orange for buttons and CTAs
+          peach: "rgb(var(--huntly-peach) / <alpha-value>)", // Light orange for backgrounds
 
           // Blues for sky and water themes
-          sky: "#87CEEB", // Light blue for backgrounds
-          ocean: "#4682B4", // Medium blue for accents
-          navy: "#1E3A8A", // Dark blue for text
+          sky: "rgb(var(--huntly-sky) / <alpha-value>)", // Light blue for backgrounds
+          ocean: "rgb(var(--huntly-ocean) / <alpha-value>)", // Medium blue for accents
+          navy: "rgb(var(--huntly-navy) / <alpha-value>)", // Dark blue for text
 
           // Neutral colors
-          cream: "#FFF8DC", // Light cream for backgrounds
-          brown: "#8B4513", // Earth brown for text and borders
-          charcoal: "#36454F", // Dark gray for text
+          cream: "rgb(var(--huntly-cream) / <alpha-value>)", // Light cream for backgrounds
+          brown: "rgb(var(--huntly-brown) / <alpha-value>)", // Earth brown for text and borders
+          charcoal: "rgb(var(--huntly-charcoal) / <alpha-value>)", // Dark gray for text
         },
 
         // Team colors from the design

@@ -9,7 +9,7 @@ async function getCard(id: string) {
   const { data, error } = await supabase
     .from("explore_cards")
     .select(
-      "id, slug, name, description, category, rarity, image_path, base_weight, habitat_weights, is_active, sort_order"
+      "id, slug, name, description, category, rarity, image_path, base_weight, event_weight, habitat_weights, is_active, sort_order"
     )
     .eq("id", id)
     .maybeSingle();
@@ -44,6 +44,7 @@ export default async function EditExploreCardPage({
     rarity: card.rarity,
     image_path: card.image_path ?? "",
     base_weight: Number(card.base_weight),
+    event_weight: Number(card.event_weight ?? 0) || undefined,
     habitat_weights: habitatWeights,
     is_active: card.is_active !== false,
     sort_order: Number(card.sort_order ?? 0),

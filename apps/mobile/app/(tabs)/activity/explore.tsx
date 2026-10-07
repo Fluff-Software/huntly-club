@@ -4,6 +4,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  AppState,
   Pressable,
   StyleSheet,
   View,
@@ -65,6 +66,7 @@ import {
 import { explorePackArt } from "@/constants/exploreBinder";
 import { metersBetween } from "@/services/trackingSessionService";
 import { newIdempotencyKey } from "@/utils/idempotency";
+import { exploreClaimDay, msUntilExploreMidnight } from "@/utils/exploreDay";
 import type {
   ExploreAward,
   ExploreStop,
@@ -284,6 +286,37 @@ export default function ExploreScreen() {
       return;
     }
     void refreshClaimedForProfiles(profiles.map((p) => p.id));
+  }, [session, profiles, refreshClaimedForProfiles]);
+
+  // Stops refresh at UK midnight: re-pull the claimed list when the day rolls
+  // over while the screen is open, and when the app returns to the foreground
+  // (the phone may have slept past midnight). Re-checks at most hourly so a
+  // daylight-saving changeover can't leave the timer an hour out.
+  useEffect(() => {
+    if (!session) return;
+    const profileIds = profiles.map((p) => p.id);
+    let day = exploreClaimDay();
+    const refreshIfNewDay = () => {
+      const today = exploreClaimDay();
+      if (today === day) return;
+      day = today;
+      void refreshClaimedForProfiles(profileIds);
+    };
+    let timer: ReturnType<typeof setTimeout>;
+    const schedule = () => {
+      timer = setTimeout(() => {
+        refreshIfNewDay();
+        schedule();
+      }, Math.min(msUntilExploreMidnight() + 1000, 60 * 60 * 1000));
+    };
+    schedule();
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") refreshIfNewDay();
+    });
+    return () => {
+      clearTimeout(timer);
+      sub.remove();
+    };
   }, [session, profiles, refreshClaimedForProfiles]);
 
   /** Markers: single profile = that profile’s claims; All = only fully claimed by everyone. */
@@ -1245,14 +1278,16 @@ export default function ExploreScreen() {
             <View style={styles.sheetHeader}>
               <View style={{ flex: 1, gap: 4 }}>
                 <ThemedText type="heading" lightColor="#FFF" darkColor="#FFF" style={styles.sheetTitle}>
-                  {alreadyClaimed ? "Already collected" : "Explore spot"}
+                  {alreadyClaimed ? "Collected today" : "Explore spot"}
                 </ThemedText>
                 <ThemedText
                   lightColor="rgba(255,255,255,0.7)"
                   darkColor="rgba(255,255,255,0.7)"
                   style={{ fontSize: 13 }}
                 >
-                  {loc.status !== "ready"
+                  {alreadyClaimed
+                    ? "Come back tomorrow for another card!"
+                    : loc.status !== "ready"
                     ? "Enable location to collect cards"
                     : distanceToSelectedMetres != null
                       ? formatExploreDistanceAway(distanceToSelectedMetres)

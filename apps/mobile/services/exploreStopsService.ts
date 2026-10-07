@@ -4,6 +4,7 @@
  * Local Node transport retained for DEV side-by-side tests only.
  * Does not run the generator, load OSM, or touch explore_locations.
  */
+import { exploreClaimDay } from "@/utils/exploreDay";
 import {
   ExploreStopsRequestError,
   type ExploreClaimRequest,
@@ -1073,7 +1074,9 @@ export async function getClaimedExploreStopIds(
   const { data: rows, error: tableError } = await supabase
     .from("explore_stop_claims")
     .select("stop_id")
-    .eq("profile_id", profileId);
+    .eq("profile_id", profileId)
+    // Stops refresh daily: only today's (UK) claims lock a stop.
+    .eq("claim_day", exploreClaimDay());
 
   if (!tableError && Array.isArray(rows)) {
     return {

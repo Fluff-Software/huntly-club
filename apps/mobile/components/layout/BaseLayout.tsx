@@ -2,6 +2,7 @@ import { View, ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedView } from "@/components/ThemedView";
 import { useColorScheme } from "@/hooks/useColorScheme";
+import { useAppTheme } from "@/contexts/AppThemeContext";
 
 interface BaseLayoutProps {
   children: React.ReactNode;
@@ -21,7 +22,8 @@ export function BaseLayout({
   contentClassName,
 }: BaseLayoutProps) {
   const colorScheme = useColorScheme();
-  const backgroundColor = colorScheme === "dark" ? "#2D5A27" : "#FFF8DC"; // huntly-forest : huntly-cream
+  const { c } = useAppTheme();
+  const backgroundColor = c(colorScheme === "dark" ? "#2D5A27" : "#FFF8DC"); // huntly-forest : huntly-cream
 
   return (
     <SafeAreaView

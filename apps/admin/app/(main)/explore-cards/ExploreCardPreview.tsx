@@ -7,6 +7,7 @@ const RARITY_COLORS: Record<string, string> = {
   uncommon: "#2D8A4E",
   rare: "#9B4FD1",
   very_rare: "#C4851A",
+  halloween: "#E8700A",
 };
 
 function formatRarityLabel(rarity: string): string {

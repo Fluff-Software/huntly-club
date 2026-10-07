@@ -1,3 +1,22 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Defaults for the `huntly.*` Tailwind colours (R G B channels). A live seasonal
+   theme overrides these at runtime -- see contexts/AppThemeContext.tsx. Keep in
+   sync with DEFAULT_TAILWIND_CHANNELS in constants/appThemes.ts. */
+:root {
+  --huntly-forest: 45 90 39;
+  --huntly-leaf: 74 124 89;
+  --huntly-sage: 127 176 105;
+  --huntly-mint: 168 213 186;
+  --huntly-sunshine: 255 217 61;
+  --huntly-amber: 255 165 0;
+  --huntly-peach: 255 179 71;
+  --huntly-sky: 135 206 235;
+  --huntly-ocean: 70 130 180;
+  --huntly-navy: 30 58 138;
+  --huntly-cream: 255 248 220;
+  --huntly-brown: 139 69 19;
+  --huntly-charcoal: 54 69 79;
+}

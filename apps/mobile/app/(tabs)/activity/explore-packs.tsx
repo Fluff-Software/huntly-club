@@ -19,7 +19,7 @@ import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
 import { ExploreCardPackReveal } from "@/components/explore/ExploreCardPackReveal";
-import { EXPLORE_PACK_ART_BY_SOURCE } from "@/constants/exploreBinder";
+import { explorePackArt } from "@/constants/exploreBinder";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useBankedPacksByProfile } from "@/hooks/useBankedPacksByProfile";
 import { openExplorePack, exploreUserMessage, ExploreStopsRequestError } from "@/services/exploreStopsService";
@@ -32,20 +32,27 @@ const COLUMNS = 2;
 /** Native pixel size of explore-pack-full.png (see ExploreCardPackReveal.tsx). */
 const PACK_ASPECT = 501 / 1024;
 
-/** Collapses same-source packs into one tile with a duplicate count. */
-function groupBySource(
-  packs: ExplorePackRecord[]
-): { source: ExplorePackRecord["source"]; packs: ExplorePackRecord[] }[] {
-  const bySource = new Map<ExplorePackRecord["source"], ExplorePackRecord[]>();
+type PackGroup = {
+  key: string;
+  source: ExplorePackRecord["source"];
+  eventSlug: string | null;
+  packs: ExplorePackRecord[];
+};
+
+/** Collapses same-source, same-event packs into one tile with a duplicate count. */
+function groupPacks(packs: ExplorePackRecord[]): PackGroup[] {
+  const groups = new Map<string, PackGroup>();
   for (const pack of packs) {
-    const list = bySource.get(pack.source) ?? [];
-    list.push(pack);
-    bySource.set(pack.source, list);
+    const eventSlug = pack.eventSlug ?? null;
+    const key = `${pack.source}:${eventSlug ?? ""}`;
+    const group = groups.get(key);
+    if (group) {
+      group.packs.push(pack);
+    } else {
+      groups.set(key, { key, source: pack.source, eventSlug, packs: [pack] });
+    }
   }
-  return Array.from(bySource.entries()).map(([source, sourcePacks]) => ({
-    source,
-    packs: sourcePacks,
-  }));
+  return Array.from(groups.values());
 }
 
 export default function ExplorePacksScreen() {
@@ -154,9 +161,9 @@ export default function ExplorePacksScreen() {
                     </ThemedText>
                   </View>
                   <View style={styles.grid}>
-                    {groupBySource(packs).map((group) => (
+                    {groupPacks(packs).map((group) => (
                       <Pressable
-                        key={group.source}
+                        key={group.key}
                         onPress={() => openTile(packs, group.packs)}
                         accessibilityRole="button"
                         accessibilityLabel={`Open ${group.packs.length} pack${
@@ -166,7 +173,7 @@ export default function ExplorePacksScreen() {
                       >
                         <View style={styles.tile}>
                           <Image
-                            source={EXPLORE_PACK_ART_BY_SOURCE[group.source]}
+                            source={explorePackArt(group.source, group.eventSlug)}
                             style={styles.tileImage}
                             resizeMode="contain"
                           />
@@ -196,7 +203,10 @@ export default function ExplorePacksScreen() {
         <ExploreCardPackReveal
           key={packQueue[packQueueIndex]!.id}
           visible
-          packSource={EXPLORE_PACK_ART_BY_SOURCE[packQueue[packQueueIndex]!.source]}
+          packSource={explorePackArt(
+            packQueue[packQueueIndex]!.source,
+            packQueue[packQueueIndex]!.eventSlug
+          )}
           onRipComplete={commitPackFromQueue}
           onClose={closeQueue}
           queueRemaining={packQueue.length - packQueueIndex - 1}

@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/contexts/AppThemeContext";
 import { Tabs, router, usePathname, useSegments } from "expo-router";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Image, Platform, Pressable, StyleSheet, View } from "react-native";
@@ -108,6 +109,7 @@ export default function TabLayout() {
   const { profiles, loading: profilesLoading } = usePlayer();
   const { userData, loading: userLoading } = useUser();
   const { scaleW, isTablet } = useLayoutScale();
+  const { c } = useAppTheme();
   const insets = useSafeAreaInsets();
   const { session: activeTrackingSession } = useActiveTrackingSession();
   const { session: activeHuntSession } = useActiveHuntSession();
@@ -327,7 +329,7 @@ export default function TabLayout() {
           shadowOffset: { width: 0, height: scaleW(-2) },
           shadowOpacity: 0.12,
           shadowRadius: scaleW(4),
-          backgroundColor: TAB_BAR_COLORS[route.name] ?? TAB_BAR_COLORS.index },
+          backgroundColor: c(TAB_BAR_COLORS[route.name] ?? TAB_BAR_COLORS.index!) },
         tabBarLabelStyle: {
           fontSize: scaleW(12),
           fontWeight: "600",

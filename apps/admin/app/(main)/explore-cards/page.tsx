@@ -12,6 +12,7 @@ type ExploreCardRow = {
   rarity: string;
   image_path: string;
   base_weight: number;
+  event_weight: number;
   is_active: boolean;
   sort_order: number;
 };
@@ -21,7 +22,7 @@ async function getCards(): Promise<ExploreCardRow[]> {
   const { data, error } = await supabase
     .from("explore_cards")
     .select(
-      "id, slug, name, description, category, rarity, image_path, base_weight, is_active, sort_order"
+      "id, slug, name, description, category, rarity, image_path, base_weight, event_weight, is_active, sort_order"
     )
     .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
@@ -35,6 +36,7 @@ const RARITY_COLORS: Record<string, string> = {
   uncommon: "bg-emerald-100 text-emerald-800",
   rare: "bg-purple-100 text-purple-800",
   very_rare: "bg-amber-100 text-amber-900",
+  halloween: "bg-orange-100 text-orange-800",
 };
 
 function formatLabel(value: string): string {
@@ -224,7 +226,9 @@ export default async function ExploreCardsPage({
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-stone-700">
-                      {card.base_weight}
+                      {card.rarity === "halloween"
+                        ? `${card.event_weight} (event)`
+                        : card.base_weight}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-stone-700">
                       {card.sort_order}

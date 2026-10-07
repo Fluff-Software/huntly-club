@@ -893,6 +893,7 @@ export async function claimExploreStop(
     idempotentReplay: raw.idempotent_replay === true,
     banked: raw.banked === true,
     packId: raw.pack_id == null ? undefined : String(raw.pack_id),
+    packEvent: typeof raw.pack_event === "string" ? raw.pack_event : undefined,
   };
 }
 
@@ -965,11 +966,19 @@ export async function tradeExploreCards(
   };
 }
 
+/** PostgREST embeds a to-one relation as an object (or null). */
+function mapPackEventSlug(raw: unknown): string | null {
+  if (!raw || typeof raw !== "object") return null;
+  const slug = (raw as Record<string, unknown>).slug;
+  return typeof slug === "string" ? slug : null;
+}
+
 function mapPackRow(raw: Record<string, unknown>): ExplorePackRecord {
   return {
     id: String(raw.id),
     profileId: Number(raw.profile_id),
     source: raw.source === "trade" ? "trade" : "stop_claim",
+    eventSlug: mapPackEventSlug(raw.event),
     status: raw.status === "opened" ? "opened" : "unopened",
     bankedAt: String(raw.banked_at),
     openedAt: raw.opened_at == null ? null : String(raw.opened_at),
@@ -982,7 +991,7 @@ export async function getBankedPacks(profileId: number): Promise<ExplorePackReco
 
   const { data, error } = await supabase
     .from("explore_profile_packs")
-    .select("id, profile_id, source, status, banked_at, opened_at")
+    .select("id, profile_id, source, status, banked_at, opened_at, event:explore_events(slug)")
     .eq("profile_id", profileId)
     .eq("status", "unopened")
     .order("banked_at", { ascending: true });
@@ -1042,6 +1051,7 @@ export async function openExplorePack(packId: string): Promise<ExploreOpenPackRe
       id: String(p.pack_id),
       profileId: Number(p.profile_id),
       source: p.source === "trade" ? "trade" : "stop_claim",
+      eventSlug: typeof p.event_slug === "string" ? p.event_slug : null,
       status: p.status === "opened" ? "opened" : "unopened",
       bankedAt: String(p.banked_at ?? ""),
       openedAt: p.opened_at == null ? null : String(p.opened_at),

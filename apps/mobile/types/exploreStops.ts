@@ -212,6 +212,8 @@ export type ExploreClaimSuccess = {
   banked?: boolean;
   /** Set when `banked` is true -- id of the unopened pack to open later. */
   packId?: string;
+  /** Set when the banked pack is a limited-time event pack (e.g. "halloween"). */
+  packEvent?: string;
 };
 
 export type ExploreClaimFailure = {
@@ -283,6 +285,8 @@ export type ExplorePackRecord = {
   id: string;
   profileId: number;
   source: "stop_claim" | "trade";
+  /** Limited-time event this pack belongs to (e.g. "halloween"), if any. */
+  eventSlug?: string | null;
   status: "unopened" | "opened";
   bankedAt: string;
   openedAt: string | null;

@@ -19,6 +19,7 @@ import { useAppUpdate } from "@/hooks/useAppUpdate";
 import { useHideAndroidNavigationBar } from "@/hooks/useHideAndroidNavigationBar";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { NetworkProvider } from "@/contexts/NetworkContext";
+import { AppThemeProvider } from "@/contexts/AppThemeContext";
 import { PurchasesProvider } from "@/contexts/PurchasesContext";
 import { PlayerProvider } from "@/contexts/PlayerContext";
 import { SignUpProvider } from "@/contexts/SignUpContext";
@@ -132,6 +133,7 @@ export default function RootLayout() {
   }
 
   return (
+    <AppThemeProvider>
     <NetworkProvider>
       <AuthProvider>
         <SignUpProvider>
@@ -160,5 +162,6 @@ export default function RootLayout() {
         </SignUpProvider>
       </AuthProvider>
     </NetworkProvider>
+    </AppThemeProvider>
   );
 }

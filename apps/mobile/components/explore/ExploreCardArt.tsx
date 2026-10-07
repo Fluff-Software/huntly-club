@@ -26,11 +26,13 @@ const CARD_BG_COMMON = require("@/assets/images/explore-card-bg-common.png");
 const CARD_BG_UNCOMMON = require("@/assets/images/explore-card-bg-uncommon.png");
 const CARD_BG_RARE = require("@/assets/images/explore-card-bg-rare.png");
 const CARD_BG_VERY_RARE = require("@/assets/images/explore-card-bg-very-rare.png");
+const CARD_BG_HALLOWEEN = require("@/assets/images/explore-card-bg-halloween.png");
 const CARD_BG_BY_RARITY: Record<string, unknown> = {
   common: CARD_BG_COMMON,
   uncommon: CARD_BG_UNCOMMON,
   rare: CARD_BG_RARE,
   very_rare: CARD_BG_VERY_RARE,
+  halloween: CARD_BG_HALLOWEEN,
 };
 
 const INK = "#1A2A1C";

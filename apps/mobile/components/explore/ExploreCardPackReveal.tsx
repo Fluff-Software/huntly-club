@@ -645,6 +645,7 @@ export function ExploreCardPackReveal({
                   autoFlip
                   interactive
                   borderColor={rarityColor}
+                  rarity={award.card.rarity}
                   autoFlipDelayMs={revealProfile.flipHoldMs}
                   autoFlipDurationMs={revealProfile.flipSpinMs}
                   key={award.card.id}

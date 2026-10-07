@@ -62,6 +62,7 @@ import {
   getExploreStopsNear,
   openExplorePack,
 } from "@/services/exploreStopsService";
+import { explorePackArt } from "@/constants/exploreBinder";
 import { metersBetween } from "@/services/trackingSessionService";
 import { newIdempotencyKey } from "@/utils/idempotency";
 import type {
@@ -103,7 +104,7 @@ type PackSession = {
    * "all" pays for every profile up front; only the first is ripped here --
    * the rest stay banked, ready to open later from each profile's binder).
    */
-  packIds: { profileId: number; packId: string }[];
+  packIds: { profileId: number; packId: string; eventSlug?: string }[];
 };
 
 
@@ -868,7 +869,7 @@ export default function ExploreScreen() {
       // "save" action -- the pack is already banked either way.
       let anySuccess = false;
       let lastError: Error | null = null;
-      const packIds: { profileId: number; packId: string }[] = [];
+      const packIds: PackSession["packIds"] = [];
 
       for (const profileId of eligibleProfileIds) {
         try {
@@ -894,7 +895,7 @@ export default function ExploreScreen() {
               return next;
             });
             if (result.success && result.packId) {
-              packIds.push({ profileId, packId: result.packId });
+              packIds.push({ profileId, packId: result.packId, eventSlug: result.packEvent });
             }
             continue;
           }
@@ -1378,6 +1379,7 @@ export default function ExploreScreen() {
         {packSession ? (
           <ExploreCardPackReveal
             visible
+            packSource={explorePackArt("stop_claim", packSession.packIds[0]?.eventSlug)}
             onRipComplete={commitPackClaim}
             onSaveForLater={() => closePack()}
             onClose={() => {

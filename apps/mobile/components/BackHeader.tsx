@@ -4,6 +4,7 @@ import { router, type Href } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { useAppTheme } from "@/contexts/AppThemeContext";
 import { useNavigationReturnOptional } from "@/contexts/NavigationReturnContext";
 
 const COLORS = {
@@ -31,9 +32,10 @@ export function BackHeader({
 }: BackHeaderProps) {
   const navigationReturn = useNavigationReturnOptional();
   const { scaleW } = useLayoutScale();
+  const { c } = useAppTheme();
   const isLight = variant === "light";
-  const iconColor = isLight ? COLORS.darkGreen : COLORS.white;
-  const labelColor = isLight ? COLORS.charcoal : COLORS.white;
+  const iconColor = isLight ? c(COLORS.darkGreen) : COLORS.white;
+  const labelColor = isLight ? c(COLORS.charcoal) : COLORS.white;
 
   const onPress = () => {
     onBack?.();

@@ -5,8 +5,8 @@ import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 export type ExploreCardFormState = { error?: string };
 
-const CATEGORIES = new Set(["animal", "habitat", "flora_wildlife"]);
-const RARITIES = new Set(["common", "uncommon", "rare", "very_rare"]);
+const CATEGORIES = new Set(["animal", "habitat", "flora_wildlife", "halloween"]);
+const RARITIES = new Set(["common", "uncommon", "rare", "very_rare", "halloween"]);
 const HABITAT_KEYS = [
   "freshwater",
   "wetland",
@@ -49,6 +49,7 @@ function parseCardFields(formData: FormData): {
     rarity: string;
     image_path: string;
     base_weight: number;
+    event_weight?: number;
     habitat_weights: Record<string, number>;
     is_active: boolean;
     sort_order: number;
@@ -69,7 +70,15 @@ function parseCardFields(formData: FormData): {
   if (!slug) return { error: "Slug is required" };
   if (!CATEGORIES.has(category)) return { error: "Invalid category" };
   if (!RARITIES.has(rarity)) return { error: "Invalid rarity" };
-  if (!Number.isFinite(baseWeight) || baseWeight <= 0) {
+  // Event (Halloween) cards stay out of normal packs: base weight is always 0
+  // and they're drawn by event weight inside the event pack instead.
+  const isEventCard = rarity === "halloween";
+  const eventWeight = Number(formData.get("event_weight"));
+  if (isEventCard) {
+    if (!Number.isFinite(eventWeight) || eventWeight <= 0) {
+      return { error: "Event weight must be a number greater than 0" };
+    }
+  } else if (!Number.isFinite(baseWeight) || baseWeight <= 0) {
     return { error: "Base weight must be a number greater than 0" };
   }
 
@@ -81,7 +90,8 @@ function parseCardFields(formData: FormData): {
       category,
       rarity,
       image_path: imagePath,
-      base_weight: baseWeight,
+      base_weight: isEventCard ? 0 : baseWeight,
+      ...(isEventCard ? { event_weight: eventWeight } : {}),
       habitat_weights: parseHabitatWeights(formData),
       is_active: isActive,
       sort_order: Number.isNaN(sortOrder) ? 0 : sortOrder,
@@ -95,6 +105,9 @@ export async function createExploreCard(
 ): Promise<ExploreCardFormState> {
   const parsed = parseCardFields(formData);
   if (parsed.error || !parsed.row) return { error: parsed.error ?? "Invalid form" };
+  if (parsed.row.rarity === "halloween") {
+    return { error: "Halloween cards are added with their event, not from this form" };
+  }
 
   try {
     const supabase = createServerSupabaseClient();

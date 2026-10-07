@@ -10,6 +10,9 @@ const CATEGORIES = [
   { value: "animal", label: "Animal" },
   { value: "habitat", label: "Habitat" },
   { value: "flora_wildlife", label: "Flora & Wildlife" },
+  // Event categories/rarities can't be created here -- they only appear when
+  // editing a card that already has them (see `isEventCard` below).
+  { value: "halloween", label: "Halloween" },
 ] as const;
 
 const RARITIES = [
@@ -17,6 +20,7 @@ const RARITIES = [
   { value: "uncommon", label: "Uncommon" },
   { value: "rare", label: "Rare" },
   { value: "very_rare", label: "Very rare" },
+  { value: "halloween", label: "Halloween (event)" },
 ] as const;
 
 const HABITAT_KEYS = [
@@ -54,6 +58,7 @@ export type ExploreCardInitial = {
   rarity: string;
   image_path: string;
   base_weight: number;
+  event_weight?: number;
   habitat_weights: Record<string, number>;
   is_active: boolean;
   sort_order: number;
@@ -99,6 +104,11 @@ export function ExploreCardForm({ action, initial, mode }: ExploreCardFormProps)
   const [baseWeight, setBaseWeight] = useState(
     String(initial?.base_weight ?? DEFAULT_WEIGHT_BY_RARITY.common)
   );
+  const [eventWeight, setEventWeight] = useState(String(initial?.event_weight ?? 10));
+  const isEventCard = initial?.rarity === "halloween";
+  const categoryOptions = CATEGORIES.filter((c) => isEventCard || c.value !== "halloween");
+  // An event card stays an event card (the DB ties it to its event).
+  const rarityOptions = RARITIES.filter((r) => (r.value === "halloween") === isEventCard);
   const [sortOrder, setSortOrder] = useState(String(initial?.sort_order ?? 0));
   const [isActive, setIsActive] = useState(initial?.is_active ?? true);
   const [habitats, setHabitats] = useState<Record<string, string>>(() => {
@@ -205,7 +215,7 @@ export function ExploreCardForm({ action, initial, mode }: ExploreCardFormProps)
               onChange={(e) => setCategory(e.target.value)}
               className={inputClass}
             >
-              {CATEGORIES.map((c) => (
+              {categoryOptions.map((c) => (
                 <option key={c.value} value={c.value}>
                   {c.label}
                 </option>
@@ -224,7 +234,7 @@ export function ExploreCardForm({ action, initial, mode }: ExploreCardFormProps)
               onChange={(e) => handleRarityChange(e.target.value)}
               className={inputClass}
             >
-              {RARITIES.map((r) => (
+              {rarityOptions.map((r) => (
                 <option key={r.value} value={r.value}>
                   {r.label}
                 </option>
@@ -232,29 +242,56 @@ export function ExploreCardForm({ action, initial, mode }: ExploreCardFormProps)
             </select>
           </div>
 
-          <div>
-            <label
-              htmlFor="base_weight"
-              className="mb-1 block text-sm font-medium text-stone-700"
-            >
-              Base weight
-            </label>
-            <input
-              id="base_weight"
-              name="base_weight"
-              type="number"
-              min={0.01}
-              step="any"
-              required
-              value={baseWeight}
-              onChange={(e) => setBaseWeight(e.target.value)}
-              className={inputClass}
-            />
-            <p className="mt-1 text-xs text-stone-500">
-              Higher weight = more likely to drop. Typical: common 10, uncommon 5, rare
-              6, very rare 3.
-            </p>
-          </div>
+          {isEventCard ? (
+            <div>
+              <label
+                htmlFor="event_weight"
+                className="mb-1 block text-sm font-medium text-stone-700"
+              >
+                Event weight
+              </label>
+              <input
+                id="event_weight"
+                name="event_weight"
+                type="number"
+                min={0.01}
+                step="any"
+                required
+                value={eventWeight}
+                onChange={(e) => setEventWeight(e.target.value)}
+                className={inputClass}
+              />
+              <p className="mt-1 text-xs text-stone-500">
+                Chance inside the event pack only (higher = more common). Halloween:
+                most cards 10, skeleton/ghost 3, witch 2. Event cards never drop from
+                normal packs or trade-ups.
+              </p>
+            </div>
+          ) : (
+            <div>
+              <label
+                htmlFor="base_weight"
+                className="mb-1 block text-sm font-medium text-stone-700"
+              >
+                Base weight
+              </label>
+              <input
+                id="base_weight"
+                name="base_weight"
+                type="number"
+                min={0.01}
+                step="any"
+                required
+                value={baseWeight}
+                onChange={(e) => setBaseWeight(e.target.value)}
+                className={inputClass}
+              />
+              <p className="mt-1 text-xs text-stone-500">
+                Higher weight = more likely to drop. Typical: common 10, uncommon 5, rare
+                6, very rare 3.
+              </p>
+            </div>
+          )}
 
           <div>
             <label

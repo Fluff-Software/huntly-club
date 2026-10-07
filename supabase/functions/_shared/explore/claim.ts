@@ -213,6 +213,8 @@ export async function runClaim(opts: {
       ...(payload.idempotent_replay === true ? { idempotent_replay: true } : {}),
       ...(payload.banked === true ? { banked: true } : {}),
       ...(pack ? { pack_id: String(pack.pack_id) } : {}),
+      // Set when this claim banked a limited-time event pack (e.g. "halloween").
+      ...(pack && typeof pack.event_slug === "string" ? { pack_event: pack.event_slug } : {}),
     },
   };
 }

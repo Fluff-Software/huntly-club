@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/contexts/AppThemeContext";
 import React, { useRef, useState, useEffect, useLayoutEffect, useMemo, useCallback } from "react";
 import {
   View,
@@ -64,8 +65,8 @@ import {
 } from "@/utils/homeActivityPreload";
 import type { ImageSourcePropType } from "react-native";
 
-const CREAM = "#FFF8DC";
-const HUNTLY_GREEN = "#4F6F52";
+const BASE_CREAM = "#FFF8DC";
+const BASE_HUNTLY_GREEN = "#4F6F52";
 const DEFAULT_HEADER_GRADIENT = ["#4F6F52", "#7FB069"] as const;
 const DEFAULT_MISSION_IMAGE = require("@/assets/images/laser-fortress.jpg");
 
@@ -119,6 +120,10 @@ function pickNextMission(
 }
 
 export default function HomeScreen() {
+  const { c, theme: seasonalTheme } = useAppTheme();
+  // Seasonal re-colour of the screen's brand colours (identity when no theme is live).
+  const CREAM = c(BASE_CREAM);
+  const HUNTLY_GREEN = c(BASE_HUNTLY_GREEN);
   const { scaleW, width } = useLayoutScale();
   const insets = useSafeAreaInsets();
   const { clubhouseActivityReady, requireClubhouseActivityReady, markClubhouseActivityReady } =
@@ -441,9 +446,11 @@ export default function HomeScreen() {
           {/* Header */}
           <LinearGradient
             colors={
-              teamCardConfig
-                ? ([teamCardConfig.accentColor, teamCardConfig.backgroundColor] as const)
-                : DEFAULT_HEADER_GRADIENT
+              seasonalTheme
+                ? ([c(DEFAULT_HEADER_GRADIENT[0]), c(DEFAULT_HEADER_GRADIENT[1])] as const)
+                : teamCardConfig
+                  ? ([teamCardConfig.accentColor, teamCardConfig.backgroundColor] as const)
+                  : DEFAULT_HEADER_GRADIENT
             }
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}

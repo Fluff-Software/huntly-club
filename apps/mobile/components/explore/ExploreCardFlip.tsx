@@ -18,6 +18,10 @@ import Animated, {
 import * as Haptics from "expo-haptics";
 
 const CARD_BACK = require("@/assets/images/explore-card-back.png");
+/** Limited-time event cards get a themed back (same art as their front, with the logo). */
+const CARD_BACK_BY_RARITY: Record<string, number> = {
+  halloween: require("@/assets/images/explore-card-back-halloween.png"),
+};
 const DEFAULT_INNER_BORDER = "#3B82F6";
 /** Front-facing rest angle for binder / after flip. */
 const FRONT_SPIN = 180;
@@ -42,6 +46,8 @@ type Props = {
   autoFlipDurationMs?: number;
   /** Colour for the card-back inner frame (same place as the old gold line). */
   borderColor?: string;
+  /** Card rarity -- event rarities swap in their own card back. */
+  rarity?: string;
   style?: StyleProp<ViewStyle>;
   onFlipComplete?: () => void;
 };
@@ -54,6 +60,7 @@ export function ExploreCardFlip({
   autoFlipDelayMs = 480,
   autoFlipDurationMs = 920,
   borderColor = DEFAULT_INNER_BORDER,
+  rarity,
   style,
   onFlipComplete,
 }: Props) {
@@ -211,7 +218,7 @@ export function ExploreCardFlip({
         style={[styles.face, backStyle]}
       >
         <Image
-          source={CARD_BACK}
+          source={(rarity ? CARD_BACK_BY_RARITY[rarity] : undefined) ?? CARD_BACK}
           style={styles.backImage}
           resizeMode="cover"
           fadeDuration={0}

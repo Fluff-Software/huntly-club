@@ -1,4 +1,5 @@
 import React, { useRef, type RefObject } from "react";
+import { useAppTheme } from "@/contexts/AppThemeContext";
 import {
   ScrollView,
   StyleSheet,
@@ -45,6 +46,7 @@ export function ChildScreenLayout({
   scrollRef: scrollRefProp,
 }: ChildScreenLayoutProps) {
   const { scaleW } = useLayoutScale();
+  const { c } = useAppTheme();
   const paddingH = scaleW(CHILD_SCREEN_PADDING_W);
   const internalScrollRef = useRef<ScrollView>(null);
   const scrollRef = scrollRefProp ?? internalScrollRef;
@@ -78,7 +80,7 @@ export function ChildScreenLayout({
   );
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor }]} edges={edges}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: c(backgroundColor) }]} edges={edges}>
       <View
         style={[
           styles.backBar,

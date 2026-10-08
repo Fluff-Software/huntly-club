@@ -29,6 +29,7 @@ import {
   type ActivityMapRegion,
 } from "@/components/activity-map";
 import { ExploreCardPackReveal } from "@/components/explore/ExploreCardPackReveal";
+import { ExploreStopSheet } from "@/components/explore/ExploreStopSheet";
 import { ExploreSafetyWarning } from "@/components/explore/ExploreSafetyWarning";
 import { LocationPermissionModal } from "@/components/explore/LocationPermissionModal";
 import { ExploreProfileSelectModal } from "@/components/explore/ExploreProfileSelectModal";
@@ -74,23 +75,12 @@ import type {
 } from "@/types/exploreStops";
 
 const BG = "#2D4A35";
-const PANEL = "#3D5F45";
 const ACCENT = "#62A94F";
 const FIXED_RADIUS_METRES = 1000;
-const METRES_PER_MILE = 1609.34;
 /** Cached fix is only good enough to seed the camera if it's recent. */
 const LAST_KNOWN_FIX_MAX_AGE_MS = 5 * 60 * 1000;
 /** Well beyond the zoom-out cap — anything wider is a map layout artefact. */
 const EXPLORE_MAP_MAX_PLAUSIBLE_DELTA = EXPLORE_MAP_DEFAULT_DELTA * 8;
-
-function formatExploreDistanceAway(metres: number): string {
-  if (metres < METRES_PER_MILE) {
-    return `${Math.round(metres)} m away`;
-  }
-  const miles = metres / METRES_PER_MILE;
-  const rounded = miles >= 10 ? miles.toFixed(0) : miles.toFixed(1);
-  return Number(rounded) === 1 ? "1 mile away" : `${rounded} miles away`;
-}
 
 type LocState =
   | { status: "idle" }
@@ -415,7 +405,7 @@ export default function ExploreScreen() {
         latitude: s.latitude,
         longitude: s.longitude,
         color: playerStopColor(claimed),
-        title: claimed ? "Collected" : "Explore spot",
+        title: claimed ? "Collected today" : "Card spot",
         variant: "stop" as const,
         icon: claimed ? ("check" as const) : ("lock" as const),
       };
@@ -628,7 +618,7 @@ export default function ExploreScreen() {
         if (!merge && response.stops.length === 0) {
           setError({
             code: "no_nearby_points",
-            message: "No Explore spots nearby right now. Try moving or panning the map.",
+            message: "No card spots nearby right now. Try moving or panning the map.",
           });
         }
       } catch (err: unknown) {
@@ -1270,145 +1260,26 @@ export default function ExploreScreen() {
         ) : null}
 
         {selected ? (
-          <View
-            style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) }]}
+          <ExploreStopSheet
             onLayout={onSelectedSheetLayout}
-          >
-            <View style={styles.sheetHandle} />
-            <View style={styles.sheetHeader}>
-              <View style={{ flex: 1, gap: 4 }}>
-                <ThemedText type="heading" lightColor="#FFF" darkColor="#FFF" style={styles.sheetTitle}>
-                  {alreadyClaimed ? "Collected today" : "Explore spot"}
-                </ThemedText>
-                <ThemedText
-                  lightColor="rgba(255,255,255,0.7)"
-                  darkColor="rgba(255,255,255,0.7)"
-                  style={{ fontSize: 13 }}
-                >
-                  {alreadyClaimed
-                    ? "Come back tomorrow for another card!"
-                    : loc.status !== "ready"
-                    ? "Enable location to collect cards"
-                    : distanceToSelectedMetres != null
-                      ? formatExploreDistanceAway(distanceToSelectedMetres)
-                      : "Finding your distance…"}
-                </ThemedText>
-              </View>
-              <View style={styles.sheetHeaderActions}>
-                {spoofAllowed ? (
-                  <>
-                    <Pressable
-                      onPress={teleportToSelectedStop}
-                      hitSlop={8}
-                      accessibilityRole="button"
-                      accessibilityLabel={
-                        debugSpoofActive ? "Re-teleport to this spot" : "Teleport to this spot"
-                      }
-                      style={styles.sheetIconBtn}
-                    >
-                      <MaterialIcons name="my-location" size={18} color="#FFE08A" />
-                    </Pressable>
-                    {debugSpoofActive ? (
-                      <Pressable
-                        onPress={clearDebugSpoof}
-                        hitSlop={8}
-                        accessibilityRole="button"
-                        accessibilityLabel="Clear spoofed location"
-                        style={styles.sheetIconBtn}
-                      >
-                        <MaterialIcons name="gps-off" size={18} color="rgba(255,255,255,0.75)" />
-                      </Pressable>
-                    ) : null}
-                  </>
-                ) : null}
-                <Pressable
-                  onPress={() => setSelectedId(null)}
-                  hitSlop={10}
-                  accessibilityRole="button"
-                  accessibilityLabel="Close"
-                  style={styles.closeSheet}
-                >
-                  <MaterialIcons name="close" size={22} color="#FFF" />
-                </Pressable>
-              </View>
-            </View>
-
-            {packSession ? (
-              <View style={styles.awardBox}>
-                <ThemedText lightColor="#FFE08A" darkColor="#FFE08A" style={{ fontWeight: "800", fontSize: 12 }}>
-                  Pack ready
-                </ThemedText>
-                <ThemedText
-                  lightColor="rgba(255,255,255,0.75)"
-                  darkColor="rgba(255,255,255,0.75)"
-                  style={{ fontSize: 13, lineHeight: 18 }}
-                >
-                  Swipe the top of the pack to rip it open.
-                </ThemedText>
-              </View>
-            ) : (
-              <>
-                {claimError ? (
-                  <ThemedText lightColor="#FFD8D8" darkColor="#FFD8D8" style={{ fontSize: 13 }}>
-                    {claimError}
-                  </ThemedText>
-                ) : null}
-                {!alreadyClaimed && loc.status !== "ready" ? (
-                  <View style={styles.closerHint}>
-                    <MaterialIcons name="location-on" size={20} color="#FFE08A" />
-                    <ThemedText
-                      lightColor="#FFE08A"
-                      darkColor="#FFE08A"
-                      style={{ flex: 1, fontSize: 14, lineHeight: 20, fontWeight: "600" }}
-                    >
-                      Turn on location to collect cards
-                    </ThemedText>
-                    <Pressable
-                      onPress={() => void requestLocation()}
-                      style={[styles.enableLocationBtn, loc.status === "loading" && { opacity: 0.7 }]}
-                      disabled={loc.status === "loading"}
-                      accessibilityRole="button"
-                      accessibilityLabel="Enable location"
-                    >
-                      <ThemedText lightColor="#FFF" darkColor="#FFF" style={{ fontWeight: "800", fontSize: 12 }}>
-                        Enable
-                      </ThemedText>
-                    </Pressable>
-                  </View>
-                ) : null}
-
-                {!alreadyClaimed && withinClaimRange ? (
-                  <Pressable
-                    onPress={() => void openPack()}
-                    disabled={claiming}
-                    style={[styles.primaryBtn, claiming && { opacity: 0.6 }]}
-                    accessibilityRole="button"
-                  >
-                    <ThemedText lightColor="#FFF" darkColor="#FFF" style={{ fontWeight: "800" }}>
-                      {claiming
-                        ? "Preparing…"
-                        : claimedMode === "all"
-                          ? "Collect for everyone"
-                          : "Collect card"}
-                    </ThemedText>
-                  </Pressable>
-                ) : null}
-
-                {!alreadyClaimed && loc.status === "ready" && !withinClaimRange ? (
-                  <View style={styles.closerHint}>
-                    <MaterialIcons name="directions-walk" size={20} color="#FFE08A" />
-                    <ThemedText
-                      lightColor="#FFE08A"
-                      darkColor="#FFE08A"
-                      style={{ flex: 1, fontSize: 14, lineHeight: 20, fontWeight: "600" }}
-                    >
-                      Get within {EXPLORE_CLAIM_RADIUS_METRES} m to collect this card
-                    </ThemedText>
-                  </View>
-                ) : null}
-              </>
-            )}
-          </View>
+            onClose={() => setSelectedId(null)}
+            alreadyClaimed={alreadyClaimed}
+            locationReady={loc.status === "ready"}
+            locationLoading={loc.status === "loading"}
+            onEnableLocation={() => void requestLocation()}
+            distanceMetres={distanceToSelectedMetres}
+            withinClaimRange={withinClaimRange}
+            claimRadiusMetres={EXPLORE_CLAIM_RADIUS_METRES}
+            claiming={claiming}
+            collectForEveryone={claimedMode === "all"}
+            onCollect={() => void openPack()}
+            packReady={packSession != null}
+            claimError={claimError}
+            spoofAllowed={spoofAllowed}
+            debugSpoofActive={debugSpoofActive}
+            onTeleport={teleportToSelectedStop}
+            onClearSpoof={clearDebugSpoof}
+          />
         ) : null}
 
         {packSession ? (
@@ -1586,53 +1457,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
-  sheet: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: PANEL,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 18,
-    paddingTop: 10,
-    gap: 12,
-  },
-  sheetHandle: {
-    alignSelf: "center",
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "rgba(255,255,255,0.35)",
-    marginBottom: 4,
-  },
-  sheetHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-  },
-  sheetHeaderActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  sheetIconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.25)",
-  },
-  closerHint: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: "rgba(0,0,0,0.25)",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
   devBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -1656,38 +1480,5 @@ const styles = StyleSheet.create({
   devBtnText: {
     fontSize: 12,
     fontWeight: "700",
-  },
-  sheetTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-  },
-  closeSheet: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.25)",
-  },
-  primaryBtn: {
-    alignSelf: "stretch",
-    alignItems: "center",
-    backgroundColor: ACCENT,
-    borderRadius: 14,
-    paddingVertical: 14,
-  },
-  enableLocationBtn: {
-    borderRadius: 12,
-    paddingVertical: 9,
-    paddingHorizontal: 12,
-    backgroundColor: "rgba(98,168,79,0.35)",
-    borderWidth: 1,
-    borderColor: "rgba(255,224,138,0.35)",
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: 92,
-  },
-  awardBox: {
-    gap: 6,
   },
 });

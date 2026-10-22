@@ -79,6 +79,7 @@ export type UserDetailsResult = {
     created_at: string;
     email_confirmed_at: string | null;
     last_sign_in_at: string | null;
+    last_active_at: string | null;
     updated_at: string;
     raw_app_meta_data?: Record<string, unknown>;
     raw_user_meta_data?: Record<string, unknown>;
@@ -95,6 +96,13 @@ export async function getUserDetails(
     if (error) return { error: error.message };
     const user = data?.user;
     if (!user) return { error: "User not found" };
+
+    const { data: activeRows } = await supabase.rpc("admin_user_last_active", {
+      p_user_ids: [userId],
+    });
+    const lastActiveAt =
+      (activeRows as { last_active_at: string }[] | null)?.[0]?.last_active_at ??
+      null;
 
     let teamName: string | null = null;
     const { data: userData } = await supabase
@@ -118,6 +126,7 @@ export async function getUserDetails(
         created_at: user.created_at ?? "",
         email_confirmed_at: user.email_confirmed_at ?? null,
         last_sign_in_at: user.last_sign_in_at ?? null,
+        last_active_at: lastActiveAt,
         updated_at: user.updated_at ?? "",
         raw_app_meta_data: user.app_metadata as Record<string, unknown> | undefined,
         raw_user_meta_data: user.user_metadata as Record<string, unknown> | undefined,

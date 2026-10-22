@@ -313,6 +313,7 @@ function DetailsTab({ result, onDetailsRefresh }: { result: UserDetailsResult | 
       <Row label="Team" value={result.teamName ?? "—"} />
       <Row label="Created at" value={formatDate(u.created_at)} />
       <Row label="Email confirmed at" value={formatDate(u.email_confirmed_at)} />
+      <Row label="Last active in app" value={formatDate(u.last_active_at)} />
       <Row label="Last sign in" value={formatDate(u.last_sign_in_at)} />
       <Row label="Updated at" value={formatDate(u.updated_at)} />
 

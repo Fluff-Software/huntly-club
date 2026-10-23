@@ -27,6 +27,9 @@ import { setStatusBarStyle } from "expo-status-bar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { CampfireTile } from "@/components/CampfireTile";
+
+// Campfire is hidden on the home screen until it is ready for the store release.
+const SHOW_CAMPFIRE_TILE = false;
 import { CaptainQuoteCard } from "@/components/CaptainQuoteCard";
 import { TeamRaceCard } from "@/components/clubhouse/TeamRaceCard";
 import { ThingsToDoRow } from "@/components/clubhouse/ThingsToDoRow";
@@ -262,7 +265,7 @@ export default function HomeScreen() {
   const teamTileReady = !teamCardConfig || teamAssetsReady;
   const activityTilesReady =
     missionTileReady &&
-    campfireTileReady &&
+    (!SHOW_CAMPFIRE_TILE || campfireTileReady) &&
     clubTileReady &&
     teamTileReady;
 
@@ -613,10 +616,12 @@ export default function HomeScreen() {
 
               {teamCardConfig && <CaptainQuoteCard teamName={team?.name} />}
 
-              <CampfireTile
-                coordinatedEntrance
-                onReadyChange={handleCampfireReadyChange}
-              />
+              {SHOW_CAMPFIRE_TILE && (
+                <CampfireTile
+                  coordinatedEntrance
+                  onReadyChange={handleCampfireReadyChange}
+                />
+              )}
 
               {showClubTile && (
                 <View

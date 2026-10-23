@@ -158,10 +158,10 @@ export default function HomeScreen() {
   const teamCardConfig = team ? getTeamCardConfig(team.name) : null;
   const { user, loading: authLoading } = useAuth();
   const { hasAccess, isLoading: purchasesLoading } = usePurchases();
-  const { isSupported: showExplorePromo } = useExploreRegionSupport();
   const [locationPermission, setLocationPermission] = useState<
     "loading" | "granted" | "denied" | "undetermined"
   >("loading");
+  const { isSupported: showExplorePromo } = useExploreRegionSupport(locationPermission);
   const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [locationRequesting, setLocationRequesting] = useState(false);
 

@@ -3223,8 +3223,8 @@ export type Database = {
         | "approved"
         | "published"
         | "archived"
-      explore_card_category: "animal" | "habitat" | "flora_wildlife" | "halloween"
-      explore_card_rarity: "common" | "uncommon" | "rare" | "very_rare" | "halloween"
+      explore_card_category: "animal" | "habitat" | "flora_wildlife" | "halloween" | "christmas"
+      explore_card_rarity: "common" | "uncommon" | "rare" | "very_rare" | "halloween" | "christmas"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3379,8 +3379,8 @@ export const Constants = {
         "published",
         "archived",
       ],
-      explore_card_category: ["animal", "habitat", "flora_wildlife", "halloween"],
-      explore_card_rarity: ["common", "uncommon", "rare", "very_rare", "halloween"],
+      explore_card_category: ["animal", "habitat", "flora_wildlife", "halloween", "christmas"],
+      explore_card_rarity: ["common", "uncommon", "rare", "very_rare", "halloween", "christmas"],
     },
   },
 } as const

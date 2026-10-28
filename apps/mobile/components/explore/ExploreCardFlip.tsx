@@ -21,6 +21,7 @@ const CARD_BACK = require("@/assets/images/explore-card-back.png");
 /** Limited-time event cards get a themed back (same art as their front, with the logo). */
 const CARD_BACK_BY_RARITY: Record<string, number> = {
   halloween: require("@/assets/images/explore-card-back-halloween.png"),
+  christmas: require("@/assets/images/explore-card-back-christmas.png"),
 };
 const DEFAULT_INNER_BORDER = "#3B82F6";
 /** Front-facing rest angle for binder / after flip. */

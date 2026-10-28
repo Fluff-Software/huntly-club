@@ -18,7 +18,9 @@ import Animated, {
 import * as Haptics from "expo-haptics";
 
 const CARD_BACK = require("@/assets/images/explore-card-back.png");
-/** Limited-time event cards get a themed back (same art as their front, with the logo). */
+/** The Huntly World wordmark, drawn on top of every back so it's identical on all of them. */
+const CARD_BACK_LOGO = require("@/assets/images/explore-card-logo.png");
+/** Limited-time event cards get a themed back colour (no logo in the art — see CARD_BACK_LOGO). */
 const CARD_BACK_BY_RARITY: Record<string, number> = {
   halloween: require("@/assets/images/explore-card-back-halloween.png"),
   christmas: require("@/assets/images/explore-card-back-christmas.png"),
@@ -225,6 +227,15 @@ export function ExploreCardFlip({
           fadeDuration={0}
           accessibilityIgnoresInvertColors
         />
+        <View style={styles.backLogoWrap} pointerEvents="none">
+          <Image
+            source={CARD_BACK_LOGO}
+            style={styles.backLogo}
+            resizeMode="contain"
+            fadeDuration={0}
+            accessibilityIgnoresInvertColors
+          />
+        </View>
         {/* Thin rarity frame — sits where the gold line used to be in the PNG. */}
         <View style={[styles.backInnerBorder, { borderColor }]} />
       </Animated.View>
@@ -263,6 +274,16 @@ const styles = StyleSheet.create({
   backImage: {
     width: "100%",
     height: "100%",
+  },
+  /** Wordmark centred on the card, ~62% of the card width (matches the old baked-in logo). */
+  backLogoWrap: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  backLogo: {
+    width: "64%",
+    aspectRatio: 723 / 300,
   },
   /** Matches the old gold rim inset on explore-card-back.png (~18–20px @ 682×1024). */
   backInnerBorder: {

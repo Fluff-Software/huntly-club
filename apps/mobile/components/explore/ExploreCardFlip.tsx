@@ -278,12 +278,11 @@ const styles = StyleSheet.create({
   /** Wordmark centred on the card, ~62% of the card width (matches the old baked-in logo). */
   backLogoWrap: {
     ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
+    paddingHorizontal: "18%",
   },
   backLogo: {
-    width: "64%",
-    aspectRatio: 723 / 300,
+    width: "100%",
+    height: "100%",
   },
   /** Matches the old gold rim inset on explore-card-back.png (~18–20px @ 682×1024). */
   backInnerBorder: {

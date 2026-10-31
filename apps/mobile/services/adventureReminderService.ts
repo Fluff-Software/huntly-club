@@ -28,10 +28,15 @@ type GuideName = "Bella" | "Felix" | "Oli";
 
 export type ReminderPermission = "granted" | "denied" | "undetermined";
 
+// expo-modules-core is nested under expo here, so PermissionResponse's fields don't resolve for tsc.
+type PermissionLike = { status: ReminderPermission };
+const getPermissions = () => Notifications.getPermissionsAsync() as unknown as Promise<PermissionLike>;
+const requestPermissions = () => Notifications.requestPermissionsAsync() as unknown as Promise<PermissionLike>;
+
 export async function getReminderPermission(): Promise<ReminderPermission> {
   try {
-    const { status } = await Notifications.getPermissionsAsync();
-    return status as ReminderPermission;
+    const { status } = await getPermissions();
+    return status;
   } catch {
     return "undetermined";
   }
@@ -51,9 +56,8 @@ export async function requestReminderPermission(): Promise<boolean> {
     }
     // Local reminders only need the OS permission; ask for it directly (the push helper
     // below skips the prompt entirely on simulators).
-    const existing = await Notifications.getPermissionsAsync();
-    const status =
-      existing.status === "granted" ? existing.status : (await Notifications.requestPermissionsAsync()).status;
+    const existing = await getPermissions();
+    const status = existing.status === "granted" ? existing.status : (await requestPermissions()).status;
     if (status !== "granted") return false;
     // Same permission also enables server push for new missions on real devices.
     const token = await registerForPushNotificationsAsync().catch(() => null);

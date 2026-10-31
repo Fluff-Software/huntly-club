@@ -30,7 +30,7 @@ export function ClubhouseHeader({
           <Text style={styles.headerName} numberOfLines={1}>
             {name}
           </Text>
-          <Text style={[styles.headerTeam, { color: "#4A5A12" }]}>{guide.teamName.toUpperCase()}</Text>
+          <Text style={[styles.headerTeam, { color: guide.colour }]}>{guide.teamName.toUpperCase()}</Text>
         </View>
       </Pressable>
       {streakWeeks > 0 ? (

@@ -24,8 +24,7 @@ export default function SignUpPlanScreen() {
   const [draft, setDraft] = useState<AdventurePlanDraft>(adventurePlan ?? EMPTY);
 
   const names = (players.length ? players.map((p) => p.name) : profiles.map((p) => p.name)).filter(Boolean);
-  const who = names.length === 1 ? names[0] : names.length > 1 ? "your explorers" : "your explorer";
-  const theirs = names.length > 1 ? "their" : "their";
+  const who = names.length === 1 ? names[0] : names.length === 2 ? `${names[0]} and ${names[1]}` : names.length > 2 ? "your explorers" : "your explorer";
   const hasChoice = draft.choice !== "skipped";
 
   const next = (plan: AdventurePlanDraft) => {
@@ -54,7 +53,7 @@ export default function SignUpPlanScreen() {
       <FKProgressHeader step={4} total={ONBOARDING_STEPS} onBack={handleBack} />
       <FKEyebrow style={{ marginBottom: 6 }}>FOR GROWN-UPS</FKEyebrow>
       <Text style={TYPE.title}>
-        When will {who} have {theirs} first adventure?
+        When will {who} have their first adventure?
       </Text>
       <Text style={[TYPE.bodySmall, styles.lead]}>Pick a moment that suits you. We'll remind you, and you can change it any time.</Text>
       <SlotPicker value={draft} onChange={setDraft} />

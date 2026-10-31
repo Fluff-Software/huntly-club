@@ -45,6 +45,7 @@ export default function MeScreen() {
   const name = names.length <= 1 ? names[0] ?? "Explorer" : `${names[0]} & co`;
 
   const load = useCallback(async () => {
+    if (profiles.length === 0) return;
     void refetch();
     if (ids.length) {
       const { count } = await supabase.from("explore_stop_claims").select("id", { count: "exact", head: true }).in("profile_id", ids);

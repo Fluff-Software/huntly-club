@@ -32,11 +32,13 @@ export default function SignUpAccountScreen() {
 
   const guide = guideForTeamName(selectedTeamName);
   const canContinue = isValidEmail(email) && passwordValue.length >= MIN_PASSWORD_LENGTH;
-  const firstName = players[0]?.name;
+  const names = players.map((p) => p.name);
+  const possessive =
+    names.length === 1 ? `${names[0]}'s` : names.length === 2 ? `${names[0]} and ${names[1]}'s` : "your explorers'";
 
   const summary = (() => {
     if (!hasPendingSetup) return null;
-    const who = players.length === 1 ? firstName : `${players.length} explorers`;
+    const who = names.length <= 2 ? names.join(" & ") : `${names.length} explorers`;
     const when =
       adventurePlan?.firstAt && adventurePlan.choice !== "skipped"
         ? `First adventure ${friendlyWhen(new Date(adventurePlan.firstAt))}`
@@ -79,7 +81,7 @@ export default function SignUpAccountScreen() {
         <FKEyebrow style={{ marginBottom: 6 }}>FOR GROWN-UPS</FKEyebrow>
         <Text style={TYPE.title}>Last step: your grown-up account</Text>
         <Text style={[TYPE.bodySmall, styles.lead]}>
-          So {guide.guideName} can save {firstName ? `${firstName}'s` : "your"} progress and send you the reminder.
+          So {guide.guideName} can save {names.length ? possessive : "your"} progress and send you the reminder.
         </Text>
 
         {summary ? (

@@ -8,21 +8,22 @@ import Animated, { FadeIn, FadeInDown, ZoomIn } from "react-native-reanimated";
 import { FKButton, FKScreen } from "@/components/fieldkit";
 import { FK, FONT, RADIUS } from "@/constants/fieldKit";
 import type { Guide } from "@/constants/guides";
-import { secretMessageText } from "@/services/secretMessageService";
+import { childNames, secretMessageText } from "@/services/secretMessageService";
 
 /** "TOP SECRET — Sam, Bella has a message for you." The child's first moment in the app. */
 export function SecretMessage({
   guide,
-  childName,
+  names,
   onDone,
   onSaveForLater,
 }: {
   guide: Guide;
-  childName: string | null;
+  names: string[];
   onDone: () => void;
   onSaveForLater?: () => void;
 }) {
   const [opened, setOpened] = useState(false);
+  const who = childNames(names);
   const open = () => {
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     setOpened(true);
@@ -51,12 +52,15 @@ export function SecretMessage({
         <Ionicons name="sparkles" size={14} color={FK.ink} />
         <Text style={styles.badgeText}>TOP SECRET</Text>
       </Animated.View>
-      <Text style={styles.headline}>
-        {childName ? `${childName}, ` : ""}
+      <Text style={[styles.headline, (who?.length ?? 0) > 8 && { fontSize: 32, lineHeight: 35 }]}>
+        {who ? `${who}, ` : ""}
         {guide.guideName} has a message for you
       </Text>
 
-      <Animated.View entering={ZoomIn.duration(500).delay(150)} style={styles.ring}>
+      <Animated.View
+        entering={ZoomIn.duration(500).delay(150)}
+        style={[styles.ring, opened && { width: 200, height: 200, borderRadius: 100, marginTop: 18 }]}
+      >
         <View style={styles.circle}>
           <Image source={guide.waving} style={styles.guideImg} contentFit="contain" contentPosition="bottom" />
         </View>
@@ -64,7 +68,7 @@ export function SecretMessage({
 
       {opened ? (
         <Animated.View entering={FadeInDown.duration(450)} style={styles.bubble}>
-          <Text style={styles.bubbleText}>{secretMessageText(guide.guideName, guide.teamSingular, childName)}</Text>
+          <Text style={styles.bubbleText}>{secretMessageText(guide.guideName, guide.teamName, guide.teamSingular, names)}</Text>
         </Animated.View>
       ) : (
         <View style={styles.hint}>

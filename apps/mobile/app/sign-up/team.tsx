@@ -20,7 +20,7 @@ export default function SignUpTeamScreen() {
   const [selected, setSelected] = useState<string | null>(selectedTeamName);
 
   const names = (players.length ? players.map((p) => p.name) : profiles.map((p) => p.name)).filter(Boolean);
-  const who = names.length === 1 ? names[0] : names.length > 1 ? "Explorers" : "Explorer";
+  const who = names.length === 1 ? names[0] : names.length === 2 ? `${names[0]} & ${names[1]}` : names.length > 2 ? "Explorers" : "Explorer";
 
   const choose = (g: Guide) => {
     void Haptics.selectionAsync().catch(() => undefined);

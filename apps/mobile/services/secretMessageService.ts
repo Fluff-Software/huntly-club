@@ -26,7 +26,18 @@ export async function setSecretMessagePending(pending: boolean): Promise<void> {
   }
 }
 
-export function secretMessageText(guideName: string, teamSingular: string, childName: string | null): string {
-  const who = childName ? `${childName}! ` : "";
-  return `${who}It's ${guideName}. Something strange is stirring in Huntly World and I need a brave ${teamSingular} to help me find out what. Your first mission is waiting in the Clubhouse. See you out there!`;
+/** "Mia", "Mia and Leo", "Explorers". */
+export function childNames(names: string[]): string | null {
+  const n = names.filter(Boolean);
+  if (n.length === 0) return null;
+  if (n.length === 1) return n[0];
+  if (n.length === 2) return `${n[0]} and ${n[1]}`;
+  return "Explorers";
+}
+
+export function secretMessageText(guideName: string, teamName: string, teamSingular: string, names: string[]): string {
+  const who = childNames(names);
+  const many = names.length > 1;
+  const helper = many ? `some brave ${teamName}` : `a brave ${teamSingular}`;
+  return `${who ? `${who}! ` : ""}It's ${guideName}. Something strange is stirring in Huntly World and I need ${helper} to help me find out what. Your first mission is waiting in the Clubhouse. See you out there!`;
 }

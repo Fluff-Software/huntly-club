@@ -155,6 +155,15 @@ export function shortWeekday(day: number): string {
   return WEEKDAYS[day].slice(0, 3);
 }
 
+/** "Sunday at 10am", "Sat and Sun at 3:30pm". */
+export function weeklyLabel(days: number[], hm: string): string {
+  const { h, m } = parseHm(hm);
+  const t = new Date();
+  t.setHours(h, m, 0, 0);
+  const dayText = days.length === 1 ? WEEKDAYS[days[0]] : days.map(shortWeekday).join(", ").replace(/, ([^,]*)$/, " and $1");
+  return `${dayText} at ${friendlyTime(t)}`;
+}
+
 /** Weekend sign-ups get a same-day option: weekends are when most families head out. */
 function weekendSlotOptions(now: Date): SlotOption[] {
   const options: SlotOption[] = [];

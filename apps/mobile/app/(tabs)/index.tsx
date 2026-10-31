@@ -30,12 +30,11 @@ import { useLatestMissions, type MissionActivityCard } from "@/hooks/useLatestMi
 import { useTutorialActive } from "@/hooks/useTutorialActive";
 import {
   type AdventurePlan,
-  friendlyTime,
   friendlyWhen,
   isFirstSlotMissed,
   markReschedulePrompted,
   nextWeekdayAt,
-  shortWeekday,
+  weeklyLabel,
 } from "@/services/adventurePlanService";
 import { shortDuration } from "@/services/firstMissionService";
 import { getLocationPermissionStatus } from "@/services/locationService";
@@ -143,6 +142,7 @@ export default function ClubhouseScreen() {
   }, [next?.id]);
 
   const loadRace = useCallback(async () => {
+    if (!user?.id) return;
     try {
       const teams = await getAllTeamsWithXp();
       let totals: Record<number, number> = {};
@@ -160,7 +160,7 @@ export default function ClubhouseScreen() {
     } catch {
       setRace([]);
     }
-  }, []);
+  }, [user?.id]);
 
   const ready = !missionsLoading && !statsLoading;
 
@@ -198,7 +198,7 @@ export default function ClubhouseScreen() {
           headline: `${guide.teamName} head out ${friendlyWhen(slot, now)}`,
           sub:
             plan?.weeklyDays.length && plan.weeklyTime
-              ? `Then every ${plan.weeklyDays.map(shortWeekday).join(", ")} at ${friendlyTime(nextWeekdayAt(now, plan.weeklyDays[0], plan.weeklyTime))}`
+              ? `Then every ${weeklyLabel(plan.weeklyDays, plan.weeklyTime)}`
               : "We'll send one reminder on the day.",
         }
       : { kind: "none" };
@@ -313,7 +313,7 @@ export default function ClubhouseScreen() {
       <Modal visible={secretOpen} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => setSecretOpen(false)}>
         <SecretMessage
           guide={guide}
-          childName={profiles[0]?.name ?? null}
+          names={profiles.map((p) => p.name)}
           onDone={() => {
             setSecretOpen(false);
             setSecretPendingState(false);

@@ -18,7 +18,7 @@ import {
   defaultSkippedSlot,
   friendlyWhen,
   getAdventurePlan,
-  shortWeekday,
+  weeklyLabel,
 } from "@/services/adventurePlanService";
 import { requestReminderPermission, syncAdventureReminders } from "@/services/adventureReminderService";
 import { completeOnboarding } from "@/services/onboardingService";
@@ -34,12 +34,13 @@ type Phase = "saving" | "error" | "remind" | "secret";
 export default function SignUpFinishScreen() {
   const { user } = useAuth();
   const { players, selectedTeamName, adventurePlan, clearSignUpData, draftLoaded } = useSignUp();
-  const { refreshProfiles } = usePlayer();
+  const { refreshProfiles, profiles } = usePlayer();
+  const profilesNames = profiles.map((p) => p.name);
   const { refreshUserData, team } = useUser();
   const [phase, setPhase] = useState<Phase>("saving");
   const [error, setError] = useState<string | null>(null);
   const [plan, setPlan] = useState<AdventurePlan | null>(null);
-  const [childName, setChildName] = useState<string | null>(players[0]?.name ?? null);
+  const [names, setNames] = useState<string[]>(players.map((p) => p.name));
   const [asking, setAsking] = useState(false);
   const startedRef = useRef(false);
   const teamName = selectedTeamName ?? team?.name ?? null;
@@ -53,7 +54,7 @@ export default function SignUpFinishScreen() {
       const result = await completeOnboarding({ userId: user.id, players, teamName, plan: adventurePlan });
       // On a remount the draft has already been cleared; fall back to the saved plan.
       setPlan(result.plan ?? (await getAdventurePlan(user.id)));
-      setChildName(result.firstExplorerName);
+      if (!names.length && result.firstExplorerName) setNames([result.firstExplorerName]);
       await Promise.all([refreshProfiles(), refreshUserData()]);
       clearSignUpData();
       setPhase("remind");
@@ -95,7 +96,7 @@ export default function SignUpFinishScreen() {
         <Stack.Screen options={{ gestureEnabled: false }} />
         <SecretMessage
           guide={guide}
-          childName={childName}
+          names={profilesNames.length ? profilesNames : names}
           onDone={() => {
             void setSecretMessagePending(false);
             goHome();
@@ -142,7 +143,7 @@ export default function SignUpFinishScreen() {
     : `${guide.teamName} head out ${friendlyWhen(when)}`;
   const weekly =
     plan?.weeklyDays.length && plan.weeklyTime
-      ? `Then every ${plan.weeklyDays.map(shortWeekday).join(", ")} at ${plan.weeklyTime}`
+      ? `Then every ${weeklyLabel(plan.weeklyDays, plan.weeklyTime)}`
       : null;
 
   return (
@@ -172,8 +173,12 @@ export default function SignUpFinishScreen() {
         <View style={{ flex: 1 }}>
           <Text style={styles.cardTitle}>Want a nudge {skipped ? "at the weekend" : "on the day"}?</Text>
           <Text style={styles.cardText}>
-            We'll send one reminder to this phone{skipped ? " on Saturday morning" : ` ${friendlyWhen(when)}`}. Never
-            between 8pm and 7am, and never more than a few a week.
+            {skipped
+              ? "We'll send one nudge to this phone at the weekend."
+              : when.getHours() < 12
+                ? `A heads-up the evening before, then a nudge ${friendlyWhen(when)}.`
+                : `We'll send a nudge to this phone ${friendlyWhen(when)}.`}{" "}
+            Never between 8pm and 7am, and never more than a few a week.
           </Text>
         </View>
       </Animated.View>

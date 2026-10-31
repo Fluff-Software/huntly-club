@@ -1,224 +1,206 @@
-import React, { useMemo, useCallback, useRef, useState, useEffect } from "react";
-import {
-  View,
-  ScrollView,
-  StyleSheet,
-  ActivityIndicator,
-  Pressable,
-  ImageBackground } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { ActivityIndicator, ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { useFocusEffect } from "expo-router";
-import { ThemedText } from "@/components/ThemedText";
-import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { router, useFocusEffect } from "expo-router";
+import { setStatusBarStyle } from "expo-status-bar";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { FKChip } from "@/components/fieldkit";
+import { FK, FONT, RADIUS, TYPE } from "@/constants/fieldKit";
 import { useNextMissionReleaseDate } from "@/hooks/useNextMissionReleaseDate";
 import { useCountdownToUtcDate } from "@/hooks/useCountdownToUtcDate";
-import { useLatestMissions } from "@/hooks/useLatestMissions";
+import { useLatestMissions, type MissionActivityCard } from "@/hooks/useLatestMissions";
 import { useTutorialActive } from "@/hooks/useTutorialActive";
 import { useRefreshWhenTutorialEnds } from "@/hooks/useRefreshWhenTutorialEnds";
 import { usePlayer } from "@/contexts/PlayerContext";
-import { MissionCard } from "@/components/MissionCard";
 import { supabase } from "@/services/supabase";
 
-const MISSIONS_BG = require("@/assets/images/missions-bg.jpg");
-
+/** Missions are the story: a couple drop each week; everything released stays playable. */
 export default function MissionsScreen() {
-  const { scaleW } = useLayoutScale();
-  const insets = useSafeAreaInsets();
   const { profiles } = usePlayer();
-  const { missions, completedActivityIds, loading, error, refetch } = useLatestMissions(null);
-  const {
-    nextReleaseDate,
-    loading: nextReleaseLoading,
-    refetch: refetchNextRelease,
-  } = useNextMissionReleaseDate();
-
-  const handleCountdownComplete = React.useCallback(async () => {
+  const { missions, loading, error, refetch } = useLatestMissions(null);
+  const { nextReleaseDate, refetch: refetchNextRelease } = useNextMissionReleaseDate();
+  const handleCountdownComplete = useCallback(async () => {
     await refetch();
     await refetchNextRelease();
   }, [refetch, refetchNextRelease]);
-
-  const { label: countdownLabel } = useCountdownToUtcDate(nextReleaseDate, {
-    onComplete: handleCountdownComplete });
-
+  const { label: countdownLabel } = useCountdownToUtcDate(nextReleaseDate, { onComplete: handleCountdownComplete });
   const scrollRef = useRef<ScrollView>(null);
-  const [completionCountByActivityId, setCompletionCountByActivityId] = React.useState<Record<string, number>>({});
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [completed, setCompleted] = useState<Record<string, number>>({});
   const isTutorialActive = useTutorialActive();
 
-  const refreshMissionsData = useCallback(() => {
+  const refresh = useCallback(() => {
     void refetch();
     void refetchNextRelease();
   }, [refetch, refetchNextRelease]);
 
   useFocusEffect(
     useCallback(() => {
-      if (!isTutorialActive) {
-        refreshMissionsData();
-      }
+      setStatusBarStyle("dark");
+      if (!isTutorialActive) refresh();
       scrollRef.current?.scrollTo({ y: 0, animated: false });
-    }, [isTutorialActive, refreshMissionsData])
+    }, [isTutorialActive, refresh])
   );
+  useRefreshWhenTutorialEnds(refresh);
 
-  useRefreshWhenTutorialEnds(refreshMissionsData);
-
-  React.useEffect(() => {
+  useEffect(() => {
     if (isTutorialActive) return;
     const profileIds = profiles.map((p) => p.id);
     const activityIds = missions.map((a) => parseInt(a.id, 10));
     if (profileIds.length === 0 || activityIds.length === 0) {
-      setCompletionCountByActivityId({});
+      setCompleted({});
       return;
     }
     let cancelled = false;
-    (async () => {
-      const { data, error: progressError } = await supabase
-        .from("user_activity_progress")
-        .select("activity_id, profile_id, completed_at")
-        .in("activity_id", activityIds)
-        .in("profile_id", profileIds)
-        .not("completed_at", "is", null);
-      if (cancelled || progressError) return;
-      const counts: Record<string, number> = {};
-      for (const row of data ?? []) {
-        const key = String(row.activity_id);
-        counts[key] = (counts[key] ?? 0) + 1;
-      }
-      setCompletionCountByActivityId(counts);
-    })();
-    return () => { cancelled = true; };
+    void supabase
+      .from("user_activity_progress")
+      .select("activity_id, profile_id, completed_at")
+      .in("activity_id", activityIds)
+      .in("profile_id", profileIds)
+      .not("completed_at", "is", null)
+      .then(({ data, error: progressError }) => {
+        if (cancelled || progressError) return;
+        const counts: Record<string, number> = {};
+        for (const row of data ?? []) counts[String(row.activity_id)] = (counts[String(row.activity_id)] ?? 0) + 1;
+        setCompleted(counts);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [missions, profiles, isTutorialActive]);
 
-  useEffect(() => {
-    if (!hasLoadedOnce && !loading && !error) {
-      setHasLoadedOnce(true);
-    }
-  }, [loading, error, hasLoadedOnce]);
+  const open = (m: MissionActivityCard) =>
+    router.push({ pathname: "/(tabs)/activity/mission", params: { id: m.id } } as Parameters<typeof router.push>[0]);
 
-  const styles = useMemo(
-    () =>
-      StyleSheet.create({
-        container: { flex: 1 },
-        background: { flex: 1 },
-        scrollContent: {
-          flexGrow: 1,
-          paddingTop: insets.top + scaleW(12),
-          paddingBottom: scaleW(32) },
-        title: {
-          fontSize: scaleW(24),
-          lineHeight: scaleW(32),
-          fontWeight: "600",
-          color: "#FFF",
-          textAlign: "center" as const,
-          marginBottom: scaleW(12) },
-        countdownContainer: {
-          alignItems: "center" as const,
-          marginBottom: scaleW(10),
-          alignSelf: "stretch",
-          paddingHorizontal: scaleW(20),
-          paddingVertical: scaleW(8),
-          backgroundColor: "rgba(244, 240, 235, 0.18)",
-          borderRadius: 0 },
-        countdownValue: {
-          fontSize: scaleW(18),
-          fontWeight: "700",
-          color: "#FFF",
-          textAlign: "center" as const,
-          marginBottom: 0 },
-        sectionBlock: {
-          marginBottom: scaleW(28) },
-        cardRow: {
-          flexDirection: "row",
-          paddingHorizontal: scaleW(20),
-          paddingRight: scaleW(32) },
-        cardWrap: {},
-        loadingContainer: {
-          paddingVertical: scaleW(48),
-          alignItems: "center" as const },
-        errorContainer: {
-          paddingVertical: scaleW(24),
-          paddingHorizontal: scaleW(24),
-          alignItems: "center" as const },
-        errorText: { fontSize: scaleW(16), color: "#FFF", textAlign: "center" as const, marginBottom: scaleW(16) },
-        retryButton: {
-          backgroundColor: "#F4F0EB",
-          borderRadius: scaleW(28),
-          paddingVertical: scaleW(14),
-          paddingHorizontal: scaleW(32) },
-        emptyText: { fontSize: scaleW(16), color: "#FFF", textAlign: "center" as const, opacity: 0.9 } }),
-    [scaleW, insets.top]
-  );
+  const thisWeek = missions.slice(0, 2);
+  const earlier = missions.slice(2);
 
   return (
-    <SafeAreaView style={styles.container} edges={["left", "right"]}>
-      <ImageBackground source={MISSIONS_BG} style={styles.background} resizeMode="cover">
-      <ScrollView
-        ref={scrollRef}
-        style={{ flex: 1 }}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-        overScrollMode="never"
-      >
-        {!!nextReleaseDate && !nextReleaseLoading && countdownLabel != null && (
-          <View style={styles.countdownContainer}>
-            <ThemedText style={styles.countdownValue}>Next mission unlocks in {countdownLabel}</ThemedText>
-          </View>
-        )}
+    <SafeAreaView style={styles.root} edges={["top", "left", "right"]}>
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Text style={TYPE.hero}>Missions</Text>
+        <Text style={[TYPE.bodySmall, { marginTop: 6, marginBottom: 18, fontSize: 16 }]}>
+          The story of Huntly World, one mission at a time. New ones drop every week.
+        </Text>
 
-        <Animated.View entering={FadeInDown.duration(500).delay(0)}>
-          <ThemedText type="heading" style={styles.title}>Current Missions</ThemedText>
-        </Animated.View>
-
-        {(!hasLoadedOnce && loading) && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#FFF" />
-            <ThemedText style={[styles.emptyText, { marginTop: scaleW(16) }]}>Finding your missions…</ThemedText>
+        {countdownLabel ? (
+          <View style={styles.countdown}>
+            <Ionicons name="hourglass-outline" size={18} color={FK.sunbeam} />
+            <Text style={styles.countdownText}>Next mission drops in {countdownLabel}</Text>
           </View>
-        )}
-        {error && !loading && (
-          <View style={styles.errorContainer}>
-            <ThemedText style={styles.errorText}>Something went wrong loading your missions.</ThemedText>
-            <Pressable style={styles.retryButton} onPress={refetch}>
-              <ThemedText type="heading" style={{ fontSize: scaleW(16), fontWeight: "600", color: "#2D5A27" }}>
-                Try again
-              </ThemedText>
-            </Pressable>
-          </View>
-        )}
+        ) : null}
 
-        {(!loading || hasLoadedOnce) && !error && (
+        {loading && missions.length === 0 ? (
+          <ActivityIndicator color={FK.forest} style={{ marginTop: 40 }} />
+        ) : error ? (
+          <Text style={TYPE.bodySmall}>Couldn't load missions. Pull to try again.</Text>
+        ) : (
           <>
-            {missions.length === 0 ? (
-              <View style={[styles.loadingContainer, { paddingVertical: scaleW(24) }]}>
-                <ThemedText style={styles.emptyText}>New adventures are on the way. Check back soon!</ThemedText>
-              </View>
-            ) : (
-              <Animated.View style={styles.sectionBlock}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.cardRow}
-                >
-                  {missions.map((card) => (
-                    <View key={card.id} style={styles.cardWrap}>
-                      <MissionCard
-                        card={card}
-                        xp={card.xp}
-                        tiltDeg={0}
-                        completed={completedActivityIds.has(card.id)}
-                        completionCount={completionCountByActivityId[card.id] ?? 0}
-                        totalExplorers={profiles.length}
-                      />
-                    </View>
-                  ))}
-                </ScrollView>
+            <Text style={[TYPE.eyebrow, styles.section]}>THIS WEEK</Text>
+            {thisWeek.map((m, i) => (
+              <Animated.View key={m.id} entering={FadeInDown.duration(300).delay(i * 60)}>
+                <BigMissionCard mission={m} done={(completed[m.id] ?? 0) > 0} onPress={() => open(m)} />
               </Animated.View>
-            )}
+            ))}
+            {earlier.length ? <Text style={[TYPE.eyebrow, styles.section]}>CATCH UP</Text> : null}
+            {earlier.map((m, i) => (
+              <Animated.View key={m.id} entering={FadeInDown.duration(300).delay(120 + i * 40)}>
+                <SmallMissionRow mission={m} done={(completed[m.id] ?? 0) > 0} onPress={() => open(m)} />
+              </Animated.View>
+            ))}
           </>
         )}
       </ScrollView>
-      </ImageBackground>
     </SafeAreaView>
   );
 }
+
+function BigMissionCard({ mission, done, onPress }: { mission: MissionActivityCard; done: boolean; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={mission.title}>
+      <ImageBackground source={mission.image} style={styles.big} imageStyle={{ borderRadius: RADIUS.lg }}>
+        <LinearGradient
+          colors={["rgba(16,37,27,0.05)", "rgba(16,37,27,0.9)"]}
+          style={[StyleSheet.absoluteFill, { borderRadius: RADIUS.lg }]}
+        />
+        {done ? (
+          <View style={styles.doneBadge}>
+            <Ionicons name="checkmark" size={16} color={FK.ink} />
+            <Text style={styles.doneText}>DONE</Text>
+          </View>
+        ) : null}
+        <View style={{ flex: 1 }} />
+        {mission.xp ? <FKChip label={`+${mission.xp} points`} dark style={{ alignSelf: "flex-start", marginBottom: 8 }} /> : null}
+        <Text style={styles.bigTitle}>{mission.title}</Text>
+        {mission.description ? (
+          <Text style={styles.bigDesc} numberOfLines={2}>
+            {mission.description}
+          </Text>
+        ) : null}
+      </ImageBackground>
+    </Pressable>
+  );
+}
+
+function SmallMissionRow({ mission, done, onPress }: { mission: MissionActivityCard; done: boolean; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={styles.row} accessibilityRole="button" accessibilityLabel={mission.title}>
+      <ImageBackground source={mission.image} style={styles.rowImg} imageStyle={{ borderRadius: 14 }} />
+      <View style={{ flex: 1 }}>
+        <Text style={styles.rowTitle} numberOfLines={1}>
+          {mission.title}
+        </Text>
+        <Text style={styles.rowSub} numberOfLines={1}>
+          {done ? "Done · play again any time" : mission.description}
+        </Text>
+      </View>
+      {done ? <Ionicons name="checkmark-circle" size={24} color={FK.forest} /> : <Ionicons name="chevron-forward" size={20} color={FK.muted} />}
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: FK.moss },
+  content: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 24 },
+  countdown: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    alignSelf: "flex-start",
+    backgroundColor: FK.ink,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginBottom: 8,
+  },
+  countdownText: { fontFamily: FONT.displayBold, fontSize: 15, color: FK.white },
+  section: { marginTop: 18, marginBottom: 10 },
+  big: { minHeight: 240, borderRadius: RADIUS.lg, padding: 18, marginBottom: 12, overflow: "hidden" },
+  bigTitle: { fontFamily: FONT.display, fontSize: 28, lineHeight: 31, color: FK.white, letterSpacing: -0.5 },
+  bigDesc: { fontFamily: FONT.body, fontSize: 15, lineHeight: 20, color: "#DDE6D8", marginTop: 6 },
+  doneBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-start",
+    backgroundColor: FK.sunbeam,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  doneText: { fontFamily: FONT.display, fontSize: 12, letterSpacing: 1.2, color: FK.ink },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    backgroundColor: FK.paper,
+    borderRadius: RADIUS.md,
+    padding: 10,
+    paddingRight: 16,
+    marginBottom: 8,
+  },
+  rowImg: { width: 64, height: 64 },
+  rowTitle: { fontFamily: FONT.display, fontSize: 17, color: FK.ink },
+  rowSub: { fontFamily: FONT.body, fontSize: 14, color: FK.muted, marginTop: 2 },
+});

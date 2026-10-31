@@ -55,7 +55,7 @@ const ITEMS: Item[] = [
 ];
 
 /** Page colour behind the floating bar, so the pill sits on the screen it belongs to. */
-const PAGE_BEHIND: Record<string, string> = { index: FK.moss };
+const PAGE_BEHIND: Record<string, string> = { index: FK.moss, missions: FK.moss };
 
 /**
  * One nav, one colour: the floating ink bar never changes colour between tabs.

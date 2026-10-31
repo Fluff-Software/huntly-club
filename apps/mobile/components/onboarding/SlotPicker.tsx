@@ -199,7 +199,7 @@ export function SlotPicker({
       {showWeekly ? (
         <View style={{ marginTop: showFirst ? 22 : 0 }}>
           <View style={styles.weeklyHeader}>
-            <Text style={TYPE.heading}>And every week?</Text>
+            <Text style={TYPE.heading}>{showFirst ? "And every week?" : "Pick a day and time"}</Text>
             <Text style={styles.weeklyTime}>{value.weeklyTime ?? DEFAULT_WEEKLY_TIME}</Text>
           </View>
           <View style={styles.dayRow}>

@@ -2,57 +2,43 @@ import React, { useMemo, useEffect, useState, useRef } from "react";
 import {
   View,
   ScrollView,
-  Image,
   Pressable,
   Text,
   StyleSheet,
   Dimensions,
-  ActivityIndicator,
-  InteractionManager } from "react-native";
+  InteractionManager,
+  Modal,
+} from "react-native";
 import ConfettiCannon from "react-native-confetti-cannon";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, {
-  FadeInDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withSequence,
-  withDelay,
-  withTiming,
-  Easing } from "react-native-reanimated";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
 import { useRouter, useNavigation, useLocalSearchParams } from "expo-router";
-import { ThemedText } from "@/components/ThemedText";
-import { useLayoutScale } from "@/hooks/useLayoutScale";
-import { MissionCard } from "@/components/MissionCard";
+import { StatusBar } from "expo-status-bar";
+import { Image } from "expo-image";
+import { Ionicons } from "@expo/vector-icons";
+import { FKButton, FKScreen } from "@/components/fieldkit";
+import { SlotPicker } from "@/components/onboarding/SlotPicker";
+import { FK, FONT, RADIUS, TYPE } from "@/constants/fieldKit";
+import { guideForTeamName } from "@/constants/guides";
+import { useAuth } from "@/contexts/AuthContext";
+import { usePlayer } from "@/contexts/PlayerContext";
+import { useUser } from "@/contexts/UserContext";
 import { getActivityById } from "@/services/packService";
 import type { MissionCardData } from "@/constants/missionCards";
-import { usePlayer } from "@/contexts/PlayerContext";
 import { hasOtherApprovedMissionPhotos } from "@/services/activityProgressService";
 import {
-  buildRewardCardSnapshot,
-  missionCardFromSnapshot,
-} from "@/utils/missionRewardParams";
+  type AdventurePlan,
+  type AdventurePlanDraft,
+  DEFAULT_WEEKLY_TIME,
+  getAdventurePlan,
+  updateAdventurePlanPrefs,
+} from "@/services/adventurePlanService";
+import { requestReminderPermission, syncAdventureReminders } from "@/services/adventureReminderService";
+import { buildRewardCardSnapshot, missionCardFromSnapshot } from "@/utils/missionRewardParams";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-const DARK_BROWN = "#4A2C1B";
-const HUNTLY_GREEN = "#4F6F52";
-const LIGHT_GREEN = "#7FAF8A";
-const POINTS_GREEN = "#2D5A27";
-const STAMP_GREEN = "#84CC16"; // lime green stamp
-
-const ACHIEVEMENT_CARD_COLORS = ["#FFF5E8", "#E8F5F0", "#F0E8FF", "#E8F0FF", "#FFF0F0"];
-const ACHIEVEMENT_ICON_BG = ["#F7A676", "#7FAF8A", "#A8D5E5", "#D4A05A", "#C97B6C"];
-
-const BADGE_ICON = require("@/assets/images/badge.png");
-const CELEBRATE_ICON = require("@/assets/images/celebrate.png");
-
-const WELL_DONE_HEADLINES = [
-  "Well done!",
-  "You did it!",
-  "Mission complete!",
-  "Adventure complete!",
-];
+const CHEERS = ["Brilliant work", "What an adventure", "Nailed it", "Legendary stuff", "Best one yet"];
 
 type RewardAchievement = { profile_name: string; message: string; xp: number };
 type UnlockedBadgePayload = {
@@ -88,16 +74,16 @@ function parseUnlockedBadges(raw?: string): UnlockedBadgePayload[] {
   }
 }
 
-const STAMP_REVEAL_DELAY_MS = 350;
 const CONFETTI_PARTICLE_COUNT = 100;
 
 export default function RewardScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const params = useLocalSearchParams<RewardRouteParams>();
-  const { scaleW } = useLayoutScale();
-  const insets = useSafeAreaInsets();
   const { profiles } = usePlayer();
+  const { team } = useUser();
+  const { user } = useAuth();
+  const guide = guideForTeamName(team?.name);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", (e) => {
@@ -106,31 +92,25 @@ export default function RewardScreen() {
     return unsubscribe;
   }, [navigation]);
 
-  const initialCard = useMemo(
-    () => missionCardFromSnapshot(params.cardSnapshot),
-    [params.cardSnapshot]
-  );
-
-  const wellDoneHeadline = useMemo(
-    () => WELL_DONE_HEADLINES[Math.floor(Math.random() * WELL_DONE_HEADLINES.length)],
-    []
-  );
-
-  const achievements = useMemo(
-    () => parseAchievements(params.achievements),
-    [params.achievements]
-  );
-  const unlockedBadges = useMemo(
-    () => parseUnlockedBadges(params.unlockedBadges),
-    [params.unlockedBadges]
-  );
+  const initialCard = useMemo(() => missionCardFromSnapshot(params.cardSnapshot), [params.cardSnapshot]);
+  const cheer = useMemo(() => CHEERS[Math.floor(Math.random() * CHEERS.length)], []);
+  const achievements = useMemo(() => parseAchievements(params.achievements), [params.achievements]);
+  const unlockedBadges = useMemo(() => parseUnlockedBadges(params.unlockedBadges), [params.unlockedBadges]);
 
   const [activityCard, setActivityCard] = useState<MissionCardData | null>(initialCard.card);
   const [activityXp, setActivityXp] = useState<number | null>(initialCard.xp);
-  const [badgeNoticeDismissed, setBadgeNoticeDismissed] = useState(false);
   const [goingHome, setGoingHome] = useState(false);
   const [showOthersButton, setShowOthersButton] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [plan, setPlan] = useState<AdventurePlan | null | undefined>(undefined);
+  const [weeklyOpen, setWeeklyOpen] = useState(false);
+  const [weeklyDraft, setWeeklyDraft] = useState<AdventurePlanDraft>({
+    choice: "skipped",
+    firstAt: null,
+    weeklyDays: [6],
+    weeklyTime: DEFAULT_WEEKLY_TIME,
+  });
+  const [weeklySaved, setWeeklySaved] = useState<string | null>(null);
 
   useEffect(() => {
     if (activityCard) return;
@@ -163,16 +143,9 @@ export default function RewardScreen() {
     }
     let cancelled = false;
     const task = InteractionManager.runAfterInteractions(() => {
-      const excludeProfileIds = profiles.map((p) => p.id);
-      hasOtherApprovedMissionPhotos(activityId, excludeProfileIds)
-        .then((hasAny) => {
-          if (cancelled) return;
-          setShowOthersButton(Boolean(hasAny));
-        })
-        .catch(() => {
-          if (cancelled) return;
-          setShowOthersButton(false);
-        });
+      hasOtherApprovedMissionPhotos(activityId, profiles.map((p) => p.id))
+        .then((hasAny) => !cancelled && setShowOthersButton(Boolean(hasAny)))
+        .catch(() => !cancelled && setShowOthersButton(false));
     });
     return () => {
       cancelled = true;
@@ -180,65 +153,20 @@ export default function RewardScreen() {
     };
   }, [params.activityId, profiles]);
 
-  const confettiRef = useRef<ConfettiCannon>(null);
-  const celebrateScale = useSharedValue(0.85);
-  const goHomeScale = useSharedValue(1);
-  const stampScale = useSharedValue(1.5);
-  const stampOpacity = useSharedValue(0);
-  const badgeNoticeY = useSharedValue(-120);
-
-  const cardCelebrateStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: celebrateScale.value }] }));
-  const goHomeAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: goHomeScale.value }] }));
-  const stampAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: stampOpacity.value,
-    transform: [{ rotate: "-12deg" }, { scale: stampScale.value }] }));
-  const badgeNoticeAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: badgeNoticeY.value }],
-    opacity: unlockedBadges.length > 0 ? 1 : 0,
-  }));
-
+  // A weekly slot is offered after a mission if the family hasn't got one yet.
   useEffect(() => {
-    celebrateScale.value = withSequence(
-      withSpring(1.12, { damping: 10, stiffness: 180 }),
-      withSpring(1, { damping: 14, stiffness: 120 })
-    );
-  }, []);
-
-  const runStampAnimation = () => {
-    stampOpacity.value = 0;
-    stampScale.value = 1.5;
-    stampOpacity.value = withDelay(
-      STAMP_REVEAL_DELAY_MS,
-      withTiming(1, { duration: 120, easing: Easing.out(Easing.ease) })
-    );
-    stampScale.value = withDelay(
-      STAMP_REVEAL_DELAY_MS,
-      withSpring(1, { damping: 9, stiffness: 280 })
-    );
-  };
-
-  useEffect(() => {
-    if (!activityCard) return;
-    runStampAnimation();
-  }, [activityCard]);
-
-  useEffect(() => {
-    if (unlockedBadges.length === 0) return;
-    setBadgeNoticeDismissed(false);
-    badgeNoticeY.value = -120;
-    badgeNoticeY.value = withSpring(0, { damping: 16, stiffness: 180 });
-  }, [unlockedBadges.length, badgeNoticeY]);
-
-  useEffect(() => {
-    if (!activityCard) return;
-    const task = InteractionManager.runAfterInteractions(() => {
-      setShowConfetti(true);
+    if (!user?.id) return;
+    void getAdventurePlan(user.id).then((p) => {
+      setPlan(p);
+      if (p?.weeklyDays.length) setWeeklyDraft((d) => ({ ...d, weeklyDays: p.weeklyDays, weeklyTime: p.weeklyTime }));
     });
-    return () => task.cancel();
-  }, [activityCard]);
+  }, [user?.id]);
 
+  const confettiRef = useRef<ConfettiCannon>(null);
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => setShowConfetti(true));
+    return () => task.cancel();
+  }, []);
   useEffect(() => {
     if (!showConfetti) return;
     const t = setTimeout(() => confettiRef.current?.start?.(), 16);
@@ -256,10 +184,7 @@ export default function RewardScreen() {
   const handleSeeHowOthersDid = () => {
     const activityId = params.activityId ? Number(params.activityId) : null;
     if (!activityId) return;
-    router.push({
-      pathname: "/(tabs)/activity/mission/gallery",
-      params: { activityId: String(activityId) },
-    });
+    router.push({ pathname: "/(tabs)/activity/mission/gallery", params: { activityId: String(activityId) } });
   };
 
   const handleViewUnlockedBadge = () => {
@@ -267,417 +192,196 @@ export default function RewardScreen() {
     if (!firstUnlocked) return;
     router.replace({
       pathname: "/(tabs)/badges",
-      params: {
-        autoOpenBadgeId: String(firstUnlocked.badge_id),
-        profileId: String(firstUnlocked.profile_id),
-      },
+      params: { autoOpenBadgeId: String(firstUnlocked.badge_id), profileId: String(firstUnlocked.profile_id) },
     });
   };
 
-  const styles = useMemo(
-    () =>
-      StyleSheet.create({
-        container: { flex: 1, backgroundColor: DARK_BROWN },
-        scroll: {
-          flex: 1,
-          paddingHorizontal: scaleW(24),
-          paddingTop: scaleW(60),
-          paddingBottom: scaleW(48) },
-        cardWrap: {
-          alignSelf: "center",
-          marginBottom: scaleW(52),
-          position: "relative" },
-        completionBadge: {
-          position: "absolute",
-          right: scaleW(-8),
-          bottom: scaleW(-8),
-          width: scaleW(56),
-          height: scaleW(56),
-          zIndex: 1,
-          backgroundColor: "#FFF",
-          borderRadius: scaleW(28),
-          alignItems: "center",
-          justifyContent: "center",
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.3,
-          shadowRadius: 2,
-          elevation: 2 },
-        completionBadgeImage: {
-          width: scaleW(56),
-          height: scaleW(56),
-          padding: scaleW(4) },
-        stampOverlay: {
-          ...StyleSheet.absoluteFillObject,
-          justifyContent: "center",
-          alignItems: "center",
-          zIndex: 2 },
-        stampBox: {
-          borderWidth: scaleW(3),
-          borderColor: STAMP_GREEN,
-          borderRadius: scaleW(8),
-          paddingHorizontal: scaleW(20),
-          paddingVertical: scaleW(12),
-          minWidth: scaleW(260),
-          alignItems: "center" },
-        stampTextContainer: {
-          padding: scaleW(1),
-          overflow: "visible" as const,
-          position: "relative" as const },
-        stampTextStroke: {
-          position: "absolute" as const,
-          fontSize: scaleW(28),
-          fontWeight: "800",
-          color: "#000",
-          letterSpacing: scaleW(2) },
-        stampTextFill: {
-          fontSize: scaleW(28),
-          fontWeight: "800",
-          color: STAMP_GREEN,
-          letterSpacing: scaleW(2) },
-        wellDoneHeading: {
-          fontSize: scaleW(26),
-          fontWeight: "700",
-          color: "#FFF",
-          textAlign: "center",
-          marginBottom: scaleW(28) },
-        approvalNote: {
-          fontSize: scaleW(14),
-          lineHeight: scaleW(20),
-          color: "rgba(255,255,255,0.85)",
-          textAlign: "center",
-          marginBottom: scaleW(8),
-          marginHorizontal: scaleW(24) },
-        achievementTimeline: {
-          alignItems: "center",
-          gap: scaleW(20),
-          paddingBottom: scaleW(24),
-          paddingHorizontal: scaleW(20),
-          position: "relative" as const },
-        achievementCard: {
-          width: "100%",
-          maxWidth: scaleW(340),
-          flexDirection: "row",
-          borderRadius: scaleW(20),
-          overflow: "hidden" as const,
-          padding: scaleW(16),
-          shadowColor: "#4F6F52",
-          shadowOpacity: 0.12,
-          shadowRadius: scaleW(12),
-          shadowOffset: { width: 0, height: 4 },
-          elevation: 3,
-          borderWidth: 3,
-          borderColor: "rgba(255,255,255,0.9)" },
-        achievementIcon: {
-          width: scaleW(56),
-          height: scaleW(56),
-          borderRadius: scaleW(28),
-          alignItems: "center",
-          justifyContent: "center",
-          marginRight: scaleW(16) },
-        achievementIconImage: {
-          width: scaleW(32),
-          height: scaleW(32) },
-        achievementText: {
-          flex: 1,
-          justifyContent: "center",
-          paddingVertical: scaleW(4) },
-        achievementTitle: {
-          fontSize: scaleW(16),
-          fontWeight: "600",
-          color: "#1a1a1a",
-          marginBottom: scaleW(4),
-          lineHeight: scaleW(22) },
-        achievementPoints: {
-          fontSize: scaleW(15),
-          fontWeight: "700",
-          color: POINTS_GREEN },
-        seeOthersButton: {
-          backgroundColor: HUNTLY_GREEN,
-          paddingVertical: scaleW(14),
-          borderRadius: scaleW(24),
-          alignItems: "center",
-          marginHorizontal: scaleW(52),
-          marginTop: scaleW(22),
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.25,
-          shadowRadius: 2,
-          elevation: 2,
-        },
-        seeOthersButtonText: {
-          fontSize: scaleW(16),
-          fontWeight: "700",
-          color: "#FFF",
-        },
-        goHomeButton: {
-          backgroundColor: "#FFF",
-          paddingVertical: scaleW(14),
-          borderRadius: scaleW(24),
-          alignItems: "center",
-          marginHorizontal: scaleW(52),
-          marginTop: scaleW(32),
-          marginBottom: scaleW(64),
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.3,
-          shadowRadius: 2,
-          elevation: 2 },
-        goHomeButtonText: {
-          fontSize: scaleW(17),
-          fontWeight: "600",
-          color: HUNTLY_GREEN } }),
-    [scaleW]
-  );
+  const saveWeekly = async () => {
+    if (!user?.id) return;
+    const granted = await requestReminderPermission();
+    const next = await updateAdventurePlanPrefs(user.id, {
+      weeklyDays: weeklyDraft.weeklyDays,
+      weeklyTime: weeklyDraft.weeklyTime ?? DEFAULT_WEEKLY_TIME,
+    }).catch(() => null);
+    if (next) {
+      setPlan(next);
+      if (granted) await syncAdventureReminders(next, guide.guideName);
+    }
+    setWeeklyOpen(false);
+    setWeeklySaved(granted ? "Weekly adventure booked. See you then!" : "Saved. Turn on notifications to get the nudge.");
+  };
+
+  const totalXp = achievements.length > 0 ? achievements.reduce((sum, a) => sum + (a.xp ?? 0), 0) : activityXp ?? 0;
+  const names = achievements.length ? [...new Set(achievements.map((a) => a.profile_name))] : profiles.slice(0, 1).map((p) => p.name);
+  const who = names.length === 1 ? names[0] : names.length > 1 ? "team" : "explorer";
+  const offerWeekly = plan !== undefined && !(plan?.weeklyDays.length ?? 0) && !weeklySaved;
+  const badge = unlockedBadges[0];
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={{ paddingBottom: scaleW(24) }}
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-        overScrollMode="never"
-      >
-        <Animated.View
-          style={[styles.cardWrap, cardCelebrateStyle]}
-        >
-          {activityCard && (
-            <>
-              <MissionCard
-                card={activityCard}
-                xp={activityXp}
-                tiltDeg={0}
-                marginTopOffset={0}
-                showStartButton={false}
-              />
-              <View style={styles.stampOverlay} pointerEvents="none">
-                <Animated.View style={[styles.stampBox, stampAnimatedStyle]}>
-                  <View style={styles.stampTextContainer}>
-                    {[
-                      { left: 0, top: 0 },
-                      { left: scaleW(2), top: 0 },
-                      { left: 0, top: scaleW(2) },
-                      { left: scaleW(2), top: scaleW(2) },
-                      { left: scaleW(1), top: 0 },
-                      { left: 0, top: scaleW(1) },
-                      { left: scaleW(2), top: scaleW(1) },
-                      { left: scaleW(1), top: scaleW(2) },
-                    ].map((pos, i) => (
-                      <Text key={i} style={[styles.stampTextStroke, { left: pos.left, top: pos.top }]} numberOfLines={1}>
-                        COMPLETED
-                      </Text>
-                    ))}
-                    <Text style={styles.stampTextFill} numberOfLines={1}>COMPLETED</Text>
-                  </View>
-                </Animated.View>
+    <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>
+      <StatusBar style="dark" />
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <Animated.Text entering={ZoomIn.duration(450)} style={styles.title}>
+          Mission complete!
+        </Animated.Text>
+        {activityCard ? <Text style={styles.missionName}>{activityCard.title}</Text> : null}
+
+        <Animated.View entering={ZoomIn.duration(500).delay(150)} style={styles.archWrap}>
+          <View style={styles.arch}>
+            <Image source={guide.waving} style={styles.archImg} contentFit="contain" contentPosition="bottom" />
+          </View>
+          <View style={styles.speech}>
+            <Text style={styles.speechText}>
+              {cheer}, {who}!
+            </Text>
+          </View>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.duration(350).delay(300)} style={styles.statRow}>
+          <View style={styles.statCard}>
+            <View style={styles.statTop}>
+              <Text style={styles.statBig}>+{totalXp}</Text>
+              <View style={[styles.statBadge, { backgroundColor: guide.colour }]}>
+                <Image source={guide.badge} style={{ width: 30, height: 30 }} contentFit="contain" />
               </View>
-              <View style={styles.completionBadge}>
-                <Image
-                  source={BADGE_ICON}
-                  style={styles.completionBadgeImage}
-                  resizeMode="contain"
-                />
+            </View>
+            <Text style={styles.statLabel}>Points for {guide.teamName}</Text>
+          </View>
+          {badge ? (
+            <Pressable style={styles.statCard} onPress={handleViewUnlockedBadge} accessibilityRole="button">
+              <View style={styles.statTop}>
+                <View style={[styles.statBadge, { backgroundColor: FK.ink }]}>
+                  <Ionicons name="star" size={20} color={FK.sunbeam} />
+                </View>
+                <Text style={styles.statNew}>New badge</Text>
               </View>
-            </>
+              <Text style={styles.statLabel} numberOfLines={2}>
+                {badge.badge_name}
+              </Text>
+            </Pressable>
+          ) : (
+            <View style={styles.statCard}>
+              <View style={styles.statTop}>
+                <View style={[styles.statBadge, { backgroundColor: FK.ink }]}>
+                  <Ionicons name="flag" size={20} color={FK.sunbeam} />
+                </View>
+                <Text style={styles.statNew}>Story</Text>
+              </View>
+              <Text style={styles.statLabel}>One step closer to the chapter's end</Text>
+            </View>
           )}
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.duration(320)}>
-          <Text style={styles.wellDoneHeading}>{wellDoneHeadline}</Text>
-        </Animated.View>
-        <Animated.View entering={FadeInDown.duration(320).delay(80)}>
-          <Text style={styles.approvalNote}>
-            Any pictures submitted will appear in your clubhouse image gallery once they
-            have been approved.
-          </Text>
-        </Animated.View>
-
-        {achievements.length > 0 && (
-          <Animated.View
-            style={styles.achievementTimeline}
-          >
-            {achievements.map((item, index) => {
-              const cardBg = ACHIEVEMENT_CARD_COLORS[index % ACHIEVEMENT_CARD_COLORS.length];
-              const iconBg = ACHIEVEMENT_ICON_BG[index % ACHIEVEMENT_ICON_BG.length];
-              return (
-                <Animated.View
-                  key={`${item.profile_name}-${index}`}
-                  style={{ zIndex: 1, width: "100%", alignItems: "center" }}
-                >
-                  <View
-                    style={[
-                      styles.achievementCard,
-                      {
-                        backgroundColor: cardBg,
-                        transform: [{ rotate: index % 2 === 0 ? "-1.5deg" : "1.5deg" }] },
-                    ]}
-                  >
-                    <View style={[styles.achievementIcon, { backgroundColor: iconBg }]}>
-                      <Image
-                        source={CELEBRATE_ICON}
-                        style={styles.achievementIconImage}
-                        resizeMode="contain"
-                      />
-                    </View>
-                    <View style={styles.achievementText}>
-                      <Text style={styles.achievementTitle}>
-                        {item.profile_name} {item.message}
-                      </Text>
-                      <Text style={styles.achievementPoints}>+ {item.xp} points</Text>
-                    </View>
-                  </View>
-                </Animated.View>
-              );
-            })}
+        {offerWeekly ? (
+          <Animated.View entering={FadeInDown.duration(350).delay(420)} style={styles.inkCard}>
+            <View style={styles.inkIcon}>
+              <Ionicons name="calendar" size={26} color={FK.ink} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.inkTitle}>Make it a weekly adventure?</Text>
+              <Text style={styles.inkText}>Pick a day and we'll nudge you when it comes round.</Text>
+              <FKButton label="Pick a day" onPress={() => setWeeklyOpen(true)} style={styles.inkButton} icon={null} testID="reward-weekly" />
+            </View>
           </Animated.View>
-        )}
-
-        {showOthersButton && (
-          <Pressable
-            style={styles.seeOthersButton}
-            onPress={handleSeeHowOthersDid}
-          >
-            <ThemedText type="heading" style={styles.seeOthersButtonText}>
-              See how others did
-            </ThemedText>
-          </Pressable>
-        )}
-
-        <Animated.View
-          style={goHomeAnimatedStyle}
-        >
-          <Pressable
-            style={[
-              styles.goHomeButton,
-              showOthersButton ? { marginTop: scaleW(14) } : null,
-            ]}
-            disabled={goingHome}
-            onPress={handleGoHome}
-            onPressIn={() => {
-              if (goingHome) return;
-              goHomeScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-            }}
-            onPressOut={() => {
-              goHomeScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-            }}
-          >
-            {goingHome ? (
-              <ActivityIndicator size="small" color={HUNTLY_GREEN} />
-            ) : (
-              <ThemedText type="heading" style={styles.goHomeButtonText}>
-                Go Home
-              </ThemedText>
-            )}
-          </Pressable>
-        </Animated.View>
-      </ScrollView>
-      {unlockedBadges.length > 0 && !badgeNoticeDismissed ? (
-        <Animated.View
-          style={[
-            {
-              position: "absolute",
-              top: insets.top + scaleW(8),
-              left: "4%",
-              width: "92%",
-              zIndex: 1000,
-              borderRadius: scaleW(14),
-              backgroundColor: "#FFFFFF",
-              paddingTop: scaleW(10),
-              paddingBottom: scaleW(10),
-              paddingHorizontal: scaleW(12),
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 3 },
-              shadowOpacity: 0.18,
-              shadowRadius: 6,
-              elevation: 6,
-              alignItems: "center",
-            },
-            badgeNoticeAnimatedStyle,
-          ]}
-        >
-          <View
-            style={{
-              width: "100%",
-              minHeight: scaleW(28),
-              justifyContent: "center",
-              alignItems: "center",
-              marginBottom: scaleW(8),
-              position: "relative",
-              paddingHorizontal: scaleW(28),
-            }}
-          >
-            <Pressable
-              onPress={() => setBadgeNoticeDismissed(true)}
-              style={{
-                position: "absolute",
-                top: "50%",
-                right: 0,
-                marginTop: -scaleW(11),
-                width: scaleW(22),
-                height: scaleW(22),
-                borderRadius: scaleW(11),
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "rgba(0,0,0,0.06)",
-              }}
-            >
-              <Text style={{ fontSize: scaleW(14), color: "#2f3336", fontWeight: "700" }}>×</Text>
-            </Pressable>
-            <Text
-              style={{
-                fontSize: scaleW(14),
-                fontWeight: "700",
-                color: "#1F3F2D",
-                textAlign: "center",
-                lineHeight: scaleW(18),
-              }}
-              numberOfLines={2}
-            >
-              You unlocked a badge: {unlockedBadges[0]?.badge_name}
-            </Text>
+        ) : weeklySaved ? (
+          <View style={[styles.inkCard, { alignItems: "center" }]}>
+            <Ionicons name="checkmark-circle" size={28} color={FK.sunbeam} />
+            <Text style={[styles.inkTitle, { flex: 1 }]}>{weeklySaved}</Text>
           </View>
-          <Pressable
-            onPress={handleViewUnlockedBadge}
-            style={{
-              borderRadius: scaleW(10),
-              backgroundColor: HUNTLY_GREEN,
-              paddingVertical: scaleW(8),
-              paddingHorizontal: scaleW(12),
-            }}
-          >
-            <Text style={{ color: "#fff", fontSize: scaleW(13), fontWeight: "600" }}>
-              Click here to see
-            </Text>
-          </Pressable>
-        </Animated.View>
-      ) : null}
-      {showConfetti ? (
-      <View
-        style={[StyleSheet.absoluteFill, { zIndex: 9999, elevation: 9999 }]}
-        pointerEvents="none"
-      >
-        <ConfettiCannon
-          ref={confettiRef}
-          count={CONFETTI_PARTICLE_COUNT}
-          origin={{ x: SCREEN_WIDTH / 2, y: SCREEN_HEIGHT / 2 - scaleW(40) }}
-          explosionSpeed={350}
-          fallSpeed={3500}
-          fadeOut
-          autoStart={false}
-          colors={[
-            "#FF1493",
-            "#00C853",
-            "#FF8C00",
-            "#FFD700",
-            "#00BCD4",
-            "#E91E8C",
-            "#FFA500",
-            "#26A69A",
-          ]}
-        />
+        ) : null}
+
+        <Text style={styles.note}>Photos you shared appear in the Clubhouse once a grown-up at Huntly has checked them.</Text>
+      </ScrollView>
+
+      <View style={styles.footer}>
+        <FKButton label="Back to the Clubhouse" variant="ink" onPress={handleGoHome} loading={goingHome} testID="reward-home" />
+        {showOthersButton ? <FKButton label="See how others did" variant="link" onPress={handleSeeHowOthersDid} /> : null}
       </View>
+
+      <Modal visible={weeklyOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setWeeklyOpen(false)}>
+        <FKScreen footer={<FKButton label="Book it" onPress={saveWeekly} disabled={weeklyDraft.weeklyDays.length === 0} />}>
+          <Text style={[TYPE.eyebrow, { marginTop: 8 }]}>FOR GROWN-UPS</Text>
+          <Text style={[TYPE.title, { marginTop: 6, marginBottom: 8 }]}>Your weekly adventure</Text>
+          <Text style={[TYPE.bodySmall, { marginBottom: 20, fontSize: 16 }]}>
+            A regular slot turns a good afternoon into a habit. One nudge, never between 8pm and 7am.
+          </Text>
+          <SlotPicker value={weeklyDraft} onChange={setWeeklyDraft} showFirst={false} />
+          <FKButton label="Not now" variant="link" onPress={() => setWeeklyOpen(false)} style={{ marginTop: 16 }} />
+        </FKScreen>
+      </Modal>
+
+      {showConfetti ? (
+        <View style={[StyleSheet.absoluteFill, { zIndex: 9999, elevation: 9999 }]} pointerEvents="none">
+          <ConfettiCannon
+            ref={confettiRef}
+            count={CONFETTI_PARTICLE_COUNT}
+            origin={{ x: SCREEN_WIDTH / 2, y: SCREEN_HEIGHT / 2 - 40 }}
+            explosionSpeed={350}
+            fallSpeed={3500}
+            fadeOut
+            autoStart={false}
+            colors={[FK.ink, FK.forest, FK.ember, FK.white, FK.team.foxes, FK.team.otters]}
+          />
+        </View>
       ) : null}
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: FK.sunbeam },
+  scroll: { paddingHorizontal: 22, paddingTop: 12, paddingBottom: 16 },
+  title: { fontFamily: FONT.display, fontSize: 46, lineHeight: 48, color: FK.ink, textAlign: "center", letterSpacing: -1.5 },
+  missionName: { fontFamily: FONT.displayBold, fontSize: 17, color: "#5C4A12", textAlign: "center", marginTop: 6 },
+  archWrap: { alignItems: "center", marginTop: 14 },
+  arch: {
+    width: 190,
+    height: 210,
+    borderTopLeftRadius: 95,
+    borderTopRightRadius: 95,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    borderWidth: 6,
+    borderColor: FK.ink,
+    backgroundColor: FK.forest,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+  archImg: { width: "100%", height: "108%" },
+  speech: {
+    backgroundColor: FK.paper,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    marginTop: -26,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  speechText: { fontFamily: FONT.display, fontSize: 20, color: FK.ink, textAlign: "center" },
+  statRow: { flexDirection: "row", gap: 12, marginTop: 18 },
+  statCard: { flex: 1, backgroundColor: FK.paper, borderRadius: RADIUS.md, padding: 14, minHeight: 100 },
+  statTop: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
+  statBig: { fontFamily: FONT.display, fontSize: 36, color: FK.ink, letterSpacing: -1 },
+  statBadge: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  statNew: { fontFamily: FONT.display, fontSize: 20, color: FK.ink, flexShrink: 1 },
+  statLabel: { fontFamily: FONT.displayBold, fontSize: 15, color: FK.muted },
+  inkCard: { flexDirection: "row", gap: 14, backgroundColor: FK.ink, borderRadius: RADIUS.lg, padding: 18, marginTop: 14 },
+  inkIcon: {
+    width: 56,
+    height: 70,
+    borderRadius: 12,
+    backgroundColor: FK.sunbeam,
+    alignItems: "center",
+    justifyContent: "center",
+    transform: [{ rotate: "-6deg" }],
+  },
+  inkTitle: { fontFamily: FONT.display, fontSize: 20, lineHeight: 24, color: FK.white },
+  inkText: { fontFamily: FONT.body, fontSize: 15, color: FK.mutedOnDark, marginTop: 4 },
+  inkButton: { alignSelf: "flex-start", minHeight: 48, marginTop: 12, paddingHorizontal: 22 },
+  note: { ...TYPE.bodySmall, color: "#6B5A1E", textAlign: "center", marginTop: 16 },
+  footer: { paddingHorizontal: 22, paddingBottom: 8, paddingTop: 4 },
+});

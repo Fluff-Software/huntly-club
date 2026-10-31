@@ -454,6 +454,12 @@ export default function TabLayout() {
         options={{
           href: null }}
       />
+      <Tabs.Screen
+        name="me"
+        options={{
+          title: "Me",
+          href: profiles.length > 0 ? undefined : null }}
+      />
       </Tabs>
       {showActiveTrackingBanner ? (
         <Pressable

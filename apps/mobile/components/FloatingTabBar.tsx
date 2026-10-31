@@ -49,13 +49,13 @@ const ITEMS: Item[] = [
     label: "Me",
     icon: "person-outline",
     iconActive: "person",
-    route: "profile",
-    isActive: (_p, r) => ["profile", "journal", "social", "badges", "settings", "parents", "journal-book"].includes(r),
+    route: "me",
+    isActive: (_p, r) => ["me", "reminders", "profile", "journal", "social", "badges", "settings", "parents", "journal-book"].includes(r),
   },
 ];
 
 /** Page colour behind the floating bar, so the pill sits on the screen it belongs to. */
-const PAGE_BEHIND: Record<string, string> = { index: FK.moss, missions: FK.moss };
+const PAGE_BEHIND: Record<string, string> = { index: FK.moss, missions: FK.moss, me: FK.moss, reminders: FK.moss };
 
 /**
  * One nav, one colour: the floating ink bar never changes colour between tabs.

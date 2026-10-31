@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { FKButton, FKEyebrow, FKScreen } from "@/components/fieldkit";
 import { SlotPicker } from "@/components/onboarding/SlotPicker";
 import { ParentPinModal } from "@/components/ParentPinModal";
+import { isParentGateFresh, markParentGatePassed } from "@/services/parentGateSession";
 import { FK, FONT, RADIUS, TYPE } from "@/constants/fieldKit";
 import { guideForTeamName } from "@/constants/guides";
 import { useAuth } from "@/contexts/AuthContext";
@@ -35,7 +36,7 @@ export default function RemindersScreen() {
   const { team } = useUser();
   const { profiles } = usePlayer();
   const guide = guideForTeamName(team?.name);
-  const [unlocked, setUnlocked] = useState(false);
+  const [unlocked, setUnlocked] = useState(isParentGateFresh);
   const [plan, setPlan] = useState<AdventurePlan | null>(null);
   const [draft, setDraft] = useState<AdventurePlanDraft>(EMPTY);
   const [loading, setLoading] = useState(true);
@@ -98,7 +99,12 @@ export default function RemindersScreen() {
     return (
       <FKScreen scroll={false} contentStyle={{ flex: 1, justifyContent: "center" }}>
         <StatusBar style="dark" />
-        <ParentPinModal visible onSuccess={() => setUnlocked(true)} onCancel={() => (router.canGoBack() ? router.back() : router.replace("/(tabs)"))} />
+        <ParentPinModal
+          visible
+          onSuccess={() => {
+            markParentGatePassed();
+            setUnlocked(true);
+          }} onCancel={() => (router.canGoBack() ? router.back() : router.replace("/(tabs)"))} />
       </FKScreen>
     );
   }

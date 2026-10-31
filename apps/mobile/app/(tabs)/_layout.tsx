@@ -2,7 +2,7 @@ import { useAppTheme } from "@/contexts/AppThemeContext";
 import { Tabs, router, usePathname, useSegments } from "expo-router";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Image, Platform, Pressable, StyleSheet, View } from "react-native";
-import { BottomTabBar, type BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { MaterialIcons } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
@@ -19,7 +19,7 @@ import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { useActiveTrackingSession } from "@/hooks/useActiveTrackingSession";
 import { useActiveHuntSession } from "@/hooks/useActiveHuntSession";
-import { NewPlayerTutorial } from "@/components/NewPlayerTutorial";
+import { FloatingTabBar } from "@/components/FloatingTabBar";
 import { TabTrophyIcon } from "@/components/TabTrophyIcon";
 import { SlideUpTabBar } from "@/components/SlideUpTabBar";
 import { ThemedText } from "@/components/ThemedText";
@@ -165,15 +165,12 @@ export default function TabLayout() {
   useEffect(() => {
     if (firstProfileId == null) return;
     let cancelled = false;
+    // The coach-mark tour is replaced by the guided onboarding (team, guide, plan,
+    // secret message), so families land straight in the Clubhouse.
     getHasCompletedTutorial(firstProfileId).then((completed) => {
       if (cancelled) return;
       setHasCompletedTutorial(completed);
-      if (completed) {
-        setShowPostSignUpWelcome?.(false);
-      } else {
-        setShowPostSignUpWelcome?.(true);
-        setTutorialStep?.("welcome");
-      }
+      setShowPostSignUpWelcome?.(false);
     });
     return () => {
       cancelled = true;
@@ -235,9 +232,8 @@ export default function TabLayout() {
     hasRequestedPushPermissionRef.current = false;
   }, [user?.id]);
 
-  useEffect(() => {
-    void maybeRequestPushPermission();
-  }, [maybeRequestPushPermission]);
+  // Notification permission is no longer requested automatically on first launch:
+  // it's asked when a family books an adventure slot, with the reason stated.
 
   const activeColor = "#FFFFFF";
   const inactiveColor = "rgba(255,255,255,0.6)";
@@ -287,9 +283,6 @@ export default function TabLayout() {
         }
       });
     }
-    setTimeout(() => {
-      void maybeRequestPushPermission();
-    }, POST_MODAL_DELAY_MS);
   };
 
   // Tabs are always tappable during the tour; if the player navigates away
@@ -305,9 +298,11 @@ export default function TabLayout() {
   const renderTabBar = useCallback(
     (props: BottomTabBarProps) => {
       if (!showTabBar) return null;
-      return <BottomTabBar {...props} />;
+      // Missions are full-screen and focused: no nav bar mid-mission.
+      if (pathname.includes("/activity/mission")) return null;
+      return <FloatingTabBar {...props} disabled={tutorialVisible} />;
     },
-    [showTabBar]
+    [showTabBar, pathname, tutorialVisible]
   );
 
   return (
@@ -386,14 +381,14 @@ export default function TabLayout() {
               <TabTrophyIcon color={color} size={scaleW(24)} />
             </View>
           ),
-          // Always show the Team tab; the screen itself already handles
-          // the “no team yet” state.
-          href: undefined }}
+          // Reached from the Clubhouse team race and the Me tab.
+          href: null }}
       />
       <Tabs.Screen
         name="journal"
         options={{
           title: "Backpack",
+          href: null,
           tabBarIcon: ({ color }) => (
             <View style={[styles.tutorialIconWrapper, { width: scaleW(44), height: scaleW(44) }]}>
               {tutorialVisible && tutorialStep === "journal" && (
@@ -403,8 +398,7 @@ export default function TabLayout() {
               )}
               <MaterialIcons name="workspace-premium" size={scaleW(24)} color={color} />
             </View>
-          ),
-          href: profiles.length > 0 ? undefined : null }}
+          ) }}
       />
       <Tabs.Screen
         name="journal-book"
@@ -452,6 +446,11 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="campfire"
+        options={{
+          href: null }}
+      />
+      <Tabs.Screen
+        name="reminders"
         options={{
           href: null }}
       />
@@ -507,11 +506,6 @@ export default function TabLayout() {
           <MaterialIcons name="travel-explore" size={scaleW(26)} color="#FFFFFF" />
         </Pressable>
       ) : null}
-      <NewPlayerTutorial
-        visible={tutorialVisible}
-        onDismiss={handleTutorialDismiss}
-        tabBarHeight={tabBarHeight}
-      />
     </View>
   );
 }

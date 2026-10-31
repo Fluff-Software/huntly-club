@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Image } from "expo-image";
@@ -42,7 +42,11 @@ export function SignInScreen({ onBack, onCreateAccount }: { onBack: () => void; 
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      // Android is edge-to-edge, so adjustResize no longer lifts the footer; pad on both.
+      behavior="padding"
+    >
       <StatusBar style="dark" />
       <FKScreen>
         <Pressable onPress={onBack} style={styles.back} hitSlop={8} accessibilityLabel="Back">

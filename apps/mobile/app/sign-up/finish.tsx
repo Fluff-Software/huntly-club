@@ -21,6 +21,7 @@ import {
   weeklyLabel,
 } from "@/services/adventurePlanService";
 import { requestReminderPermission, syncAdventureReminders } from "@/services/adventureReminderService";
+import { useResetToTabs } from "@/hooks/useResetToTabs";
 import { completeOnboarding } from "@/services/onboardingService";
 import { setSecretMessagePending } from "@/services/secretMessageService";
 
@@ -76,7 +77,10 @@ export default function SignUpFinishScreen() {
     void run();
   }, [draftLoaded, user, teamName, players.length, run]);
 
-  const goHome = () => router.replace("/(tabs)");
+  const resetToTabs = useResetToTabs();
+  const goHome = () => {
+    if (!resetToTabs()) router.replace("/(tabs)");
+  };
 
   const handleRemind = async () => {
     setAsking(true);

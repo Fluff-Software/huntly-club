@@ -109,7 +109,7 @@ export default function ClubhouseScreen() {
   const { isSupported: exploreSupported } = useExploreRegionSupport(locationPermission);
   const [secretPending, setSecretPendingState] = useState(false);
   const [secretOpen, setSecretOpen] = useState(false);
-  const [missionMeta, setMissionMeta] = useState<{ duration: string | null; type: string | null; captain: string | null } | null>(null);
+  const [missionMeta, setMissionMeta] = useState<{ duration: string | null; type: string | null } | null>(null);
   const [race, setRace] = useState<{ name: string; total: number; colour: string }[]>([]);
   const scrollRef = useRef<ScrollView>(null);
 
@@ -122,19 +122,20 @@ export default function ClubhouseScreen() {
     void getSecretMessagePending().then(setSecretPendingState);
   }, []);
 
-  // Duration / indoors / guide chips for the hero card.
+  // Duration / indoors chips for the hero card. (The mission's narrator can differ from
+  // the family's guide, so it isn't shown here.)
   useEffect(() => {
     if (!next) return;
     let cancelled = false;
     supabase
       .from("activities")
-      .select("estimated_duration, mission_type, intro_captain")
+      .select("estimated_duration, mission_type")
       .eq("id", next.id)
       .maybeSingle()
       .then(({ data }) => {
         if (cancelled || !data) return;
-        const row = data as { estimated_duration: string | null; mission_type: string | null; intro_captain: string | null };
-        setMissionMeta({ duration: row.estimated_duration, type: row.mission_type, captain: row.intro_captain });
+        const row = data as { estimated_duration: string | null; mission_type: string | null };
+        setMissionMeta({ duration: row.estimated_duration, type: row.mission_type });
       });
     return () => {
       cancelled = true;
@@ -224,7 +225,6 @@ export default function ClubhouseScreen() {
   const chips = [
     shortDuration(missionMeta?.duration),
     missionMeta?.type === "indoor" ? "Indoors" : missionMeta?.type === "outdoor" ? "Outdoors" : null,
-    missionMeta?.captain ? missionMeta.captain[0].toUpperCase() + missionMeta.captain.slice(1) : null,
   ].filter(Boolean) as string[];
 
   const openMission = () => {

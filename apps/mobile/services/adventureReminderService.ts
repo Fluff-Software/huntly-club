@@ -138,10 +138,30 @@ export async function syncAdventureReminders(plan: AdventurePlan | null, guide: 
     const quietEnd = plan.quietEnd || DEFAULT_QUIET_END;
     let count = 0;
 
+    const weeklyAt =
+      plan.weeklyTime && plan.weeklyDays.length > 0
+        ? (() => {
+            const { h, m } = parseHm(plan.weeklyTime);
+            const probe = new Date();
+            probe.setHours(h, m, 0, 0);
+            return clampOutOfQuiet(probe, quietStart, quietEnd);
+          })()
+        : null;
+
     const first = plan.firstAt ? new Date(plan.firstAt) : plan.choice === "skipped" ? defaultSkippedSlot() : null;
     if (first && !plan.reschedulePromptedAt) {
-      await scheduleAt("first", clampOutOfQuiet(first, quietStart, quietEnd), slotCopy(guide));
-      count++;
+      const firstAt = clampOutOfQuiet(first, quietStart, quietEnd);
+      // When the first slot is also a weekly slot (e.g. "Sunday 10am, every Sunday"), the
+      // weekly reminder already fires then; don't send two at once.
+      const coveredByWeekly =
+        weeklyAt != null &&
+        plan.weeklyDays.includes(firstAt.getDay()) &&
+        firstAt.getHours() === weeklyAt.getHours() &&
+        firstAt.getMinutes() === weeklyAt.getMinutes();
+      if (!coveredByWeekly) {
+        await scheduleAt("first", firstAt, slotCopy(guide));
+        count++;
+      }
       // Morning slots get a gentle heads-up the evening before (6pm, outside quiet hours).
       if (first.getHours() < 12) {
         const eve = new Date(first);
@@ -154,11 +174,8 @@ export async function syncAdventureReminders(plan: AdventurePlan | null, guide: 
       }
     }
 
-    if (plan.weeklyTime && plan.weeklyDays.length > 0) {
-      const { h, m } = parseHm(plan.weeklyTime);
-      const probe = new Date();
-      probe.setHours(h, m, 0, 0);
-      const at = clampOutOfQuiet(probe, quietStart, quietEnd);
+    if (weeklyAt) {
+      const at = weeklyAt;
       for (const day of plan.weeklyDays) {
         await Notifications.scheduleNotificationAsync({
           identifier: `${ID_PREFIX}weekly-${day}`,

@@ -1319,7 +1319,10 @@ export default function ExploreScreen() {
             setSafetyAccepted(true);
           }}
           onCancel={() => {
-            setSafetyAccepted(true);
+            // Hide without accepting: accepting starts the location request, which would
+            // pop the OS location prompt over the Clubhouse after "Not now". The focus
+            // effect shows the gate again on the next visit.
+            setSafetyReady(false);
             router.navigate("/(tabs)");
           }}
         />

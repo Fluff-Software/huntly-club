@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePurchases } from "@/contexts/PurchasesContext";
 import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { useExploreAreaWarmup } from "@/hooks/useExploreAreaWarmup";
+import { useResetToTabs } from "@/hooks/useResetToTabs";
 import { getProfiles, getUserData } from "@/services/profileService";
 import type { Profile } from "@/services/profileService";
 import { REQUIRE_EMAIL_VERIFICATION } from "@/constants/auth";
@@ -14,7 +15,8 @@ function routeAfterSignupCheck(
   router: ReturnType<typeof useRouter>,
   profiles: Profile[],
   userData: Awaited<ReturnType<typeof getUserData>>,
-  hasPendingSetup: boolean
+  hasPendingSetup: boolean,
+  goToTabs: () => void
 ) {
   if (profiles.length === 0 || userData?.team == null) {
     // A family that picked a team and booked a slot before creating the account
@@ -26,7 +28,7 @@ function routeAfterSignupCheck(
     router.replace(profiles.length === 0 ? "/sign-up/players" : "/sign-up/team");
     return;
   }
-  router.replace("/(tabs)");
+  goToTabs();
 }
 
 async function resolveSignupState(userId: string) {
@@ -63,6 +65,10 @@ export function AuthGuard({ children }: AuthGuardProps) {
     [rawRouter]
   );
   const signUpContext = useSignUpOptional();
+  const resetToTabs = useResetToTabs();
+  const goToTabs = () => {
+    if (!resetToTabs()) router.replace("/(tabs)");
+  };
   const [checkingProfiles, setCheckingProfiles] = useState(true);
   const onTabs = segments[0] === "(tabs)";
 
@@ -113,7 +119,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
         setCheckingProfiles(true);
         resolveSignupState(user.id)
           .then(({ profiles, userData }) => {
-            routeAfterSignupCheck(router, profiles, userData, signUpContext?.hasPendingSetup ?? false);
+            routeAfterSignupCheck(router, profiles, userData, signUpContext?.hasPendingSetup ?? false, goToTabs);
           })
           .catch((error) => {
             console.error("Error checking profiles/user data:", error);
@@ -141,7 +147,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
       resolveSignupState(user.id)
         .then(({ profiles, userData }) => {
           if (profiles.length === 0 || userData?.team == null) {
-            routeAfterSignupCheck(router, profiles, userData, signUpContext?.hasPendingSetup ?? false);
+            routeAfterSignupCheck(router, profiles, userData, signUpContext?.hasPendingSetup ?? false, goToTabs);
             return;
           }
           // Require active subscription (or grandfathered access) for signed-in users

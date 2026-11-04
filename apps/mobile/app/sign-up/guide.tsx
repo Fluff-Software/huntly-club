@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Image } from "expo-image";
-import Animated, { FadeIn, FadeInDown, ZoomIn } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { FKButton, FKEyebrow, FKProgressHeader, FKScreen } from "@/components/fieldkit";
 import { FK, FONT, RADIUS } from "@/constants/fieldKit";
 import { guideForTeamName } from "@/constants/guides";
@@ -12,6 +12,7 @@ import { useSignUp } from "@/contexts/SignUpContext";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { fetchFirstMissionPreview, type MissionPreview } from "@/services/firstMissionService";
 import { familySentence } from "@/utils/familyNames";
+import { settleIn } from "@/constants/motion";
 
 /** Step 3: the guide introduces the first mission in one line (child-facing). */
 export default function SignUpGuideScreen() {
@@ -47,7 +48,7 @@ export default function SignUpGuideScreen() {
         <Text style={styles.hello}>{hello}</Text>
       </Animated.View>
 
-      <Animated.View entering={ZoomIn.duration(500).delay(100)} style={[styles.ring, { borderColor: guide.colour }]}>
+      <Animated.View entering={settleIn(100)} style={[styles.ring, { borderColor: guide.colour }]}>
         <View style={styles.circle}>
           <Image source={guide.waving} style={styles.guideImg} contentFit="contain" contentPosition="bottom" />
         </View>

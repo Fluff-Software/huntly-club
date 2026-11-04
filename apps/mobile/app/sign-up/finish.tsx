@@ -4,7 +4,7 @@ import { router, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { FKButton, FKEyebrow, FKScreen } from "@/components/fieldkit";
 import { SecretMessage } from "@/components/onboarding/SecretMessage";
 import { FK, FONT, RADIUS, TYPE } from "@/constants/fieldKit";
@@ -24,6 +24,7 @@ import { requestReminderPermission, syncAdventureReminders } from "@/services/ad
 import { useResetToTabs } from "@/hooks/useResetToTabs";
 import { completeOnboarding } from "@/services/onboardingService";
 import { setSecretMessagePending } from "@/services/secretMessageService";
+import { settleIn } from "@/constants/motion";
 
 type Phase = "saving" | "error" | "remind" | "secret";
 
@@ -161,7 +162,7 @@ export default function SignUpFinishScreen() {
     >
       <Stack.Screen options={{ gestureEnabled: false }} />
       <StatusBar style="dark" />
-      <Animated.View entering={ZoomIn.duration(450)} style={[styles.badgeWrap, { backgroundColor: guide.colour }]}>
+      <Animated.View entering={settleIn()} style={[styles.badgeWrap, { backgroundColor: guide.colour }]}>
         <Image source={guide.badge} style={styles.badge} contentFit="contain" />
       </Animated.View>
       <Animated.View entering={FadeInDown.duration(400).delay(150)}>

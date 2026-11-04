@@ -3,13 +3,14 @@ import { Alert, AppState, AppStateStatus, StyleSheet, Text, View } from "react-n
 import { router, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, { FadeIn, ZoomIn } from "react-native-reanimated";
+import Animated, { FadeIn } from "react-native-reanimated";
 import { FKButton, FKEyebrow, FKScreen } from "@/components/fieldkit";
 import { FK, FONT, RADIUS, TYPE } from "@/constants/fieldKit";
 import { useSignUp } from "@/contexts/SignUpContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/services/supabase";
 import { resendVerificationEmail } from "@/services/authService";
+import { settleIn } from "@/constants/motion";
 
 
 function useVerifiedAndContinue(email: string, password: string, nextRoute: "/sign-up/finish" | "/sign-up/players") {
@@ -106,7 +107,7 @@ export default function VerifyEmailScreen() {
       <FKScreen dark scroll={false} contentStyle={styles.center}>
         <Stack.Screen options={{ title: "Email verified", headerShown: false }} />
         <StatusBar style="light" />
-        <Animated.View entering={ZoomIn.duration(400)} style={styles.tick}>
+        <Animated.View entering={settleIn()} style={styles.tick}>
           <Ionicons name="checkmark" size={56} color={FK.ink} />
         </Animated.View>
         <Text style={[styles.title, { color: FK.white, textAlign: "center" }]}>You're in!</Text>

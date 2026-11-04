@@ -27,7 +27,7 @@ export function ExploreNearbyStopBanner({ visible, label, top, onPress }: Props)
   useEffect(() => {
     progress.value = withTiming(visible ? 1 : 0, {
       duration: 260,
-      easing: visible ? Easing.out(Easing.back(1.2)) : Easing.in(Easing.cubic),
+      easing: visible ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
     });
   }, [visible, progress]);
 

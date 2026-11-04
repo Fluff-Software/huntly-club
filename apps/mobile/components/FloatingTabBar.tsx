@@ -4,9 +4,10 @@ import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { router, usePathname } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FK, FONT } from "@/constants/fieldKit";
+import { MOVE } from "@/constants/motion";
 
 type Item = {
   key: string;
@@ -57,7 +58,6 @@ const ITEMS: Item[] = [
   },
 ];
 
-const SPRING = { damping: 22, stiffness: 260, mass: 0.7 };
 const BAR_PADDING = 7;
 /** Keeps the bar a comfortable thumb width on tablets and large phones. */
 const MAX_BAR_WIDTH = 520;
@@ -98,8 +98,8 @@ export function FloatingTabBar({ state, navigation, disabled }: BottomTabBarProp
   useEffect(() => {
     if (!slot) return;
     const target = Math.max(activeIndex, 0) * slot;
-    // First placement jumps; after that the highlight glides.
-    x.value = placed.current ? withSpring(target, SPRING) : target;
+    // First placement jumps; after that the highlight eases across (no overshoot).
+    x.value = placed.current ? withTiming(target, MOVE) : target;
     placed.current = true;
     visible.value = withTiming(activeIndex >= 0 ? 1 : 0, { duration: 160 });
   }, [activeIndex, slot, x, visible]);

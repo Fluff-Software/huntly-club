@@ -4,11 +4,12 @@ import { Image } from "expo-image";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeIn, FadeInDown, ZoomIn } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { FKButton, FKScreen } from "@/components/fieldkit";
 import { FK, FONT, RADIUS } from "@/constants/fieldKit";
 import type { Guide } from "@/constants/guides";
 import { childNames, secretMessageText } from "@/services/secretMessageService";
+import { settleIn } from "@/constants/motion";
 
 /** "TOP SECRET — Sam, Bella has a message for you." The child's first moment in the app. */
 export function SecretMessage({
@@ -58,7 +59,7 @@ export function SecretMessage({
       </Text>
 
       <Animated.View
-        entering={ZoomIn.duration(500).delay(150)}
+        entering={settleIn(150)}
         style={[styles.ring, opened && { width: 200, height: 200, borderRadius: 100, marginTop: 18 }]}
       >
         <View style={styles.circle}>

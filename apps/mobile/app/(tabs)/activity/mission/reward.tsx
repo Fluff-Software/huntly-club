@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import ConfettiCannon from "react-native-confetti-cannon";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { useRouter, useNavigation, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Image } from "expo-image";
@@ -36,6 +36,7 @@ import {
 } from "@/services/adventurePlanService";
 import { requestReminderPermission, syncAdventureReminders } from "@/services/adventureReminderService";
 import { buildRewardCardSnapshot, missionCardFromSnapshot } from "@/utils/missionRewardParams";
+import { settleIn } from "@/constants/motion";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -225,12 +226,12 @@ export default function RewardScreen() {
     <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Animated.Text entering={ZoomIn.duration(450)} style={styles.title}>
+        <Animated.Text entering={settleIn()} style={styles.title}>
           Mission complete!
         </Animated.Text>
         {activityCard ? <Text style={styles.missionName}>{activityCard.title}</Text> : null}
 
-        <Animated.View entering={ZoomIn.duration(500).delay(150)} style={styles.archWrap}>
+        <Animated.View entering={settleIn(150)} style={styles.archWrap}>
           <View style={styles.arch}>
             <Image source={guide.waving} style={styles.archImg} contentFit="contain" contentPosition="bottom" />
           </View>

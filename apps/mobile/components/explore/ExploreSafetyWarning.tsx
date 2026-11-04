@@ -9,9 +9,10 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, { FadeIn, SlideInDown } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { FKButton } from "@/components/fieldkit";
 import { FK, FONT, RADIUS, TYPE } from "@/constants/fieldKit";
+import { fadeIn, sheetIn } from "@/constants/motion";
 
 const RULES = [
   { icon: "eye-outline" as const, title: "Look up", text: "Watch where you're going, not the screen." },
@@ -34,10 +35,10 @@ export function ExploreSafetyWarning({ visible, onAccept, onCancel }: Props) {
   if (!visible) return null;
 
   return (
-    <Animated.View entering={FadeIn.duration(200)} style={styles.root} accessibilityViewIsModal>
+    <Animated.View entering={fadeIn} style={styles.root} accessibilityViewIsModal>
       <Pressable style={StyleSheet.absoluteFill} onPress={onCancel} accessibilityLabel="Not now" />
       <Animated.View
-        entering={SlideInDown.springify().damping(20).stiffness(180)}
+        entering={sheetIn}
         style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]}
       >
         <View style={styles.handle} />

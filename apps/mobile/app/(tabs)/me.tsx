@@ -1,25 +1,28 @@
-import React, { useCallback, useState } from "react";
-import { ImageBackground, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useMemo, useState } from "react";
+import { Image as RNImage, Modal, Pressable, ScrollView, StyleSheet, Text, View, type ImageSourcePropType } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { setStatusBarStyle } from "expo-status-bar";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
-import { TeamRaceStrip } from "@/components/clubhouse/ClubhouseCards";
-import { FKScreen } from "@/components/fieldkit";
+import { FKLoading, FKScreen } from "@/components/fieldkit";
 import { ParentPinModal } from "@/components/ParentPinModal";
 import { FK, FONT, RADIUS, TYPE } from "@/constants/fieldKit";
-import { guideForTeamName, GUIDES } from "@/constants/guides";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useUser } from "@/contexts/UserContext";
 import { useClubhouseStats } from "@/hooks/useClubhouseStats";
+import { useExploreRegionSupport } from "@/hooks/useExploreRegionSupport";
+import { useTeamGuide } from "@/hooks/useTeamGuide";
+import { raceHeadline, useTeamRace } from "@/hooks/useTeamRace";
+import { getLocationPermissionStatus } from "@/services/locationService";
 import { markParentGatePassed } from "@/services/parentGateSession";
 import { supabase } from "@/services/supabase";
-import { getAllTeamsWithXp, getTeamAchievementTotals } from "@/services/teamActivityService";
+import { familyHeading } from "@/utils/familyNames";
 
 const BINDER = require("@/assets/images/backpack-card-binder.png");
 const BADGES = require("@/assets/images/backpack-badges-v2.png");
 const JOURNAL = require("@/assets/images/journal-bg.png");
+const PRINTABLES = require("@/assets/images/backpack-resources.png");
 
 type GrownUpLink = { icon: keyof typeof Ionicons.glyphMap; title: string; sub: string; href: string };
 
@@ -30,46 +33,31 @@ const GROWN_UP_LINKS: GrownUpLink[] = [
   { icon: "book-outline", title: "Grown-up guides", sub: "Ideas and resources for you", href: "/(tabs)/parents" },
 ];
 
-/** The explorer's own corner: their collection, badges, journal and team. */
+type Tile = { key: string; title: string; sub: string; art: ImageSourcePropType; colour: string; href: string };
+
+/** The explorers' own corner: everyone in the family, their collection, badges, journal and team. */
 export default function MeScreen() {
   const { profiles } = usePlayer();
-  const { team } = useUser();
-  const guide = guideForTeamName(team?.name);
-  const ids = profiles.map((p) => p.id);
+  const { team, teamId } = useUser();
+  const { guide } = useTeamGuide();
+  const ids = useMemo(() => profiles.map((p) => p.id), [profiles]);
   const { stats, refetch } = useClubhouseStats(ids);
+  const { race, load: loadRace } = useTeamRace(team?.name, teamId, ids);
   const [cards, setCards] = useState(0);
-  const [race, setRace] = useState<{ name: string; total: number; colour: string }[]>([]);
+  const [locationPermission, setLocationPermission] = useState<"loading" | "granted" | "denied" | "undetermined">("loading");
+  const { isSupported: exploreSupported } = useExploreRegionSupport(locationPermission);
   const [gate, setGate] = useState(false);
   const [grownUpsOpen, setGrownUpsOpen] = useState(false);
   const names = profiles.map((p) => p.name);
-  const name = names.length <= 1 ? names[0] ?? "Explorer" : `${names[0]} & co`;
 
   const load = useCallback(async () => {
-    if (profiles.length === 0) return;
+    if (ids.length === 0) return;
     void refetch();
-    if (ids.length) {
-      const { count } = await supabase.from("explore_stop_claims").select("id", { count: "exact", head: true }).in("profile_id", ids);
-      setCards(count ?? 0);
-    }
-    try {
-      const teams = await getAllTeamsWithXp();
-      let totals: Record<number, number> = {};
-      try {
-        totals = await getTeamAchievementTotals();
-      } catch {
-        totals = Object.fromEntries(teams.map((t) => [t.id, t.team_xp ?? 0]));
-      }
-      setRace(
-        GUIDES.map((g) => {
-          const t = teams.find((x) => x.name.toLowerCase() === g.teamName.toLowerCase());
-          return { name: g.teamName, total: t ? totals[t.id] ?? 0 : 0, colour: g.colour };
-        }).sort((a, b) => b.total - a.total)
-      );
-    } catch {
-      setRace([]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ids.join(","), refetch]);
+    void loadRace();
+    void getLocationPermissionStatus().then(setLocationPermission);
+    const { count } = await supabase.from("explore_stop_claims").select("id", { count: "exact", head: true }).in("profile_id", ids);
+    setCards(count ?? 0);
+  }, [ids, refetch, loadRace]);
 
   useFocusEffect(
     useCallback(() => {
@@ -80,53 +68,95 @@ export default function MeScreen() {
 
   const go = (href: string) => router.push(href as Parameters<typeof router.push>[0]);
 
+  if (!guide) return <FKLoading />;
+
+  // Binder shows wherever Explore runs, or once a family already has cards.
+  const showBinder = exploreSupported || cards > 0;
+  const tiles: Tile[] = [
+    ...(showBinder
+      ? [{ key: "binder", title: "Card binder", sub: cards === 1 ? "1 card" : `${cards} cards`, art: BINDER, colour: "#3F7A55", href: "/(tabs)/activity/explore-collection" }]
+      : []),
+    { key: "badges", title: "Badges", sub: "What you've earned", art: BADGES, colour: "#5FA34B", href: "/(tabs)/badges" },
+    { key: "journal", title: "Journal", sub: "Your adventures", art: JOURNAL, colour: "#5B7FA6", href: "/(tabs)/journal-book" },
+    { key: "printables", title: "Printables", sub: "Sheets and extras", art: PRINTABLES, colour: "#3A5248", href: "/(tabs)/resources" },
+  ];
+
   return (
     <SafeAreaView style={styles.root} edges={["top", "left", "right"]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.headerRow}>
           <View style={[styles.avatar, { backgroundColor: guide.colour }]}>
-            <Image source={guide.badge} style={{ width: 78, height: 78 }} contentFit="contain" />
+            <Image source={guide.badge} style={{ width: 70, height: 70 }} contentFit="contain" />
           </View>
           <Pressable onPress={() => setGate(true)} style={styles.grownUps} accessibilityRole="button" testID="me-grownups">
             <Ionicons name="lock-closed-outline" size={18} color={FK.ink} />
             <Text style={styles.grownUpsText}>Grown-ups</Text>
           </Pressable>
         </View>
-        <Text style={styles.name}>{name}</Text>
+        <Text style={styles.name} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.75}>
+          {familyHeading(names)}
+        </Text>
         <Text style={styles.sub}>
-          {guide.teamSingular} · {guide.guideName}'s team
+          {profiles.length > 1 ? guide.teamName : guide.teamSingular} · {guide.guideName}'s team
         </Text>
 
-        <View style={styles.stats}>
-          <Stat value={stats.missionsTotal} label="Missions" />
-          <Stat value={cards} label="Cards" />
-          <Stat value={stats.streakWeeks} label={stats.streakWeeks === 1 ? "Week streak" : "Week streak"} />
-        </View>
-
-        <View style={styles.tiles}>
-          <Pressable onPress={() => go("/(tabs)/activity/explore-collection")} style={[styles.tileBig, { backgroundColor: "#3F7A55" }]}>
-            <ImageBackground source={BINDER} style={StyleSheet.absoluteFill} imageStyle={{ borderRadius: RADIUS.lg }} resizeMode="cover" />
-            <View style={styles.tileLabel}>
-              <Text style={styles.tileLabelText}>Binder</Text>
-            </View>
-          </Pressable>
-          <View style={{ flex: 1, gap: 12 }}>
-            <Pressable onPress={() => go("/(tabs)/badges")} style={[styles.tileSmall, { backgroundColor: "#5FA34B" }]}>
-              <ImageBackground source={BADGES} style={StyleSheet.absoluteFill} imageStyle={{ borderRadius: RADIUS.lg }} resizeMode="cover" />
-              <View style={styles.tileLabel}>
-                <Text style={styles.tileLabelText}>Badges</Text>
+        {profiles.length > 1 ? (
+          <View style={[styles.explorers, profiles.length > 4 && { gap: 6, justifyContent: "space-between" }]}>
+            {profiles.map((p) => (
+              <View key={p.id} style={[styles.explorer, profiles.length > 4 && { width: 52 }]}>
+                <View
+                  style={[
+                    styles.explorerDot,
+                    { backgroundColor: p.colour || guide.colour },
+                    profiles.length > 4 && { width: 44, height: 44, borderRadius: 22 },
+                  ]}
+                >
+                  <Text style={styles.explorerInitial}>{(p.name?.trim()[0] ?? "?").toUpperCase()}</Text>
+                </View>
+                <Text style={styles.explorerName} numberOfLines={1}>
+                  {p.name}
+                </Text>
               </View>
-            </Pressable>
-            <Pressable onPress={() => go("/(tabs)/journal")} style={[styles.tileSmall, { backgroundColor: "#5B7FA6" }]}>
-              <ImageBackground source={JOURNAL} style={StyleSheet.absoluteFill} imageStyle={{ borderRadius: RADIUS.lg }} resizeMode="cover" />
-              <View style={styles.tileLabel}>
-                <Text style={styles.tileLabelText}>Journal</Text>
-              </View>
-            </Pressable>
+            ))}
           </View>
+        ) : null}
+
+        <View style={styles.stats}>
+          <Stat value={stats.missionsTotal} label={stats.missionsTotal === 1 ? "Mission" : "Missions"} />
+          <Stat value={cards} label={cards === 1 ? "Card" : "Cards"} />
+          <Stat value={stats.streakWeeks} label="Week streak" />
         </View>
 
-        {race.length ? <TeamRaceStrip rows={race} myTeam={team?.name ?? null} onPress={() => go("/(tabs)/social")} /> : null}
+        <View style={styles.grid}>
+          {tiles.map((t, i) => (
+            <Pressable
+              key={t.key}
+              onPress={() => go(t.href)}
+              // An odd tile out spans the row so the grid never leaves a gap.
+              style={[styles.tile, { backgroundColor: t.colour }, tiles.length % 2 === 1 && i === tiles.length - 1 && styles.tileWide]}
+              accessibilityRole="button"
+              accessibilityLabel={`${t.title}. ${t.sub}`}
+              testID={`me-${t.key}`}
+            >
+              <RNImage source={t.art} style={styles.tileArt} resizeMode="contain" />
+              <View style={styles.tileText}>
+                <Text style={styles.tileTitle}>{t.title}</Text>
+                <Text style={styles.tileSub}>{t.sub}</Text>
+              </View>
+            </Pressable>
+          ))}
+        </View>
+
+        {race.rows.length ? (
+          <Pressable onPress={() => go("/(tabs)/social")} style={styles.raceRow} accessibilityRole="button" testID="me-race">
+            <Ionicons name="trophy" size={22} color={FK.sunbeam} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.raceEyebrow}>TEAM RACE · {race.monthName.toUpperCase()}</Text>
+              <Text style={styles.raceText}>{raceHeadline(race)}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={FK.mutedOnDark} />
+          </Pressable>
+        ) : null}
       </ScrollView>
 
       <ParentPinModal
@@ -185,9 +215,9 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 24 },
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   avatar: {
-    width: 108,
-    height: 108,
-    borderRadius: 54,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     borderWidth: 6,
     borderColor: FK.white,
     alignItems: "center",
@@ -204,17 +234,44 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   grownUpsText: { fontFamily: FONT.display, fontSize: 15, color: FK.ink },
-  name: { fontFamily: FONT.display, fontSize: 40, color: FK.ink, letterSpacing: -1, marginTop: 12 },
-  sub: { fontFamily: FONT.displayBold, fontSize: 17, color: FK.muted },
+  name: { fontFamily: FONT.display, fontSize: 38, lineHeight: 42, color: FK.ink, letterSpacing: -1, marginTop: 12 },
+  sub: { fontFamily: FONT.displayBold, fontSize: 17, color: FK.muted, marginTop: 2 },
+  // Up to six explorers always fit on one row, so nobody is hidden off-screen.
+  explorers: { flexDirection: "row", gap: 14, paddingTop: 16 },
+  explorer: { alignItems: "center", width: 64 },
+  explorerDot: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 3,
+    borderColor: FK.white,
+  },
+  explorerInitial: { fontFamily: FONT.display, fontSize: 20, color: FK.white },
+  explorerName: { fontFamily: FONT.displayBold, fontSize: 13, color: FK.ink, marginTop: 4, maxWidth: "100%" },
   stats: { flexDirection: "row", gap: 10, marginTop: 18 },
   stat: { flex: 1, backgroundColor: FK.paper, borderRadius: RADIUS.md, padding: 14 },
   statValue: { fontFamily: FONT.display, fontSize: 30, color: FK.ink },
   statLabel: { fontFamily: FONT.displayBold, fontSize: 14, color: FK.muted },
-  tiles: { flexDirection: "row", gap: 12, marginTop: 12, marginBottom: 14 },
-  tileBig: { flex: 1, height: 232, borderRadius: RADIUS.lg, overflow: "hidden", justifyContent: "flex-end" },
-  tileSmall: { flex: 1, borderRadius: RADIUS.lg, overflow: "hidden", justifyContent: "flex-end" },
-  tileLabel: { alignSelf: "flex-start", backgroundColor: FK.ink, borderRadius: RADIUS.pill, paddingHorizontal: 16, paddingVertical: 8, margin: 12 },
-  tileLabelText: { fontFamily: FONT.display, fontSize: 17, color: FK.white },
+  grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 12, marginTop: 12 },
+  tile: { width: "48.5%", aspectRatio: 1, borderRadius: RADIUS.lg, overflow: "hidden", justifyContent: "flex-end" },
+  tileWide: { width: "100%", aspectRatio: 2.3 },
+  tileArt: { position: "absolute", top: 10, right: -6, width: "78%", height: "62%" },
+  tileText: { padding: 14 },
+  tileTitle: { fontFamily: FONT.display, fontSize: 19, color: FK.white },
+  tileSub: { fontFamily: FONT.displayBold, fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: 1 },
+  raceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: FK.ink,
+    borderRadius: RADIUS.lg,
+    padding: 16,
+    marginTop: 14,
+  },
+  raceEyebrow: { ...TYPE.eyebrow, color: FK.mutedOnDark },
+  raceText: { fontFamily: FONT.display, fontSize: 17, color: FK.white, marginTop: 2 },
   sheetTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 8, marginBottom: 16 },
   link: {
     flexDirection: "row",

@@ -10,6 +10,7 @@ import { ONBOARDING_STEPS } from "@/constants/onboarding";
 import { useSignUp } from "@/contexts/SignUpContext";
 import { checkEmailAvailable, signUp } from "@/services/authService";
 import { friendlyWhen } from "@/services/adventurePlanService";
+import { familyHeading, familySentence } from "@/utils/familyNames";
 
 /** Basic email validation: local@domain.tld */
 const isValidEmail = (value: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
@@ -34,11 +35,11 @@ export default function SignUpAccountScreen() {
   const canContinue = isValidEmail(email) && passwordValue.length >= MIN_PASSWORD_LENGTH;
   const names = players.map((p) => p.name);
   const possessive =
-    names.length === 1 ? `${names[0]}'s` : names.length === 2 ? `${names[0]} and ${names[1]}'s` : "your explorers'";
+    names.length > 0 && names.length <= 3 ? `${familySentence(names)}'s` : "your explorers'";
 
   const summary = (() => {
     if (!hasPendingSetup) return null;
-    const who = names.length <= 2 ? names.join(" & ") : `${names.length} explorers`;
+    const who = names.length <= 3 ? familyHeading(names) : `${names.length} explorers`;
     const when =
       adventurePlan?.firstAt && adventurePlan.choice !== "skipped"
         ? `First adventure ${friendlyWhen(new Date(adventurePlan.firstAt))}`

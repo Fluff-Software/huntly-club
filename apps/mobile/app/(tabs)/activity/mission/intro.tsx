@@ -1,14 +1,15 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { FKButton } from "@/components/fieldkit";
+import { FKButton, FKLoading } from "@/components/fieldkit";
 import { FK, FONT, RADIUS, TYPE } from "@/constants/fieldKit";
-import { guideForTeamName } from "@/constants/guides";
+import { GUIDES } from "@/constants/guides";
+import { useTeamGuide } from "@/hooks/useTeamGuide";
 import { getActivityById, getActivityImageSource } from "@/services/packService";
 import { shortDuration } from "@/services/firstMissionService";
 import { usePlayer } from "@/contexts/PlayerContext";
@@ -46,7 +47,8 @@ export default function IntroScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { profiles } = usePlayer();
   const { team } = useUser();
-  const guide = guideForTeamName(team?.name);
+  const { guide: teamGuide } = useTeamGuide();
+  const guide = teamGuide ?? GUIDES[0];
   const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -96,11 +98,12 @@ export default function IntroScreen() {
     router.push({ pathname: "/(tabs)/activity/mission/prep", params: { id: String(activity.id) } });
   };
 
-  if (loading || error || !activity) {
+  if (loading || !teamGuide) return <FKLoading />;
+  if (error || !activity) {
     return (
       <SafeAreaView style={[styles.root, styles.center]}>
         <StatusBar style="dark" />
-        {loading ? <ActivityIndicator color={FK.forest} size="large" /> : <Text style={TYPE.body}>{error}</Text>}
+        <Text style={TYPE.body}>{error ?? "We couldn't find that mission."}</Text>
       </SafeAreaView>
     );
   }

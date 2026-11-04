@@ -1,10 +1,10 @@
-import React from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { router, usePathname } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import Animated, { LinearTransition } from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FK, FONT } from "@/constants/fieldKit";
 
@@ -42,7 +42,7 @@ const ITEMS: Item[] = [
     icon: "compass-outline",
     iconActive: "compass",
     href: "/(tabs)/activity/explore",
-    isActive: (p) => p.includes("/activity/explore"),
+    isActive: (p) => p.includes("/activity/explore") && !p.includes("explore-collection") && !p.includes("explore-packs"),
   },
   {
     key: "me",
@@ -50,28 +50,76 @@ const ITEMS: Item[] = [
     icon: "person-outline",
     iconActive: "person",
     route: "me",
-    isActive: (_p, r) => ["me", "reminders", "profile", "journal", "social", "badges", "settings", "parents", "journal-book"].includes(r),
+    isActive: (p, r) =>
+      ["me", "reminders", "profile", "badges", "settings", "parents", "journal-book", "resources"].includes(r) ||
+      p.includes("/activity/explore-collection") ||
+      p.includes("/activity/explore-packs"),
   },
 ];
 
-/** Page colour behind the floating bar, so the pill sits on the screen it belongs to. */
-const PAGE_BEHIND: Record<string, string> = { index: FK.moss, missions: FK.moss, me: FK.moss, reminders: FK.moss };
+const SPRING = { damping: 22, stiffness: 260, mass: 0.7 };
+const BAR_PADDING = 7;
+/** Keeps the bar a comfortable thumb width on tablets and large phones. */
+const MAX_BAR_WIDTH = 520;
+
+/** Page colour behind the floating bar, so it sits on the screen it belongs to. */
+const MOSS_ACTIVITY_ROUTES = ["/activity/pick-activity", "/activity/explore-collection", "/activity/explore-packs"];
+
+function pageBehind(pathname: string, routeName: string): string {
+  if (routeName !== "activity") return FK.moss;
+  if (MOSS_ACTIVITY_ROUTES.some((r) => pathname.includes(r))) return FK.moss;
+  // Explore and the walk/cycle screens are still on the dark forest page.
+  return "#2D4A35";
+}
 
 /**
- * One nav, one colour: the floating ink bar never changes colour between tabs.
- * The active tab is the one sunbeam pill.
+ * One nav, one colour: the floating ink bar never changes between tabs. Four equal
+ * slots that never reflow; a single sunbeam highlight glides to the active one.
  */
 export function FloatingTabBar({ state, navigation, disabled }: BottomTabBarProps & { disabled?: boolean }) {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth, fontScale } = useWindowDimensions();
   const routeName = state.routes[state.index]?.name ?? "index";
   const bottom = Platform.OS === "android" ? Math.max(insets.bottom, 12) : Math.max(insets.bottom - 6, 10);
 
-  const go = (item: Item) => {
+  const activeIndex = ITEMS.findIndex((item) => item.isActive(pathname, routeName));
+  const [barWidth, setBarWidth] = useState(0);
+  const slot = barWidth > 0 ? (barWidth - BAR_PADDING * 2) / ITEMS.length : 0;
+
+  // Small phones (SE, mini) get a slightly tighter label; large text settings are respected but capped.
+  const compact = screenWidth < 360;
+  const labelSize = compact ? 11 : 12.5;
+
+  const x = useSharedValue(0);
+  const visible = useSharedValue(activeIndex >= 0 ? 1 : 0);
+  const placed = React.useRef(false);
+
+  useEffect(() => {
+    if (!slot) return;
+    const target = Math.max(activeIndex, 0) * slot;
+    // First placement jumps; after that the highlight glides.
+    x.value = placed.current ? withSpring(target, SPRING) : target;
+    placed.current = true;
+    visible.value = withTiming(activeIndex >= 0 ? 1 : 0, { duration: 160 });
+  }, [activeIndex, slot, x, visible]);
+
+  const highlight = useAnimatedStyle(() => ({
+    transform: [{ translateX: x.value }],
+    opacity: visible.value,
+  }));
+
+  const go = (item: Item, index: number) => {
     if (disabled) return;
+    if (index === activeIndex && !item.href) {
+      // Re-tapping the current tab: let screens scroll to top, as tabs usually do.
+      const target = state.routes.find((r) => r.name === item.route);
+      if (target) navigation.emit({ type: "tabPress", target: target.key, canPreventDefault: true });
+      return;
+    }
     void Haptics.selectionAsync().catch(() => undefined);
     if (item.href) {
-      router.push(item.href as never);
+      if (index !== activeIndex) router.navigate(item.href as never);
       return;
     }
     const target = state.routes.find((r) => r.name === item.route);
@@ -81,26 +129,38 @@ export function FloatingTabBar({ state, navigation, disabled }: BottomTabBarProp
   };
 
   return (
-    <View style={[styles.outer, { backgroundColor: PAGE_BEHIND[routeName] ?? FK.ink, paddingBottom: bottom }]}>
-      <View style={styles.bar}>
-        {ITEMS.map((item) => {
-          const active = item.isActive(pathname, routeName);
+    <View style={[styles.outer, { backgroundColor: pageBehind(pathname, routeName), paddingBottom: bottom }]}>
+      <View
+        style={[styles.bar, { maxWidth: MAX_BAR_WIDTH }]}
+        onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
+        accessibilityRole="tablist"
+      >
+        {slot ? (
+          <Animated.View pointerEvents="none" style={[styles.highlight, { width: slot }, highlight]} />
+        ) : null}
+        {ITEMS.map((item, index) => {
+          const active = index === activeIndex;
+          const colour = active ? FK.ink : "#E4EADF";
           return (
-            <Animated.View key={item.key} layout={LinearTransition.duration(220)} style={active ? styles.activeWrap : styles.itemWrap}>
-              <Pressable
-                onPress={() => go(item)}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: active }}
-                accessibilityLabel={item.label}
-                testID={`tab-${item.key}`}
-                style={active ? styles.activePill : styles.item}
+            <Pressable
+              key={item.key}
+              onPress={() => go(item, index)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={item.label}
+              testID={`tab-${item.key}`}
+              style={styles.item}
+              hitSlop={4}
+            >
+              <Ionicons name={active ? item.iconActive : item.icon} size={23} color={colour} />
+              <Text
+                style={[styles.label, { color: colour, fontSize: labelSize }, active && { fontFamily: FONT.display }]}
+                numberOfLines={1}
+                maxFontSizeMultiplier={Math.min(fontScale, 1.3)}
               >
-                <Ionicons name={active ? item.iconActive : item.icon} size={active ? 22 : 24} color={active ? FK.ink : "#E4EADF"} />
-                <Text style={active ? styles.activeLabel : styles.label} numberOfLines={1}>
-                  {item.label}
-                </Text>
-              </Pressable>
-            </Animated.View>
+                {item.label}
+              </Text>
+            </Pressable>
           );
         })}
       </View>
@@ -109,32 +169,28 @@ export function FloatingTabBar({ state, navigation, disabled }: BottomTabBarProp
 }
 
 const styles = StyleSheet.create({
-  outer: { paddingHorizontal: 14, paddingTop: 8 },
+  outer: { paddingHorizontal: 14, paddingTop: 8, alignItems: "center" },
   bar: {
+    width: "100%",
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: FK.ink,
-    borderRadius: 40,
-    padding: 7,
+    borderRadius: 36,
+    padding: BAR_PADDING,
     shadowColor: "#000",
     shadowOpacity: 0.22,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 6 },
     elevation: 10,
   },
-  itemWrap: { flex: 1 },
-  activeWrap: { flex: 1.7 },
-  item: { alignItems: "center", justifyContent: "center", paddingVertical: 8, gap: 3 },
-  label: { fontFamily: FONT.displayBold, fontSize: 12, color: "#E4EADF" },
-  activePill: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
+  highlight: {
+    position: "absolute",
+    left: BAR_PADDING,
+    top: BAR_PADDING,
+    bottom: BAR_PADDING,
+    borderRadius: 29,
     backgroundColor: FK.sunbeam,
-    borderRadius: 32,
-    paddingVertical: 15,
-    paddingHorizontal: 12,
   },
-  activeLabel: { fontFamily: FONT.display, fontSize: 17, color: FK.ink },
+  item: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 9, gap: 3, minHeight: 58 },
+  label: { fontFamily: FONT.displayBold },
 });

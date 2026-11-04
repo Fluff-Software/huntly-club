@@ -1,60 +1,73 @@
-import React, { useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-} from "react-native";
-import { ThemedText } from "@/components/ThemedText";
-import { useFocusEffect } from "expo-router";
-import { useLocalSearchParams } from "expo-router";
+import React, { useCallback, useMemo, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { setStatusBarStyle } from "expo-status-bar";
+import { FKButton, FKCard, FKEyebrow, FKPageHeader, FKSkeleton } from "@/components/fieldkit";
+import { FK, FONT, RADIUS, TYPE } from "@/constants/fieldKit";
 import { usePlayer } from "@/contexts/PlayerContext";
-import {
-  Badge,
-  BadgeProgressRow,
-  getBadgeProgressRows,
-} from "@/services/badgeService";
+import { Badge, BadgeProgressRow, getBadgeProgressRows } from "@/services/badgeService";
 import { BadgeDetailModal } from "@/components/BadgeDetailModal";
 import { BadgeImage } from "@/components/BadgeImage";
-import { useLayoutScale } from "@/hooks/useLayoutScale";
-import { ChildScreenLayout } from "@/components/ChildScreenLayout";
 import { prefetchBadgeImage, prefetchBadgeImages } from "@/utils/badgeImageCache";
+
+const MAX_WIDTH = 720;
+const H_PAD = 20;
+const GAP = 10;
+
+const goBack = () => {
+  if (router.canGoBack()) router.back();
+  else router.navigate("/(tabs)/me");
+};
+
+const isXp = (row: BadgeProgressRow) =>
+  row.requirement_type === "xp_gained" || row.requirement_type === "team_xp" || row.requirement_type === "team_contribution";
+
+function progressLabel(row: BadgeProgressRow): string {
+  if (row.badge_type === "manual") return "A special badge, given out by Huntly";
+  const done = Math.min(row.progress_value ?? 0, row.requirement_value);
+  return `${done} of ${row.requirement_value}${isXp(row) ? " XP" : ""}`;
+}
 
 export default function BadgesScreen() {
   const { profiles } = usePlayer();
   const params = useLocalSearchParams<{ autoOpenBadgeId?: string; profileId?: string }>();
-  const { scaleW, isTablet } = useLayoutScale();
+  const { width } = useWindowDimensions();
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [rows, setRows] = useState<BadgeProgressRow[]>([]);
+  const [rowsByProfile, setRowsByProfile] = useState<Record<number, BadgeProgressRow[]>>({});
+  const [loaded, setLoaded] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState<BadgeProgressRow | null>(null);
   const [autoOpenConsumed, setAutoOpenConsumed] = useState(false);
 
+  const profileKey = profiles.map((p) => p.id).join(",");
+
+  // Load every explorer's badges so each one's count shows in the switcher.
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
+      setStatusBarStyle("dark");
       let isMounted = true;
       const load = async () => {
-        if (!selectedProfileId) {
-          setRows([]);
-          setLoading(false);
+        if (profiles.length === 0) {
+          setRowsByProfile({});
+          setLoaded(true);
           return;
         }
-        setLoading(true);
-        const data = await getBadgeProgressRows(selectedProfileId);
-        if (isMounted) {
-          setRows(data);
-          setLoading(false);
-          void prefetchBadgeImages(
-            data.map((row) => ({ image_url: row.image_url }))
-          );
-        }
+        const results = await Promise.all(profiles.map((p) => getBadgeProgressRows(p.id)));
+        if (!isMounted) return;
+        const next: Record<number, BadgeProgressRow[]> = {};
+        profiles.forEach((p, i) => {
+          next[p.id] = results[i] ?? [];
+        });
+        setRowsByProfile(next);
+        setLoaded(true);
+        void prefetchBadgeImages(results.flat().map((row) => ({ image_url: row.image_url })));
       };
       void load();
       return () => {
         isMounted = false;
       };
-    }, [selectedProfileId])
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [profileKey])
   );
 
   React.useEffect(() => {
@@ -62,8 +75,7 @@ export default function BadgesScreen() {
       setSelectedProfileId(null);
       return;
     }
-    const requestedProfileId =
-      typeof params.profileId === "string" ? Number(params.profileId) : NaN;
+    const requestedProfileId = typeof params.profileId === "string" ? Number(params.profileId) : NaN;
     if (!Number.isNaN(requestedProfileId) && profiles.some((p) => p.id === requestedProfileId)) {
       setSelectedProfileId(requestedProfileId);
       return;
@@ -74,10 +86,14 @@ export default function BadgesScreen() {
     });
   }, [profiles, params.profileId]);
 
+  const rows = useMemo(
+    () => (selectedProfileId != null ? rowsByProfile[selectedProfileId] ?? [] : []),
+    [rowsByProfile, selectedProfileId]
+  );
+
   React.useEffect(() => {
     if (autoOpenConsumed) return;
-    const autoOpenId =
-      typeof params.autoOpenBadgeId === "string" ? Number(params.autoOpenBadgeId) : NaN;
+    const autoOpenId = typeof params.autoOpenBadgeId === "string" ? Number(params.autoOpenBadgeId) : NaN;
     if (Number.isNaN(autoOpenId) || rows.length === 0) return;
     const match = rows.find((r) => r.badge_id === autoOpenId);
     if (match) {
@@ -86,177 +102,176 @@ export default function BadgesScreen() {
     }
   }, [params.autoOpenBadgeId, rows, autoOpenConsumed]);
 
-  const orderedGroups = useMemo(() => {
-    const grouped = rows.reduce<Record<string, BadgeProgressRow[]>>((acc, row) => {
-      const key = row.sort_group || "General";
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(row);
-      return acc;
-    }, {});
+  const earned = useMemo(
+    () =>
+      rows
+        .filter((r) => r.earned)
+        .sort((a, b) => (b.earned_at ?? "").localeCompare(a.earned_at ?? "")),
+    [rows]
+  );
+  const toEarn = useMemo(
+    () =>
+      rows
+        .filter((r) => !r.earned)
+        .sort((a, b) => {
+          const aManual = a.badge_type === "manual";
+          const bManual = b.badge_type === "manual";
+          if (aManual !== bManual) return aManual ? 1 : -1;
+          if (a.progress_percent !== b.progress_percent) return b.progress_percent - a.progress_percent;
+          return a.requirement_value - b.requirement_value;
+        }),
+    [rows]
+  );
 
-    const entries = Object.entries(grouped).map(([group, badges]) => {
-      const sortedBadges = [...badges].sort((a, b) => {
-        if (a.earned !== b.earned) return a.earned ? -1 : 1;
-        if (a.progress_percent !== b.progress_percent) {
-          return b.progress_percent - a.progress_percent;
-        }
-        return a.requirement_value - b.requirement_value;
-      });
-      const totalProgress = badges.reduce((sum, b) => sum + (b.progress_percent || 0), 0);
-      const avgProgress = badges.length > 0 ? totalProgress / badges.length : 0;
-      return [group, sortedBadges, avgProgress] as const;
-    });
+  const selectedProfile = profiles.find((p) => p.id === selectedProfileId);
+  const selectedName = selectedProfile?.name || selectedProfile?.nickname || "Your explorer";
 
-    entries.sort((a, b) => {
-      const aSpecial = a[0].toLowerCase() === "special";
-      const bSpecial = b[0].toLowerCase() === "special";
-      if (aSpecial !== bSpecial) return aSpecial ? -1 : 1;
-      if (a[2] !== b[2]) return b[2] - a[2];
-      return a[0].localeCompare(b[0]);
-    });
+  const contentWidth = Math.min(width, MAX_WIDTH) - H_PAD * 2;
+  const columns = contentWidth > 560 ? 5 : 3;
+  const tileWidth = Math.floor((contentWidth - GAP * (columns - 1)) / columns);
 
-    return entries;
-  }, [rows]);
-
-  const renderBadgeIcon = (badge: BadgeProgressRow) => {
-    const iconSize = scaleW(isTablet ? 64 : 44);
-    const emojiSize = scaleW(isTablet ? 48 : 36);
-    return (
-      <BadgeImage
-        badge={{ image_url: badge.image_url }}
-        size={iconSize}
-        emojiFontSize={emojiSize}
-      />
-    );
+  const openBadge = (badge: BadgeProgressRow) => {
+    prefetchBadgeImage({ image_url: badge.image_url });
+    setSelectedBadge(badge);
   };
 
+  const ready = loaded && (profiles.length === 0 || selectedProfileId != null);
+
   return (
-    <>
-      <ChildScreenLayout
-        variant="light"
-        backgroundColor="#F4F0EB"
-        contentContainerStyle={[
-          styles.content,
-          {
-            gap: scaleW(12),
-            width: "100%",
-            maxWidth: isTablet ? scaleW(780) : undefined,
-            alignSelf: "center",
-          },
-        ]}
-      >
-        <ThemedText type="heading">Badges & Rewards</ThemedText>
-        <ThemedText style={styles.subtitle}>
-          Complete missions to unlock milestone badges.
-        </ThemedText>
-        {profiles.length > 0 ? (
-          <View style={styles.profileRow}>
-            {profiles.map((profile) => (
-              <Pressable
-                key={profile.id}
-                style={[
-                  styles.profileChip,
-                  {
-                    paddingHorizontal: scaleW(10),
-                    paddingVertical: scaleW(6),
-                    borderRadius: scaleW(999),
-                  },
-                  selectedProfileId === profile.id ? styles.profileChipActive : undefined,
-                ]}
-                onPress={() => setSelectedProfileId(profile.id)}
-              >
-                <ThemedText
-                  style={[
-                    styles.profileChipText,
-                    { fontSize: scaleW(12) },
-                    selectedProfileId === profile.id
-                      ? styles.profileChipTextActive
-                      : undefined,
-                  ]}
+    <SafeAreaView style={styles.root} edges={["top", "left", "right"]}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <FKPageHeader title="Badges" onBack={goBack} />
+
+        {profiles.length > 1 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.switcher}>
+            {profiles.map((profile) => {
+              const active = profile.id === selectedProfileId;
+              const name = profile.name || profile.nickname || "Explorer";
+              const count = (rowsByProfile[profile.id] ?? []).filter((r) => r.earned).length;
+              return (
+                <Pressable
+                  key={profile.id}
+                  onPress={() => setSelectedProfileId(profile.id)}
+                  style={active ? [styles.pill, styles.pillActive] : styles.pill}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={loaded ? `${name}, ${count} ${count === 1 ? "badge" : "badges"}` : name}
                 >
-                  {profile.nickname || profile.name}
-                </ThemedText>
-              </Pressable>
-            ))}
-          </View>
+                  <Text style={active ? [styles.pillText, { color: FK.white }] : styles.pillText}>{name}</Text>
+                  {loaded ? (
+                    <View style={active ? [styles.pillCount, { backgroundColor: FK.sunbeam }] : styles.pillCount}>
+                      <Text style={styles.pillCountText}>{count}</Text>
+                    </View>
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
         ) : null}
 
-        {loading ? (
-          <ActivityIndicator size="large" color="#4F6F52" style={{ marginTop: 24 }} />
+        {!ready ? (
+          <View style={{ gap: 12 }}>
+            <FKSkeleton height={112} />
+            <FKSkeleton height={tileWidth + 40} />
+            <FKSkeleton height={84} />
+            <FKSkeleton height={84} />
+          </View>
         ) : rows.length === 0 ? (
-          <ThemedText style={styles.subtitle}>No badges available yet.</ThemedText>
+          <FKCard>
+            <Text style={TYPE.heading}>No badges yet</Text>
+            <Text style={[TYPE.body, { marginTop: 6 }]}>
+              Badges will show up here once there are some to earn. Check back soon.
+            </Text>
+          </FKCard>
         ) : (
-          orderedGroups.map(([group, badges]) => (
-            <View
-              key={group}
-              style={[
-                styles.groupCard,
-                {
-                  borderRadius: scaleW(16),
-                  padding: scaleW(14),
-                  gap: scaleW(12),
-                },
-              ]}
-            >
-              <View style={styles.groupHeader}>
-                <ThemedText type="defaultSemiBold">{group}</ThemedText>
-                <ThemedText style={styles.groupMeta}>
-                  {badges.filter((b) => b.earned).length}/{badges.length} unlocked
-                </ThemedText>
+          <>
+            <FKCard style={styles.summary}>
+              <Text style={styles.summaryNumber}>{earned.length}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={TYPE.label}>
+                  {earned.length === 1 ? "badge" : "badges"} earned by {selectedName}
+                </Text>
+                <Text style={[TYPE.bodySmall, { marginTop: 2 }]}>
+                  {toEarn.length === 0 ? "Every badge collected. Well done." : `${toEarn.length} still to earn`}
+                </Text>
+                <View style={styles.track}>
+                  <View
+                    style={[styles.fill, { width: `${rows.length ? Math.round((earned.length / rows.length) * 100) : 0}%` }]}
+                  />
+                </View>
               </View>
+            </FKCard>
 
+            <FKEyebrow style={styles.section}>Earned</FKEyebrow>
+            {earned.length === 0 ? (
+              <FKCard>
+                <Text style={TYPE.label}>{selectedName} hasn&apos;t earned a badge yet</Text>
+                <Text style={[TYPE.bodySmall, { marginTop: 4, marginBottom: 14 }]}>
+                  Finishing missions is the quickest way to get the first one.
+                </Text>
+                <FKButton label="Find a mission" onPress={() => router.navigate("/(tabs)/missions")} />
+              </FKCard>
+            ) : (
               <View style={styles.grid}>
-                {badges.map((badge) => (
+                {earned.map((badge) => (
                   <Pressable
                     key={badge.badge_id}
-                    style={[
-                      styles.badgeTile,
-                      {
-                        width: isTablet ? "30%" : "31%",
-                        minHeight: scaleW(isTablet ? 164 : 108),
-                        borderRadius: scaleW(isTablet ? 16 : 12),
-                        padding: scaleW(isTablet ? 12 : 8),
-                        gap: scaleW(isTablet ? 6 : 4),
-                      },
-                      !badge.earned ? styles.badgeTileLocked : undefined,
-                    ]}
-                    onPress={() => {
-                      prefetchBadgeImage({ image_url: badge.image_url });
-                      setSelectedBadge(badge);
-                    }}
+                    onPress={() => openBadge(badge)}
+                    style={[styles.tile, { width: tileWidth }]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${badge.name}, earned`}
                   >
-                    {renderBadgeIcon(badge)}
-                    <ThemedText
-                      style={[
-                        styles.badgeName,
-                        {
-                          fontSize: scaleW(isTablet ? 15 : 12),
-                          lineHeight: scaleW(isTablet ? 19 : 16),
-                        },
-                      ]}
-                    >
+                    <BadgeImage badge={{ image_url: badge.image_url }} size={Math.min(72, tileWidth - 28)} emojiFontSize={44} />
+                    <Text style={styles.tileName} numberOfLines={2}>
                       {badge.name}
-                    </ThemedText>
-                    <ThemedText
-                      style={[
-                        styles.badgeProgress,
-                        {
-                          fontSize: scaleW(isTablet ? 13 : 11),
-                          lineHeight: scaleW(isTablet ? 16 : 14),
-                        },
-                      ]}
-                    >
-                      {badge.earned
-                        ? "Unlocked"
-                        : `${Math.round(badge.progress_percent)}%`}
-                    </ThemedText>
+                    </Text>
                   </Pressable>
                 ))}
               </View>
-            </View>
-          ))
+            )}
+
+            {toEarn.length > 0 ? (
+              <>
+                <FKEyebrow style={styles.section}>Still to earn</FKEyebrow>
+                {toEarn.map((badge) => {
+                  const manual = badge.badge_type === "manual";
+                  return (
+                    <Pressable
+                      key={badge.badge_id}
+                      onPress={() => openBadge(badge)}
+                      style={styles.row}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${badge.name}, ${progressLabel(badge)}`}
+                    >
+                      <View style={styles.rowIcon}>
+                        <View style={{ opacity: 0.4 }}>
+                          <BadgeImage badge={{ image_url: badge.image_url }} size={40} emojiFontSize={30} />
+                        </View>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.rowTitle} numberOfLines={1}>
+                          {badge.name}
+                        </Text>
+                        <Text style={styles.rowSub}>{progressLabel(badge)}</Text>
+                        {!manual ? (
+                          <View style={[styles.track, { marginTop: 8 }]}>
+                            <View
+                              style={[
+                                styles.fill,
+                                { width: `${Math.max(0, Math.min(100, Math.round(badge.progress_percent || 0)))}%` },
+                              ]}
+                            />
+                          </View>
+                        ) : null}
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </>
+            ) : null}
+          </>
         )}
-      </ChildScreenLayout>
+      </ScrollView>
 
       <BadgeDetailModal
         visible={selectedBadge != null}
@@ -276,45 +291,84 @@ export default function BadgesScreen() {
             : null
         }
         earnedAt={selectedBadge?.earned_at ?? undefined}
+        progressText={
+          selectedBadge && !selectedBadge.earned && selectedBadge.badge_type !== "manual"
+            ? `${selectedName}: ${progressLabel(selectedBadge)} so far`
+            : undefined
+        }
         onClose={() => setSelectedBadge(null)}
       />
-    </>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F4F0EB" },
-  content: {},
-  subtitle: {
-    opacity: 0.75,
+  root: { flex: 1, backgroundColor: FK.moss },
+  content: {
+    paddingHorizontal: H_PAD,
+    paddingTop: 12,
+    paddingBottom: 24,
+    width: "100%",
+    maxWidth: MAX_WIDTH,
+    alignSelf: "center",
   },
-  groupCard: {
-    backgroundColor: "#FFFFFF",
-  },
-  groupHeader: {
+  switcher: { gap: 8, paddingBottom: 16 },
+  pill: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    gap: 8,
+    backgroundColor: FK.paper,
+    borderRadius: RADIUS.pill,
+    paddingLeft: 16,
+    paddingRight: 8,
+    paddingVertical: 8,
+    minHeight: 44,
   },
-  groupMeta: { opacity: 0.65 },
-  profileRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  profileChip: {
-    borderWidth: 1,
-    borderColor: "#A7B0A5",
-    backgroundColor: "#FFFFFF",
-  },
-  profileChipActive: { backgroundColor: "#4F6F52", borderColor: "#4F6F52" },
-  profileChipText: { color: "#2B2B2B", fontWeight: "600" },
-  profileChipTextActive: { color: "#FFFFFF" },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  badgeTile: {
-    width: "31%",
-    backgroundColor: "#F8F5F1",
+  pillActive: { backgroundColor: FK.ink },
+  pillText: { fontFamily: FONT.display, fontSize: 16, color: FK.ink },
+  pillCount: {
+    minWidth: 28,
+    height: 28,
+    borderRadius: 14,
+    paddingHorizontal: 6,
+    backgroundColor: "#E3E8DA",
     alignItems: "center",
+    justifyContent: "center",
   },
-  badgeTileLocked: { opacity: 0.35 },
-  badgeImage: { width: 44, height: 44 },
-  badgeEmoji: { fontSize: 36, lineHeight: 40 },
-  badgeName: { textAlign: "center", fontSize: 12, fontWeight: "700" },
-  badgeProgress: { fontSize: 11, opacity: 0.65 },
+  pillCountText: { fontFamily: FONT.display, fontSize: 14, color: FK.ink },
+  summary: { flexDirection: "row", alignItems: "center", gap: 16 },
+  summaryNumber: { fontFamily: FONT.display, fontSize: 48, lineHeight: 52, color: FK.ink, letterSpacing: -1 },
+  track: { height: 8, borderRadius: 4, backgroundColor: FK.line, overflow: "hidden", marginTop: 10 },
+  fill: { height: 8, borderRadius: 4, backgroundColor: FK.forest },
+  section: { marginTop: 22, marginBottom: 10 },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: GAP },
+  tile: {
+    backgroundColor: FK.paper,
+    borderRadius: RADIUS.md,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    alignItems: "center",
+    gap: 8,
+  },
+  tileName: { fontFamily: FONT.displayBold, fontSize: 14, lineHeight: 17, color: FK.ink, textAlign: "center" },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    backgroundColor: FK.paper,
+    borderRadius: RADIUS.md,
+    padding: 12,
+    paddingRight: 16,
+    marginBottom: 8,
+  },
+  rowIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: FK.moss,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rowTitle: { fontFamily: FONT.display, fontSize: 17, color: FK.ink },
+  rowSub: { fontFamily: FONT.body, fontSize: 14, color: FK.muted, marginTop: 2 },
 });

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { FKLoading } from "@/components/fieldkit";
 import { useRouter, useSegments } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePurchases } from "@/contexts/PurchasesContext";
@@ -9,7 +10,6 @@ import { useResetToTabs } from "@/hooks/useResetToTabs";
 import { getProfiles, getUserData } from "@/services/profileService";
 import type { Profile } from "@/services/profileService";
 import { REQUIRE_EMAIL_VERIFICATION } from "@/constants/auth";
-const LOADER_BACKGROUND = "#FFF8DC";
 
 function routeAfterSignupCheck(
   router: ReturnType<typeof useRouter>,
@@ -36,7 +36,6 @@ async function resolveSignupState(userId: string) {
   const userData = await getUserData(userId);
   return { profiles, userData };
 }
-const LOADER_SPINNER = "#4F6F52";
 
 type AuthGuardProps = {
   children: React.ReactNode;
@@ -188,7 +187,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
       {children}
       {showOverlay && (
         <View style={styles.overlay} pointerEvents="auto">
-          <ActivityIndicator size="large" color={LOADER_SPINNER} />
+          <FKLoading />
         </View>
       )}
     </View>
@@ -199,16 +198,7 @@ const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
   },
-  fullScreenLoader: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#4F6F52",
-  },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: LOADER_BACKGROUND,
-    justifyContent: "center",
-    alignItems: "center",
   },
 });

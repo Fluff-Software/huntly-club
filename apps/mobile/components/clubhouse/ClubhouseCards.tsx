@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { FKButton, FKChip } from "@/components/fieldkit";
 import { FK, FONT, RADIUS, TYPE } from "@/constants/fieldKit";
 import type { Guide } from "@/constants/guides";
+import { raceHeadline, type TeamRace } from "@/hooks/useTeamRace";
 
 const DEFAULT_MISSION_IMAGE = require("@/assets/images/laser-fortress.jpg");
 
@@ -26,8 +27,8 @@ export function ClubhouseHeader({
         <View style={[styles.avatar, { backgroundColor: guide.colour }]}>
           <Image source={guide.badge} style={styles.avatarImg} contentFit="contain" />
         </View>
-        <View>
-          <Text style={styles.headerName} numberOfLines={1}>
+        <View style={{ flexShrink: 1 }}>
+          <Text style={styles.headerName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
             {name}
           </Text>
           <Text style={[styles.headerTeam, { color: guide.colour }]}>{guide.teamName.toUpperCase()}</Text>
@@ -226,37 +227,65 @@ export function YourWeekCard({
   );
 }
 
-export function TeamRaceStrip({
-  rows,
-  myTeam,
-  onPress,
-}: {
-  rows: { name: string; total: number; colour: string }[];
-  myTeam: string | null;
-  onPress: () => void;
-}) {
-  const max = Math.max(1, ...rows.map((r) => r.total));
+/** The monthly team race, told from the family's side. Central on the Clubhouse. */
+export function TeamRaceCard({ race, onPress }: { race: TeamRace; onPress: () => void }) {
+  const max = Math.max(1, ...race.rows.map((r) => r.total));
+  const mine = race.mine;
+  const sub = race.allZero
+    ? "A fresh race every month. Your next mission puts your team on the board."
+    : mine && race.myPlace === 1
+      ? `Keep going: every mission adds points for the ${mine.guide.teamName}.`
+      : mine
+        ? `Every mission you finish closes the gap.`
+        : null;
   return (
-    <Pressable onPress={onPress} style={styles.race} accessibilityRole="button" testID="team-race">
+    <Pressable onPress={onPress} style={styles.raceCard} accessibilityRole="button" testID="team-race">
       <View style={styles.raceHeader}>
-        <Text style={TYPE.eyebrow}>TEAM RACE THIS MONTH</Text>
-        <Ionicons name="chevron-forward" size={18} color={FK.muted} />
+        <Text style={[TYPE.eyebrow, { color: FK.mutedOnDark }]}>TEAM RACE · {race.monthName.toUpperCase()}</Text>
+        <View style={styles.daysChip}>
+          <Ionicons name="time-outline" size={14} color={FK.ink} />
+          <Text style={styles.daysText}>
+            {race.daysLeft === 0 ? "Last day" : `${race.daysLeft} ${race.daysLeft === 1 ? "day" : "days"} left`}
+          </Text>
+        </View>
       </View>
-      {rows.every((r) => r.total === 0) ? (
-        <Text style={TYPE.bodySmall}>A new month, a fresh race. Your first mission puts your team on the board.</Text>
-      ) : null}
-      {rows.every((r) => r.total === 0) ? null : rows.map((r) => {
-        const mine = myTeam && r.name.toLowerCase().startsWith(myTeam.toLowerCase().slice(0, 3));
-        return (
-          <View key={r.name} style={styles.raceRow}>
-            <Text style={[styles.raceName, mine && { fontFamily: FONT.display }]}>{r.name}</Text>
-            <View style={styles.raceTrack}>
-              <View style={[styles.raceBar, { width: `${Math.max(6, (r.total / max) * 100)}%`, backgroundColor: r.colour }]} />
+      <Text style={styles.raceHeadline}>{raceHeadline(race)}</Text>
+      {sub ? <Text style={styles.raceSub}>{sub}</Text> : null}
+      <View style={{ gap: 10, marginTop: 14 }}>
+        {race.rows.map((r) => {
+          const isMine = mine?.team === r.team;
+          const place = race.rows.filter((x) => x.total > r.total).length + 1;
+          return (
+            <View key={r.team} style={[styles.raceRow, isMine && styles.raceRowMine]}>
+              <Text style={styles.racePlace}>{race.allZero ? "–" : place}</Text>
+              <View style={[styles.raceBadge, { backgroundColor: r.guide.colour }]}>
+                <Image source={r.guide.badge} style={{ width: 24, height: 24 }} contentFit="contain" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={styles.raceNameRow}>
+                  <Text style={[styles.raceName, isMine && { color: FK.sunbeam }]}>
+                    {r.guide.teamName}
+                    {isMine ? "  ·  You" : ""}
+                  </Text>
+                  <Text style={styles.racePts}>{r.total.toLocaleString()}</Text>
+                </View>
+                <View style={styles.raceTrack}>
+                  <View
+                    style={[
+                      styles.raceBar,
+                      { width: `${race.allZero ? 4 : Math.max(4, (r.total / max) * 100)}%`, backgroundColor: r.guide.colour },
+                    ]}
+                  />
+                </View>
+              </View>
             </View>
-            <Text style={styles.racePts}>{r.total.toLocaleString()}</Text>
-          </View>
-        );
-      })}
+          );
+        })}
+      </View>
+      <View style={styles.raceFooter}>
+        <Text style={styles.raceFooterText}>See the race</Text>
+        <Ionicons name="arrow-forward" size={18} color={FK.sunbeam} />
+      </View>
     </Pressable>
   );
 }
@@ -371,11 +400,29 @@ const styles = StyleSheet.create({
   weekBig: { fontFamily: FONT.display, fontSize: 28, color: FK.white, marginBottom: 6, lineHeight: 34 },
   weekBigUnit: { fontFamily: FONT.displayBold, fontSize: 16, color: FK.mutedOnDark },
   weekText: { fontFamily: FONT.body, fontSize: 14, lineHeight: 19, color: FK.mutedOnDark },
-  race: { backgroundColor: FK.paper, borderRadius: RADIUS.lg, padding: 18, marginBottom: 14, gap: 10 },
+  raceCard: { backgroundColor: FK.ink, borderRadius: RADIUS.lg, padding: 18, marginBottom: 14 },
   raceHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  raceRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  raceName: { width: 64, fontFamily: FONT.displayBold, fontSize: 15, color: FK.ink },
-  raceTrack: { flex: 1, height: 12, borderRadius: 6, backgroundColor: "#E6EADF", overflow: "hidden" },
-  raceBar: { height: "100%", borderRadius: 6 },
-  racePts: { width: 56, textAlign: "right", fontFamily: FONT.displayBold, fontSize: 14, color: FK.muted },
+  daysChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: FK.sunbeam,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  daysText: { fontFamily: FONT.display, fontSize: 13, color: FK.ink },
+  raceHeadline: { fontFamily: FONT.display, fontSize: 24, lineHeight: 28, letterSpacing: -0.4, color: FK.white, marginTop: 12 },
+  raceSub: { fontFamily: FONT.body, fontSize: 15, lineHeight: 21, color: FK.mutedOnDark, marginTop: 4 },
+  raceRow: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: RADIUS.md, padding: 8 },
+  raceRowMine: { backgroundColor: "rgba(255,255,255,0.08)" },
+  racePlace: { width: 16, textAlign: "center", fontFamily: FONT.display, fontSize: 16, color: FK.mutedOnDark },
+  raceBadge: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  raceNameRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 },
+  raceName: { fontFamily: FONT.display, fontSize: 16, color: FK.white },
+  raceTrack: { height: 10, borderRadius: 5, backgroundColor: "rgba(255,255,255,0.12)", overflow: "hidden" },
+  raceBar: { height: "100%", borderRadius: 5 },
+  racePts: { fontFamily: FONT.displayBold, fontSize: 15, color: FK.white },
+  raceFooter: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 14, alignSelf: "flex-end" },
+  raceFooterText: { fontFamily: FONT.display, fontSize: 15, color: FK.sunbeam },
 });

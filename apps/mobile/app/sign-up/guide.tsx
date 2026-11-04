@@ -11,6 +11,7 @@ import { ONBOARDING_STEPS } from "@/constants/onboarding";
 import { useSignUp } from "@/contexts/SignUpContext";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { fetchFirstMissionPreview, type MissionPreview } from "@/services/firstMissionService";
+import { familySentence } from "@/utils/familyNames";
 
 /** Step 3: the guide introduces the first mission in one line (child-facing). */
 export default function SignUpGuideScreen() {
@@ -24,7 +25,7 @@ export default function SignUpGuideScreen() {
   }, []);
 
   const names = (players.length ? players.map((p) => p.name) : profiles.map((p) => p.name)).filter(Boolean);
-  const hello = names.length === 1 ? `Hi ${names[0]}!` : names.length > 1 ? `Hi ${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}!` : "Hi explorer!";
+  const hello = names.length >= 1 && names.length <= 3 ? `Hi ${familySentence(names)}!` : names.length > 3 ? "Hi explorers!" : "Hi explorer!";
 
   const line = mission
     ? `Welcome to the ${guide.teamName}. I've saved your very first mission: ${mission.title}.`

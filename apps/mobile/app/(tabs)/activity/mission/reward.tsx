@@ -16,10 +16,11 @@ import { useRouter, useNavigation, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
-import { FKButton, FKScreen } from "@/components/fieldkit";
+import { FKButton, FKLoading, FKScreen } from "@/components/fieldkit";
 import { SlotPicker } from "@/components/onboarding/SlotPicker";
 import { FK, FONT, RADIUS, TYPE } from "@/constants/fieldKit";
-import { guideForTeamName } from "@/constants/guides";
+import { GUIDES } from "@/constants/guides";
+import { useTeamGuide } from "@/hooks/useTeamGuide";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useUser } from "@/contexts/UserContext";
@@ -83,7 +84,8 @@ export default function RewardScreen() {
   const { profiles } = usePlayer();
   const { team } = useUser();
   const { user } = useAuth();
-  const guide = guideForTeamName(team?.name);
+  const { guide: teamGuide } = useTeamGuide();
+  const guide = teamGuide ?? GUIDES[0];
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", (e) => {
@@ -216,6 +218,8 @@ export default function RewardScreen() {
   const who = names.length === 1 ? names[0] : names.length > 1 ? "team" : "explorer";
   const offerWeekly = plan !== undefined && !(plan?.weeklyDays.length ?? 0) && !weeklySaved;
   const badge = unlockedBadges[0];
+
+  if (!teamGuide) return <FKLoading />;
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>

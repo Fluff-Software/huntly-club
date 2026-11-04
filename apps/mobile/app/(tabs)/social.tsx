@@ -1,447 +1,411 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import {
-  View,
-  ScrollView,
   RefreshControl,
-  Image,
+  ScrollView,
   StyleSheet,
-  ActivityIndicator,
-  Animated,
-  Easing,
+  Text,
+  View,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { useFocusEffect } from "expo-router";
-import { BaseLayout } from "@/components/layout/BaseLayout";
-import { ThemedText } from "@/components/ThemedText";
-import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { router, useFocusEffect } from "expo-router";
+import { setStatusBarStyle } from "expo-status-bar";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Image } from "expo-image";
+import { Ionicons } from "@expo/vector-icons";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import {
-  getTeamInfo,
-  getAllTeamsWithXp,
-  getTeamAchievements,
-  getTeamAchievementTotals,
-  getLastMonthTeamWinner,
-  TeamInfo,
-  TeamMonthlyWinner } from "@/services/teamActivityService";
+  FKButton,
+  FKCard,
+  FKLoading,
+  FKPageHeader,
+} from "@/components/fieldkit";
+import { FK, FONT, RADIUS, TYPE } from "@/constants/fieldKit";
+import { GUIDES } from "@/constants/guides";
+import { usePlayer } from "@/contexts/PlayerContext";
 import { useUser } from "@/contexts/UserContext";
-import { useTutorialActive } from "@/hooks/useTutorialActive";
-import { useRefreshWhenTutorialEnds } from "@/hooks/useRefreshWhenTutorialEnds";
-import { getTeamCardConfig } from "@/utils/teamUtils";
+import { useTeamGuide } from "@/hooks/useTeamGuide";
+import { raceHeadline, type RaceRow, useTeamRace } from "@/hooks/useTeamRace";
+import { formatMonthYear } from "@/services/teamActivityService";
 
-const GET_STARTED_ICON_2_IMAGE = require("@/assets/images/get-started-icon-2.png");
+const PODIUM_MIN = 70;
+const PODIUM_EXTRA = 110;
 
-const ACHIEVEMENTS_INITIAL = 4;
-const ACHIEVEMENTS_PAGE_SIZE = 4;
-const LOAD_MORE_THRESHOLD = 40;
-
-const TEAM_ORDER = ["bears", "foxes", "otters"] as const;
-
-/** Bar height = min + pct × extra, where pct is each team’s share of all monthly points (three teams). Sum of shares is always 100%. When everyone is on 0, show equal ⅓ each so bars stay tall and tied. */
-const LEADERBOARD_BAR_MIN = 60;
-const LEADERBOARD_BAR_EXTRA = 160;
-
-const ACHIEVEMENT_CARD_COLORS = ["#FFF5E8", "#E8F5F0", "#F0E8FF", "#E8F0FF", "#FFF0F0"];
-
-type AchievementItem = {
-  id: string;
-  type: "badge" | "activity";
-  title: string;
-  points: number;
-  teamId: number;
-};
-
-function mapAchievementsToItems(
-  achievements: { id: number; profile_name: string; message: string; xp: number; team_id: number }[]
-): AchievementItem[] {
-  return achievements.slice(0, 10).map((a) => ({
-    id: `ach-${a.id}`,
-    type: "activity" as const,
-    title: `${a.profile_name} ${a.message}`,
-    points: a.xp,
-    teamId: a.team_id,
-  }));
+function timeAgo(iso: string, now = Date.now()): string {
+  const mins = Math.max(0, Math.round((now - new Date(iso).getTime()) / 60000));
+  if (mins < 60) return mins <= 1 ? "Just now" : `${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  return days === 1 ? "Yesterday" : `${days} days ago`;
 }
 
-export default function SocialScreen() {
-  const { scaleW } = useLayoutScale();
-  const insets = useSafeAreaInsets();
-  const { teamId } = useUser();
-  const [teamAchievements, setTeamAchievements] = useState<Awaited<ReturnType<typeof getTeamAchievements>>>([]);
-  const [teamAchievementTotals, setTeamAchievementTotals] = useState<Record<number, number>>({});
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [teamInfo, setTeamInfo] = useState<TeamInfo | null>(null);
-  const [allTeams, setAllTeams] = useState<TeamInfo[]>([]);
-  const [visibleAchievementsCount, setVisibleAchievementsCount] = useState(ACHIEVEMENTS_INITIAL);
-  const [lastMonthWinner, setLastMonthWinner] = useState<TeamMonthlyWinner | null>(null);
-
-  const chartProgress = useRef(new Animated.Value(0)).current;
+/** The monthly team race: standings, the family's part in it, and what's been happening. */
+export default function TeamRaceScreen() {
+  const { team, teamId } = useUser();
+  const { profiles } = usePlayer();
+  const { guide } = useTeamGuide();
+  const ids = useMemo(() => profiles.map((p) => p.id), [profiles]);
+  const { race, loading, error, load } = useTeamRace(team?.name, teamId, ids, {
+    detail: true,
+  });
+  const [refreshing, setRefreshing] = React.useState(false);
   const scrollRef = useRef<ScrollView>(null);
-  const isTutorialActive = useTutorialActive();
-
-  const sortedTeamsForChart = useMemo(() => {
-    const teamIdByName = Object.fromEntries(allTeams.map((t) => [t.name.toLowerCase(), t.id]));
-    return TEAM_ORDER.map((name) => {
-      const id = teamIdByName[name];
-      const total = teamAchievementTotals[id] ?? 0;
-      const config = getTeamCardConfig(name);
-      return { name, total, config };
-    }).sort((a, b) => b.total - a.total);
-  }, [allTeams, teamAchievementTotals]);
-
-  const barHeights = useMemo(() => {
-    const totals = sortedTeamsForChart.map((t) => Math.max(0, t.total));
-    const sum = totals.reduce((a, b) => a + b, 0);
-    if (sum <= 0) {
-      const h = LEADERBOARD_BAR_MIN + (1 / 3) * LEADERBOARD_BAR_EXTRA;
-      return sortedTeamsForChart.map(() => scaleW(h));
-    }
-    return sortedTeamsForChart.map((_, i) => {
-      const pct = totals[i] / sum;
-      return scaleW(LEADERBOARD_BAR_MIN + pct * LEADERBOARD_BAR_EXTRA);
-    });
-  }, [scaleW, sortedTeamsForChart]);
-
-  const leaderboardTotalsKey = sortedTeamsForChart.map((t) => t.total).join(",");
-
-  useEffect(() => {
-    chartProgress.stopAnimation();
-    chartProgress.setValue(0);
-    Animated.timing(chartProgress, {
-      toValue: 1,
-      duration: 520,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start();
-  }, [chartProgress, leaderboardTotalsKey]);
-
-  const fetchTeamActivities = useCallback(async () => {
-    if (!teamId) { setLoading(false); return; }
-    try {
-      setError(null);
-      const [teamData, teamsData, achievements, totals, winner] = await Promise.all([
-        getTeamInfo(teamId),
-        getAllTeamsWithXp(),
-        getTeamAchievements(),
-        getTeamAchievementTotals(),
-        getLastMonthTeamWinner(),
-      ]);
-      setTeamInfo(teamData);
-      setAllTeams(teamsData);
-      setTeamAchievements(achievements);
-      setTeamAchievementTotals(totals);
-      setLastMonthWinner(winner);
-    } catch {
-      setError("Failed to load team activities");
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId]);
 
   useFocusEffect(
     useCallback(() => {
-      if (isTutorialActive) {
-        setLoading(false);
-        scrollRef.current?.scrollTo({ y: 0, animated: false });
-        return;
-      }
-      void fetchTeamActivities();
+      setStatusBarStyle("dark");
+      void load();
       scrollRef.current?.scrollTo({ y: 0, animated: false });
-    }, [fetchTeamActivities, isTutorialActive])
+    }, [load]),
   );
 
-  useRefreshWhenTutorialEnds(fetchTeamActivities);
+  const back = () =>
+    router.canGoBack() ? router.back() : router.navigate("/(tabs)");
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await fetchTeamActivities();
-    setRefreshing(false);
-  }, [fetchTeamActivities]);
+  if ((loading && race.rows.length === 0) || !guide) return <FKLoading />;
 
-  const achievements = useMemo(() => mapAchievementsToItems(teamAchievements), [teamAchievements]);
-
-  useEffect(() => { setVisibleAchievementsCount(ACHIEVEMENTS_INITIAL); }, [teamAchievements]);
-
-  const visibleAchievements = useMemo(
-    () => achievements.slice(0, visibleAchievementsCount),
-    [achievements, visibleAchievementsCount]
-  );
-  const hasMoreAchievements = visibleAchievementsCount < achievements.length;
-  const showNoMoreMessage = achievements.length > ACHIEVEMENTS_INITIAL && !hasMoreAchievements;
-
-  const handleScroll = useCallback(
-    (event: { nativeEvent: { contentOffset: { y: number }; contentSize: { height: number }; layoutMeasurement: { height: number } } }) => {
-      const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-      if (contentSize.height - (contentOffset.y + layoutMeasurement.height) < LOAD_MORE_THRESHOLD && hasMoreAchievements) {
-        setVisibleAchievementsCount((prev) => Math.min(prev + ACHIEVEMENTS_PAGE_SIZE, achievements.length));
-      }
-    },
-    [hasMoreAchievements, achievements.length]
-  );
-
-  const teamCardConfig = useMemo(() => getTeamCardConfig(teamInfo?.name), [teamInfo?.name]);
-
-  const teamConfigById = useMemo(() => {
-    const map: Record<number, ReturnType<typeof getTeamCardConfig>> = {};
-    for (const team of allTeams) {
-      map[team.id] = getTeamCardConfig(team.name);
-    }
-    return map;
-  }, [allTeams]);
-
-  const lastMonthWinnerConfig = useMemo(
-    () => (lastMonthWinner ? getTeamCardConfig(lastMonthWinner.team_name) : null),
-    [lastMonthWinner]
-  );
-
-  if (!teamId) {
-    return (
-      <BaseLayout>
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: scaleW(24) }}>
-          <ThemedText type="heading" style={{ fontSize: scaleW(24), fontWeight: "700", textAlign: "center", marginBottom: scaleW(12) }}>
-            Join a Team
-          </ThemedText>
-          <ThemedText style={{ fontSize: scaleW(14), textAlign: "center", opacity: 0.7 }}>
-            Your account needs a team to view team activities. Create an explorer in Clubhouse to get started!
-          </ThemedText>
-        </View>
-      </BaseLayout>
-    );
-  }
-
-  if (loading && !refreshing) {
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: teamCardConfig.backgroundColor, justifyContent: "center", alignItems: "center" }} edges={["top", "left", "right"]}>
-        <ActivityIndicator size="large" color={teamCardConfig.accentColor} />
-        <ThemedText style={{ marginTop: scaleW(12), fontSize: scaleW(16), color: teamCardConfig.accentColor, fontWeight: "600" }}>
-          Loading your team…
-        </ThemedText>
-      </SafeAreaView>
-    );
-  }
-
-  if (error) {
-    return (
-      <BaseLayout>
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: scaleW(24) }}>
-          <ThemedText style={{ fontSize: scaleW(16), color: "#dc2626", textAlign: "center" }}>{error}</ThemedText>
-        </View>
-      </BaseLayout>
-    );
-  }
+  const podium = podiumOrder(race.rows);
+  const max = Math.max(1, ...race.rows.map((r) => r.total));
+  const winnerGuide = race.lastMonthWinner
+    ? GUIDES.find((g) =>
+        race
+          .lastMonthWinner!.team_name.toLowerCase()
+          .startsWith(g.team.slice(0, 3)),
+      )
+    : null;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#F3F5F0" }} edges={["left", "right"]}>
+    <SafeAreaView style={styles.root} edges={["top", "left", "right"]}>
       <ScrollView
         ref={scrollRef}
-        style={{ flex: 1 }}
+        contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
-        bounces={false}
-        overScrollMode="never"
-        onScroll={handleScroll}
-        scrollEventThrottle={200}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={async () => {
+              setRefreshing(true);
+              await load();
+              setRefreshing(false);
+            }}
+            tintColor={FK.forest}
+          />
+        }
       >
-        {/* Header card */}
-        <View style={{
-          backgroundColor: teamCardConfig.backgroundColor,
-          overflow: "hidden",
-          minHeight: insets.top + scaleW(200) }}>
-          <Image
-            source={teamCardConfig.bgImage}
-            resizeMode="cover"
-            style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
-          />
-          <Image
-            source={teamCardConfig.standingImage}
-            resizeMode="contain"
-            style={{ position: "absolute", bottom: 0, right: scaleW(-8), width: scaleW(180), height: scaleW(220) }}
-          />
-          <View style={{ padding: scaleW(20), paddingRight: scaleW(160), paddingTop: insets.top + scaleW(28), gap: scaleW(12) }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: scaleW(10) }}>
-              <Image source={teamCardConfig.badgeImage} resizeMode="contain" style={{ width: scaleW(44), height: scaleW(44) }} />
-              <View>
-                <ThemedText type="heading" style={{ fontSize: scaleW(26), fontWeight: "800", color: teamCardConfig.accentColor, lineHeight: scaleW(30) }}>
-                  {teamCardConfig.title}
-                </ThemedText>
-                <ThemedText style={{ fontSize: scaleW(13), fontWeight: "600", color: teamCardConfig.leaderColor }}>
-                  {teamCardConfig.leaderPossessive} team
-                </ThemedText>
-              </View>
-            </View>
-            <View style={{
-              backgroundColor: "#FFFFFF",
-              borderRadius: scaleW(14),
-              padding: scaleW(12),
-              shadowColor: "#000",
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-              shadowOffset: { width: 0, height: 2 },
-              elevation: 2,
-              alignSelf: "flex-start" }}>
-              <ThemedText style={{ fontSize: scaleW(13), lineHeight: scaleW(19), color: "#333", fontStyle: "italic" }}>
-                "{teamCardConfig.title} are doing great this month!"
-              </ThemedText>
-            </View>
-          </View>
-        </View>
+        <FKPageHeader
+          onBack={back}
+          eyebrow={`TEAM RACE · ${race.monthName.toUpperCase()}`}
+          title={raceHeadline(race)}
+        />
+        <Text style={[TYPE.bodySmall, { marginTop: -8 }]}>
+          {race.daysLeft === 0
+            ? "Today's the last day of the month. The winner is crowned at midnight."
+            : `${race.daysLeft} ${race.daysLeft === 1 ? "day" : "days"} to go. The team with the most points at the end of the month wins.`}
+        </Text>
 
-        <View style={{ paddingHorizontal: scaleW(24), paddingTop: scaleW(28), paddingBottom: scaleW(40), gap: scaleW(24) }}>
+        {error ? (
+          <FKCard style={{ marginTop: 16 }}>
+            <Text style={TYPE.body}>
+              We couldn't load the race just now. Pull down to try again.
+            </Text>
+          </FKCard>
+        ) : null}
 
-          {/* Leaderboard */}
-          <View style={{
-            backgroundColor: "#FFFFFF",
-            borderRadius: scaleW(20),
-            padding: scaleW(20),
-            shadowColor: "#000",
-            shadowOpacity: 0.08,
-            shadowRadius: 6,
-            shadowOffset: { width: 0, height: 2 },
-            elevation: 2 }}>
-            <ThemedText type="heading" style={{ fontSize: scaleW(18), fontWeight: "700", color: "#333", marginBottom: scaleW(20), textAlign: "center" }}>
-              This month
-            </ThemedText>
-            <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "center", gap: scaleW(16) }}>
-              {sortedTeamsForChart.map((bar, index) => {
-                const targetHeight = barHeights[index] ?? scaleW(LEADERBOARD_BAR_MIN);
-                const isUserTeam = bar.name === teamInfo?.name?.toLowerCase();
-                return (
-                  <View key={bar.name} style={{ alignItems: "center", gap: scaleW(6) }}>
-                    <Animated.View
-                      style={{
-                        width: scaleW(72),
-                        height: chartProgress.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0, targetHeight],
-                        }),
-                        backgroundColor: bar.config.backgroundColor,
-                        borderRadius: scaleW(12),
-                        alignItems: "center",
-                        justifyContent: "flex-start",
-                        paddingTop: scaleW(10),
-                        borderWidth: isUserTeam ? 3 : 1,
-                        borderColor: isUserTeam ? bar.config.accentColor : "rgba(0,0,0,0.06)",
-                      }}
-                    >
-                      <Image
-                        source={bar.config.badgeImage}
-                        resizeMode="contain"
-                        style={{ width: scaleW(40), height: scaleW(40) }}
-                      />
-                    </Animated.View>
-                    <ThemedText style={{ fontSize: scaleW(12), fontWeight: "600", color: "#555" }}>
-                      {bar.name.charAt(0).toUpperCase() + bar.name.slice(1)}
-                    </ThemedText>
-                  </View>
-                );
-              })}
-            </View>
-
-            {lastMonthWinner && lastMonthWinnerConfig && (
-              <View style={{
-                marginTop: scaleW(20),
-                paddingTop: scaleW(20),
-                borderTopWidth: 1,
-                borderTopColor: "rgba(0,0,0,0.06)",
-                alignItems: "center",
-                gap: scaleW(10) }}>
-                <ThemedText type="heading" style={{ fontSize: scaleW(18), fontWeight: "700", color: "#333", marginBottom: scaleW(10), textAlign: "center" }}>
-                  Last month's winners
-                </ThemedText>
-                <View style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: scaleW(12),
-                  alignSelf: "stretch",
-                  backgroundColor: lastMonthWinnerConfig.backgroundColor,
-                  borderRadius: scaleW(16),
-                  paddingVertical: scaleW(12),
-                  paddingHorizontal: scaleW(16),
-                  borderWidth: 2,
-                  borderColor: lastMonthWinnerConfig.accentColor,
-                }}>
-                  <Image
-                    source={lastMonthWinnerConfig.badgeImage}
-                    resizeMode="contain"
-                    style={{ width: scaleW(48), height: scaleW(48) }}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <ThemedText style={{ fontSize: scaleW(16), fontWeight: "800", color: lastMonthWinnerConfig.accentColor }}>
-                      {lastMonthWinnerConfig.title}
-                    </ThemedText>
-                  </View>
-                  <ThemedText style={{ fontSize: scaleW(28) }}>🏆</ThemedText>
-                </View>
-              </View>
-            )}
-          </View>
-
-          {/* Recent achievements */}
-          <View style={{ gap: scaleW(4) }}>
-            <ThemedText type="heading" style={{ fontSize: scaleW(20), fontWeight: "700", color: "#333" }}>
-              Recent achievements
-            </ThemedText>
-            <ThemedText style={{ fontSize: scaleW(13), color: "#888", marginBottom: scaleW(8) }}>
-              What the teams have been up to
-            </ThemedText>
-          </View>
-
-          <View style={{ gap: scaleW(12) }}>
-            {visibleAchievements.map((item, index) => {
-              const cardBg = ACHIEVEMENT_CARD_COLORS[index % ACHIEVEMENT_CARD_COLORS.length];
-              const achievementTeamConfig = teamConfigById[item.teamId] ?? teamCardConfig;
-              return (
+        <Animated.View
+          entering={FadeInDown.duration(350)}
+          style={styles.podium}
+        >
+          {podium.map((r) => {
+            const mine = race.mine?.team === r.team;
+            const place = race.rows.filter((x) => x.total > r.total).length + 1;
+            const height = race.allZero
+              ? PODIUM_MIN + PODIUM_EXTRA / 3
+              : PODIUM_MIN + (r.total / max) * PODIUM_EXTRA;
+            return (
+              <View key={r.team} style={styles.podiumCol}>
                 <View
-                  key={item.id}
-                  style={{
-                    backgroundColor: cardBg,
-                    borderRadius: scaleW(16),
-                    padding: scaleW(14),
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: scaleW(12),
-                    transform: [{ rotate: index % 2 === 0 ? "-0.8deg" : "0.8deg" }],
-                    shadowColor: "#000",
-                    shadowOpacity: 0.08,
-                    shadowRadius: 4,
-                    shadowOffset: { width: 0, height: 2 },
-                    elevation: 2,
-                    borderWidth: 2,
-                    borderColor: "rgba(255,255,255,0.8)" }}>
-                    <Image
-                      source={
-                        item.type === "badge"
-                          ? GET_STARTED_ICON_2_IMAGE
-                          : achievementTeamConfig.badgeImage
-                      }
-                      style={{ width: scaleW(48), height: scaleW(48) }}
-                      resizeMode="contain"
-                    />
-                  <View style={{ flex: 1 }}>
-                    <ThemedText style={{ fontSize: scaleW(14), fontWeight: "600", color: "#1a1a1a", lineHeight: scaleW(20) }}>
-                      {item.title}
-                    </ThemedText>
-                    <ThemedText style={{ fontSize: scaleW(13), fontWeight: "700", color: achievementTeamConfig.accentColor, marginTop: scaleW(2) }}>
-                      + {item.points} points
-                    </ThemedText>
-                  </View>
+                  style={[
+                    styles.podiumBadge,
+                    { backgroundColor: r.guide.colour },
+                    mine && styles.podiumBadgeMine,
+                  ]}
+                >
+                  <Image
+                    source={r.guide.badge}
+                    style={{ width: 40, height: 40 }}
+                    contentFit="contain"
+                  />
                 </View>
-              );
-            })}
-
-            {hasMoreAchievements && (
-              <View style={{ paddingVertical: scaleW(16), alignItems: "center" }}>
-                <ActivityIndicator size="small" color={teamCardConfig.accentColor} />
+                <Text style={styles.podiumTeam}>{r.guide.teamName}</Text>
+                <Text style={styles.podiumPts}>{r.total.toLocaleString()}</Text>
+                <View
+                  style={[
+                    styles.podiumBlock,
+                    { height, backgroundColor: mine ? FK.ink : FK.paper },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.podiumPlace,
+                      { color: mine ? FK.sunbeam : FK.ink },
+                    ]}
+                  >
+                    {race.allZero ? "–" : place}
+                  </Text>
+                  {mine ? <Text style={styles.podiumYou}>You</Text> : null}
+                </View>
               </View>
-            )}
-            {showNoMoreMessage && (
-              <ThemedText style={{ fontSize: scaleW(13), color: "#888", textAlign: "center", marginTop: scaleW(8) }}>
-                You're all caught up! More achievements will appear as the teams explore.
-              </ThemedText>
-            )}
-          </View>
-        </View>
+            );
+          })}
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.duration(350).delay(80)}>
+          <FKCard style={styles.familyCard}>
+            <View
+              style={[styles.familyIcon, { backgroundColor: guide.colour }]}
+            >
+              <Image
+                source={guide.badge}
+                style={{ width: 30, height: 30 }}
+                contentFit="contain"
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={TYPE.eyebrow}>YOUR FAMILY THIS MONTH</Text>
+              <Text style={styles.familyPts}>
+                {race.familyPoints.toLocaleString()}{" "}
+                {race.familyPoints === 1 ? "point" : "points"}
+              </Text>
+              <Text style={TYPE.bodySmall}>
+                {race.familyPoints === 0
+                  ? `Finish a mission to add your first points for the ${guide.teamName}.`
+                  : `Added to the ${guide.teamName}' total. Nice work.`}
+              </Text>
+            </View>
+          </FKCard>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.duration(350).delay(120)}>
+          <FKCard style={{ marginTop: 12 }}>
+            <Text style={TYPE.heading}>How to score</Text>
+            <ScoreRow icon="flag" text="Finish a mission: the biggest points" />
+            <ScoreRow icon="compass" text="Find cards on Explore walks" />
+            <ScoreRow
+              icon="people"
+              text="Everyone in the family scores for the same team"
+            />
+          </FKCard>
+        </Animated.View>
+
+        {race.lastMonthWinner && winnerGuide ? (
+          <FKCard style={styles.winnerCard}>
+            <Ionicons name="trophy" size={26} color={FK.sunbeam} />
+            <Text style={styles.winnerText}>
+              The {winnerGuide.teamName} won{" "}
+              {formatMonthYear(
+                race.lastMonthWinner.year,
+                race.lastMonthWinner.month,
+              )}{" "}
+              with {race.lastMonthWinner.total_xp.toLocaleString()} points.
+            </Text>
+          </FKCard>
+        ) : null}
+
+        <Text style={[TYPE.eyebrow, { marginTop: 24, marginBottom: 10 }]}>
+          LATEST FOR THE {guide.teamName.toUpperCase()}
+        </Text>
+        {race.moments.length === 0 ? (
+          <Text style={TYPE.bodySmall}>
+            Nothing yet this month. Be the first on the board.
+          </Text>
+        ) : (
+          race.moments.map((m) => {
+            // Your own explorers by name; everyone else by their public explorer nickname.
+            const own = profiles.find((p) => p.id === m.profile_id);
+            const who = own?.name ?? m.profile_name;
+            return (
+              <View key={`${m.source}-${m.id}`} style={styles.moment}>
+                <View
+                  style={[
+                    styles.momentDot,
+                    own && { backgroundColor: own.colour || guide.colour },
+                  ]}
+                >
+                  <Text
+                    style={[styles.momentInitial, own && { color: FK.white }]}
+                  >
+                    {(who?.trim()[0] ?? "?").toUpperCase()}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.momentText} numberOfLines={2}>
+                    <Text style={{ fontFamily: FONT.bodyBold }}>{who}</Text>{" "}
+                    {m.message}
+                  </Text>
+                  <Text style={styles.momentTime}>{timeAgo(m.created_at)}</Text>
+                </View>
+                {m.xp ? <Text style={styles.momentPts}>+{m.xp}</Text> : null}
+              </View>
+            );
+          })
+        )}
+
+        <FKButton
+          label="Score with a mission"
+          onPress={() => router.navigate("/(tabs)/missions")}
+          style={{ marginTop: 20 }}
+          testID="race-missions"
+        />
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+/** Second, first, third: the classic podium shape. */
+function podiumOrder(rows: RaceRow[]): RaceRow[] {
+  if (rows.length < 3) return rows;
+  return [rows[1], rows[0], rows[2]];
+}
+
+function ScoreRow({
+  icon,
+  text,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  text: string;
+}) {
+  return (
+    <View style={styles.scoreRow}>
+      <View style={styles.scoreIcon}>
+        <Ionicons name={icon} size={16} color={FK.ink} />
+      </View>
+      <Text style={[TYPE.body, { flex: 1, fontSize: 16 }]}>{text}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: FK.moss },
+  content: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 28 },
+  podium: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 10,
+    marginTop: 22,
+  },
+  podiumCol: { flex: 1, alignItems: "center" },
+  podiumBadge: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 4,
+    borderColor: FK.moss,
+  },
+  podiumBadgeMine: { borderColor: FK.sunbeam },
+  podiumTeam: {
+    fontFamily: FONT.display,
+    fontSize: 16,
+    color: FK.ink,
+    marginTop: 6,
+  },
+  podiumPts: {
+    fontFamily: FONT.displayBold,
+    fontSize: 14,
+    color: FK.muted,
+    marginBottom: 8,
+  },
+  podiumBlock: {
+    width: "100%",
+    borderTopLeftRadius: RADIUS.md,
+    borderTopRightRadius: RADIUS.md,
+    alignItems: "center",
+    paddingTop: 10,
+  },
+  podiumPlace: { fontFamily: FONT.display, fontSize: 30 },
+  podiumYou: {
+    fontFamily: FONT.display,
+    fontSize: 13,
+    color: FK.sunbeam,
+    letterSpacing: 1,
+  },
+  familyCard: {
+    flexDirection: "row",
+    gap: 14,
+    alignItems: "center",
+    marginTop: 0,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+  },
+  familyIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  familyPts: {
+    fontFamily: FONT.display,
+    fontSize: 26,
+    color: FK.ink,
+    marginTop: 2,
+  },
+  scoreRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 12,
+  },
+  scoreIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: FK.sunbeam,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  winnerCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 12,
+    backgroundColor: FK.forest,
+  },
+  winnerText: {
+    flex: 1,
+    fontFamily: FONT.displayBold,
+    fontSize: 16,
+    lineHeight: 22,
+    color: FK.white,
+  },
+  moment: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: FK.line,
+  },
+  momentDot: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: FK.paper,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  momentInitial: { fontFamily: FONT.display, fontSize: 15, color: FK.ink },
+  momentText: {
+    fontFamily: FONT.body,
+    fontSize: 15,
+    lineHeight: 20,
+    color: FK.ink,
+  },
+  momentTime: {
+    fontFamily: FONT.body,
+    fontSize: 13,
+    color: FK.muted,
+    marginTop: 2,
+  },
+  momentPts: { fontFamily: FONT.display, fontSize: 16, color: FK.forest },
+});

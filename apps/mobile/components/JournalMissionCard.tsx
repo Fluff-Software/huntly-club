@@ -1,273 +1,99 @@
-import React, { useMemo, useState } from "react";
-import { View, Image, Modal, ScrollView, StyleSheet, Pressable } from "react-native";
+import React, { useState } from "react";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { ThemedText } from "@/components/ThemedText";
-import { useLayoutScale } from "@/hooks/useLayoutScale";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
+import { formatJournalDate, journalCardStyles, PhotoPreview } from "@/components/JournalEntryCard";
+import { FK, FONT, RADIUS } from "@/constants/fieldKit";
 import type { CompletedMissionEntry } from "@/services/journalService";
-
-const PARCHMENT = "#FFFDF7";
-const PARCHMENT_BORDER = "#D9C9A3";
-const MISSION_GREEN = "#2D5A27";
-const MISSION_GREEN_BG = "rgba(45,90,39,0.12)";
-const CHARCOAL = "#3D3D3D";
-const MUTED = "#8A8A8A";
-
-function formatCompletedAt(iso: string): string {
-  const d = new Date(iso);
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yy = String(d.getFullYear()).slice(-2);
-  return `${dd}/${mm}/${yy}`;
-}
 
 interface JournalMissionCardProps {
   mission: CompletedMissionEntry;
+  /** The explorer's name; falls back to the mission's nickname. */
+  explorerName?: string;
   onPress?: () => void;
   animationDelay?: number;
 }
 
-export function JournalMissionCard({
-  mission,
-  onPress,
-  animationDelay = 0,
-}: JournalMissionCardProps) {
-  const { scaleW } = useLayoutScale();
+export function JournalMissionCard({ mission, explorerName, onPress, animationDelay = 0 }: JournalMissionCardProps) {
   const [previewUri, setPreviewUri] = useState<string | null>(null);
-
-  const styles = useMemo(
-    () =>
-      StyleSheet.create({
-        card: {
-          backgroundColor: PARCHMENT,
-          borderRadius: scaleW(16),
-          borderWidth: 1.5,
-          borderColor: PARCHMENT_BORDER,
-          marginHorizontal: scaleW(16),
-          marginBottom: scaleW(12),
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: scaleW(2) },
-          shadowOpacity: 0.08,
-          shadowRadius: scaleW(4),
-          elevation: 2,
-        },
-        cardInner: {
-          padding: scaleW(16),
-        },
-        headerRow: {
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: scaleW(8),
-        },
-        missionBadge: {
-          backgroundColor: MISSION_GREEN_BG,
-          borderRadius: scaleW(12),
-          paddingHorizontal: scaleW(10),
-          paddingVertical: scaleW(3),
-        },
-        missionBadgeText: {
-          fontSize: scaleW(12),
-          color: MISSION_GREEN,
-          fontWeight: "600",
-        },
-        dateText: {
-          fontSize: scaleW(12),
-          color: MUTED,
-        },
-        title: {
-          fontSize: scaleW(16),
-          fontWeight: "700",
-          color: CHARCOAL,
-          marginBottom: scaleW(6),
-        },
-        debriefBlock: {
-          marginBottom: scaleW(8),
-        },
-        debriefQuestion: {
-          fontSize: scaleW(11),
-          fontWeight: "600",
-          color: MUTED,
-          textTransform: "uppercase",
-          letterSpacing: 0.4,
-          marginBottom: scaleW(2),
-        },
-        debriefAnswer: {
-          fontSize: scaleW(13),
-          color: CHARCOAL,
-          opacity: 0.8,
-          fontStyle: "italic",
-          lineHeight: scaleW(18),
-        },
-        photoStrip: {
-          marginTop: scaleW(12),
-          marginHorizontal: -scaleW(16), // bleed to card edges
-        },
-        photoStripContent: {
-          paddingHorizontal: scaleW(16),
-          gap: scaleW(16),
-        },
-        polaroid: {
-          backgroundColor: "#FFFFFF",
-          padding: scaleW(8),
-          paddingBottom: scaleW(28),
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: scaleW(3) },
-          shadowOpacity: 0.15,
-          shadowRadius: scaleW(6),
-          elevation: 4,
-          width: scaleW(220),
-        },
-        polaroidImage: {
-          width: "100%",
-          aspectRatio: 1,
-          backgroundColor: PARCHMENT_BORDER,
-        },
-        footer: {
-          flexDirection: "row",
-          alignItems: "center",
-          marginTop: scaleW(10),
-          paddingTop: scaleW(8),
-          borderTopWidth: 1,
-          borderTopColor: PARCHMENT_BORDER,
-        },
-        byText: {
-          fontSize: scaleW(12),
-          color: MUTED,
-        },
-        previewBackdrop: {
-          flex: 1,
-          backgroundColor: "rgba(0,0,0,0.92)",
-          justifyContent: "center",
-          alignItems: "center",
-          padding: scaleW(16),
-        },
-        previewImage: {
-          width: "100%",
-          height: "100%",
-          borderRadius: scaleW(16),
-        },
-        previewClose: {
-          width: scaleW(56),
-          height: scaleW(56),
-          borderRadius: scaleW(28),
-          backgroundColor: "rgba(255,255,255,0.16)",
-          alignItems: "center",
-          justifyContent: "center",
-        },
-        previewCloseWrap: {
-          position: "absolute" as const,
-          left: 0,
-          right: 0,
-          bottom: scaleW(28),
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 2,
-          elevation: 2,
-          pointerEvents: "box-none" as const,
-        },
-      }),
-    [scaleW]
-  );
-
-  const nickname = mission.profile?.nickname ?? "";
+  const byName = explorerName || mission.profile?.nickname || "";
   const displayPhotos = mission.photos.slice(0, 3);
+  const answers = [
+    { q: mission.debrief_question_1, a: mission.debrief_answer_1 },
+    { q: mission.debrief_question_2, a: mission.debrief_answer_2 },
+  ].filter((x) => !!x.a);
 
   return (
     <Animated.View entering={FadeInDown.duration(400).delay(animationDelay)}>
-      <Pressable style={styles.card} onPress={onPress} disabled={!onPress}>
-        <View style={styles.cardInner}>
-          <View style={styles.headerRow}>
-            <View style={styles.missionBadge}>
-              <ThemedText style={styles.missionBadgeText}>
-                Mission completed
-              </ThemedText>
-            </View>
-            <ThemedText style={styles.dateText}>
-              {formatCompletedAt(mission.completed_at)}
-            </ThemedText>
+      <Pressable style={journalCardStyles.card} onPress={onPress} disabled={!onPress}>
+        <View style={journalCardStyles.headerRow}>
+          <View style={styles.tag}>
+            <Ionicons name="checkmark-circle" size={15} color={FK.white} />
+            <Text style={styles.tagText}>Mission done</Text>
           </View>
-
-          <ThemedText style={styles.title} numberOfLines={2}>
-            {mission.activity_title}
-          </ThemedText>
-
-          {!!mission.debrief_answer_1 && (
-            <View style={styles.debriefBlock}>
-              {!!mission.debrief_question_1 && (
-                <ThemedText style={styles.debriefQuestion} numberOfLines={2}>
-                  {mission.debrief_question_1}
-                </ThemedText>
-              )}
-              <ThemedText style={styles.debriefAnswer} numberOfLines={4}>
-                "{mission.debrief_answer_1}"
-              </ThemedText>
-            </View>
-          )}
-          {!!mission.debrief_answer_2 && (
-            <View style={styles.debriefBlock}>
-              {!!mission.debrief_question_2 && (
-                <ThemedText style={styles.debriefQuestion} numberOfLines={2}>
-                  {mission.debrief_question_2}
-                </ThemedText>
-              )}
-              <ThemedText style={styles.debriefAnswer} numberOfLines={4}>
-                "{mission.debrief_answer_2}"
-              </ThemedText>
-            </View>
-          )}
-
-          {displayPhotos.length > 0 && (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.photoStrip}
-              contentContainerStyle={styles.photoStripContent}
-            >
-              {displayPhotos.map((photoUrl, idx) => (
-                <Pressable
-                  key={`${photoUrl}-${idx}`}
-                  style={styles.polaroid}
-                  onPress={() => setPreviewUri(photoUrl)}
-                  accessibilityRole="button"
-                  accessibilityLabel="View photo"
-                >
-                  <Image source={{ uri: photoUrl }} style={styles.polaroidImage} resizeMode="cover" />
-                </Pressable>
-              ))}
-            </ScrollView>
-          )}
-
-          <View style={styles.footer}>
-            <ThemedText style={styles.byText}>
-              {nickname ? `by ${nickname}` : ""}
-            </ThemedText>
-          </View>
+          <Text style={journalCardStyles.date}>{formatJournalDate(new Date(mission.completed_at))}</Text>
         </View>
+
+        <Text style={journalCardStyles.title} numberOfLines={2}>
+          {mission.activity_title}
+        </Text>
+
+        {answers.map((x, i) => (
+          <View key={i} style={styles.answer}>
+            {x.q ? (
+              <Text style={styles.question} numberOfLines={2}>
+                {x.q}
+              </Text>
+            ) : null}
+            <Text style={styles.answerText} numberOfLines={4}>
+              “{x.a}”
+            </Text>
+          </View>
+        ))}
+
+        {displayPhotos.length > 0 ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.photoStrip}
+            contentContainerStyle={styles.photoStripContent}
+          >
+            {displayPhotos.map((photoUrl, idx) => (
+              <Pressable
+                key={`${photoUrl}-${idx}`}
+                onPress={() => setPreviewUri(photoUrl)}
+                accessibilityRole="button"
+                accessibilityLabel="View photo"
+              >
+                <Image source={{ uri: photoUrl }} style={styles.photo} resizeMode="cover" />
+              </Pressable>
+            ))}
+          </ScrollView>
+        ) : null}
+
+        {byName ? <Text style={[journalCardStyles.by, { marginTop: 12 }]}>{byName}</Text> : null}
       </Pressable>
 
-      <Modal
-        visible={previewUri != null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setPreviewUri(null)}
-      >
-        <Pressable style={styles.previewBackdrop} onPress={() => setPreviewUri(null)}>
-          {previewUri != null && (
-            <Image source={{ uri: previewUri }} style={styles.previewImage} resizeMode="contain" />
-          )}
-          <View style={styles.previewCloseWrap}>
-            <Pressable
-              style={styles.previewClose}
-              onPress={() => setPreviewUri(null)}
-              accessibilityRole="button"
-              accessibilityLabel="Close photo preview"
-            >
-              <MaterialIcons name="close" size={scaleW(26)} color="#FFF" />
-            </Pressable>
-          </View>
-        </Pressable>
-      </Modal>
+      <PhotoPreview uri={previewUri} onClose={() => setPreviewUri(null)} />
     </Animated.View>
   );
 }
+
+const styles = StyleSheet.create({
+  tag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: FK.forest,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  tagText: { fontFamily: FONT.displayBold, fontSize: 13, color: FK.white },
+  answer: { backgroundColor: FK.moss, borderRadius: RADIUS.sm, padding: 12, marginTop: 8 },
+  question: { fontFamily: FONT.bodyBold, fontSize: 13, lineHeight: 18, color: FK.muted, marginBottom: 2 },
+  answerText: { fontFamily: FONT.body, fontSize: 16, lineHeight: 23, color: FK.ink },
+  photoStrip: { marginTop: 12, marginHorizontal: -18 },
+  photoStripContent: { paddingHorizontal: 18, gap: 10 },
+  photo: { width: 200, height: 200, borderRadius: RADIUS.md, backgroundColor: FK.line },
+});

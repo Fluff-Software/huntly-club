@@ -1,10 +1,9 @@
 /**
- * Binder sleeve pocket — full card face scaled to fit the cell; light plastic sheen.
- * On pull-out the card slides up while the sleeve film stays fixed over the pocket.
+ * Binder pocket: the full card face scaled to fit a soft paper-coloured slot.
+ * On tap the card lifts out of its pocket before the detail view opens.
  */
-import React, { useEffect } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import React, { useEffect, useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, {
   Easing,
   runOnJS,
@@ -12,13 +11,9 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
-import { ThemedText } from "@/components/ThemedText";
 import { ExploreCardArt } from "@/components/explore/ExploreCardArt";
-import {
-  EXPLORE_BINDER_POCKET_BG,
-  EXPLORE_CARD_ART_ASPECT,
-  EXPLORE_RARITY_COLORS,
-} from "@/constants/exploreBinder";
+import { EXPLORE_CARD_ART_ASPECT } from "@/constants/exploreBinder";
+import { FK, FONT } from "@/constants/fieldKit";
 import {
   binderPocketAccessibilityLabel,
   type BinderCardEntry,
@@ -28,7 +23,8 @@ import {
 const CARD_DESIGN_WIDTH = 280;
 const CARD_DESIGN_HEIGHT = CARD_DESIGN_WIDTH / EXPLORE_CARD_ART_ASPECT;
 
-const PULL_TRAVEL = 22;
+const PULL_TRAVEL = 18;
+const POCKET_PAD = 3;
 const PULL_DURATION_MS = 200;
 
 export function fitBinderCardSize(maxW: number, maxH: number): { w: number; h: number } {
@@ -53,39 +49,6 @@ type Props = {
   onPress: () => void;
 };
 
-function SleeveFilm({ width, height }: { width: number; height: number }) {
-  return (
-    <View pointerEvents="none" style={[styles.sleeveFilm, { width, height }]}>
-      <View style={styles.plasticTint} />
-      <LinearGradient
-        colors={[
-          "transparent",
-          "rgba(255,255,255,0.42)",
-          "rgba(255,255,255,0.16)",
-          "transparent",
-        ]}
-        locations={[0.12, 0.38, 0.5, 0.78]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.sheenBand}
-      />
-      <LinearGradient
-        colors={["rgba(255,255,255,0.45)", "rgba(255,255,255,0.08)", "transparent"]}
-        locations={[0, 0.35, 1]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0.65, y: 0.4 }}
-        style={styles.cornerGloss}
-      />
-      <LinearGradient
-        colors={["rgba(255,255,255,0.22)", "transparent"]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={styles.sleeveMouth}
-      />
-    </View>
-  );
-}
-
 export function BinderCardPocket({
   card,
   width,
@@ -95,6 +58,7 @@ export function BinderCardPocket({
   onPress,
 }: Props) {
   const pull = useSharedValue(isPulled ? 1 : 0);
+  const [pressed, setPressed] = useState(false);
   const busy = useSharedValue(false);
 
   // Retract when detail closes; snap up only for external pulls (e.g. highlight deep-link).
@@ -124,8 +88,8 @@ export function BinderCardPocket({
     elevation: pull.value > 0.05 ? 8 : 2,
   }));
 
-  const innerW = Math.max(0, width - 4);
-  const innerH = Math.max(0, height - 4);
+  const innerW = Math.max(0, width - POCKET_PAD * 2);
+  const innerH = Math.max(0, height - POCKET_PAD * 2);
   const scale = innerW > 0 ? innerW / CARD_DESIGN_WIDTH : 0;
 
   if (width <= 0 || height <= 0) {
@@ -137,7 +101,6 @@ export function BinderCardPocket({
       <View style={styles.pocket}>
         <View style={[styles.well, { width, height }]}>
           <View style={[styles.emptySlot, { width: innerW, height: innerH }]} />
-          <View style={styles.sleeveRim} pointerEvents="none" />
         </View>
       </View>
     );
@@ -147,7 +110,6 @@ export function BinderCardPocket({
     card.collected === true ||
     Number(card.count) > 0 ||
     Boolean(card.firstCollectedAt);
-  const rarityColor = EXPLORE_RARITY_COLORS[card.rarity] ?? "#3B82F6";
   const showCount = collected && card.count > 1;
 
   function finishOpen() {
@@ -184,16 +146,27 @@ export function BinderCardPocket({
         collected,
         count: Math.max(card.count, collected ? 1 : 0),
       })}
-      style={({ pressed }) => [
-        styles.pocket,
-        highlighted && styles.highlighted,
-        pressed && !isPulled && { opacity: 0.92 },
-      ]}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      // Static style array: NativeWind's Pressable interop drops function styles.
+      style={[styles.pocket, pressed && !isPulled ? styles.pressed : null]}
     >
-      <View style={[styles.well, { width, height }]}>
+      <View style={[styles.well, highlighted && styles.highlighted, { width, height }]}>
         <Animated.View style={[styles.pullWrap, { width: innerW, height: innerH }, cardStyle]}>
-          <View style={[styles.artWrap, { width: innerW, height: innerH }]}>
-            {scale > 0 ? (
+          <View style={[styles.artWrap, !collected && styles.artWrapLocked, { width: innerW, height: innerH }]}>
+            {!collected ? (
+              // Not found yet: a quiet placeholder, so the page reads as "what's left to find"
+              // rather than a wall of dark locked cards.
+              <View style={styles.locked} pointerEvents="none">
+                <Text style={styles.lockedMark}>?</Text>
+                <View
+                  style={[
+                    styles.rarityDot,
+                    { backgroundColor: FK.rarity[card.rarity as keyof typeof FK.rarity] ?? FK.muted },
+                  ]}
+                />
+              </View>
+            ) : scale > 0 ? (
               <View
                 style={[
                   styles.scaledCard,
@@ -222,17 +195,13 @@ export function BinderCardPocket({
             ) : null}
 
             {showCount ? (
-              <View style={[styles.dupBadge, { backgroundColor: rarityColor }]}>
-                <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.dupText}>
-                  ×{card.count}
-                </ThemedText>
+              <View style={styles.dupBadge}>
+                <Text style={styles.dupText}>×{card.count}</Text>
               </View>
             ) : null}
           </View>
         </Animated.View>
 
-        <SleeveFilm width={innerW} height={innerH} />
-        <View style={styles.sleeveRim} pointerEvents="none" />
       </View>
     </Pressable>
   );
@@ -246,91 +215,47 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  highlighted: {
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: "#FFE08A",
-  },
+  pressed: { opacity: 0.9 },
   well: {
-    borderRadius: 5,
-    backgroundColor: EXPLORE_BINDER_POCKET_BG,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.18)",
-    padding: 2,
+    borderRadius: 12,
+    backgroundColor: "#E4E9DC",
+    padding: POCKET_PAD,
     overflow: "visible",
   },
+  highlighted: {
+    backgroundColor: FK.sunbeam,
+  },
   emptySlot: {
-    borderRadius: 3,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    borderRadius: 9,
+    backgroundColor: "#D6DDCC",
   },
   pullWrap: {
     overflow: "visible",
   },
   artWrap: {
     position: "relative",
-    borderRadius: 3,
+    borderRadius: 9,
     overflow: "hidden",
-    backgroundColor: "#121214",
+    backgroundColor: FK.forest,
   },
+  artWrapLocked: { backgroundColor: "#D6DDCC" },
+  locked: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8 },
+  lockedMark: { fontFamily: FONT.display, fontSize: 34, color: "#A7B39C" },
+  rarityDot: { width: 8, height: 8, borderRadius: 4, opacity: 0.7 },
   scaledCard: {
     position: "absolute",
     width: CARD_DESIGN_WIDTH,
     height: CARD_DESIGN_HEIGHT,
   },
-  sleeveFilm: {
-    position: "absolute",
-    top: 2,
-    left: 2,
-    borderRadius: 3,
-    overflow: "hidden",
-    zIndex: 4,
-  },
-  plasticTint: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(210, 225, 240, 0.1)",
-  },
-  sheenBand: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  cornerGloss: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: "75%",
-    height: "50%",
-  },
-  sleeveMouth: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 10,
-  },
-  sleeveRim: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 5,
-    borderWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.32)",
-    borderLeftColor: "rgba(255,255,255,0.22)",
-    borderRightColor: "rgba(0,0,0,0.25)",
-    borderBottomColor: "rgba(0,0,0,0.3)",
-    zIndex: 5,
-  },
   dupBadge: {
     position: "absolute",
-    top: 4,
-    right: 4,
-    borderRadius: 9,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderWidth: 1.5,
-    borderColor: "#FFF",
+    top: 5,
+    right: 5,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    backgroundColor: FK.ink,
     zIndex: 5,
-    shadowColor: "#000",
-    shadowOpacity: 0.5,
-    shadowRadius: 3,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 4,
   },
-  dupText: { fontSize: 13, fontWeight: "900" },
+  dupText: { fontFamily: FONT.display, fontSize: 14, lineHeight: 18, color: FK.white },
 });

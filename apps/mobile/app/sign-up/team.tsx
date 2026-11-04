@@ -12,6 +12,7 @@ import { GUIDES, type Guide } from "@/constants/guides";
 import { useSignUp } from "@/contexts/SignUpContext";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { ONBOARDING_STEPS } from "@/constants/onboarding";
+import { familyHeading } from "@/utils/familyNames";
 
 /** Step 2: the child picks a team and guide. Addressed to the child. */
 export default function SignUpTeamScreen() {
@@ -20,7 +21,7 @@ export default function SignUpTeamScreen() {
   const [selected, setSelected] = useState<string | null>(selectedTeamName);
 
   const names = (players.length ? players.map((p) => p.name) : profiles.map((p) => p.name)).filter(Boolean);
-  const who = names.length === 1 ? names[0] : names.length === 2 ? `${names[0]} & ${names[1]}` : names.length > 2 ? "Explorers" : "Explorer";
+  const who = names.length > 3 ? "Explorers" : familyHeading(names);
 
   const choose = (g: Guide) => {
     void Haptics.selectionAsync().catch(() => undefined);

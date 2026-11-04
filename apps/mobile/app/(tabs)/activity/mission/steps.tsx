@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -7,7 +7,7 @@ import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
-import { FKButton } from "@/components/fieldkit";
+import { FKButton, FKLoading } from "@/components/fieldkit";
 import { FK, FONT, RADIUS } from "@/constants/fieldKit";
 import { getActivityById, getActivityImageSource } from "@/services/packService";
 import type { Activity, MissionStep } from "@/types/activity";
@@ -76,15 +76,12 @@ export default function StepsScreen() {
     ]);
   };
 
-  if (loading || error || !activity || !currentStep) {
+  if (loading) return <FKLoading dark />;
+  if (error || !activity || !currentStep) {
     return (
       <SafeAreaView style={[styles.root, styles.center]}>
         <StatusBar style="light" />
-        {loading ? (
-          <ActivityIndicator color={FK.sunbeam} size="large" />
-        ) : (
-          <Text style={styles.error}>{error ?? "This mission has no steps yet."}</Text>
-        )}
+        <Text style={styles.error}>{error ?? "This mission has no steps yet."}</Text>
       </SafeAreaView>
     );
   }

@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
 import { FK, FONT, RADIUS, TYPE } from "@/constants/fieldKit";
 
 type ButtonVariant = "sunbeam" | "ink" | "paper" | "link";
@@ -169,6 +170,106 @@ export function FKEyebrow({ children, color, style }: { children: React.ReactNod
   return <Text style={[TYPE.eyebrow, color ? { color } : null, style]}>{children}</Text>;
 }
 
+/**
+ * Calm full-screen loading state: a gently breathing compass on moss. Deliberately
+ * team-neutral, so nothing flashes the wrong team's colours before data arrives.
+ */
+export function FKLoading({ line, dark }: { line?: string; dark?: boolean }) {
+  const pulse = useSharedValue(0);
+  React.useEffect(() => {
+    pulse.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 900, easing: Easing.inOut(Easing.quad) }),
+        withTiming(0, { duration: 900, easing: Easing.inOut(Easing.quad) })
+      ),
+      -1
+    );
+  }, [pulse]);
+  const ring = useAnimatedStyle(() => ({ transform: [{ scale: 1 + pulse.value * 0.08 }], opacity: 0.55 + pulse.value * 0.45 }));
+  return (
+    <View style={[styles.loading, { backgroundColor: dark ? FK.ink : FK.moss }]} accessibilityLabel="Loading" accessible>
+      <Animated.View style={[styles.loadingRing, dark && { backgroundColor: "rgba(255,255,255,0.08)" }, ring]}>
+        <Ionicons name="compass" size={40} color={dark ? FK.sunbeam : FK.forest} />
+      </Animated.View>
+      {line ? <Text style={[styles.loadingLine, dark && { color: FK.mutedOnDark }]}>{line}</Text> : null}
+    </View>
+  );
+}
+
+/** Soft placeholder block that breathes while content loads. */
+export function FKSkeleton({ height, style, dark }: { height: number; style?: StyleProp<ViewStyle>; dark?: boolean }) {
+  const pulse = useSharedValue(0);
+  React.useEffect(() => {
+    pulse.value = withRepeat(withTiming(1, { duration: 1100, easing: Easing.inOut(Easing.quad) }), -1, true);
+  }, [pulse]);
+  const anim = useAnimatedStyle(() => ({ opacity: 0.5 + pulse.value * 0.5 }));
+  return (
+    <Animated.View
+      style={[{ height, borderRadius: RADIUS.lg, backgroundColor: dark ? "rgba(255,255,255,0.08)" : "#E4E9DC" }, anim, style]}
+    />
+  );
+}
+
+/** Header for sub-screens: round back button, title, optional right-hand action. */
+export function FKPageHeader({
+  title,
+  eyebrow,
+  onBack,
+  right,
+  dark,
+}: {
+  title: string;
+  eyebrow?: string;
+  onBack?: () => void;
+  right?: React.ReactNode;
+  dark?: boolean;
+}) {
+  return (
+    <View style={styles.pageHeader}>
+      <View style={styles.pageHeaderTop}>
+        {onBack ? (
+          <Pressable
+            onPress={onBack}
+            style={[styles.backButton, dark && { backgroundColor: "rgba(255,255,255,0.12)" }]}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+          >
+            <Ionicons name="arrow-back" size={24} color={dark ? FK.white : FK.ink} />
+          </Pressable>
+        ) : (
+          <View />
+        )}
+        {right ?? null}
+      </View>
+      {eyebrow ? <Text style={[TYPE.eyebrow, { marginTop: 16 }, dark && { color: FK.mutedOnDark }]}>{eyebrow}</Text> : null}
+      <Text style={[TYPE.title, { marginTop: eyebrow ? 4 : 16 }, dark && { color: FK.white }]} accessibilityRole="header">
+        {title}
+      </Text>
+    </View>
+  );
+}
+
+/** Paper card surface used across Field kit screens. */
+export function FKCard({
+  children,
+  style,
+  onPress,
+  testID,
+}: {
+  children: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+  onPress?: () => void;
+  testID?: string;
+}) {
+  if (!onPress) return <View style={[styles.card, style]}>{children}</View>;
+  return (
+    <Pressable onPress={onPress} style={[styles.card, style]} accessibilityRole="button" testID={testID}>
+      {children}
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: { paddingHorizontal: 22, paddingTop: 12, paddingBottom: 24 },
@@ -212,4 +313,17 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   chipText: { fontFamily: FONT.displayBold, fontSize: 14, color: FK.ink },
+  loading: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", gap: 16 },
+  loadingRing: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: FK.paper,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingLine: { fontFamily: FONT.displayBold, fontSize: 16, color: FK.muted },
+  pageHeader: { marginBottom: 18 },
+  pageHeaderTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  card: { backgroundColor: FK.paper, borderRadius: RADIUS.lg, padding: 18 },
 });

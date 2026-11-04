@@ -1,196 +1,140 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
-  TextInput,
   Alert,
+  KeyboardAvoidingView,
+  Modal,
   Pressable,
   ScrollView,
-  View,
-  Image,
   StyleSheet,
-  Modal,
-  ActivityIndicator } from "react-native";
-import Animated, {
-  FadeInDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring } from "react-native-reanimated";
-import { Redirect, useRouter, useFocusEffect } from "expo-router";
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Redirect, router, useFocusEffect } from "expo-router";
+import { setStatusBarStyle } from "expo-status-bar";
+import { Image } from "expo-image";
+import { Ionicons } from "@expo/vector-icons";
+import Animated, { FadeIn } from "react-native-reanimated";
+import { FKButton, FKChip, FKPageHeader, FKSkeleton } from "@/components/fieldkit";
+import {
+  DANGER,
+  DangerButton,
+  DialogCard,
+  dialogStyles,
+  LinkRow,
+  RowGroup,
+  SectionLabel,
+} from "@/components/account/GrownUpRows";
+import { FK, FONT, RADIUS, TYPE } from "@/constants/fieldKit";
+import { PROFILE_COLOR_OPTIONS, getTailwindColorHex } from "@/constants/Colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
-import { useUser } from "@/contexts/UserContext";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { ThemedText } from "@/components/ThemedText";
-import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { useProfileDashboard } from "@/contexts/ProfileDashboardContext";
+import { useNavigationReturn } from "@/contexts/NavigationReturnContext";
+import { useTeamGuide } from "@/hooks/useTeamGuide";
 import {
   createProfile,
   deleteProfile as deleteProfileService,
-  getTeams,
   updateProfile,
   type Profile,
-  type Team } from "@/services/profileService";
+} from "@/services/profileService";
 import { generateNickname } from "@/services/nicknameGenerator";
-import { getTeamImageSource } from "@/utils/teamUtils";
-import { ColorPicker } from "@/components/ui/ColorPicker";
-import { useProfileDashboard } from "@/contexts/ProfileDashboardContext";
-import { MaterialIcons } from "@expo/vector-icons";
-import { ChildScreenLayout } from "@/components/ChildScreenLayout";
-import { useNavigationReturn } from "@/contexts/NavigationReturnContext";
+import { familySentence } from "@/utils/familyNames";
 
-// Design colors from reference
-const COLORS = {
-  darkGreen: "#4F6F52",
-  cream: "#F8F7F4",
-  accentBlue: "#A7D9ED",
-  accentGreen: "#BEE6BE",
-  activityCard: "#E8E8E8",
-  arrow: "#C98D8D",
-  white: "#FFFFFF",
-  black: "#000000",
-  charcoal: "#333333" };
+const MAX_EXPLORERS = 6;
+const SWATCHES = PROFILE_COLOR_OPTIONS.map((o) => ({ hex: getTailwindColorHex(o.value), label: o.label }));
+const DEFAULT_COLOUR = SWATCHES[0]?.hex ?? "#FF6B35";
 
-const PLAYER_ACCENTS = [COLORS.accentBlue, COLORS.accentGreen];
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 
+function formatDay(dateStr: string | null) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function initialOf(name: string) {
+  return (name.trim()[0] ?? "?").toUpperCase();
+}
+
+/** Grown-up screen: every explorer as equals, the family's team, recent adventures and account actions. */
 export default function ProfileScreen() {
+  const { user, signOut, loading: authLoading } = useAuth();
+  const { profiles, refreshProfiles, loading: profilesLoading } = usePlayer();
+  const { recentActivities, xpByProfileId, recentActivitiesLoading, refresh: refreshProfileDashboard } =
+    useProfileDashboard();
+  const { guide, loading: teamLoading } = useTeamGuide();
+  const { pushWithReturn } = useNavigationReturn();
+
+  // Add form
+  const [showAddForm, setShowAddForm] = useState(false);
   const [name, setName] = useState("");
-  const [selectedColor, setSelectedColor] = useState<string>("#FF6B35");
-  const [selectedTeam, setSelectedTeam] = useState<number | null>(null);
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [addNickname, setAddNickname] = useState(() => generateNickname());
+  const [selectedColor, setSelectedColor] = useState<string>(DEFAULT_COLOUR);
+  // Edit form
   const [editingProfileId, setEditingProfileId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [editNickname, setEditNickname] = useState("");
-  const [editColor, setEditColor] = useState<string>("#FF6B35");
-  const [addNickname, setAddNickname] = useState(() => generateNickname());
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [showAddExplorer, setShowAddExplorer] = useState(false);
+  const [editColor, setEditColor] = useState<string>(DEFAULT_COLOUR);
+  const [loading, setLoading] = useState(false);
+  // Remove
   const [profileToDelete, setProfileToDelete] = useState<Profile | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const { user, signOut, loading: authLoading } = useAuth();
-  const { teamId } = useUser();
-  const { profiles, refreshProfiles, loading: profilesLoading } = usePlayer();
-  const {
-    recentActivities,
-    xpByProfileId,
-    recentActivitiesLoading,
-    refresh: refreshProfileDashboard,
-  } = useProfileDashboard();
-  const router = useRouter();
-  const { pushWithReturn } = useNavigationReturn();
-  const { scaleW } = useLayoutScale();
 
   const sortedProfiles = useMemo(
-    () =>
-      [...profiles].sort(
-        (a, b) =>
-          new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
-      ),
-    [profiles],
+    () => [...profiles].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()),
+    [profiles]
   );
-
-  const editScale = useSharedValue(1);
-  const parentZoneScale = useSharedValue(1);
-  const settingsScale = useSharedValue(1);
-  const logOutScale = useSharedValue(1);
-  const editAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: editScale.value }] }));
-  const parentZoneAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: parentZoneScale.value }] }));
-  const settingsAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: settingsScale.value }] }));
-  const logOutAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: logOutScale.value }] }));
+  const names = sortedProfiles.map((p) => p.name);
+  const canAdd = sortedProfiles.length < MAX_EXPLORERS;
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
+      setStatusBarStyle("dark");
       let isMounted = true;
       const refresh = async () => {
         if (!isMounted) return;
         await refreshProfiles();
         if (isMounted) await refreshProfileDashboard();
       };
-      refresh();
+      void refresh();
       return () => {
         isMounted = false;
       };
-    }, [refreshProfiles, refreshProfileDashboard]),
+    }, [refreshProfiles, refreshProfileDashboard])
   );
 
-  useEffect(() => {
-    let isMounted = true;
-    const fetchTeams = async () => {
-      try {
-        const teamsData = await getTeams();
-        if (isMounted) {
-          setTeams(teamsData);
-          if (teamsData.length > 0) setSelectedTeam(teamsData[0].id);
-        }
-      } catch (error) {
-        console.error("Error fetching teams:", error);
-        if (isMounted) Alert.alert("Error", "Failed to load teams");
-      }
-    };
-    fetchTeams();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    const profile =
-      editingProfileId != null
-        ? profiles.find((p) => p.id === editingProfileId)
-        : null;
-    if (profile) {
-      setEditName(profile.name);
-      setEditNickname(profile.nickname || generateNickname());
-      setEditColor(profile.colour);
-    }
-  }, [editingProfileId, profiles]);
-
-  const handleCreateProfile = async () => {
-    if (!name.trim()) {
-      Alert.alert("Error", "Please fill in all fields");
-      return;
-    }
-    if (!user) {
-      Alert.alert("Error", "You must be logged in to create a profile");
-      return;
-    }
-    setLoading(true);
-    try {
-      await createProfile({
-        user_id: user.id,
-        name: name.trim(),
-        colour: selectedColor });
-      await refreshProfiles();
-      setName("");
-      setShowAddExplorer(false);
-      Alert.alert(
-        "Explorer Created! 🎉",
-        "Your new explorer has been created and is now active!",
-        [{ text: "OK", onPress: () => router.replace("/") }],
-      );
-    } catch (error) {
-      const msg =
-        error instanceof Error ? error.message : "Failed to create explorer";
-      Alert.alert("Error", msg);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handleBack = () => (router.canGoBack() ? router.back() : router.navigate("/(tabs)/me"));
 
   const handleExpandEdit = (profile: Profile) => {
+    if (editingProfileId === profile.id) {
+      setEditingProfileId(null);
+      return;
+    }
     setShowAddForm(false);
     setEditingProfileId(profile.id);
     setEditName(profile.name);
     setEditNickname(profile.nickname || generateNickname());
-    setEditColor(profile.colour);
+    setEditColor(profile.colour || DEFAULT_COLOUR);
   };
 
   const handleSaveEdit = async () => {
     if (editingProfileId == null || !editName.trim() || !editNickname.trim()) {
-      Alert.alert("Error", "Please fill in all fields");
+      Alert.alert("Add a name", "Every explorer needs a name and a nickname.");
       return;
     }
     setLoading(true);
@@ -198,21 +142,15 @@ export default function ProfileScreen() {
       await updateProfile(editingProfileId, {
         name: editName.trim(),
         nickname: editNickname.trim(),
-        colour: editColor });
+        colour: editColor,
+      });
       await refreshProfiles();
       setEditingProfileId(null);
-      Alert.alert("Success", "Explorer updated successfully!");
     } catch (error) {
-      const msg =
-        error instanceof Error ? error.message : "Failed to update explorer";
-      Alert.alert("Error", msg);
+      Alert.alert("Couldn't save", error instanceof Error ? error.message : "Please try again.");
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleCancelEdit = () => {
-    setEditingProfileId(null);
   };
 
   const handleConfirmDelete = async () => {
@@ -221,1044 +159,494 @@ export default function ProfileScreen() {
     try {
       await deleteProfileService(profileToDelete.id);
       await refreshProfiles();
+      if (editingProfileId === profileToDelete.id) setEditingProfileId(null);
       setProfileToDelete(null);
-      if (editingProfileId === profileToDelete.id) {
-        setEditingProfileId(null);
-      }
     } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : "Failed to delete explorer";
-      Alert.alert("Error", msg);
+      Alert.alert("Couldn't remove explorer", err instanceof Error ? err.message : "Please try again.");
     } finally {
       setDeleting(false);
     }
   };
 
-  const handleDoneEditing = () => {
-    setIsEditing(false);
+  const openAddForm = () => {
     setEditingProfileId(null);
-    setShowAddForm(false);
+    setName("");
+    setAddNickname(generateNickname());
+    setSelectedColor(SWATCHES[sortedProfiles.length % SWATCHES.length]?.hex ?? DEFAULT_COLOUR);
+    setShowAddForm(true);
   };
 
-  const handleAddExplorerInline = async () => {
+  const handleAddExplorer = async () => {
     if (!name.trim() || !user) {
-      Alert.alert("Error", "Please fill in name");
+      Alert.alert("Add a name", "First names are perfect.");
       return;
     }
     setLoading(true);
     try {
+      const added = name.trim();
       await createProfile({
         user_id: user.id,
-        name: name.trim(),
+        name: added,
         nickname: addNickname.trim() || generateNickname(),
-        colour: selectedColor });
+        colour: selectedColor,
+      });
       await refreshProfiles();
       setName("");
       setAddNickname(generateNickname());
       setShowAddForm(false);
-      Alert.alert("Explorer created", "Your new explorer has been added.");
+      Alert.alert(`${added} has joined`, guide ? `${added} is on Team ${guide.teamName} with everyone else.` : undefined);
     } catch (error) {
-      const msg =
-        error instanceof Error ? error.message : "Failed to create explorer";
-      Alert.alert("Error", msg);
+      Alert.alert("Couldn't add explorer", error instanceof Error ? error.message : "Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const formatActivityDate = (dateStr: string | null) => {
-    if (!dateStr) return "";
-    const d = new Date(dateStr);
-    const day = d.getDate();
-    const suffix =
-      day === 1 || day === 21 || day === 31
-        ? "st"
-        : day === 2 || day === 22
-          ? "nd"
-          : day === 3 || day === 23
-            ? "rd"
-            : "th";
-    const months = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
-    ];
-    return `Completed ${day}${suffix} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  const handleSignOut = () => {
+    Alert.alert("Sign out?", "You'll need your email and password to sign back in.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Sign out",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await signOut();
+          } catch {
+            Alert.alert("Couldn't sign out", "Please try again.");
+          }
+        },
+      },
+    ]);
   };
-
-  const styles = useMemo(
-    () =>
-      StyleSheet.create({
-        safeArea: {
-          flex: 1,
-          backgroundColor: COLORS.darkGreen },
-        headerBar: {
-          backgroundColor: COLORS.darkGreen },
-        scrollView: {
-          flex: 1 },
-        scrollContent: {},
-        section: {
-          marginBottom: scaleW(24) },
-        sectionHeader: {
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: scaleW(12) },
-        sectionTitle: {
-          fontSize: scaleW(18),
-          fontWeight: "600",
-          color: COLORS.white,
-          marginBottom: scaleW(12) },
-        editIconWrap: {
-          padding: scaleW(4) },
-        cardCream: {
-          backgroundColor: COLORS.cream,
-          borderRadius: scaleW(20),
-          padding: scaleW(16) },
-        cardTextPrimary: {
-          fontSize: scaleW(16),
-          fontWeight: "600",
-          color: COLORS.black },
-        cardTextSecondary: {
-          fontSize: scaleW(14),
-          color: COLORS.charcoal,
-          marginTop: scaleW(4) },
-        playerCard: {
-          flexDirection: "row",
-          backgroundColor: COLORS.cream,
-          borderRadius: scaleW(20),
-          marginBottom: scaleW(12),
-          overflow: "hidden",
-          minHeight: scaleW(64),
-          borderWidth: 3,
-          borderColor: "#FFF" },
-        playerAccent: {
-          width: scaleW(20),
-          borderRadius: scaleW(2) },
-        playerCardContent: {
-          flex: 1,
-          paddingVertical: scaleW(12),
-          paddingHorizontal: scaleW(16),
-          justifyContent: "center" },
-        playerName: {
-          fontSize: scaleW(18),
-          fontWeight: "600",
-          color: COLORS.black },
-        playerNickname: {
-          fontSize: scaleW(14),
-          color: COLORS.charcoal,
-          marginTop: scaleW(2) },
-        playerScoreWrap: {
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "flex-end",
-          paddingHorizontal: scaleW(12) },
-        playerScore: {
-          fontSize: scaleW(18),
-          fontWeight: "700",
-          color: COLORS.darkGreen },
-        playerScoreLabel: {
-          fontSize: scaleW(12),
-          color: COLORS.charcoal,
-          marginLeft: scaleW(4) },
-        addNewPlayerCard: {
-          marginTop: scaleW(4) },
-        addExplorerRow: {
-          flexDirection: "row",
-          alignItems: "center",
-          marginTop: scaleW(8) },
-        addExplorerIcon: {
-          width: scaleW(40),
-          height: scaleW(40),
-          borderRadius: scaleW(20),
-          backgroundColor: "rgba(255,255,255,0.25)",
-          alignItems: "center",
-          justifyContent: "center",
-          marginRight: scaleW(12) },
-        progressRow: {
-          flexDirection: "row",
-          justifyContent: "center",
-          gap: scaleW(16),
-          paddingHorizontal: scaleW(12) },
-        activityCard: {
-          flexDirection: "row",
-          alignItems: "center",
-          backgroundColor: COLORS.activityCard,
-          borderRadius: scaleW(18),
-          padding: scaleW(20),
-          marginBottom: scaleW(8) },
-        activityCardContent: {
-          flex: 1 },
-        activityName: {
-          fontSize: scaleW(18),
-          fontWeight: "600",
-          color: COLORS.black },
-        activityDate: {
-          fontSize: scaleW(16),
-          color: COLORS.charcoal,
-          marginTop: scaleW(2) },
-        activityArrow: {
-          marginLeft: scaleW(8) },
-        parentZoneButton: {
-          backgroundColor: COLORS.cream,
-          borderRadius: scaleW(40),
-          paddingVertical: scaleW(16),
-          alignItems: "center",
-          marginTop: scaleW(8),
-          marginBottom: scaleW(24),
-          marginHorizontal: scaleW(40),
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.3,
-          shadowRadius: 2,
-          elevation: 2 },
-        parentZoneText: {
-          fontSize: scaleW(17),
-          fontWeight: "600" },
-        logOutButtonWrap: {
-          marginTop: scaleW(8),
-          marginBottom: scaleW(32) },
-        modalOverlay: {
-          flex: 1,
-          backgroundColor: "rgba(0,0,0,0.5)",
-          justifyContent: "center",
-          padding: scaleW(24) },
-        modalContent: {
-          backgroundColor: COLORS.white,
-          borderRadius: scaleW(24),
-          padding: scaleW(24),
-          maxHeight: "85%" },
-        modalTitle: {
-          fontSize: scaleW(20),
-          fontWeight: "700",
-          color: COLORS.charcoal,
-          marginBottom: scaleW(16) },
-        input: {
-          height: scaleW(52),
-          borderWidth: 2,
-          borderColor: "#BEE6BE",
-          borderRadius: scaleW(14),
-          paddingHorizontal: scaleW(16),
-          backgroundColor: COLORS.cream,
-          fontSize: scaleW(16),
-          color: COLORS.charcoal,
-          marginBottom: scaleW(16) },
-        inputLabel: {
-          fontSize: scaleW(15),
-          fontWeight: "600",
-          color: COLORS.charcoal,
-          marginBottom: scaleW(8) },
-        nicknameRow: {
-          flexDirection: "row",
-          alignItems: "center",
-          marginBottom: scaleW(16) },
-        nicknameDisplay: {
-          flex: 1,
-          height: scaleW(52),
-          borderWidth: 2,
-          borderColor: "#BEE6BE",
-          borderRadius: scaleW(14),
-          paddingHorizontal: scaleW(16),
-          backgroundColor: COLORS.cream,
-          justifyContent: "center" },
-        nicknameText: {
-          fontSize: scaleW(16),
-          color: COLORS.charcoal },
-        generateBtn: {
-          marginLeft: scaleW(12),
-          paddingVertical: scaleW(14),
-          paddingHorizontal: scaleW(16),
-          backgroundColor: "#4F6F52",
-          borderRadius: scaleW(14) },
-        generateBtnText: {
-          fontSize: scaleW(15),
-          fontWeight: "600",
-          color: COLORS.white },
-        colorPickerWrap: {
-          marginBottom: scaleW(16) },
-        teamsScroll: {
-          marginBottom: scaleW(20) },
-        teamOption: {
-          width: scaleW(80),
-          height: scaleW(80),
-          marginRight: scaleW(12),
-          borderRadius: scaleW(14),
-          overflow: "hidden",
-          borderWidth: 3,
-          borderColor: "transparent" },
-        teamOptionSelected: {
-          borderColor: "#4F6F52" },
-        teamImage: {
-          width: "100%",
-          height: "100%" },
-        teamColorDot: {
-          width: "100%",
-          height: "100%",
-          borderRadius: scaleW(14) },
-        modalActions: {
-          flexDirection: "row",
-          gap: scaleW(12) },
-        modalButton: {
-          flex: 1,
-          height: scaleW(52),
-          borderRadius: scaleW(14),
-          alignItems: "center",
-          justifyContent: "center" },
-        modalButtonCancel: {
-          backgroundColor: COLORS.charcoal },
-        modalButtonCancelText: {
-          fontSize: scaleW(16),
-          fontWeight: "600",
-          color: COLORS.white },
-        modalButtonSave: {
-          backgroundColor: "#4F6F52" },
-        modalButtonSaveText: {
-          fontSize: scaleW(16),
-          fontWeight: "600",
-          color: COLORS.white },
-        noTeams: {
-          padding: scaleW(16),
-          backgroundColor: "#E8F5E9",
-          borderRadius: scaleW(14),
-          alignItems: "center",
-          marginBottom: scaleW(20) },
-        noTeamsText: {
-          fontSize: scaleW(15),
-          color: COLORS.charcoal },
-        modalClose: {
-          marginTop: scaleW(12),
-          alignItems: "center" },
-        modalCloseText: {
-          fontSize: scaleW(15),
-          color: COLORS.charcoal,
-          fontWeight: "600" },
-        inlineFormPadding: {
-          padding: scaleW(24) },
-        inlineFormLabel: {
-          fontSize: scaleW(16),
-          fontWeight: "600",
-          color: COLORS.charcoal,
-          marginBottom: scaleW(4) },
-        inlineFormHint: {
-          fontSize: scaleW(12),
-          color: COLORS.charcoal,
-          marginBottom: scaleW(8) },
-        inlineFormInput: {
-          height: scaleW(48),
-          borderWidth: 2,
-          borderColor: COLORS.accentGreen,
-          borderRadius: scaleW(12),
-          paddingHorizontal: scaleW(16),
-          fontSize: scaleW(16),
-          color: COLORS.charcoal,
-          backgroundColor: COLORS.white,
-          marginBottom: scaleW(16) },
-        inlineAddCard: {
-          backgroundColor: COLORS.cream,
-          borderRadius: scaleW(20),
-          padding: scaleW(24),
-          marginTop: scaleW(8) } }),
-    [scaleW],
-  );
 
   if (!authLoading && !user) {
     return <Redirect href="/auth" />;
   }
 
+  const showExplorerSkeleton = profilesLoading && sortedProfiles.length === 0;
+
   return (
-    <>
-      <ChildScreenLayout
-        backgroundColor={COLORS.darkGreen}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* Your players */}
-        <Animated.View
-          style={styles.section}
+    <SafeAreaView style={styles.root} edges={["top", "left", "right"]}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.sectionHeader}>
-            <ThemedText type="heading" style={styles.sectionTitle}>
-              Your players
-            </ThemedText>
-            {isEditing ? (
-              <Pressable
-                onPress={handleDoneEditing}
-                style={styles.editIconWrap}
-                hitSlop={12}
-              >
-                <ThemedText
-                  style={{
-                    fontSize: scaleW(16),
-                    fontWeight: "600",
-                    color: COLORS.white }}
-                >
-                  Done
-                </ThemedText>
-              </Pressable>
-            ) : (
-              <Animated.View style={editAnimatedStyle}>
-                <Pressable
-                  onPress={() => setIsEditing(true)}
-                  onPressIn={() => {
-                    editScale.value = withSpring(0.96, {
-                      damping: 15,
-                      stiffness: 400 });
-                  }}
-                  onPressOut={() => {
-                    editScale.value = withSpring(1, {
-                      damping: 15,
-                      stiffness: 400 });
-                  }}
-                  style={styles.editIconWrap}
-                  hitSlop={12}
-                >
-                  <MaterialIcons name="edit" size={22} color={COLORS.white} />
-                </Pressable>
-              </Animated.View>
-            )}
-          </View>
+          <FKPageHeader eyebrow="For grown-ups" title="Explorers & account" onBack={handleBack} />
+          {sortedProfiles.length > 0 ? (
+            <Text style={styles.lead}>
+              {familySentence(names)} {sortedProfiles.length === 1 ? "explores" : "explore"} on this account. Tap an
+              explorer to change their name, nickname or colour.
+            </Text>
+          ) : null}
 
-          {!isEditing && profilesLoading && profiles.length === 0 && (
-            <View style={[styles.cardCream, { alignItems: "center", paddingVertical: scaleW(24) }]}>
-              <ActivityIndicator size="small" color={COLORS.darkGreen} />
+          {/* Explorers */}
+          <SectionLabel
+            right={
+              sortedProfiles.length > 0 ? <FKChip label={`${sortedProfiles.length} of ${MAX_EXPLORERS}`} /> : undefined
+            }
+          >
+            Explorers
+          </SectionLabel>
+
+          {showExplorerSkeleton ? (
+            <View style={{ gap: 8 }}>
+              <FKSkeleton height={72} />
+              <FKSkeleton height={72} />
             </View>
-          )}
-
-          {!isEditing && !profilesLoading && profiles.length === 0 && (
-            <View style={styles.cardCream}>
-              <ThemedText style={styles.cardTextPrimary}>
-                No players yet
-              </ThemedText>
-              <ThemedText style={styles.cardTextSecondary}>
-                Tap Edit to add an explorer
-              </ThemedText>
-            </View>
-          )}
-
-          {!isEditing &&
-            sortedProfiles.length > 0 &&
-            sortedProfiles.map((profile, index) => (
-              <Animated.View
-                key={profile.id}
-              >
-                <View style={styles.playerCard}>
-                  <View
-                    style={[
-                      styles.playerAccent,
-                      {
-                        backgroundColor:
-                          profile.colour ||
-                          PLAYER_ACCENTS[index % PLAYER_ACCENTS.length] },
-                    ]}
-                  />
-                  <View style={styles.playerCardContent}>
-                    <ThemedText type="heading" style={styles.playerName}>
-                      {profile.name}
-                    </ThemedText>
-                    <ThemedText style={styles.playerNickname}>
-                      {profile.nickname || "Explorer"}
-                    </ThemedText>
-                  </View>
-                  <View style={styles.playerScoreWrap}>
-                    <ThemedText type="heading" style={styles.playerScore}>
-                      {xpByProfileId[profile.id] ?? profile.xp ?? 0}
-                    </ThemedText>
-                    <ThemedText style={styles.playerScoreLabel}>
-                      points
-                    </ThemedText>
-                  </View>
+          ) : (
+            <View style={styles.group}>
+              {sortedProfiles.length === 0 ? (
+                <View style={styles.emptyRow}>
+                  <Text style={styles.rowTitle}>No explorers yet</Text>
+                  <Text style={styles.rowSub}>Add the first one below. First names are perfect.</Text>
                 </View>
-              </Animated.View>
-            ))}
+              ) : null}
 
-          {isEditing && (
-            <>
-              {sortedProfiles.map((profile, index) => {
-                const isExpanded = editingProfileId === profile.id;
+              {sortedProfiles.map((profile, i) => {
+                const isOpen = editingProfileId === profile.id;
+                const colour = isOpen ? editColor : profile.colour || DEFAULT_COLOUR;
+                const points = xpByProfileId[profile.id] ?? profile.xp ?? 0;
                 return (
-                  <View
-                    key={profile.id}
-                    style={[
-                      styles.playerCard,
-                      { marginBottom: scaleW(12), minHeight: undefined },
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.playerAccent,
-                        {
-                          backgroundColor: isExpanded
-                            ? editColor
-                            : profile.colour ||
-                              PLAYER_ACCENTS[index % PLAYER_ACCENTS.length] },
-                      ]}
-                    />
-                    <View style={{ flex: 1 }}>
-                      {isExpanded ? (
-                        <View style={styles.inlineFormPadding}>
-                          <ThemedText style={styles.inlineFormLabel}>
-                            Name
-                          </ThemedText>
-                          <TextInput
-                            style={styles.inlineFormInput}
-                            placeholder="Enter name"
-                            placeholderTextColor="#9CA3AF"
-                            value={editName}
-                            onChangeText={setEditName}
-                            autoCapitalize="words"
-                          />
-                          <ThemedText style={styles.inlineFormLabel}>
-                            Explorer Nickname
-                          </ThemedText>
-                          <View style={styles.nicknameRow}>
-                            <View style={styles.nicknameDisplay}>
-                              <ThemedText style={styles.nicknameText}>
-                                {editNickname}
-                              </ThemedText>
-                            </View>
-                            <Pressable
-                              style={styles.generateBtn}
-                              onPress={() =>
-                                setEditNickname(generateNickname())
-                              }
-                            >
-                              <ThemedText style={styles.generateBtnText}>
-                                🎲 Generate
-                              </ThemedText>
-                            </Pressable>
-                          </View>
-                          <ThemedText style={styles.inlineFormLabel}>
-                            Colour
-                          </ThemedText>
-                          <View style={styles.colorPickerWrap}>
-                            <ColorPicker
-                              selectedColor={editColor}
-                              onColorSelect={setEditColor}
-                              size="medium"
-                            />
-                          </View>
-                          <View style={styles.modalActions}>
-                            <Pressable
-                              style={[
-                                styles.modalButton,
-                                styles.modalButtonCancel,
-                              ]}
-                              onPress={handleCancelEdit}
-                            >
-                              <ThemedText style={styles.modalButtonCancelText}>
-                                Cancel
-                              </ThemedText>
-                            </Pressable>
-                            <Pressable
-                              style={[
-                                styles.modalButton,
-                                styles.modalButtonSave,
-                              ]}
-                              onPress={handleSaveEdit}
-                              disabled={loading}
-                            >
-                              {loading ? (
-                                <ActivityIndicator color={COLORS.white} />
-                              ) : (
-                                <ThemedText style={styles.modalButtonSaveText}>
-                                  Save
-                                </ThemedText>
-                              )}
-                            </Pressable>
-                          </View>
-                        </View>
-                      ) : (
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            alignItems: "center",
-                            paddingVertical: scaleW(16),
-                            paddingHorizontal: scaleW(20) }}
-                        >
-                          <Pressable
-                            onPress={() => handleExpandEdit(profile)}
-                            style={{ flex: 1 }}
-                          >
-                            <ThemedText
-                              type="heading"
-                              style={styles.playerName}
-                            >
-                              {profile.name}
-                            </ThemedText>
-                            <ThemedText style={styles.playerNickname}>
-                              {profile.nickname || "Explorer"}
-                            </ThemedText>
-                          </Pressable>
-                          <MaterialIcons
-                            name="edit"
-                            size={scaleW(22)}
-                            color={COLORS.darkGreen}
-                          />
+                  <View key={profile.id}>
+                    {i > 0 ? <View style={styles.divider} /> : null}
+                    <Pressable
+                      onPress={() => handleExpandEdit(profile)}
+                      style={styles.explorerRow}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${profile.name}, ${points} points. ${isOpen ? "Close" : "Edit"}`}
+                      accessibilityState={{ expanded: isOpen }}
+                      testID={`explorer-row-${i}`}
+                    >
+                      <View style={[styles.avatar, { backgroundColor: colour }]}>
+                        <Text style={styles.avatarText}>{initialOf(isOpen ? editName || profile.name : profile.name)}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.rowTitle} numberOfLines={1}>
+                          {profile.name}
+                        </Text>
+                        <Text style={styles.rowSub} numberOfLines={1}>
+                          {profile.nickname || "Explorer"} · {points} {points === 1 ? "point" : "points"}
+                        </Text>
+                      </View>
+                      <Ionicons name={isOpen ? "chevron-up" : "create-outline"} size={20} color={FK.muted} />
+                    </Pressable>
+
+                    {isOpen ? (
+                      <Animated.View entering={FadeIn.duration(180)} style={styles.form}>
+                        <ExplorerFields
+                          name={editName}
+                          onName={setEditName}
+                          nickname={editNickname}
+                          onShuffle={() => setEditNickname(generateNickname())}
+                          colour={editColor}
+                          onColour={setEditColor}
+                        />
+                        <FKButton
+                          label="Save changes"
+                          icon="checkmark"
+                          onPress={() => void handleSaveEdit()}
+                          loading={loading}
+                          disabled={!editName.trim()}
+                          style={{ marginTop: 6 }}
+                        />
+                        <View style={styles.formFooter}>
+                          <FKButton label="Cancel" variant="link" onPress={() => setEditingProfileId(null)} />
                           <Pressable
                             onPress={() => setProfileToDelete(profile)}
-                            style={{ padding: scaleW(8), marginLeft: scaleW(4) }}
+                            hitSlop={10}
+                            style={styles.removeLink}
+                            accessibilityRole="button"
                           >
-                            <MaterialIcons
-                              name="delete"
-                              size={scaleW(22)}
-                              color="#DC2626"
-                            />
+                            <Ionicons name="trash-outline" size={18} color={DANGER} />
+                            <Text style={styles.removeText}>Remove {profile.name}</Text>
                           </Pressable>
                         </View>
-                      )}
-                    </View>
+                      </Animated.View>
+                    ) : null}
                   </View>
                 );
               })}
 
-              {(editingProfileId !== null ||
-                (editingProfileId === null && !showAddForm)) && (
-                <Pressable
-                  onPress={() => {
-                    setEditingProfileId(null);
-                    setShowAddForm(true);
-                  }}
-                  style={[styles.playerCard, styles.addNewPlayerCard]}
-                >
-                  <View
-                    style={[
-                      styles.playerAccent,
-                      { backgroundColor: COLORS.accentGreen },
-                    ]}
-                  />
-                  <View style={styles.playerCardContent}>
-                    <ThemedText type="heading" style={styles.playerName}>
-                      Add a new player
-                    </ThemedText>
-                  </View>
-                  <View
-                    style={{
-                      justifyContent: "center",
-                      marginRight: scaleW(16) }}
-                  >
-                    <MaterialIcons
-                      name="add"
-                      size={scaleW(24)}
-                      color={COLORS.darkGreen}
+              {showAddForm ? (
+                <Animated.View entering={FadeIn.duration(180)}>
+                  {sortedProfiles.length > 0 ? <View style={styles.divider} /> : null}
+                  <View style={[styles.form, { paddingTop: 16 }]}>
+                    <Text style={[TYPE.label, { marginBottom: 12 }]}>New explorer</Text>
+                    <ExplorerFields
+                      name={name}
+                      onName={setName}
+                      nickname={addNickname}
+                      onShuffle={() => setAddNickname(generateNickname())}
+                      colour={selectedColor}
+                      onColour={setSelectedColor}
+                      nameHint="Only you see this."
+                      autoFocus
                     />
-                  </View>
-                </Pressable>
-              )}
-
-              {editingProfileId === null && showAddForm && (
-                <View style={styles.inlineAddCard}>
-                  <ThemedText style={styles.inlineFormLabel}>Name</ThemedText>
-                  <ThemedText style={styles.inlineFormHint}>
-                    (Only visible to you)
-                  </ThemedText>
-                  <TextInput
-                    style={styles.inlineFormInput}
-                    placeholder="Enter name"
-                    placeholderTextColor="#9CA3AF"
-                    value={name}
-                    onChangeText={setName}
-                    autoCapitalize="words"
-                  />
-                  <ThemedText style={styles.inlineFormLabel}>
-                    Explorer Nickname
-                  </ThemedText>
-                  <View style={styles.nicknameRow}>
-                    <View style={styles.nicknameDisplay}>
-                      <ThemedText style={styles.nicknameText}>
-                        {addNickname}
-                      </ThemedText>
-                    </View>
-                    <Pressable
-                      style={styles.generateBtn}
-                      onPress={() => setAddNickname(generateNickname())}
-                    >
-                      <ThemedText style={styles.generateBtnText}>
-                        🎲 Generate
-                      </ThemedText>
-                    </Pressable>
-                  </View>
-                  <ThemedText style={styles.inlineFormLabel}>Colour</ThemedText>
-                  <View style={styles.colorPickerWrap}>
-                    <ColorPicker
-                      selectedColor={selectedColor}
-                      onColorSelect={setSelectedColor}
-                      size="medium"
+                    <FKButton
+                      label="Add explorer"
+                      icon="add"
+                      onPress={() => void handleAddExplorer()}
+                      loading={loading}
+                      disabled={!name.trim()}
+                      style={{ marginTop: 6 }}
+                      testID="explorers-add-save"
                     />
+                    <FKButton label="Cancel" variant="link" onPress={() => setShowAddForm(false)} />
                   </View>
-                  <Pressable
-                    style={[
-                      styles.modalButton,
-                      styles.modalButtonSave,
-                      { marginTop: scaleW(12) },
-                    ]}
-                    onPress={handleAddExplorerInline}
-                    disabled={loading || !name.trim()}
-                  >
-                    {loading ? (
-                      <ActivityIndicator color={COLORS.white} />
-                    ) : (
-                      <ThemedText style={styles.modalButtonSaveText}>
-                        Add Explorer
-                      </ThemedText>
-                    )}
-                  </Pressable>
-                </View>
-              )}
-            </>
+                </Animated.View>
+              ) : null}
+            </View>
           )}
-        </Animated.View>
 
-        {/* Top Skills — commented out
-        <Animated.View
-          style={styles.section}
-        >
-          <View style={styles.skillsCard}>
-            <View style={styles.skillsRow}>
-              <View style={styles.skillItem}>
-                <Image
-                  source={PLANTING_IMAGE}
-                  style={styles.skillIcon}
-                  resizeMode="contain"
-                />
-                <ThemedText type="heading" style={styles.skillLabel}>Planting</ThemedText>
-              </View>
-              <View style={styles.skillItem}>
-                <Image
-                  source={MATHS_IMAGE}
-                  style={styles.skillIcon}
-                  resizeMode="contain"
-                />
-                <ThemedText type="heading" style={styles.skillLabel}>Maths</ThemedText>
-              </View>
-              <View style={styles.skillItem}>
-                <Image
-                  source={RESILIENCE_IMAGE}
-                  style={styles.skillIcon}
-                  resizeMode="contain"
-                />
-                <ThemedText type="heading" style={styles.skillLabel}>Resilience</ThemedText>
-              </View>
-            </View>
-            <ThemedText type="heading" style={styles.skillsTitle}>Top Skills</ThemedText>
-          </View>
-        </Animated.View>
-        */}
+          {!showExplorerSkeleton && !showAddForm ? (
+            canAdd ? (
+              <Pressable onPress={openAddForm} style={styles.addRow} accessibilityRole="button" testID="explorers-add">
+                <Ionicons name="add" size={22} color={FK.ink} />
+                <Text style={styles.addText}>Add an explorer</Text>
+              </Pressable>
+            ) : (
+              <Text style={styles.note}>That's the most explorers one family can have.</Text>
+            )
+          ) : null}
 
-        {/* Your badges — commented out
-        <Animated.View
-          style={styles.section}
-        >
-          <ThemedText type="heading" style={styles.sectionTitle}>Your badges</ThemedText>
-          <View style={styles.badgesWrap}>
-            {(userBadges.length > 0
-              ? userBadges.slice(0, 5)
-              : [1, 2, 3, 4, 5]
-            ).map((item, i) => (
-              <View
-                key={typeof item === "number" ? `badge-placeholder-${item}` : item.id}
-                style={styles.badgeIcon}
-              >
-                <Image
-                  source={BADGE_IMAGE}
-                  style={styles.badgeImage}
-                  resizeMode="contain"
-                />
+          {/* Team */}
+          <SectionLabel>Team</SectionLabel>
+          {teamLoading ? (
+            <FKSkeleton height={88} />
+          ) : guide ? (
+            <View style={[styles.teamCard, { borderLeftColor: guide.colour }]}>
+              <View style={[styles.teamBadge, { backgroundColor: guide.colour }]}>
+                <Image source={guide.badge} style={{ width: 48, height: 48 }} contentFit="contain" />
               </View>
-            ))}
-          </View>
-        </Animated.View>
-        */}
-
-        {/* Recent activities */}
-        <Animated.View
-          style={styles.section}
-        >
-          <ThemedText type="heading" style={styles.sectionTitle}>
-            Recent activities
-          </ThemedText>
-          {recentActivitiesLoading && recentActivities.length === 0 ? (
-            <View style={[styles.activityCard, { justifyContent: "center", minHeight: scaleW(72) }]}>
-              <ActivityIndicator size="small" color={COLORS.darkGreen} />
-            </View>
-          ) : recentActivities.length === 0 ? (
-            <View style={styles.activityCard}>
-              <View style={styles.activityCardContent}>
-                <ThemedText type="heading" style={styles.activityName}>
-                  No activities yet
-                </ThemedText>
-                <ThemedText style={styles.activityDate}>
-                  Complete missions to see them here
-                </ThemedText>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>Team {guide.teamName}</Text>
+                <Text style={styles.rowSub}>
+                  {guide.guideName} leads the way. {sortedProfiles.length === 2 ? `They both score for the ${guide.teamName}.` : sortedProfiles.length > 2 ? `They all score for the ${guide.teamName}.` : "Anyone you add joins this team too."}
+                </Text>
               </View>
             </View>
           ) : (
-            recentActivities.map((act) => (
-              <Pressable
-                key={act.id}
-                style={styles.activityCard}
-                onPress={() => router.push("/(tabs)/missions")}
-              >
-                <View style={styles.activityCardContent}>
-                  <ThemedText
-                    type="heading"
-                    style={styles.activityName}
-                    numberOfLines={1}
-                  >
-                    {act.activity?.title ?? "Activity"}
-                  </ThemedText>
-                  <ThemedText style={styles.activityDate}>
-                    {act.profileName} · {formatActivityDate(act.completed_at)}
-                  </ThemedText>
-                </View>
-                <MaterialIcons
-                  name="chevron-right"
-                  size={24}
-                  color={COLORS.arrow}
-                  style={styles.activityArrow}
-                />
-              </Pressable>
-            ))
+            <View style={styles.teamCard}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>No team yet</Text>
+                <Text style={styles.rowSub}>Your family's team will show here once it's chosen.</Text>
+              </View>
+            </View>
           )}
-        </Animated.View>
 
-        {/* Parent Zone */}
-        <Animated.View
-          style={parentZoneAnimatedStyle}
-        >
-          <Pressable
-            style={styles.parentZoneButton}
-            onPress={() => pushWithReturn("/(tabs)/parents")}
-            onPressIn={() => {
-              parentZoneScale.value = withSpring(0.96, {
-                damping: 15,
-                stiffness: 400 });
-            }}
-            onPressOut={() => {
-              parentZoneScale.value = withSpring(1, {
-                damping: 15,
-                stiffness: 400 });
-            }}
-          >
-            <ThemedText type="heading" style={styles.parentZoneText}>
-              Parent Zone
-            </ThemedText>
-          </Pressable>
-        </Animated.View>
+          {/* Recent adventures */}
+          <SectionLabel>Recent adventures</SectionLabel>
+          {recentActivitiesLoading && recentActivities.length === 0 ? (
+            <FKSkeleton height={72} />
+          ) : recentActivities.length === 0 ? (
+            <View style={styles.group}>
+              <View style={styles.emptyRow}>
+                <Text style={styles.rowTitle}>Nothing yet</Text>
+                <Text style={styles.rowSub}>Finished missions show up here.</Text>
+              </View>
+            </View>
+          ) : (
+            <RowGroup>
+              {recentActivities.map((act) => (
+                <LinkRow
+                  key={act.id}
+                  icon="flag-outline"
+                  title={act.activity?.title ?? "Mission"}
+                  sub={[act.profileName, formatDay(act.completed_at)].filter(Boolean).join(" · ")}
+                  onPress={() => router.push("/(tabs)/missions")}
+                />
+              ))}
+            </RowGroup>
+          )}
 
-        {/* Settings */}
-        <Animated.View
-          style={settingsAnimatedStyle}
-        >
-          <Pressable
-            style={styles.parentZoneButton}
-            onPress={() => pushWithReturn("/(tabs)/settings")}
-            onPressIn={() => {
-              settingsScale.value = withSpring(0.96, {
-                damping: 15,
-                stiffness: 400 });
-            }}
-            onPressOut={() => {
-              settingsScale.value = withSpring(1, {
-                damping: 15,
-                stiffness: 400 });
-            }}
-          >
-            <ThemedText type="heading" style={styles.parentZoneText}>
-              Settings
-            </ThemedText>
-          </Pressable>
-        </Animated.View>
+          {/* More */}
+          <SectionLabel>More for grown-ups</SectionLabel>
+          <RowGroup>
+            <LinkRow
+              icon="settings-outline"
+              title="Settings"
+              sub="Emails, location, privacy"
+              onPress={() => pushWithReturn("/(tabs)/settings")}
+            />
+            <LinkRow
+              icon="book-outline"
+              title="Grown-up guides"
+              sub="Ideas and resources for you"
+              onPress={() => pushWithReturn("/(tabs)/parents")}
+            />
+          </RowGroup>
 
-        {/* Log out */}
-        <Animated.View
-          style={[logOutAnimatedStyle, styles.logOutButtonWrap]}
-        >
-          <Pressable
-            style={styles.parentZoneButton}
-            onPress={() => {
-              Alert.alert("Log out", "Are you sure you want to log out?", [
-                { text: "Cancel", style: "cancel" },
-                {
-                  text: "Log out",
-                  style: "destructive",
-                  onPress: async () => {
-                    try {
-                      await signOut();
-                    } catch {
-                      Alert.alert("Error", "Failed to log out");
-                    }
-                  } },
-              ]);
-            }}
-            onPressIn={() => {
-              logOutScale.value = withSpring(0.96, {
-                damping: 15,
-                stiffness: 400 });
-            }}
-            onPressOut={() => {
-              logOutScale.value = withSpring(1, {
-                damping: 15,
-                stiffness: 400 });
-            }}
-          >
-            <ThemedText type="heading" style={styles.parentZoneText}>
-              Log out
-            </ThemedText>
-          </Pressable>
-        </Animated.View>
-      </ChildScreenLayout>
+          {/* Account actions, kept apart at the bottom */}
+          <View style={styles.dangerZone}>
+            <RowGroup>
+              <LinkRow
+                icon="log-out-outline"
+                title="Sign out"
+                sub={user?.email ? `Signed in as ${user.email}` : "Sign out on this phone"}
+                onPress={handleSignOut}
+                danger
+                chevron={false}
+                testID="profile-sign-out"
+              />
+            </RowGroup>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
-      {/* Delete profile confirmation modal */}
       <Modal
         visible={profileToDelete !== null}
         animationType="fade"
         transparent
         onRequestClose={() => !deleting && setProfileToDelete(null)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <ThemedText style={styles.modalTitle}>Delete explorer?</ThemedText>
-            <ThemedText
-              style={{
-                fontSize: scaleW(15),
-                color: COLORS.charcoal,
-                marginBottom: scaleW(24),
-                lineHeight: scaleW(22) }}
-            >
-              This will permanently delete{" "}
-              {profileToDelete ? profileToDelete.name : ""} and all their data:
-              activity progress, uploaded photos, achievements, and public
-              profile. This cannot be undone.
-            </ThemedText>
-            <View style={styles.modalActions}>
-              <Pressable
-                style={[styles.modalButton, styles.modalButtonCancel]}
+        <View style={dialogStyles.overlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => !deleting && setProfileToDelete(null)}
+            accessibilityLabel="Close"
+          />
+          <DialogCard>
+            <Text style={dialogStyles.title}>Remove {profileToDelete?.name ?? "this explorer"}?</Text>
+            <Text style={dialogStyles.body}>
+              This removes {profileToDelete?.name ?? "this explorer"}'s progress, photos, badges and nickname from Huntly
+              World. It can't be undone.
+            </Text>
+            <View style={dialogStyles.actions}>
+              <DangerButton
+                label={`Remove ${profileToDelete?.name ?? "explorer"}`}
+                onPress={() => void handleConfirmDelete()}
+                loading={deleting}
+              />
+              <FKButton
+                label={`Keep ${profileToDelete?.name ?? "explorer"}`}
+                variant="link"
                 onPress={() => !deleting && setProfileToDelete(null)}
-                disabled={deleting}
-              >
-                <ThemedText style={styles.modalButtonCancelText}>Cancel</ThemedText>
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.modalButton,
-                  { backgroundColor: "#B91C1C" },
-                ]}
-                onPress={handleConfirmDelete}
-                disabled={deleting}
-              >
-                {deleting ? (
-                  <ActivityIndicator color={COLORS.white} />
-                ) : (
-                  <ThemedText style={styles.modalButtonSaveText}>
-                    Delete
-                  </ThemedText>
-                )}
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Add explorer modal */}
-      <Modal
-        visible={showAddExplorer}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowAddExplorer(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <ThemedText style={styles.modalTitle}>Add New Explorer</ThemedText>
-            <TextInput
-              style={styles.input}
-              placeholder="Explorer Name"
-              placeholderTextColor="#8B4513"
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
-            />
-            <ThemedText style={styles.inputLabel}>Choose Your Color</ThemedText>
-            <View style={styles.colorPickerWrap}>
-              <ColorPicker
-                selectedColor={selectedColor}
-                onColorSelect={setSelectedColor}
-                size="medium"
               />
             </View>
-            <ThemedText style={styles.inputLabel}>Choose Your Team</ThemedText>
-            {teams.length === 0 ? (
-              <View style={styles.noTeams}>
-                <ThemedText style={styles.noTeamsText}>
-                  No teams available yet
-                </ThemedText>
-              </View>
-            ) : (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.teamsScroll}
-              >
-                {teams.map((team) => {
-                  const teamImage = getTeamImageSource(team.name);
-                  const isSelected = selectedTeam === team.id;
-                  return (
-                    <Pressable
-                      key={team.id}
-                      onPress={() => setSelectedTeam(team.id)}
-                      style={[
-                        styles.teamOption,
-                        isSelected && styles.teamOptionSelected,
-                      ]}
-                    >
-                      {teamImage ? (
-                        <Image
-                          source={teamImage}
-                          style={styles.teamImage}
-                          resizeMode="contain"
-                        />
-                      ) : (
-                        <View
-                          style={[
-                            styles.teamColorDot,
-                            { backgroundColor: team.colour || "#ccc" },
-                          ]}
-                        />
-                      )}
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            )}
-            <Pressable
-              style={[styles.modalButton, styles.modalButtonSave]}
-              onPress={handleCreateProfile}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color={COLORS.white} />
-              ) : (
-                <ThemedText style={styles.modalButtonSaveText}>
-                  Add Explorer
-                </ThemedText>
-              )}
-            </Pressable>
-            <Pressable
-              style={styles.modalClose}
-              onPress={() => setShowAddExplorer(false)}
-            >
-              <ThemedText style={styles.modalCloseText}>Cancel</ThemedText>
-            </Pressable>
-          </View>
+          </DialogCard>
         </View>
       </Modal>
-    </>
+    </SafeAreaView>
   );
 }
+
+/** Name, nickname (shuffled, not typed) and colour, shared by add and edit. */
+function ExplorerFields({
+  name,
+  onName,
+  nickname,
+  onShuffle,
+  colour,
+  onColour,
+  nameHint,
+  autoFocus,
+}: {
+  name: string;
+  onName: (v: string) => void;
+  nickname: string;
+  onShuffle: () => void;
+  colour: string;
+  onColour: (hex: string) => void;
+  nameHint?: string;
+  autoFocus?: boolean;
+}) {
+  return (
+    <View>
+      <Text style={styles.fieldLabel}>First name</Text>
+      {nameHint ? <Text style={styles.fieldHint}>{nameHint}</Text> : null}
+      <TextInput
+        style={styles.input}
+        placeholder="Explorer's first name"
+        placeholderTextColor="#8C988F"
+        value={name}
+        onChangeText={onName}
+        autoCapitalize="words"
+        autoCorrect={false}
+        autoFocus={autoFocus}
+        returnKeyType="done"
+      />
+
+      <Text style={styles.fieldLabel}>Nickname</Text>
+      <View style={styles.nicknameRow}>
+        <View style={styles.nicknameBox}>
+          <Text style={styles.nicknameText} numberOfLines={1}>
+            {nickname}
+          </Text>
+        </View>
+        <Pressable onPress={onShuffle} style={styles.shuffle} accessibilityRole="button" accessibilityLabel="New nickname">
+          <Ionicons name="shuffle" size={20} color={FK.sunbeam} />
+          <Text style={styles.shuffleText}>New one</Text>
+        </Pressable>
+      </View>
+
+      <Text style={styles.fieldLabel}>Colour</Text>
+      <View style={styles.swatches}>
+        {SWATCHES.map((s) => {
+          const selected = s.hex.toLowerCase() === colour.toLowerCase();
+          return (
+            <Pressable
+              key={s.hex}
+              onPress={() => onColour(s.hex)}
+              style={[styles.swatch, { backgroundColor: s.hex }, selected ? styles.swatchSelected : null]}
+              accessibilityRole="button"
+              accessibilityLabel={s.label}
+              accessibilityState={{ selected }}
+            >
+              {selected ? <Ionicons name="checkmark" size={20} color={FK.white} /> : null}
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: FK.moss },
+  content: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 32 },
+  lead: { ...TYPE.bodySmall, fontSize: 16, lineHeight: 22, marginTop: -6 },
+  group: { backgroundColor: FK.paper, borderRadius: RADIUS.lg, paddingHorizontal: 16, paddingVertical: 4 },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: FK.line, marginLeft: 58 },
+  explorerRow: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 14, minHeight: 72 },
+  emptyRow: { paddingVertical: 16 },
+  avatar: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+  avatarText: { fontFamily: FONT.display, fontSize: 19, color: FK.white },
+  rowTitle: { fontFamily: FONT.display, fontSize: 16, color: FK.ink },
+  rowSub: { fontFamily: FONT.body, fontSize: 14, lineHeight: 19, color: FK.muted, marginTop: 2 },
+  form: { paddingBottom: 8 },
+  formFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  removeLink: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 12 },
+  removeText: { fontFamily: FONT.displayBold, fontSize: 16, color: DANGER },
+  addRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: RADIUS.md,
+    borderWidth: 2,
+    borderStyle: "dashed",
+    borderColor: "#C5CFBC",
+    paddingVertical: 16,
+    marginTop: 10,
+  },
+  addText: { fontFamily: FONT.displayBold, fontSize: 16, color: FK.ink },
+  note: { ...TYPE.bodySmall, marginTop: 10, paddingHorizontal: 4 },
+  fieldLabel: { fontFamily: FONT.bodyBold, fontSize: 15, color: FK.ink, marginBottom: 6 },
+  fieldHint: { fontFamily: FONT.body, fontSize: 13, color: FK.muted, marginTop: -4, marginBottom: 6 },
+  input: {
+    fontFamily: FONT.bodyBold,
+    fontSize: 18,
+    color: FK.ink,
+    backgroundColor: FK.white,
+    borderWidth: 1.5,
+    borderColor: FK.line,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  nicknameRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 16 },
+  nicknameBox: {
+    flex: 1,
+    backgroundColor: FK.moss,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+  },
+  nicknameText: { fontFamily: FONT.bodyBold, fontSize: 17, color: FK.ink },
+  shuffle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: FK.ink,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  shuffleText: { fontFamily: FONT.displayBold, fontSize: 15, color: FK.sunbeam },
+  swatches: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 16 },
+  swatch: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 3,
+    borderColor: "transparent",
+  },
+  swatchSelected: { borderColor: FK.ink },
+  teamCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    backgroundColor: FK.paper,
+    borderRadius: RADIUS.lg,
+    padding: 16,
+    borderLeftWidth: 6,
+    borderLeftColor: FK.line,
+  },
+  teamBadge: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center" },
+  dangerZone: { marginTop: 30, paddingTop: 22, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#CBD3C2" },
+});

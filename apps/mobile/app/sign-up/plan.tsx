@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useSignUp } from "@/contexts/SignUpContext";
 import type { AdventurePlanDraft } from "@/services/adventurePlanService";
+import { familySentence } from "@/utils/familyNames";
 
 const EMPTY: AdventurePlanDraft = { choice: "skipped", firstAt: null, weeklyDays: [], weeklyTime: null };
 
@@ -24,7 +25,7 @@ export default function SignUpPlanScreen() {
   const [draft, setDraft] = useState<AdventurePlanDraft>(adventurePlan ?? EMPTY);
 
   const names = (players.length ? players.map((p) => p.name) : profiles.map((p) => p.name)).filter(Boolean);
-  const who = names.length === 1 ? names[0] : names.length === 2 ? `${names[0]} and ${names[1]}` : names.length > 2 ? "your explorers" : "your explorer";
+  const who = familySentence(names);
   const hasChoice = draft.choice !== "skipped";
 
   const next = (plan: AdventurePlanDraft) => {

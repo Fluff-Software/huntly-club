@@ -3,12 +3,13 @@ import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from "re
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
-import { FKButton, FKEyebrow, FKScreen } from "@/components/fieldkit";
+import { FKButton, FKEyebrow, FKLoading, FKScreen } from "@/components/fieldkit";
 import { SlotPicker } from "@/components/onboarding/SlotPicker";
 import { ParentPinModal } from "@/components/ParentPinModal";
 import { isParentGateFresh, markParentGatePassed } from "@/services/parentGateSession";
 import { FK, FONT, RADIUS, TYPE } from "@/constants/fieldKit";
-import { guideForTeamName } from "@/constants/guides";
+import { GUIDES } from "@/constants/guides";
+import { useTeamGuide } from "@/hooks/useTeamGuide";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useUser } from "@/contexts/UserContext";
@@ -35,7 +36,8 @@ export default function RemindersScreen() {
   const { user } = useAuth();
   const { team } = useUser();
   const { profiles } = usePlayer();
-  const guide = guideForTeamName(team?.name);
+  const { guide: teamGuide } = useTeamGuide();
+  const guide = teamGuide ?? GUIDES[0];
   const [unlocked, setUnlocked] = useState(isParentGateFresh);
   const [plan, setPlan] = useState<AdventurePlan | null>(null);
   const [draft, setDraft] = useState<AdventurePlanDraft>(EMPTY);
@@ -108,6 +110,8 @@ export default function RemindersScreen() {
       </FKScreen>
     );
   }
+
+  if (!teamGuide) return <FKLoading />;
 
   return (
     <FKScreen

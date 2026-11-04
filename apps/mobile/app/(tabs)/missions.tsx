@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { setStatusBarStyle } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { FKChip } from "@/components/fieldkit";
+import { FKChip, FKSkeleton } from "@/components/fieldkit";
 import { FK, FONT, RADIUS, TYPE } from "@/constants/fieldKit";
 import { useNextMissionReleaseDate } from "@/hooks/useNextMissionReleaseDate";
 import { useCountdownToUtcDate } from "@/hooks/useCountdownToUtcDate";
@@ -92,7 +92,11 @@ export default function MissionsScreen() {
         ) : null}
 
         {loading && missions.length === 0 ? (
-          <ActivityIndicator color={FK.forest} style={{ marginTop: 40 }} />
+          <View style={{ gap: 14, marginTop: 8 }}>
+            <FKSkeleton height={220} />
+            <FKSkeleton height={220} />
+            <FKSkeleton height={88} />
+          </View>
         ) : error ? (
           <Text style={TYPE.bodySmall}>Couldn't load missions. Pull to try again.</Text>
         ) : (

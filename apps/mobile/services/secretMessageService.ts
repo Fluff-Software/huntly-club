@@ -4,6 +4,7 @@
  * card for it at the top.
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { familyGreeting } from "@/utils/familyNames";
 
 const KEY = "huntly.secretMessage.v1";
 
@@ -26,13 +27,9 @@ export async function setSecretMessagePending(pending: boolean): Promise<void> {
   }
 }
 
-/** "Mia", "Mia and Leo", "Explorers". */
+/** "Mia", "Mia and Leo", "Mia, Leo and Sam", "Explorers". */
 export function childNames(names: string[]): string | null {
-  const n = names.filter(Boolean);
-  if (n.length === 0) return null;
-  if (n.length === 1) return n[0];
-  if (n.length === 2) return `${n[0]} and ${n[1]}`;
-  return "Explorers";
+  return familyGreeting(names);
 }
 
 export function secretMessageText(guideName: string, teamName: string, teamSingular: string, names: string[]): string {

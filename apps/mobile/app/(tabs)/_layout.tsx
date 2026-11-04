@@ -309,6 +309,9 @@ export default function TabLayout() {
     <View style={styles.layoutWrapper}>
       <Tabs
       tabBar={renderTabBar}
+      // Badges, Journal, Team race etc. are hidden tabs opened from other tabs, so
+      // "back" should return to where you came from, not jump to the Clubhouse.
+      backBehavior="history"
       screenOptions={({ route }) => ({
         tabBarActiveTintColor: activeColor,
         tabBarInactiveTintColor: inactiveColor,
@@ -332,6 +335,8 @@ export default function TabLayout() {
         tabBarIconStyle: {
           marginTop: 0 },
         headerShown: false,
+        // Cross-fade between tabs rather than a hard cut.
+        animation: "fade",
         tabBarButton: (props) => {
           const { ref: _ref, ...rest } = props;
           return <Pressable {...rest} disabled={tutorialVisible} />;
@@ -383,22 +388,6 @@ export default function TabLayout() {
           ),
           // Reached from the Clubhouse team race and the Me tab.
           href: null }}
-      />
-      <Tabs.Screen
-        name="journal"
-        options={{
-          title: "Backpack",
-          href: null,
-          tabBarIcon: ({ color }) => (
-            <View style={[styles.tutorialIconWrapper, { width: scaleW(44), height: scaleW(44) }]}>
-              {tutorialVisible && tutorialStep === "journal" && (
-                <View style={[styles.tutorialPulseContainer, { width: scaleW(44), height: scaleW(44) }]}>
-                  <TutorialTabPulse size={scaleW(44)} />
-                </View>
-              )}
-              <MaterialIcons name="workspace-premium" size={scaleW(24)} color={color} />
-            </View>
-          ) }}
       />
       <Tabs.Screen
         name="journal-book"

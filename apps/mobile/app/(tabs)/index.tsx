@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Modal, ScrollView, StyleSheet, View } from "react-native";
+import { Modal, ScrollView, StyleSheet, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { setStatusBarStyle } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -11,13 +11,13 @@ import {
   PlanBanner,
   type PlanBannerState,
   SecretMessageCard,
-  TeamRaceStrip,
+  TeamRaceCard,
   YourWeekCard,
 } from "@/components/clubhouse/ClubhouseCards";
-import { FKButton } from "@/components/fieldkit";
+import { FKButton, FKLoading } from "@/components/fieldkit";
 import { SecretMessage } from "@/components/onboarding/SecretMessage";
 import { FK } from "@/constants/fieldKit";
-import { guideForTeamName, GUIDES } from "@/constants/guides";
+import { GUIDES } from "@/constants/guides";
 import { useAuth } from "@/contexts/AuthContext";
 import { useHomeBootstrap } from "@/contexts/HomeBootstrapContext";
 import { usePlayer } from "@/contexts/PlayerContext";
@@ -25,6 +25,8 @@ import { useProfileDashboard } from "@/contexts/ProfileDashboardContext";
 import { useUser } from "@/contexts/UserContext";
 import { useAdventurePlan } from "@/hooks/useAdventurePlan";
 import { useClubhouseStats } from "@/hooks/useClubhouseStats";
+import { useTeamGuide } from "@/hooks/useTeamGuide";
+import { useTeamRace } from "@/hooks/useTeamRace";
 import { useExploreRegionSupport } from "@/hooks/useExploreRegionSupport";
 import { useLatestMissions, type MissionActivityCard } from "@/hooks/useLatestMissions";
 import { useTutorialActive } from "@/hooks/useTutorialActive";
@@ -40,7 +42,7 @@ import { shortDuration } from "@/services/firstMissionService";
 import { getLocationPermissionStatus } from "@/services/locationService";
 import { getSecretMessagePending, setSecretMessagePending } from "@/services/secretMessageService";
 import { supabase } from "@/services/supabase";
-import { getAllTeamsWithXp, getTeamAchievementTotals } from "@/services/teamActivityService";
+import { familyHeading } from "@/utils/familyNames";
 
 const MISSIONS_PER_WEEK = 2;
 
@@ -88,14 +90,16 @@ export default function ClubhouseScreen() {
   const { clubhouseActivityReady, requireClubhouseActivityReady, markClubhouseActivityReady } = useHomeBootstrap();
   const { profiles, loading: profilesLoading } = usePlayer();
   const { preload: preloadProfileDashboard } = useProfileDashboard();
-  const { team } = useUser();
+  const { team, teamId } = useUser();
   const { user } = useAuth();
   const isTutorialActive = useTutorialActive();
-  const guide = guideForTeamName(team?.name);
+  const { guide: teamGuide } = useTeamGuide();
+  // Only used once `teamGuide` is known; the screen shows a neutral loader until then.
+  const guide = teamGuide ?? GUIDES[0];
   const allProfileIds = useMemo(() => profiles.map((p) => p.id), [profiles]);
   const firstProfileId = profiles[0]?.id ?? null;
   const names = profiles.map((p) => p.name);
-  const displayName = names.length <= 1 ? names[0] ?? "Explorer" : names.length === 2 ? `${names[0]} & ${names[1]}` : `${names[0]} & co`;
+  const displayName = familyHeading(names);
 
   const { missions, completedByAnyProfileActivityIds, loading: missionsLoading, refetch: refetchMissions } =
     useLatestMissions(firstProfileId, { allProfileIds });
@@ -110,7 +114,6 @@ export default function ClubhouseScreen() {
   const [secretPending, setSecretPendingState] = useState(false);
   const [secretOpen, setSecretOpen] = useState(false);
   const [missionMeta, setMissionMeta] = useState<{ duration: string | null; type: string | null } | null>(null);
-  const [race, setRace] = useState<{ name: string; total: number; colour: string }[]>([]);
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -142,28 +145,13 @@ export default function ClubhouseScreen() {
     };
   }, [next?.id]);
 
+  const { race, load: loadRaceData } = useTeamRace(team?.name, teamId, allProfileIds);
   const loadRace = useCallback(async () => {
     if (!user?.id) return;
-    try {
-      const teams = await getAllTeamsWithXp();
-      let totals: Record<number, number> = {};
-      try {
-        totals = await getTeamAchievementTotals();
-      } catch {
-        totals = Object.fromEntries(teams.map((t) => [t.id, t.team_xp ?? 0]));
-      }
-      setRace(
-        GUIDES.map((g) => {
-          const t = teams.find((x) => x.name.toLowerCase() === g.teamName.toLowerCase());
-          return { name: g.teamName, total: t ? totals[t.id] ?? 0 : 0, colour: g.colour };
-        }).sort((a, b) => b.total - a.total)
-      );
-    } catch {
-      setRace([]);
-    }
-  }, [user?.id]);
+    await loadRaceData();
+  }, [user?.id, loadRaceData]);
 
-  const ready = !missionsLoading && !statsLoading;
+  const ready = !missionsLoading && !statsLoading && teamGuide != null;
 
   useLayoutEffect(() => {
     requireClubhouseActivityReady();
@@ -242,12 +230,11 @@ export default function ClubhouseScreen() {
 
   return (
     <View style={styles.root}>
-      {!clubhouseActivityReady ? (
-        <View style={styles.loading} pointerEvents="none">
-          <ActivityIndicator size="large" color={FK.forest} />
-        </View>
-      ) : null}
-      <SafeAreaView edges={["top", "left", "right"]} style={[{ flex: 1 }, !clubhouseActivityReady && { opacity: 0 }]}>
+      {!clubhouseActivityReady || !teamGuide ? <FKLoading /> : null}
+      <SafeAreaView
+        edges={["top", "left", "right"]}
+        style={[{ flex: 1 }, (!clubhouseActivityReady || !teamGuide) && { opacity: 0 }]}
+      >
         <View style={styles.blob} pointerEvents="none" />
         <ScrollView ref={scrollRef} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <ClubhouseHeader
@@ -281,6 +268,12 @@ export default function ClubhouseScreen() {
             </Animated.View>
           ) : null}
 
+          {race.rows.length ? (
+            <Animated.View entering={FadeInDown.duration(350).delay(100)}>
+              <TeamRaceCard race={race} onPress={() => router.push("/(tabs)/social")} />
+            </Animated.View>
+          ) : null}
+
           <Animated.View entering={FadeInDown.duration(350).delay(120)}>
             <PlanBanner state={planState} onPress={openPlan} />
           </Animated.View>
@@ -296,11 +289,6 @@ export default function ClubhouseScreen() {
             />
           </Animated.View>
 
-          {race.length ? (
-            <Animated.View entering={FadeInDown.duration(350).delay(200)}>
-              <TeamRaceStrip rows={race} myTeam={team?.name ?? null} onPress={() => router.push("/(tabs)/social")} />
-            </Animated.View>
-          ) : null}
 
           <FKButton
             label="More ways to play"
@@ -327,7 +315,6 @@ export default function ClubhouseScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: FK.moss },
-  loading: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", backgroundColor: FK.moss },
   content: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 24 },
   blob: {
     position: "absolute",

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Modal, ScrollView, StyleSheet, View } from "react-native";
+import { Modal, Platform, ScrollView, StyleSheet, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { setStatusBarStyle } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -12,9 +12,12 @@ import {
   type PlanBannerState,
   SecretMessageCard,
   TeamRaceCard,
+  ThingsToDoCard,
   YourWeekCard,
 } from "@/components/clubhouse/ClubhouseCards";
-import { FKButton, FKLoading } from "@/components/fieldkit";
+import { ClubPhotos } from "@/components/clubhouse/ClubPhotos";
+import { FKLoading } from "@/components/fieldkit";
+import { getAvailableActivityTypes } from "@/constants/activityTypes";
 import { SecretMessage } from "@/components/onboarding/SecretMessage";
 import { FK } from "@/constants/fieldKit";
 import { GUIDES } from "@/constants/guides";
@@ -45,6 +48,12 @@ import { supabase } from "@/services/supabase";
 import { familyHeading } from "@/utils/familyNames";
 
 const MISSIONS_PER_WEEK = 2;
+
+const TODO_BLURBS: Record<string, string> = {
+  walk: "Map your route",
+  cycle: "See how far you go",
+  hunt: "Follow the clues",
+};
 
 type NextMission = { id: number; title: string; image: string | null; xp: number | null; completed: boolean };
 
@@ -215,6 +224,11 @@ export default function ClubhouseScreen() {
     missionMeta?.type === "indoor" ? "Indoors" : missionMeta?.type === "outdoor" ? "Outdoors" : null,
   ].filter(Boolean) as string[];
 
+  // Extras for the "Things to do" row. Missions and Explore have their own tabs.
+  const todoItems = getAvailableActivityTypes(Platform.OS, user?.email)
+    .filter((t) => t.key !== "mission" && t.key !== "explore")
+    .map((t) => ({ key: t.key, label: t.label, blurb: TODO_BLURBS[t.key] ?? t.description, icon: t.icon, colour: t.color, tint: t.tint, route: t.route }));
+
   const openMission = () => {
     if (!next) return;
     router.push({ pathname: "/(tabs)/activity/mission", params: { id: String(next.id) } } as Parameters<typeof router.push>[0]);
@@ -290,11 +304,19 @@ export default function ClubhouseScreen() {
           </Animated.View>
 
 
-          <FKButton
-            label="More ways to play"
-            variant="link"
-            onPress={() => router.push("/(tabs)/activity/pick-activity" as Parameters<typeof router.push>[0])}
-          />
+          <Animated.View entering={FadeInDown.duration(350).delay(200)}>
+            <ThingsToDoCard
+              items={todoItems.slice(0, 2)}
+              moreCount={Math.max(0, todoItems.length - 2)}
+              onPick={(key) => {
+                const route = todoItems.find((t) => t.key === key)?.route;
+                if (route) router.push(route as Parameters<typeof router.push>[0]);
+              }}
+              onSeeAll={() => router.push("/(tabs)/activity/pick-activity" as Parameters<typeof router.push>[0])}
+            />
+          </Animated.View>
+
+          <ClubPhotos />
         </ScrollView>
       </SafeAreaView>
 

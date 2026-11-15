@@ -2,7 +2,7 @@ import React from "react";
 import { ImageBackground, Pressable, StyleSheet, Text, View, type ImageSourcePropType } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { FKButton, FKChip } from "@/components/fieldkit";
 import { FK, FONT, RADIUS, TYPE } from "@/constants/fieldKit";
 import type { Guide } from "@/constants/guides";
@@ -227,6 +227,69 @@ export function YourWeekCard({
   );
 }
 
+/** A row of tilted tiles for the extras: two ways to play today and a way to see the rest. */
+export function ThingsToDoCard({
+  items,
+  moreCount,
+  onPick,
+  onSeeAll,
+}: {
+  items: { key: string; label: string; blurb: string; icon: React.ComponentProps<typeof MaterialIcons>["name"]; colour: string; tint: string }[];
+  moreCount: number;
+  onPick: (key: string) => void;
+  onSeeAll: () => void;
+}) {
+  const tilts = ["-1.5deg", "1.5deg", "-1deg"];
+  return (
+    <View style={styles.todo}>
+      <View style={styles.todoHeader}>
+        <View>
+          <Text style={styles.todoTitle}>Things to do</Text>
+          <Text style={styles.todoSub}>Extras for any day</Text>
+        </View>
+        <Pressable onPress={onSeeAll} hitSlop={8} style={styles.todoSeeAll} accessibilityRole="button">
+          <Text style={styles.todoSeeAllText}>See all</Text>
+          <Ionicons name="chevron-forward" size={16} color={FK.forest} />
+        </Pressable>
+      </View>
+      <View style={styles.todoRow}>
+        {items.map((item, i) => (
+          <Pressable
+            key={item.key}
+            onPress={() => onPick(item.key)}
+            style={[styles.todoTile, { backgroundColor: item.tint, transform: [{ rotate: tilts[i % tilts.length] }] }]}
+            accessibilityRole="button"
+            accessibilityLabel={item.label}
+            testID={`todo-${item.key}`}
+          >
+            <View style={styles.todoIcon}>
+              <MaterialIcons name={item.icon} size={22} color={item.colour} />
+            </View>
+            <Text style={[styles.todoLabel, { color: item.colour }]}>{item.label}</Text>
+            <Text style={styles.todoBlurb} numberOfLines={2}>
+              {item.blurb}
+            </Text>
+          </Pressable>
+        ))}
+        <Pressable
+          onPress={onSeeAll}
+          style={[styles.todoTile, styles.todoMore, { transform: [{ rotate: tilts[items.length % tilts.length] }] }]}
+          accessibilityRole="button"
+          accessibilityLabel="See all ways to play"
+        >
+          <View style={[styles.todoIcon, { backgroundColor: "rgba(255,255,255,0.18)" }]}>
+            <Ionicons name="compass" size={22} color={FK.white} />
+          </View>
+          <Text style={[styles.todoLabel, { color: FK.white }]}>See all</Text>
+          <Text style={[styles.todoBlurb, { color: "rgba(255,255,255,0.8)" }]}>
+            {moreCount > 0 ? `${moreCount} more ${moreCount === 1 ? "way" : "ways"}` : "Every way to play"}
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 /** The monthly team race, told from the family's side. Central on the Clubhouse. */
 export function TeamRaceCard({ race, onPress }: { race: TeamRace; onPress: () => void }) {
   const max = Math.max(1, ...race.rows.map((r) => r.total));
@@ -290,6 +353,20 @@ export function TeamRaceCard({ race, onPress }: { race: TeamRace; onPress: () =>
   );
 }
 
+/**
+ * The Clubhouse's scrapbook feel: panels have a white edge and sit a touch off
+ * straight, like cards pinned to a board.
+ */
+const PINNED = {
+  borderWidth: 3,
+  borderColor: FK.white,
+  shadowColor: "#000",
+  shadowOpacity: 0.1,
+  shadowRadius: 4,
+  shadowOffset: { width: 0, height: 2 },
+  elevation: 2,
+} as const;
+
 const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 12, flexShrink: 1 },
@@ -318,6 +395,8 @@ const styles = StyleSheet.create({
   streakText: { fontFamily: FONT.display, fontSize: 16, color: FK.sunbeam },
   guideCard: {
     flexDirection: "row",
+    ...PINNED,
+    transform: [{ rotate: "-0.8deg" }],
     backgroundColor: FK.paper,
     borderRadius: RADIUS.lg,
     overflow: "hidden",
@@ -330,6 +409,8 @@ const styles = StyleSheet.create({
   guideName: { fontFamily: FONT.displayBold, fontSize: 14, color: FK.muted, marginTop: 8 },
   secretCard: {
     flexDirection: "row",
+    ...PINNED,
+    transform: [{ rotate: "-0.8deg" }],
     alignItems: "center",
     gap: 14,
     backgroundColor: FK.forest,
@@ -349,6 +430,8 @@ const styles = StyleSheet.create({
   secretTitle: { fontFamily: FONT.display, fontSize: 18, color: FK.white, marginTop: 2 },
   plan: {
     flexDirection: "row",
+    ...PINNED,
+    transform: [{ rotate: "0.6deg" }],
     alignItems: "center",
     gap: 12,
     backgroundColor: "#E3ECD9",
@@ -360,7 +443,7 @@ const styles = StyleSheet.create({
   planTitle: { fontFamily: FONT.display, fontSize: 16, color: FK.ink },
   planSub: { fontFamily: FONT.body, fontSize: 14, color: FK.muted, marginTop: 2 },
   planLink: { fontFamily: FONT.displayBold, fontSize: 15, color: FK.forest, textDecorationLine: "underline" },
-  hero: { minHeight: 360, borderRadius: RADIUS.lg, padding: 20, marginBottom: 14, overflow: "hidden" },
+  hero: { ...PINNED, minHeight: 360, borderRadius: RADIUS.lg, padding: 20, marginBottom: 14, overflow: "hidden" },
   heroEyebrow: {
     alignSelf: "flex-start",
     flexDirection: "row",
@@ -377,7 +460,7 @@ const styles = StyleSheet.create({
   heroFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 16 },
   heroButton: { minHeight: 56, paddingHorizontal: 24 },
   heroPoints: { fontFamily: FONT.display, fontSize: 16, color: FK.sunbeam },
-  week: { backgroundColor: FK.forest, borderRadius: RADIUS.lg, padding: 18, marginBottom: 14 },
+  week: { ...PINNED, backgroundColor: FK.forest, borderRadius: RADIUS.lg, padding: 18, marginBottom: 14, transform: [{ rotate: "-0.5deg" }] },
   weekHeader: { marginBottom: 12 },
   weekEyebrow: { fontFamily: FONT.display, fontSize: 12, letterSpacing: 1.6, color: "#A9C79A" },
   weekRow: { flexDirection: "row" },
@@ -400,7 +483,32 @@ const styles = StyleSheet.create({
   weekBig: { fontFamily: FONT.display, fontSize: 28, color: FK.white, marginBottom: 6, lineHeight: 34 },
   weekBigUnit: { fontFamily: FONT.displayBold, fontSize: 16, color: FK.mutedOnDark },
   weekText: { fontFamily: FONT.body, fontSize: 14, lineHeight: 19, color: FK.mutedOnDark },
-  raceCard: { backgroundColor: FK.ink, borderRadius: RADIUS.lg, padding: 18, marginBottom: 14 },
+  todo: { ...PINNED, backgroundColor: FK.paper, borderRadius: RADIUS.lg, padding: 16, marginBottom: 16, transform: [{ rotate: "-0.4deg" }] },
+  todoHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 14 },
+  todoTitle: { fontFamily: FONT.display, fontSize: 20, color: FK.ink },
+  todoSub: { fontFamily: FONT.body, fontSize: 14, color: FK.muted, marginTop: 1 },
+  todoSeeAll: { flexDirection: "row", alignItems: "center", gap: 2 },
+  todoSeeAllText: { fontFamily: FONT.displayBold, fontSize: 15, color: FK.forest },
+  todoRow: { flexDirection: "row", gap: 10, alignItems: "flex-start" },
+  todoTile: {
+    flex: 1,
+    minHeight: 124,
+    borderRadius: RADIUS.md,
+    borderWidth: 3,
+    borderColor: FK.white,
+    padding: 12,
+    gap: 6,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  todoMore: { backgroundColor: "#1A5C6B", justifyContent: "flex-start" },
+  todoIcon: { width: 40, height: 40, borderRadius: 14, backgroundColor: FK.white, alignItems: "center", justifyContent: "center" },
+  todoLabel: { fontFamily: FONT.display, fontSize: 16 },
+  todoBlurb: { fontFamily: FONT.body, fontSize: 12.5, lineHeight: 16, color: FK.muted },
+  raceCard: { ...PINNED, backgroundColor: FK.ink, borderRadius: RADIUS.lg, padding: 18, marginBottom: 14, transform: [{ rotate: "0.5deg" }] },
   raceHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   daysChip: {
     flexDirection: "row",

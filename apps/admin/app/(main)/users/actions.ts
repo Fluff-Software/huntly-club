@@ -436,3 +436,28 @@ export async function deleteUserAdmin(userId: string): Promise<DeleteUserResult>
     };
   }
 }
+
+const ALREADY_VERIFIED_ERROR =
+  "This user has verified their email since the list loaded. Refresh the page, or delete them from the Users tab.";
+
+/**
+ * Deletes a user from the "Pending verification" tab. Re-checks verification
+ * server-side so a stale list can't delete someone who has since confirmed.
+ */
+export async function deleteUnverifiedUser(
+  userId: string
+): Promise<DeleteUserResult> {
+  try {
+    const supabase = createServerSupabaseClient();
+    const { data, error } = await supabase.auth.admin.getUserById(userId);
+    if (error) return { error: error.message };
+    if (!data?.user) return { error: "User not found" };
+    if (data.user.email_confirmed_at) return { error: ALREADY_VERIFIED_ERROR };
+
+    return deleteUserAdmin(userId);
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Failed to delete user",
+    };
+  }
+}

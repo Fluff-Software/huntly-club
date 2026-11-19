@@ -205,6 +205,8 @@ export function readableHabitatAffinities(
 }
 
 export function formatRarityLabel(rarity: string): string {
+  // Christmas cards are tagged simply "Limited" on the card face.
+  if (rarity === "christmas") return "Limited";
   return rarity
     .split("_")
     .map((p) => p.charAt(0).toUpperCase() + p.slice(1))

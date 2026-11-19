@@ -43,8 +43,8 @@ export function CreateCampfireSessionModal({ open, onClose }: Props) {
           New Campfire Session
         </h2>
         <p className="mt-1 text-sm text-stone-500">
-          Start with a title. You can schedule and build the timeline in the
-          editor.
+          Start with a title. You can upload the recording and schedule it in
+          the editor.
         </p>
 
         <form action={formAction} className="mt-6 space-y-4">
@@ -65,6 +65,45 @@ export function CreateCampfireSessionModal({ open, onClose }: Props) {
               className="mt-1 w-full rounded-xl border border-stone-300 px-4 py-2.5 text-sm focus:border-huntly-sage focus:outline-none focus:ring-2 focus:ring-huntly-sage/20"
             />
           </div>
+
+          <fieldset>
+            <legend className="block text-sm font-medium text-stone-700">
+              Format
+            </legend>
+            <div className="mt-1 grid grid-cols-2 gap-2">
+              {[
+                {
+                  value: "podcast",
+                  label: "Podcast",
+                  hint: "One recording, played over the campfire",
+                },
+                {
+                  value: "timeline",
+                  label: "Timeline",
+                  hint: "Captains, subtitles and mission cards",
+                },
+              ].map((opt) => (
+                <label
+                  key={opt.value}
+                  className="flex cursor-pointer flex-col rounded-xl border border-stone-300 px-3 py-2.5 text-sm has-[:checked]:border-huntly-sage has-[:checked]:bg-huntly-sage/10"
+                >
+                  <span className="flex items-center gap-2 font-medium text-stone-900">
+                    <input
+                      type="radio"
+                      name="format"
+                      value={opt.value}
+                      defaultChecked={opt.value === "podcast"}
+                      className="accent-huntly-forest"
+                    />
+                    {opt.label}
+                  </span>
+                  <span className="mt-0.5 text-xs text-stone-500">
+                    {opt.hint}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
 
           {state.error && (
             <p className="text-sm text-red-600" role="alert">

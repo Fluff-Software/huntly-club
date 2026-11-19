@@ -8,6 +8,18 @@ export const CAMPFIRE_STATUSES = [
 
 export type CampfireSessionStatus = (typeof CAMPFIRE_STATUSES)[number];
 
+export const CAMPFIRE_FORMATS = ["podcast", "timeline"] as const;
+
+export type CampfireSessionFormat = (typeof CAMPFIRE_FORMATS)[number];
+
+export const CAMPFIRE_FORMAT_LABELS: Record<CampfireSessionFormat, string> = {
+  podcast: "Podcast",
+  timeline: "Timeline",
+};
+
+/** Shown in the app when a podcast session has no host name set. */
+export const DEFAULT_PODCAST_HOST = "Campfire Radio";
+
 export const CAMPFIRE_COMPONENT_TYPES = [
   "audio",
   "video",
@@ -21,6 +33,12 @@ export type CampfireComponentType = (typeof CAMPFIRE_COMPONENT_TYPES)[number];
 
 export type AudioComponentData = {
   audioUrl?: string;
+  /**
+   * Set on the single audio component the editor keeps in sync with a podcast
+   * session's recording, so app builds that predate the podcast player still
+   * play it over the campfire background.
+   */
+  podcastMirror?: boolean;
 };
 
 export const CAPTAIN_ALIGNMENTS = ["left", "middle", "right"] as const;
@@ -66,7 +84,7 @@ export type CampfireComponentData =
   | SubmissionComponentData;
 
 export const CAMPFIRE_SESSION_COLUMNS =
-  "id, created_at, updated_at, title, status, scheduled_at, duration, description, thumbnail_url, missions, show_viewer_count";
+  "id, created_at, updated_at, title, status, scheduled_at, duration, description, thumbnail_url, missions, show_viewer_count, format, podcast_audio_url, podcast_host";
 
 export type CampfireSessionRow = {
   id: number;
@@ -80,6 +98,21 @@ export type CampfireSessionRow = {
   thumbnail_url: string | null;
   missions: number[];
   show_viewer_count: boolean;
+  format: CampfireSessionFormat;
+  podcast_audio_url: string | null;
+  podcast_host: string | null;
+};
+
+export type CampfireListenStats = {
+  opens: number;
+  unique_users: number;
+  plays: number;
+  unique_listeners: number;
+  completions: number;
+  total_listened_ms: number;
+  avg_listened_ms: number;
+  avg_view_ms: number;
+  last_opened_at: string | null;
 };
 
 export type CampfireTrackRow = {

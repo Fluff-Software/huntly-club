@@ -29,6 +29,7 @@ import {
   type ActivityMapRegion,
 } from "@/components/activity-map";
 import { ExploreCardPackReveal } from "@/components/explore/ExploreCardPackReveal";
+import { ExploreSnowfall } from "@/components/explore/ExploreSnowfall";
 import { ExploreStopSheet } from "@/components/explore/ExploreStopSheet";
 import { ExploreSafetyWarning } from "@/components/explore/ExploreSafetyWarning";
 import { LocationPermissionModal } from "@/components/explore/LocationPermissionModal";
@@ -54,6 +55,7 @@ import {
 
 /** Same gap: FAB → screen bottom (no sheet) and FAB → top of sheet/panel (when open). */
 const MAP_FAB_GAP = 28;
+import { useExploreEventLive } from "@/hooks/useExploreEventLive";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
 import {
@@ -163,6 +165,7 @@ export default function ExploreScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const mapRef = useRef<ActivityMapRef>(null);
+  const christmasLive = useExploreEventLive("christmas");
   const lastFetchAt = useRef<{ latitude: number; longitude: number } | null>(null);
   const fetchInFlight = useRef(false);
   const mapFetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1032,6 +1035,8 @@ export default function ExploreScreen() {
             onMarkerPress={(id: string) => setSelectedId(id)}
           />
         ) : null}
+
+        {mapRegion && christmasLive ? <ExploreSnowfall /> : null}
 
         {mapRegion ? (
           // Scrim so the light status bar icons stay readable over light map tiles.

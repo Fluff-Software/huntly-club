@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/Button";
 import { setCampfireSessionShowViewerCount } from "../actions";
-import type { CampfireSessionRow } from "../types";
+import { CAMPFIRE_FORMAT_LABELS, type CampfireSessionRow } from "../types";
 import { CampfireStatusPill } from "./CampfireStatusPill";
 import { CreateCampfireSessionModal } from "./CreateCampfireSessionModal";
 
@@ -19,10 +19,31 @@ function formatScheduledAt(iso: string | null): string {
   });
 }
 
+function formatListens(stats: { opens: number; plays: number } | undefined) {
+  if (!stats) return "—";
+  return `${stats.opens} opened · ${stats.plays} played`;
+}
+
+function FormatBadge({ format }: { format: CampfireSessionRow["format"] }) {
+  return (
+    <span
+      className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${
+        format === "podcast"
+          ? "bg-amber-50 text-amber-800 ring-1 ring-amber-200"
+          : "bg-stone-100 text-stone-600 ring-1 ring-stone-200"
+      }`}
+    >
+      {CAMPFIRE_FORMAT_LABELS[format] ?? format}
+    </span>
+  );
+}
+
 export function CampfireSessionsList({
   sessions: initialSessions,
+  listenStats = {},
 }: {
   sessions: CampfireSessionRow[];
+  listenStats?: Record<number, { opens: number; plays: number }>;
 }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [sessions, setSessions] = useState(initialSessions);
@@ -65,8 +86,8 @@ export function CampfireSessionsList({
             Campfire Sessions
           </h1>
           <p className="mt-1 text-sm text-stone-500">
-            Live presentations composed of audio, subtitles, mission cards, and
-            submissions on a timeline.
+            Weekly campfires: a recorded podcast played over the campfire, or a
+            timeline of audio, subtitles, mission cards and submissions.
           </p>
         </div>
         <button
@@ -102,8 +123,9 @@ export function CampfireSessionsList({
                 <p className="mt-2 text-sm text-stone-600">
                   {formatScheduledAt(s.scheduled_at)}
                 </p>
-                <p className="mt-1 text-xs text-stone-500">
-                  {s.missions?.length ?? 0} missions
+                <p className="mt-1 flex items-center gap-2 text-xs text-stone-500">
+                  <FormatBadge format={s.format} />
+                  {formatListens(listenStats[s.id])}
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
                   <ViewerCountToggle
@@ -130,7 +152,10 @@ export function CampfireSessionsList({
                   <th className="px-4 py-3 font-medium text-stone-700">Title</th>
                   <th className="px-4 py-3 font-medium text-stone-700">Date</th>
                   <th className="px-4 py-3 font-medium text-stone-700">
-                    Missions
+                    Format
+                  </th>
+                  <th className="px-4 py-3 font-medium text-stone-700">
+                    Listens
                   </th>
                   <th className="px-4 py-3 font-medium text-stone-700">
                     Status
@@ -157,8 +182,11 @@ export function CampfireSessionsList({
                     <td className="px-4 py-3 text-stone-600">
                       {formatScheduledAt(s.scheduled_at)}
                     </td>
+                    <td className="px-4 py-3">
+                      <FormatBadge format={s.format} />
+                    </td>
                     <td className="px-4 py-3 text-stone-600">
-                      {s.missions?.length ?? 0}
+                      {formatListens(listenStats[s.id])}
                     </td>
                     <td className="px-4 py-3">
                       <CampfireStatusPill status={s.status} />

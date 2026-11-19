@@ -9,6 +9,7 @@ export const EXPLORE_RARITY_COLORS: Record<string, string> = {
   very_rare: "#C4851A",
   // Limited-time event cards have no real rarity; the pill is just the event tag.
   halloween: "#E8700A",
+  christmas: "#C8272D",
 };
 
 /** Native card art pixel size (explore-card-bg.png). */
@@ -29,6 +30,7 @@ export const EXPLORE_PACK_ART_BY_SOURCE: Record<"stop_claim" | "trade", number> 
  */
 export const EXPLORE_PACK_ART_BY_EVENT: Record<string, number> = {
   halloween: require("@/assets/images/explore-pack-halloween.png"),
+  christmas: require("@/assets/images/explore-pack-christmas.png"),
 };
 
 /** Pick the pack art for a banked pack: event art wins over source art. */

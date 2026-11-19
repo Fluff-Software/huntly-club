@@ -14,9 +14,12 @@ import { useRouter } from "next/navigation";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { persistCampfireEditorDraft } from "../actions";
 import {
+  CAMPFIRE_FORMATS,
+  CAMPFIRE_FORMAT_LABELS,
   type ActivityOption,
   type ApprovedPhotoOption,
   type CampfireComponentRow,
+  type CampfireListenStats,
   type CampfireSessionRow,
   type CampfireTrackRow,
   type CaptainOption,
@@ -32,6 +35,7 @@ import {
 } from "../lib/editor-draft";
 import { useEditorHistory } from "../lib/use-editor-history";
 import { CampfireEditor } from "./CampfireEditor";
+import { PodcastEditor } from "./PodcastEditor";
 
 export type CampfireEditorShellProps = {
   session: CampfireSessionRow;
@@ -40,6 +44,7 @@ export type CampfireEditorShellProps = {
   activities: ActivityOption[];
   captains: CaptainOption[];
   approvedPhotos: ApprovedPhotoOption[];
+  listenStats: CampfireListenStats | null;
 };
 
 export function CampfireEditorShell({
@@ -49,6 +54,7 @@ export function CampfireEditorShell({
   activities,
   captains,
   approvedPhotos,
+  listenStats,
 }: CampfireEditorShellProps) {
   const router = useRouter();
   const sessionId = initialSession.id;
@@ -160,7 +166,38 @@ export function CampfireEditorShell({
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <ShortcutsGuide />
+          <div
+            className="flex items-center gap-0.5 rounded-lg border border-stone-700 bg-stone-900 p-0.5"
+            role="radiogroup"
+            aria-label="Session format"
+          >
+            {CAMPFIRE_FORMATS.map((format) => {
+              const selected = draft.session.format === format;
+              return (
+                <button
+                  key={format}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  disabled={isSaving}
+                  onClick={() =>
+                    updateDraft((prev) => ({
+                      ...prev,
+                      session: { ...prev.session, format },
+                    }))
+                  }
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                    selected
+                      ? "bg-stone-700 text-stone-100"
+                      : "text-stone-400 hover:bg-stone-800 hover:text-stone-200"
+                  }`}
+                >
+                  {CAMPFIRE_FORMAT_LABELS[format]}
+                </button>
+              );
+            })}
+          </div>
+          {draft.session.format === "timeline" && <ShortcutsGuide />}
           <div className="flex items-center gap-0.5 rounded-lg border border-stone-700 bg-stone-900 p-0.5">
             <button
               type="button"
@@ -236,15 +273,25 @@ export function CampfireEditorShell({
         </div>
       )}
 
-      <CampfireEditor
-        draft={draft}
-        updateDraft={updateDraft}
-        replaceDraft={replaceDraft}
-        nextTempId={nextTempId}
-        activities={activities}
-        captains={captains}
-        approvedPhotos={approvedPhotos}
-      />
+      {draft.session.format === "podcast" ? (
+        <PodcastEditor
+          draft={draft}
+          updateDraft={updateDraft}
+          nextTempId={nextTempId}
+          activities={activities}
+          listenStats={listenStats}
+        />
+      ) : (
+        <CampfireEditor
+          draft={draft}
+          updateDraft={updateDraft}
+          replaceDraft={replaceDraft}
+          nextTempId={nextTempId}
+          activities={activities}
+          captains={captains}
+          approvedPhotos={approvedPhotos}
+        />
+      )}
 
       <ConfirmModal
         open={discardConfirmOpen}

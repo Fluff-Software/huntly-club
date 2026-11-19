@@ -13,6 +13,7 @@ const CATEGORIES = [
   // Event categories/rarities can't be created here -- they only appear when
   // editing a card that already has them (see `isEventCard` below).
   { value: "halloween", label: "Halloween" },
+  { value: "christmas", label: "Christmas" },
 ] as const;
 
 const RARITIES = [
@@ -21,6 +22,7 @@ const RARITIES = [
   { value: "rare", label: "Rare" },
   { value: "very_rare", label: "Very rare" },
   { value: "halloween", label: "Halloween (event)" },
+  { value: "christmas", label: "Christmas (event)" },
 ] as const;
 
 const HABITAT_KEYS = [
@@ -105,10 +107,15 @@ export function ExploreCardForm({ action, initial, mode }: ExploreCardFormProps)
     String(initial?.base_weight ?? DEFAULT_WEIGHT_BY_RARITY.common)
   );
   const [eventWeight, setEventWeight] = useState(String(initial?.event_weight ?? 10));
-  const isEventCard = initial?.rarity === "halloween";
-  const categoryOptions = CATEGORIES.filter((c) => isEventCard || c.value !== "halloween");
+  const isEventCard = initial?.rarity === "halloween" || initial?.rarity === "christmas";
+  // An event card can only ever be its own event's category/rarity.
+  const categoryOptions = CATEGORIES.filter((c) =>
+    isEventCard ? c.value === initial?.category : c.value !== "halloween" && c.value !== "christmas"
+  );
   // An event card stays an event card (the DB ties it to its event).
-  const rarityOptions = RARITIES.filter((r) => (r.value === "halloween") === isEventCard);
+  const rarityOptions = RARITIES.filter((r) =>
+    isEventCard ? r.value === initial?.rarity : r.value !== "halloween" && r.value !== "christmas"
+  );
   const [sortOrder, setSortOrder] = useState(String(initial?.sort_order ?? 0));
   const [isActive, setIsActive] = useState(initial?.is_active ?? true);
   const [habitats, setHabitats] = useState<Record<string, string>>(() => {

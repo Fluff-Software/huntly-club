@@ -15,7 +15,16 @@ export type CampfireComponentType =
   | "mission_card"
   | "submission";
 
-export type AudioComponentData = { audioUrl?: string };
+export type CampfireSessionFormat = "timeline" | "podcast";
+
+/** Shown in the podcast player when the session has no host name set. */
+export const DEFAULT_PODCAST_HOST = "Campfire Radio";
+
+export type AudioComponentData = {
+  audioUrl?: string;
+  /** Timeline copy of a podcast recording, kept for older app builds. */
+  podcastMirror?: boolean;
+};
 export type CaptainAlignment = "left" | "middle" | "right";
 
 export type CaptainComponentData = {
@@ -52,6 +61,9 @@ export type CampfireSessionRow = {
   description: string | null;
   thumbnail_url: string | null;
   show_viewer_count?: boolean;
+  format?: CampfireSessionFormat;
+  podcast_audio_url?: string | null;
+  podcast_host?: string | null;
 };
 
 export type CampfireTrackRow = {
@@ -112,7 +124,7 @@ export const CAMPFIRE_BUILTIN_CAPTAINS: CaptainOption[] = [
 ];
 
 const SESSION_COLUMNS =
-  "id, title, status, scheduled_at, live_started_at, live_ended_at, duration, description, thumbnail_url, show_viewer_count";
+  "id, title, status, scheduled_at, live_started_at, live_ended_at, duration, description, thumbnail_url, show_viewer_count, format, podcast_audio_url, podcast_host";
 
 /** Device clock + offset from last successful `get_server_now` RPC. */
 let serverTimeOffsetMs: number | null = null;
@@ -731,6 +743,23 @@ export function collectMediaUrls(bundle: CampfireSessionBundle): {
   }
 
   return { images: Array.from(images), audio: Array.from(audio) };
+}
+
+export function isPodcastSession(
+  session: Pick<CampfireSessionRow, "format"> | null | undefined
+): boolean {
+  return session?.format === "podcast";
+}
+
+/** Recording URL for a podcast session (falls back to its timeline mirror). */
+export function getPodcastAudioUrl(bundle: CampfireSessionBundle): string | null {
+  const direct = bundle.session.podcast_audio_url?.trim();
+  if (direct) return direct;
+  const mirror = bundle.components.find(
+    (c) =>
+      c.type === "audio" && (c.data as AudioComponentData).podcastMirror
+  );
+  return (mirror?.data as AudioComponentData | undefined)?.audioUrl?.trim() || null;
 }
 
 /** Total session length in ms, derived from the components if not stored. */

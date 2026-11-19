@@ -50,6 +50,9 @@ function normalizeForCompare(state: FullEditorState) {
       status: state.session.status,
       scheduled_at: state.session.scheduled_at,
       description: state.session.description,
+      format: state.session.format,
+      podcast_audio_url: state.session.podcast_audio_url,
+      podcast_host: state.session.podcast_host,
       missions: [...state.session.missions].sort((a, b) => a - b),
     },
     tracks: [...state.tracks]

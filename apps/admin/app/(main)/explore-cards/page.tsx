@@ -37,6 +37,7 @@ const RARITY_COLORS: Record<string, string> = {
   rare: "bg-purple-100 text-purple-800",
   very_rare: "bg-amber-100 text-amber-900",
   halloween: "bg-orange-100 text-orange-800",
+  christmas: "bg-red-100 text-red-800",
 };
 
 function formatLabel(value: string): string {
@@ -226,7 +227,7 @@ export default async function ExploreCardsPage({
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-stone-700">
-                      {card.rarity === "halloween"
+                      {card.rarity === "halloween" || card.rarity === "christmas"
                         ? `${card.event_weight} (event)`
                         : card.base_weight}
                     </td>

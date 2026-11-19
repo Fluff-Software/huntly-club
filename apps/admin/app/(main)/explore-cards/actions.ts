@@ -5,8 +5,9 @@ import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 export type ExploreCardFormState = { error?: string };
 
-const CATEGORIES = new Set(["animal", "habitat", "flora_wildlife", "halloween"]);
-const RARITIES = new Set(["common", "uncommon", "rare", "very_rare", "halloween"]);
+const CATEGORIES = new Set(["animal", "habitat", "flora_wildlife", "halloween", "christmas"]);
+const RARITIES = new Set(["common", "uncommon", "rare", "very_rare", "halloween", "christmas"]);
+const EVENT_RARITIES = new Set(["halloween", "christmas"]);
 const HABITAT_KEYS = [
   "freshwater",
   "wetland",
@@ -72,7 +73,7 @@ function parseCardFields(formData: FormData): {
   if (!RARITIES.has(rarity)) return { error: "Invalid rarity" };
   // Event (Halloween) cards stay out of normal packs: base weight is always 0
   // and they're drawn by event weight inside the event pack instead.
-  const isEventCard = rarity === "halloween";
+  const isEventCard = EVENT_RARITIES.has(rarity);
   const eventWeight = Number(formData.get("event_weight"));
   if (isEventCard) {
     if (!Number.isFinite(eventWeight) || eventWeight <= 0) {
@@ -105,8 +106,8 @@ export async function createExploreCard(
 ): Promise<ExploreCardFormState> {
   const parsed = parseCardFields(formData);
   if (parsed.error || !parsed.row) return { error: parsed.error ?? "Invalid form" };
-  if (parsed.row.rarity === "halloween") {
-    return { error: "Halloween cards are added with their event, not from this form" };
+  if (EVENT_RARITIES.has(parsed.row.rarity)) {
+    return { error: "Event cards are added with their event, not from this form" };
   }
 
   try {

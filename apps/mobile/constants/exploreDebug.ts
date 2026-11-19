@@ -115,16 +115,22 @@ export const EXPLORE_MAP_KEEP_METRES = 3500;
 /** Domain allowed to use the GPS teleport/spoof tool outside local Metro dev. */
 const EXPLORE_SPOOF_PREVIEW_DOMAIN = "@fluff.software";
 
+/** Accounts allowed to use the GPS teleport/spoof tool on any build, including the App Store. */
+const EXPLORE_SPOOF_ALWAYS_EMAILS = ["alban@fluff.software"];
+
 /**
  * GPS spoof / teleport for Explore testing.
  * Available in Metro (__DEV__) unconditionally; on the EAS `preview` channel
- * only for @fluff.software staff — never in production.
+ * only for @fluff.software staff. Production builds only for the accounts in
+ * EXPLORE_SPOOF_ALWAYS_EMAILS.
  */
 export function canSpoofExploreLocation(
   channel: string | null | undefined,
   userEmail?: string | null
 ): boolean {
   if (__DEV__) return true;
-  if (channel !== "preview") return false;
-  return Boolean(userEmail?.toLowerCase().endsWith(EXPLORE_SPOOF_PREVIEW_DOMAIN));
+  const email = userEmail?.toLowerCase();
+  if (!email) return false;
+  if (EXPLORE_SPOOF_ALWAYS_EMAILS.includes(email)) return true;
+  return channel === "preview" && email.endsWith(EXPLORE_SPOOF_PREVIEW_DOMAIN);
 }

@@ -27,6 +27,9 @@ import { setStatusBarStyle } from "expo-status-bar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { CampfireTile } from "@/components/CampfireTile";
+
+// The tile hides itself when there's no scheduled, live or replay session.
+const SHOW_CAMPFIRE_TILE = true;
 import { CaptainQuoteCard } from "@/components/CaptainQuoteCard";
 import { TeamRaceCard } from "@/components/clubhouse/TeamRaceCard";
 import { ThingsToDoRow } from "@/components/clubhouse/ThingsToDoRow";
@@ -155,10 +158,10 @@ export default function HomeScreen() {
   const teamCardConfig = team ? getTeamCardConfig(team.name) : null;
   const { user, loading: authLoading } = useAuth();
   const { hasAccess, isLoading: purchasesLoading } = usePurchases();
-  const { isSupported: showExplorePromo } = useExploreRegionSupport();
   const [locationPermission, setLocationPermission] = useState<
     "loading" | "granted" | "denied" | "undetermined"
   >("loading");
+  const { isSupported: showExplorePromo } = useExploreRegionSupport(locationPermission);
   const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [locationRequesting, setLocationRequesting] = useState(false);
 
@@ -262,7 +265,7 @@ export default function HomeScreen() {
   const teamTileReady = !teamCardConfig || teamAssetsReady;
   const activityTilesReady =
     missionTileReady &&
-    campfireTileReady &&
+    (!SHOW_CAMPFIRE_TILE || campfireTileReady) &&
     clubTileReady &&
     teamTileReady;
 
@@ -613,10 +616,12 @@ export default function HomeScreen() {
 
               {teamCardConfig && <CaptainQuoteCard teamName={team?.name} />}
 
-              <CampfireTile
-                coordinatedEntrance
-                onReadyChange={handleCampfireReadyChange}
-              />
+              {SHOW_CAMPFIRE_TILE && (
+                <CampfireTile
+                  coordinatedEntrance
+                  onReadyChange={handleCampfireReadyChange}
+                />
+              )}
 
               {showClubTile && (
                 <View

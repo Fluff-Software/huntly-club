@@ -15,6 +15,7 @@ import {
   fetchCampfireTileRefresh,
   getServerNowMs,
   isCampfireLiveDismissed,
+  isPodcastSession,
   type CampfireSessionRow,
 } from "@/services/campfireService";
 import {
@@ -297,7 +298,7 @@ export function CampfireTile({
                 darkColor={CREAM}
                 style={{ fontSize: scaleW(15), fontWeight: "900" }}
               >
-                Join now
+                {isPodcastSession(liveSession) ? "Listen now" : "Join now"}
               </ThemedText>
             </Pressable>
           </View>
@@ -438,7 +439,9 @@ export function CampfireTile({
                   darkColor={GREEN}
                   style={{ fontSize: scaleW(13), fontWeight: "800" }}
                 >
-                  Watch last week’s campfire
+                  {isPodcastSession(replaySession)
+                    ? "Listen to last week’s campfire"
+                    : "Watch last week’s campfire"}
                 </ThemedText>
               </Pressable>
             </View>
@@ -507,7 +510,8 @@ export function CampfireTile({
                   darkColor={BROWN_DEEP}
                   style={{ fontSize: scaleW(20), fontWeight: "800", lineHeight: scaleW(24) }}
                 >
-                  Watch the{"\n"}Previous Campfire
+                  {isPodcastSession(replaySession) ? "Listen to the" : "Watch the"}
+                  {"\n"}Previous Campfire
                 </ThemedText>
                 <ThemedText
                   lightColor={BROWN_MID}
@@ -539,7 +543,7 @@ export function CampfireTile({
                   darkColor="#FFFFFF"
                   style={{ fontSize: scaleW(14), fontWeight: "700" }}
                 >
-                  Watch now
+                  {isPodcastSession(replaySession) ? "Listen now" : "Watch now"}
                 </ThemedText>
               </Pressable>
         </View>

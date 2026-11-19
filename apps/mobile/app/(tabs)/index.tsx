@@ -28,8 +28,8 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { CampfireTile } from "@/components/CampfireTile";
 
-// Campfire is hidden on the home screen until it is ready for the store release.
-const SHOW_CAMPFIRE_TILE = false;
+// The tile hides itself when there's no scheduled, live or replay session.
+const SHOW_CAMPFIRE_TILE = true;
 import { CaptainQuoteCard } from "@/components/CaptainQuoteCard";
 import { TeamRaceCard } from "@/components/clubhouse/TeamRaceCard";
 import { ThingsToDoRow } from "@/components/clubhouse/ThingsToDoRow";

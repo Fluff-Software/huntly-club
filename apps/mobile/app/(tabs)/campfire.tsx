@@ -14,6 +14,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { CampfireStage } from "@/components/campfire/CampfireStage";
+import { CampfirePodcastPlayer } from "@/components/campfire/CampfirePodcastPlayer";
 import { CampfireVideoPreloadViews } from "@/components/campfire/CampfireVideoPreloadViews";
 import {
   stopAllCampfireAudio,
@@ -28,6 +29,8 @@ import {
   getCampfireSessionBundle,
   getCampfireSessionById,
   getLatestLiveSession,
+  getPodcastAudioUrl,
+  isPodcastSession,
   getLatestReplaySession,
   getNextScheduledSession,
   getServerNowIso,
@@ -38,6 +41,7 @@ import {
   type CampfireSessionRow,
 } from "@/services/campfireService";
 import { useCampfireRealtime } from "@/hooks/useCampfireRealtime";
+import { useCampfireListenTracking } from "@/hooks/useCampfireListenTracking";
 import {
   CAMPFIRE_REACTION_MIN_INTERVAL_MS,
   sendCampfireReaction,
@@ -61,6 +65,8 @@ const BG = require("@/assets/images/campfire-bg.jpg");
 const PREPARE_TIMEOUT_MS = 15_000;
 /** Sessions with video need longer to seek/buffer for late live joins. */
 const VIDEO_PREPARE_TIMEOUT_MS = 28_000;
+
+const NO_COMPONENTS: CampfireSessionBundle["components"] = [];
 
 type LoadState =
   | "loading"
@@ -113,14 +119,25 @@ export default function CampfireScreen() {
       videoWarmPlayheadRef.current = videoWarmPlayheadMs;
     }
   }, [loadState, videoWarmPlayheadMs]);
+  // Podcast sessions play one recording on demand; the timeline (including the
+  // mirrored audio component kept for older app builds) is ignored.
+  const isPodcast = isPodcastSession(bundle?.session);
+  const timelineComponents = isPodcast
+    ? NO_COMPONENTS
+    : bundle?.components ?? null;
+  const podcastAudioUrl = useMemo(
+    () => (bundle && isPodcast ? getPodcastAudioUrl(bundle) : null),
+    [bundle, isPodcast]
+  );
+
   const videoPlayersEnabled =
-    !!bundle?.components &&
+    !!timelineComponents &&
     (loadState === "countdown" ||
       loadState === "preparing" ||
       loadState === "ready");
 
   const { players: videoPlayers, ready: videosReady } = useCampfireVideoPlayers(
-    bundle?.components ?? null,
+    timelineComponents,
     {
       playheadMs: videoWarmPlayheadMs,
       sessionId: bundle?.session.id ?? null,
@@ -138,7 +155,7 @@ export default function CampfireScreen() {
     [bundle]
   );
 
-  const durationMs = bundle ? sessionDurationMs(bundle) : 0;
+  const durationMs = bundle && !isPodcast ? sessionDurationMs(bundle) : 0;
   const finished = durationMs > 0 && currentTimeMs >= durationMs;
   const hasExitedAfterFinishRef = useRef(false);
   const liveClockRef = useRef<{
@@ -372,8 +389,13 @@ export default function CampfireScreen() {
         setWaitingSession(null);
       });
 
-      // Live sessions should start "in progress" for late joiners.
-      if (session.status === "live" && session.live_started_at) {
+      // Live sessions should start "in progress" for late joiners. Podcasts
+      // always start from the beginning when the listener presses play.
+      if (
+        session.status === "live" &&
+        session.live_started_at &&
+        !isPodcastSession(data.session)
+      ) {
         const serverNowIso = await getServerNowIso();
         if (loadTokenRef.current !== token) return;
         const serverNowMs = serverNowIso ? Date.parse(serverNowIso) : Date.now();
@@ -710,7 +732,7 @@ export default function CampfireScreen() {
   }, [loadState, finished, bundle?.session.id]);
 
   useCampfireAudio(
-    bundle?.components ?? [],
+    timelineComponents ?? NO_COMPONENTS,
     currentTimeMs,
     transportPlaying,
     playbackEnabled
@@ -726,12 +748,54 @@ export default function CampfireScreen() {
       loadState === "loading" ||
       loadState === "preparing" ||
       (loadState === "ready" &&
+        !isPodcast &&
         (isLiveRef.current || bundle?.session.status === "live")));
 
   const showViewerCount = useMemo(
     () => resolveCampfireShowViewerCount(bundle, waitingSession),
     [bundle, waitingSession]
   );
+
+  // Record opens, time on screen and listening time (campfire_listens).
+  const trackingSessionId = bundle?.session.id ?? waitingSession?.id ?? null;
+  const listenTracker = useCampfireListenTracking({
+    sessionId: trackingSessionId,
+    openedStatus: waitingSession
+      ? "scheduled"
+      : bundle?.session.status ?? null,
+    enabled:
+      isFocused &&
+      trackingSessionId != null &&
+      loadState !== "empty" &&
+      loadState !== "error",
+  });
+
+  // Timeline sessions autoplay; feed their clock into the same tracker.
+  const timelinePlaybackStartedRef = useRef(false);
+  useEffect(() => {
+    if (loadState !== "ready" || isPodcast) {
+      timelinePlaybackStartedRef.current = false;
+      return;
+    }
+    if (transportPlaying && !timelinePlaybackStartedRef.current) {
+      timelinePlaybackStartedRef.current = true;
+      listenTracker.onPlayPressed();
+    }
+    listenTracker.onPlayback({
+      playing: transportPlaying,
+      positionMs: currentTimeMs,
+      durationMs,
+    });
+    if (finished) listenTracker.onCompleted();
+  }, [
+    loadState,
+    isPodcast,
+    transportPlaying,
+    currentTimeMs,
+    durationMs,
+    finished,
+    listenTracker,
+  ]);
 
   const togglePlay = useCallback(() => {
     if (finished || isLiveRef.current) return;
@@ -817,7 +881,54 @@ export default function CampfireScreen() {
           <CampfireVideoPreloadViews players={videoPlayers} />
         ) : null}
 
-        {loadState === "ready" && bundle && (
+        {loadState === "ready" && bundle && isPodcast && (
+          podcastAudioUrl ? (
+            <CampfirePodcastPlayer
+              key={`${bundle.session.id}:${podcastAudioUrl}`}
+              audioUrl={podcastAudioUrl}
+              title={bundle.session.title}
+              host={bundle.session.podcast_host}
+              description={bundle.session.description}
+              scaleW={scaleW}
+              active={isFocused}
+              tracker={listenTracker}
+            />
+          ) : (
+            <View style={styles.centerFill}>
+              <View style={styles.messageCard}>
+                <MaterialIcons
+                  name="radio"
+                  size={scaleW(40)}
+                  color="#C47A2A"
+                />
+                <ThemedText
+                  type="heading"
+                  style={{
+                    fontSize: scaleW(20),
+                    fontWeight: "800",
+                    color: "#3B1A06",
+                    textAlign: "center",
+                    marginTop: scaleW(8),
+                  }}
+                >
+                  Almost ready
+                </ThemedText>
+                <ThemedText
+                  style={{
+                    fontSize: scaleW(14),
+                    color: "#6B3D1A",
+                    textAlign: "center",
+                    marginTop: scaleW(4),
+                  }}
+                >
+                  This campfire's recording isn't up yet. Check back soon!
+                </ThemedText>
+              </View>
+            </View>
+          )
+        )}
+
+        {loadState === "ready" && bundle && !isPodcast && (
           <Pressable
             style={StyleSheet.absoluteFill}
             onPress={isLivePlayback ? undefined : togglePlay}
@@ -982,7 +1093,11 @@ export default function CampfireScreen() {
         )}
 
         {/* Paused hint (replay only; live follows the shared clock) */}
-        {loadState === "ready" && !isPlaying && !finished && !isLivePlayback && (
+        {loadState === "ready" &&
+          !isPodcast &&
+          !isPlaying &&
+          !finished &&
+          !isLivePlayback && (
           <View style={styles.centerFill} pointerEvents="none">
             <View style={styles.playBadge}>
               <MaterialIcons

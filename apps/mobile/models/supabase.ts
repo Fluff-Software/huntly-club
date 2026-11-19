@@ -402,6 +402,68 @@ export type Database = {
           },
         ]
       }
+      campfire_listens: {
+        Row: {
+          app_version: string | null
+          audio_duration_ms: number | null
+          completed: boolean
+          first_played_at: string | null
+          id: string
+          last_seen_at: string
+          listened_ms: number
+          max_position_ms: number
+          opened_at: string
+          opened_status: string | null
+          platform: string | null
+          play_count: number
+          session_id: number
+          user_id: string
+          view_ms: number
+        }
+        Insert: {
+          app_version?: string | null
+          audio_duration_ms?: number | null
+          completed?: boolean
+          first_played_at?: string | null
+          id?: string
+          last_seen_at?: string
+          listened_ms?: number
+          max_position_ms?: number
+          opened_at?: string
+          opened_status?: string | null
+          platform?: string | null
+          play_count?: number
+          session_id: number
+          user_id: string
+          view_ms?: number
+        }
+        Update: {
+          app_version?: string | null
+          audio_duration_ms?: number | null
+          completed?: boolean
+          first_played_at?: string | null
+          id?: string
+          last_seen_at?: string
+          listened_ms?: number
+          max_position_ms?: number
+          opened_at?: string
+          opened_status?: string | null
+          platform?: string | null
+          play_count?: number
+          session_id?: number
+          user_id?: string
+          view_ms?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campfire_listens_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "campfire_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campfire_reactions: {
         Row: {
           created_at: string
@@ -528,10 +590,13 @@ export type Database = {
           created_at: string
           description: string | null
           duration: number | null
+          format: string
           id: number
           live_ended_at: string | null
           live_started_at: string | null
           missions: number[]
+          podcast_audio_url: string | null
+          podcast_host: string | null
           scheduled_at: string | null
           show_viewer_count: boolean
           status: Database["public"]["Enums"]["campfire_session_status"]
@@ -543,10 +608,13 @@ export type Database = {
           created_at?: string
           description?: string | null
           duration?: number | null
+          format?: string
           id?: number
           live_ended_at?: string | null
           live_started_at?: string | null
           missions?: number[]
+          podcast_audio_url?: string | null
+          podcast_host?: string | null
           scheduled_at?: string | null
           show_viewer_count?: boolean
           status?: Database["public"]["Enums"]["campfire_session_status"]
@@ -558,10 +626,13 @@ export type Database = {
           created_at?: string
           description?: string | null
           duration?: number | null
+          format?: string
           id?: number
           live_ended_at?: string | null
           live_started_at?: string | null
           missions?: number[]
+          podcast_audio_url?: string | null
+          podcast_host?: string | null
           scheduled_at?: string | null
           show_viewer_count?: boolean
           status?: Database["public"]["Enums"]["campfire_session_status"]
@@ -2653,6 +2724,21 @@ export type Database = {
       }
     }
     Views: {
+      campfire_listen_stats: {
+        Row: {
+          avg_listened_ms: number | null
+          avg_view_ms: number | null
+          completions: number | null
+          last_opened_at: string | null
+          opens: number | null
+          plays: number | null
+          session_id: number | null
+          total_listened_ms: number | null
+          unique_listeners: number | null
+          unique_users: number | null
+        }
+        Relationships: []
+      }
       profile_public: {
         Row: {
           id: number | null
@@ -3037,6 +3123,27 @@ export type Database = {
         }[]
       }
       get_server_now: { Args: never; Returns: string }
+      record_campfire_listen_progress: {
+        Args: {
+          p_audio_duration_ms?: number
+          p_completed?: boolean
+          p_listen_id: string
+          p_listened_ms: number
+          p_max_position_ms: number
+          p_play_count: number
+          p_view_ms: number
+        }
+        Returns: undefined
+      }
+      start_campfire_listen: {
+        Args: {
+          p_app_version?: string
+          p_opened_status?: string
+          p_platform?: string
+          p_session_id: number
+        }
+        Returns: string
+      }
       get_team_xp: { Args: { team_id: number }; Returns: number }
       grant_badge_to_profile: {
         Args: { p_badge_id: number; p_profile_id: number; p_reason?: string }

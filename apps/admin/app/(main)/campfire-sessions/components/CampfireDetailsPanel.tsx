@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import {
   CAMPFIRE_STATUSES,
+  DEFAULT_PODCAST_HOST,
   type ActivityOption,
   type CampfireSessionRow,
   type CampfireSessionStatus,
@@ -27,6 +28,7 @@ export function CampfireDetailsPanel({
   timelineDurationMs,
   onSessionChange,
 }: Props) {
+  const isPodcast = session.format === "podcast";
   const selectedCount = session.missions.length;
   const [missionsModalOpen, setMissionsModalOpen] = useState(false);
 
@@ -62,7 +64,9 @@ export function CampfireDetailsPanel({
           <div className="min-w-0 flex-1">
             <h2 className="text-sm font-semibold text-stone-100">Session</h2>
             <p className="mt-0.5 text-xs leading-snug text-stone-500">
-              Title, schedule, and missions shown in the app.
+              {isPodcast
+                ? "Title, host, and schedule shown in the app."
+                : "Title, schedule, and missions shown in the app."}
             </p>
           </div>
         </div>
@@ -101,9 +105,38 @@ export function CampfireDetailsPanel({
                 })
               }
               className={`${inputClass} resize-y min-h-[4.5rem]`}
-              placeholder="What will explorers see or do?"
+              placeholder={
+                isPodcast
+                  ? "What's this week's episode about?"
+                  : "What will explorers see or do?"
+              }
             />
           </Field>
+          {isPodcast && (
+            <Field
+              label="Host"
+              htmlFor="session-podcast-host"
+              hint={`Shown above the title in the player. Leave empty to use “${DEFAULT_PODCAST_HOST}”.`}
+            >
+              <input
+                id="session-podcast-host"
+                type="text"
+                value={session.podcast_host ?? ""}
+                onChange={(e) =>
+                  onSessionChange({
+                    podcast_host: e.target.value || null,
+                  })
+                }
+                onBlur={(e) =>
+                  onSessionChange({
+                    podcast_host: e.target.value.trim() || null,
+                  })
+                }
+                className={inputClass}
+                placeholder={DEFAULT_PODCAST_HOST}
+              />
+            </Field>
+          )}
         </PanelSection>
 
         <PanelSection title="Publishing">
@@ -127,6 +160,7 @@ export function CampfireDetailsPanel({
           </Field>
         </PanelSection>
 
+        {!isPodcast && (
         <PanelSection
           title="Missions in scope"
           action={
@@ -194,12 +228,15 @@ export function CampfireDetailsPanel({
             {selectedCount > 0 ? "Edit missions…" : "Choose missions…"}
           </button>
         </PanelSection>
+        )}
       </div>
 
       <footer className="shrink-0 border-t border-stone-700/80 bg-stone-900/60 px-4 py-2.5">
         <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
           <div>
-            <dt className="text-stone-600">Timeline</dt>
+            <dt className="text-stone-600">
+              {isPodcast ? "Recording" : "Timeline"}
+            </dt>
             <dd className="font-medium tabular-nums text-stone-400">
               {formatDurationMs(timelineDurationMs ?? session.duration)}
             </dd>

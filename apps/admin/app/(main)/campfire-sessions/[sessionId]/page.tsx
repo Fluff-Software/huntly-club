@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Jua, Comic_Neue } from "next/font/google";
 import {
   ensureDefaultTracks,
+  getCampfireListenStats,
   getEditorData,
 } from "../actions";
 import { CampfireEditorLoader } from "../components/CampfireEditorLoader";
@@ -27,7 +28,10 @@ export default async function CampfireSessionEditorPage({
 
   if (!editorData.session) notFound();
 
-  const tracks = await ensureDefaultTracks(sessionId);
+  const [tracks, listenStats] = await Promise.all([
+    ensureDefaultTracks(sessionId),
+    getCampfireListenStats(sessionId),
+  ]);
   const components = editorData.components;
 
   return (
@@ -39,6 +43,7 @@ export default async function CampfireSessionEditorPage({
         activities={editorData.activities}
         captains={editorData.captains}
         approvedPhotos={editorData.approvedPhotos}
+        listenStats={listenStats}
       />
     </div>
   );

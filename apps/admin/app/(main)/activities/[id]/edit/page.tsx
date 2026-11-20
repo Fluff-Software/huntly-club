@@ -92,6 +92,7 @@ export default async function EditActivityPage({
           debrief_question_1: activity.debrief_question_1 ?? null,
           debrief_question_2: activity.debrief_question_2 ?? null,
           release_date: activity.release_date ?? null,
+          content_status: activity.content_status ?? null,
         }}
       />
       <TemporarySubmissionsSection

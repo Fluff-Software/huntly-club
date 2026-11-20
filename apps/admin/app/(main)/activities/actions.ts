@@ -3,11 +3,17 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { isContentStatus, type ContentStatus } from "@/components/StatusPill";
 
 function parseReleaseDate(formData: FormData): string | null {
   const raw = (formData.get("release_date") as string)?.trim();
   if (!raw) return null;
   return raw;
+}
+
+function parseContentStatus(formData: FormData): ContentStatus | null {
+  const raw = (formData.get("content_status") as string)?.trim();
+  return isContentStatus(raw) ? raw : null;
 }
 
 function parseCategoryIds(formData: FormData): number[] {
@@ -41,6 +47,9 @@ export async function createActivity(
 
   const releaseDate = parseReleaseDate(formData);
   if (!releaseDate) return { error: "Release date is required" };
+
+  const contentStatus = parseContentStatus(formData);
+  if (!contentStatus) return { error: "Status is required" };
 
   const description = (formData.get("description") as string)?.trim() || null;
   const image = (formData.get("image") as string)?.trim() || null;
@@ -88,6 +97,7 @@ export async function createActivity(
       name,
       title,
       release_date: releaseDate,
+      content_status: contentStatus,
       description,
       image: image || null,
       xp: Number.isNaN(xp) ? 10 : xp,
@@ -131,6 +141,9 @@ export async function updateActivity(
 
   const releaseDate = parseReleaseDate(formData);
   if (!releaseDate) return { error: "Release date is required" };
+
+  const contentStatus = parseContentStatus(formData);
+  if (!contentStatus) return { error: "Status is required" };
 
   const description = (formData.get("description") as string)?.trim() || null;
   const image = (formData.get("image") as string)?.trim() || null;
@@ -203,6 +216,7 @@ export async function updateActivity(
         mission_type: missionType,
         safety_notes: safetyNotes,
         release_date: releaseDate,
+        content_status: contentStatus,
       })
       .eq("id", id);
 

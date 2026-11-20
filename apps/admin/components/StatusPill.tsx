@@ -41,6 +41,16 @@ const STATUS_CONFIG: Record<
   },
 };
 
+export const CONTENT_STATUSES = Object.keys(STATUS_CONFIG) as ContentStatus[];
+
+export function contentStatusLabel(status: ContentStatus): string {
+  return STATUS_CONFIG[status].label;
+}
+
+export function isContentStatus(value: unknown): value is ContentStatus {
+  return typeof value === "string" && value in STATUS_CONFIG;
+}
+
 type Props = {
   status: ContentStatus;
   size?: "sm" | "md";

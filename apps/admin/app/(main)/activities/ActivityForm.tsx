@@ -9,6 +9,11 @@ import { ImageCropModal } from "@/components/ImageCropModal";
 import { MISSION_MEDIA_ASPECT, imageAspectStyle } from "@/lib/image-aspects";
 import { uploadActivityImage } from "@/lib/upload-actions";
 import { compressImageFileForUpload } from "@/lib/client-image-resize";
+import {
+  CONTENT_STATUSES,
+  contentStatusLabel,
+  isContentStatus,
+} from "@/components/StatusPill";
 
 export type CategoryOption = {
   id: number;
@@ -268,6 +273,28 @@ export function ActivityForm({ action, categoriesList, initial }: ActivityFormPr
           />
           <p className="mt-1 text-xs text-stone-500">
             Missions unlock at 6:00 UK time on this date.
+          </p>
+        </div>
+        <div>
+          <label htmlFor="content_status" className="mb-1 block text-sm font-medium text-stone-700">
+            Status
+          </label>
+          <select
+            id="content_status"
+            name="content_status"
+            defaultValue={
+              isContentStatus(initial?.content_status) ? initial.content_status : "published"
+            }
+            className="w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 focus:border-huntly-sage focus:outline-none focus:ring-1 focus:ring-huntly-sage"
+          >
+            {CONTENT_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {contentStatusLabel(s)}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-stone-500">
+            Only Published missions appear in the app.
           </p>
         </div>
       </div>

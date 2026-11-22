@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from "react-native";
 import { router } from "expo-router";
+import { useIsFocused } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { FKButton, FKEyebrow, FKLoading, FKScreen } from "@/components/fieldkit";
@@ -39,6 +40,10 @@ export default function RemindersScreen() {
   const { guide: teamGuide } = useTeamGuide();
   const guide = teamGuide ?? GUIDES[0];
   const [unlocked, setUnlocked] = useState(isParentGateFresh);
+  // Tab screens stay mounted after you leave them, and a Modal draws over every
+  // screen, so the gate must only show while Reminders is the focused screen.
+  // Otherwise Cancel navigates away underneath and the gate stays on top.
+  const isFocused = useIsFocused();
   const [plan, setPlan] = useState<AdventurePlan | null>(null);
   const [draft, setDraft] = useState<AdventurePlanDraft>(EMPTY);
   const [loading, setLoading] = useState(true);
@@ -102,7 +107,7 @@ export default function RemindersScreen() {
       <FKScreen scroll={false} contentStyle={{ flex: 1, justifyContent: "center" }}>
         <StatusBar style="dark" />
         <ParentPinModal
-          visible
+          visible={isFocused}
           onSuccess={() => {
             markParentGatePassed();
             setUnlocked(true);

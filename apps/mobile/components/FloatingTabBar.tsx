@@ -114,7 +114,10 @@ export function FloatingTabBar({ state, navigation, disabled }: BottomTabBarProp
 
   const go = (item: Item, index: number) => {
     if (disabled) return;
-    if (index === activeIndex && !item.href) {
+    // Some screens light up a tab they don't live in (the binder lights Me, mission
+    // screens light Missions). Only treat it as a re-tap when we're really on that
+    // tab's own screen; otherwise tapping it should take you there.
+    if (index === activeIndex && !item.href && routeName === item.route) {
       // Re-tapping the current tab: let screens scroll to top, as tabs usually do.
       const target = state.routes.find((r) => r.name === item.route);
       if (target) navigation.emit({ type: "tabPress", target: target.key, canPreventDefault: true });

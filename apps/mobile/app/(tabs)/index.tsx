@@ -296,6 +296,8 @@ export default function ClubhouseScreen() {
           {/* The only way into the campfire; it hides itself when there's no scheduled, live or replay session. */}
           <CampfireTile style={{ marginBottom: 14 }} />
 
+          <ClubPhotos />
+
           {race.rows.length ? (
             <Animated.View entering={FadeInDown.duration(350).delay(100)}>
               <TeamRaceCard race={race} onPress={() => router.push("/(tabs)/social")} />
@@ -332,8 +334,6 @@ export default function ClubhouseScreen() {
               onSeeAll={() => router.push("/(tabs)/activity/pick-activity" as Parameters<typeof router.push>[0])}
             />
           </Animated.View>
-
-          <ClubPhotos />
         </ScrollView>
       </SafeAreaView>
 

@@ -102,14 +102,14 @@ export function PostSignUpWelcome({ visible, onDismiss }: PostSignUpWelcomeProps
         lineHeight: scaleW(30),
         marginBottom: scaleW(24),
         textAlign: "center" as const,
-        fontFamily: "Jua_400Regular",
+        fontFamily: "BricolageGrotesque_800ExtraBold",
       },
       title: {
         fontSize: scaleW(36),
         lineHeight: scaleW(48),
         marginBottom: scaleW(step === "welcome" ? 24 : 28),
         textAlign: "center" as const,
-        fontFamily: "Jua_400Regular",
+        fontFamily: "BricolageGrotesque_800ExtraBold",
       },
       buttonWrap: {
         marginHorizontal: scaleW(48),

@@ -8,13 +8,6 @@ import { useEffect, useState } from "react";
 import { LayoutAnimationConfig } from "react-native-reanimated";
 import * as Linking from "expo-linking";
 import {
-  useFonts as useJuaFonts,
-  Jua_400Regular } from "@expo-google-fonts/jua";
-import {
-  useFonts as useComicNeueFonts,
-  ComicNeue_400Regular,
-  ComicNeue_700Bold } from "@expo-google-fonts/comic-neue";
-import {
   useFonts as useBricolageFonts,
   BricolageGrotesque_700Bold,
   BricolageGrotesque_800ExtraBold } from "@expo-google-fonts/bricolage-grotesque";
@@ -77,11 +70,6 @@ export default function RootLayout() {
   useAppUpdate();
   useHideAndroidNavigationBar();
 
-  const [juaLoaded, juaError] = useJuaFonts({
-    Jua_400Regular });
-  const [comicNeueLoaded, comicNeueError] = useComicNeueFonts({
-    ComicNeue_400Regular,
-    ComicNeue_700Bold });
   const [bricolageLoaded, bricolageError] = useBricolageFonts({
     BricolageGrotesque_700Bold,
     BricolageGrotesque_800ExtraBold });
@@ -92,9 +80,8 @@ export default function RootLayout() {
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf") });
   const [fontTimeoutElapsed, setFontTimeoutElapsed] = useState(false);
 
-  const fontsLoaded = juaLoaded && comicNeueLoaded && bricolageLoaded && atkinsonLoaded && spaceMonoLoaded;
-  const fontsReady =
-    fontsLoaded || fontTimeoutElapsed || !!(juaError || comicNeueError || bricolageError || atkinsonError);
+  const fontsLoaded = bricolageLoaded && atkinsonLoaded && spaceMonoLoaded;
+  const fontsReady = fontsLoaded || fontTimeoutElapsed || !!(bricolageError || atkinsonError);
 
   useEffect(() => {
     const timer = setTimeout(() => setFontTimeoutElapsed(true), 5000);

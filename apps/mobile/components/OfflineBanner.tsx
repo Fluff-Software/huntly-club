@@ -62,12 +62,12 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   text: {
-    fontFamily: "ComicNeue_700Bold",
+    fontFamily: "AtkinsonHyperlegibleNext_700Bold",
     fontSize: 15,
     color: OFFLINE_TEXT,
   },
   subtext: {
-    fontFamily: "ComicNeue_400Regular",
+    fontFamily: "AtkinsonHyperlegibleNext_400Regular",
     fontSize: 13,
     color: CREAM,
     opacity: 0.95,

@@ -52,8 +52,14 @@ module.exports = {
       },
       fontFamily: {
         rounded: ["System", "sans-serif"], // Rounded, friendly font for kids
-        jua: ["Jua_400Regular", "sans-serif"], // Jua for buttons and headings
-        "comic-neue": ["ComicNeue_400Regular", "sans-serif"], // Comic Neue for body copy
+        // Field kit type. "jua" and "comic-neue" are the old names, kept so any
+        // leftover classes pick up the new fonts instead of the retired ones.
+        display: ["BricolageGrotesque_800ExtraBold", "sans-serif"],
+        "display-bold": ["BricolageGrotesque_700Bold", "sans-serif"],
+        body: ["AtkinsonHyperlegibleNext_400Regular", "sans-serif"],
+        "body-bold": ["AtkinsonHyperlegibleNext_700Bold", "sans-serif"],
+        jua: ["BricolageGrotesque_800ExtraBold", "sans-serif"],
+        "comic-neue": ["AtkinsonHyperlegibleNext_400Regular", "sans-serif"],
       },
       borderRadius: {
         xl: "16px",

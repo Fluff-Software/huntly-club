@@ -63,14 +63,15 @@ const BAR_PADDING = 7;
 const MAX_BAR_WIDTH = 520;
 
 /** Page colour behind the floating bar, so it sits on the screen it belongs to. */
-const MOSS_ACTIVITY_ROUTES = ["/activity/pick-activity", "/activity/explore-collection", "/activity/explore-packs"];
+// "/activity/explore" also covers the binder and packs screens; the map itself is light now.
+const MOSS_ACTIVITY_ROUTES = ["/activity/pick-activity", "/activity/explore"];
 
 function pageBehind(pathname: string, routeName: string): string {
   // The campfire screen is black edge to edge.
   if (routeName === "campfire") return "#000";
   if (routeName !== "activity") return FK.moss;
   if (MOSS_ACTIVITY_ROUTES.some((r) => pathname.includes(r))) return FK.moss;
-  // Explore and the walk/cycle screens are still on the dark forest page.
+  // The walk/cycle screens are still on the dark forest page.
   return "#2D4A35";
 }
 

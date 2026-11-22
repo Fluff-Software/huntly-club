@@ -50,7 +50,8 @@ function ActivityMapStopMarker({
   return (
     <Marker
       coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
-      title={marker.title}
+      // Explore pins open their own sheet, so skip MapKit's callout bubble.
+      title={icon === "card" || icon === "collected" ? undefined : marker.title}
       anchor={{ x: 0.5, y: 0.5 }}
       zIndex={1}
       tracksViewChanges={tracksViewChanges}

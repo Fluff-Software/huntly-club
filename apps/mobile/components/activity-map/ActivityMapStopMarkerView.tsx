@@ -40,7 +40,7 @@ function LockGlyph() {
 /** A little collectible card with a star: "there's a card waiting here". */
 function CardGlyph() {
   return (
-    <Svg width={20} height={20} viewBox="0 0 24 24" accessibilityElementsHidden>
+    <Svg width={18} height={18} viewBox="0 0 24 24" accessibilityElementsHidden>
       <Rect
         x={5}
         y={2.5}
@@ -135,10 +135,10 @@ const styles = StyleSheet.create({
     borderColor: "#FFFFFF",
   },
   cardBubble: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 3,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 2.5,
     backgroundColor: FK.forest,
     borderColor: FK.sunbeam,
     shadowColor: "#10251B",
@@ -148,9 +148,9 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   collectedBubble: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     borderWidth: 2,
     backgroundColor: FK.paper,
     borderColor: "#C9D3C0",

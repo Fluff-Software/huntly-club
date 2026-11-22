@@ -1,48 +1,30 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  View,
-  ScrollView,
-  Image,
-  Pressable,
-  StyleSheet,
-  ActivityIndicator,
-  Text } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, {
-  FadeInDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring } from "react-native-reanimated";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ThemedText } from "@/components/ThemedText";
-import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { StatusBar } from "expo-status-bar";
+import { Image } from "expo-image";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
+import { FKButton, FKLoading } from "@/components/fieldkit";
+import { FK, FONT, RADIUS } from "@/constants/fieldKit";
 import { getActivityById, getActivityImageSource } from "@/services/packService";
-import type { Activity } from "@/types/activity";
-import type { MissionStep } from "@/types/activity";
+import type { Activity, MissionStep } from "@/types/activity";
 
-const LIGHT_GREEN_HEADER = "#7FAF8A";
-const DARK_BG = "#2F3336";
-const TIP_BG = "rgba(127, 175, 138, 0.12)";
-const HUNTLY_GREEN = "#4F6F52";
-
-function buildSteps(activity: Activity): MissionStep[] {
-  return activity.steps ?? [];
-}
-
+/** One instruction per screen, big and readable, with the grown-up tip underneath. */
 export default function StepsScreen() {
   const router = useRouter();
   const { id, step } = useLocalSearchParams<{ id?: string; step?: string }>();
-  const { scaleW, isTablet } = useLayoutScale();
-  const insets = useSafeAreaInsets();
   const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const stepIndex = Math.max(0, parseInt(step ?? "0", 10) || 0);
-  const steps = useMemo(() => (activity ? buildSteps(activity) : []), [activity]);
+  const steps: MissionStep[] = useMemo(() => activity?.steps ?? [], [activity]);
   const totalSteps = steps.length;
-  const currentStep = totalSteps > 0 ? steps[stepIndex] : null;
-  const isLastStep = totalSteps > 0 && stepIndex === totalSteps - 1;
+  const currentStep = totalSteps > 0 ? steps[Math.min(stepIndex, totalSteps - 1)] : null;
+  const isLastStep = totalSteps > 0 && stepIndex >= totalSteps - 1;
 
   const loadActivity = useCallback(async () => {
     if (!id) {
@@ -65,249 +47,134 @@ export default function StepsScreen() {
   }, [id]);
 
   useEffect(() => {
-    loadActivity();
+    void loadActivity();
   }, [loadActivity]);
-
-  const backScale = useSharedValue(1);
-  const doneScale = useSharedValue(1);
-  const backStyle = useAnimatedStyle(() => ({ transform: [{ scale: backScale.value }] }));
-  const doneStyle = useAnimatedStyle(() => ({ transform: [{ scale: doneScale.value }] }));
 
   const handleBack = () => {
     if (!activity?.id) return;
     if (stepIndex > 0) {
       router.setParams({ step: String(stepIndex - 1) });
     } else {
-      router.replace({
-        pathname: "/(tabs)/activity/mission/prep",
-        params: { id: String(activity.id) } });
+      router.replace({ pathname: "/(tabs)/activity/mission/prep", params: { id: String(activity.id) } });
     }
   };
 
   const handleDone = () => {
     if (!activity?.id) return;
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     if (isLastStep) {
-      router.push({
-        pathname: "/(tabs)/activity/mission/completion",
-        params: { id: String(activity.id) } });
+      router.push({ pathname: "/(tabs)/activity/mission/completion", params: { id: String(activity.id) } });
     } else {
       router.setParams({ step: String(stepIndex + 1) });
     }
   };
 
-  const styles = useMemo(
-    () =>
-      StyleSheet.create({
-        container: { flex: 1, backgroundColor: LIGHT_GREEN_HEADER },
-        loadingContainer: {
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          padding: scaleW(24) },
-        errorText: { fontSize: scaleW(17), color: "#FFF", textAlign: "center" },
-        header: {
-          backgroundColor: LIGHT_GREEN_HEADER,
-          paddingTop: scaleW(20),
-          paddingBottom: scaleW(24),
-          paddingHorizontal: scaleW(20),
-          borderBottomLeftRadius: scaleW(24),
-          borderBottomRightRadius: scaleW(24) },
-        missionTitle: {
-          fontSize: scaleW(16),
-          color: "rgba(47,51,54,0.8)",
-          marginBottom: scaleW(8) },
-        stepLabel: {
-          fontSize: scaleW(28),
-          fontWeight: "800",
-          color: "#FFF" },
-        stepLabelSmall: { fontSize: scaleW(18), fontWeight: "600", color: "rgba(255,255,255,0.8)" },
-        progressRow: {
-          flexDirection: "row",
-          gap: scaleW(8),
-          marginTop: scaleW(12) },
-        progressLine: {
-          flex: 1,
-          height: scaleW(4),
-          borderRadius: 2,
-          backgroundColor: "rgba(255,255,255,0.5)" },
-        progressLineDone: { backgroundColor: "#FFF" },
-        scroll: { flex: 1, backgroundColor: DARK_BG },
-        scrollContent: { padding: scaleW(20), paddingBottom: scaleW(24) },
-        mediaPlaceholder: {
-          width: "100%",
-          height: scaleW(220),
-          borderRadius: scaleW(16),
-          backgroundColor: "rgba(255,255,255,0.1)",
-          marginBottom: scaleW(20),
-          borderWidth: 1,
-          borderStyle: "dashed",
-          borderColor: "rgba(255,255,255,0.3)",
-          alignItems: "center",
-          justifyContent: "center" },
-        mediaImage: {
-          width: "100%",
-          height: scaleW(220),
-          borderRadius: scaleW(16),
-          marginBottom: scaleW(20) },
-        instructionText: {
-          fontSize: scaleW(20),
-          fontWeight: "700",
-          color: "#FFF",
-          marginBottom: scaleW(16),
-          lineHeight: scaleW(28) },
-        tipCard: {
-          backgroundColor: TIP_BG,
-          borderRadius: scaleW(14),
-          paddingVertical: scaleW(12),
-          paddingHorizontal: scaleW(16),
-          borderLeftWidth: scaleW(4),
-          borderLeftColor: HUNTLY_GREEN },
-        tipText: { fontSize: scaleW(15), color: "rgba(255,255,255,0.9)", lineHeight: scaleW(22) },
-        footer: {
-          flexDirection: "row",
-          gap: scaleW(12),
-          backgroundColor: DARK_BG,
-          paddingTop: scaleW(12),
-          paddingHorizontal: scaleW(20),
-          paddingBottom:
-            insets.bottom +
-            scaleW(12) +
-            (isTablet ? scaleW(36) : 0),
-          marginBottom: scaleW(24) },
-        backButton: {
-          flex: 1,
-          backgroundColor: "rgba(255,255,255,0.15)",
-          borderRadius: scaleW(24),
-          minHeight: scaleW(56),
-          alignItems: "center",
-          justifyContent: "center" },
-        doneButton: {
-          flex: 1,
-          backgroundColor: HUNTLY_GREEN,
-          borderRadius: scaleW(24),
-          minHeight: scaleW(56),
-          alignItems: "center",
-          justifyContent: "center" },
-        buttonText: { fontSize: scaleW(16), fontWeight: "700", color: "#FFF", lineHeight: scaleW(20) } }),
-    [scaleW, insets.bottom, isTablet]
-  );
+  const handleClose = () => {
+    Alert.alert("Pause this mission?", "Your mission will be waiting in the Clubhouse whenever you're ready.", [
+      { text: "Keep going", style: "cancel" },
+      { text: "Pause", onPress: () => router.replace("/(tabs)") },
+    ]);
+  };
 
-  if (loading) {
+  if (loading) return <FKLoading dark />;
+  if (error || !activity || !currentStep) {
     return (
-      <SafeAreaView style={[styles.container, styles.loadingContainer]} edges={["top", "left", "right"]}>
-        <ActivityIndicator size="large" color={LIGHT_GREEN_HEADER} />
-        <ThemedText style={[styles.errorText, { marginTop: scaleW(16) }]}>Loading…</ThemedText>
+      <SafeAreaView style={[styles.root, styles.center]}>
+        <StatusBar style="light" />
+        <Text style={styles.error}>{error ?? "This mission has no steps yet."}</Text>
       </SafeAreaView>
     );
   }
 
-  if (error || !activity) {
-    return (
-      <SafeAreaView style={[styles.container, styles.loadingContainer]} edges={["top", "left", "right"]}>
-        <ThemedText style={styles.errorText}>{error ?? "Activity not found"}</ThemedText>
-      </SafeAreaView>
-    );
-  }
-
-  if (totalSteps === 0) {
-    router.replace({
-      pathname: "/(tabs)/activity/mission/completion",
-      params: { id: String(activity.id) } });
-    return null;
-  }
-
-  const mediaUrl = currentStep?.media_url?.trim();
-  const mainImage = activity.image;
+  const imageSource = currentStep.media_url ? { uri: currentStep.media_url } : getActivityImageSource(activity.image ?? null);
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <View style={styles.header}>
-        <ThemedText style={styles.missionTitle}>{activity.title}</ThemedText>
-        <View style={{ flexDirection: "row", alignItems: "baseline", gap: scaleW(4) }}>
-          <ThemedText type="heading" style={styles.stepLabel}>
-            Step {stepIndex + 1}
-          </ThemedText>
-          <ThemedText style={styles.stepLabelSmall}>/ {totalSteps}</ThemedText>
-        </View>
-        <View style={styles.progressRow}>
+    <SafeAreaView style={styles.root} edges={["top", "left", "right", "bottom"]}>
+      <StatusBar style="light" />
+      <View style={styles.topBar}>
+        <Pressable onPress={handleClose} style={styles.close} hitSlop={8} accessibilityLabel="Pause mission">
+          <Ionicons name="close" size={26} color={FK.white} />
+        </Pressable>
+        <View style={styles.progress}>
           {steps.map((_, i) => (
-            <View
-              key={i}
-              style={[
-                styles.progressLine,
-                i <= stepIndex && styles.progressLineDone,
-                i > stepIndex && { borderStyle: "dashed", borderWidth: 1, backgroundColor: "transparent" },
-              ]}
-            />
+            <View key={i} style={[styles.seg, { backgroundColor: i <= stepIndex ? FK.sunbeam : "#2F4A3B" }]} />
           ))}
         </View>
+        <Text style={styles.count}>
+          {stepIndex + 1} of {totalSteps}
+        </Text>
       </View>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-      >
-        <Animated.View>
-          {mediaUrl ? (
-            <Image
-              source={{ uri: mediaUrl }}
-              style={styles.mediaImage}
-              resizeMode="cover"
-            />
-          ) : mainImage ? (
-            <Image
-              source={getActivityImageSource(mainImage) as { uri: string }}
-              style={styles.mediaImage}
-              resizeMode="cover"
-            />
-          ) : (
-            <View style={styles.mediaPlaceholder} />
-          )}
-          <ThemedText type="heading" style={styles.instructionText}>
-            {currentStep?.instruction}
-          </ThemedText>
-          {currentStep?.tip != null && currentStep.tip.trim() !== "" && (
-            <View style={styles.tipCard}>
-              <ThemedText style={styles.tipText}>
-                Tip: {currentStep.tip}
-              </ThemedText>
+
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Animated.View key={`img-${stepIndex}`} entering={FadeIn.duration(300)} style={styles.imageWrap}>
+          <Image source={imageSource} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+        </Animated.View>
+        <Animated.View key={`txt-${stepIndex}`} entering={FadeInDown.duration(300)}>
+          <Text style={styles.stepLabel}>STEP {stepIndex + 1}</Text>
+          <Text style={styles.instruction}>{currentStep.instruction}</Text>
+          {currentStep.tip ? (
+            <View style={styles.tip}>
+              <Ionicons name="sparkles" size={18} color={FK.sunbeam} />
+              <Text style={styles.tipText}>{currentStep.tip}</Text>
             </View>
-          )}
+          ) : null}
         </Animated.View>
       </ScrollView>
-      <SafeAreaView edges={["bottom"]} style={{ backgroundColor: DARK_BG }}>
-        <View style={styles.footer}>
-          <Animated.View style={[backStyle, { flex: 1 }]}>
-            <Pressable
-              onPress={handleBack}
-              onPressIn={() => {
-                backScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-              }}
-              onPressOut={() => {
-                backScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-              }}
-              style={styles.backButton}
-            >
-              <Text style={styles.buttonText}>Back</Text>
-            </Pressable>
-          </Animated.View>
-          <Animated.View style={[doneStyle, { flex: 1 }]}>
-            <Pressable
-              onPress={handleDone}
-              onPressIn={() => {
-                doneScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-              }}
-              onPressOut={() => {
-                doneScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-              }}
-              style={styles.doneButton}
-            >
-              <Text style={styles.buttonText}>That's done!</Text>
-            </Pressable>
-          </Animated.View>
-        </View>
-      </SafeAreaView>
+
+      <View style={styles.footer}>
+        <Pressable onPress={handleBack} style={styles.backCircle} accessibilityLabel="Previous step">
+          <Ionicons name="arrow-back" size={26} color={FK.white} />
+        </Pressable>
+        <FKButton
+          label={isLastStep ? "Finish mission" : "Done! Next step"}
+          icon={isLastStep ? "flag" : "checkmark"}
+          onPress={handleDone}
+          style={{ flex: 1 }}
+          testID="step-done"
+        />
+      </View>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: FK.ink },
+  center: { alignItems: "center", justifyContent: "center", padding: 24 },
+  error: { fontFamily: FONT.displayBold, fontSize: 17, color: FK.white, textAlign: "center" },
+  topBar: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12 },
+  close: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#1F3A2C",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  progress: { flex: 1, flexDirection: "row", gap: 6 },
+  seg: { flex: 1, height: 8, borderRadius: 4 },
+  count: { fontFamily: FONT.display, fontSize: 16, color: "#A9C79A" },
+  content: { paddingHorizontal: 20, paddingBottom: 16 },
+  imageWrap: { height: 280, borderRadius: RADIUS.lg, overflow: "hidden", backgroundColor: FK.forest, marginBottom: 22 },
+  stepLabel: { fontFamily: FONT.display, fontSize: 14, letterSpacing: 1.8, color: FK.sunbeam, marginBottom: 8 },
+  instruction: { fontFamily: FONT.display, fontSize: 30, lineHeight: 34, color: FK.white, letterSpacing: -0.5 },
+  tip: {
+    flexDirection: "row",
+    gap: 12,
+    backgroundColor: FK.forest,
+    borderRadius: RADIUS.md,
+    padding: 16,
+    marginTop: 18,
+    alignItems: "flex-start",
+  },
+  tipText: { flex: 1, fontFamily: FONT.body, fontSize: 17, lineHeight: 24, color: "#DDE6D8" },
+  footer: { flexDirection: "row", gap: 12, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 8, alignItems: "center" },
+  backCircle: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    borderWidth: 2,
+    borderColor: "#2F4A3B",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

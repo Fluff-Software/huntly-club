@@ -1,32 +1,24 @@
 /**
- * Pack Inventory — banked, unopened Explore packs across the household,
- * grouped by profile. Shows pack art, not card art, since the card inside
+ * Packs to open: banked, unopened Explore packs across the household,
+ * grouped by explorer. Shows pack art, not card art, since the card inside
  * isn't drawn until the pack is actually opened.
  */
-import React, { useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-} from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { LinearGradient } from "expo-linear-gradient";
-import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ThemedText } from "@/components/ThemedText";
 import { ExploreCardPackReveal } from "@/components/explore/ExploreCardPackReveal";
+import { FKButton, FKCard, FKLoading, FKPageHeader } from "@/components/fieldkit";
+import { FK, FONT, RADIUS, TYPE } from "@/constants/fieldKit";
 import { explorePackArt } from "@/constants/exploreBinder";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useBankedPacksByProfile } from "@/hooks/useBankedPacksByProfile";
 import { openExplorePack, exploreUserMessage, ExploreStopsRequestError } from "@/services/exploreStopsService";
 import type { ExploreAward, ExplorePackRecord } from "@/types/exploreStops";
 
-const H_PAD = 12;
-const GRID_GAP = 10;
+const H_PAD = 20;
+const GRID_GAP = 12;
 const COLUMNS = 2;
 
 /** Native pixel size of explore-pack-full.png (see ExploreCardPackReveal.tsx). */
@@ -55,11 +47,44 @@ function groupPacks(packs: ExplorePackRecord[]): PackGroup[] {
   return Array.from(groups.values());
 }
 
+/** Short caption under a pack tile. */
+function packCaption(group: PackGroup): string {
+  if (group.eventSlug) {
+    const name = group.eventSlug.replace(/[-_]+/g, " ");
+    return `${name.charAt(0).toUpperCase()}${name.slice(1)} pack`;
+  }
+  return group.source === "trade" ? "Swap pack" : "Explore pack";
+}
+
+function explorerName(p: { name: string; nickname?: string | null }): string {
+  return (p.nickname || p.name || "").trim() || "Explorer";
+}
+
 export default function ExplorePacksScreen() {
   const router = useRouter();
   const { profileId: profileIdParam } = useLocalSearchParams<{ profileId?: string }>();
   const { profiles, loading: profilesLoading } = usePlayer();
   const { bankedPacksByProfile, refresh } = useBankedPacksByProfile();
+
+  /**
+   * Ready once every explorer's packs have arrived, so the screen never flashes
+   * "nothing to open" before the first fetch lands. The hook swallows errors,
+   * so a timer stops the loading state hanging if a fetch fails.
+   */
+  const packsArrived =
+    !profilesLoading &&
+    (profiles.length === 0 || profiles.every((p) => bankedPacksByProfile.has(p.id)));
+  const [timedOut, setTimedOut] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setTimedOut(true), 8000);
+    return () => clearTimeout(t);
+  }, []);
+  const ready = packsArrived || timedOut;
+
+  function goBack() {
+    if (router.canGoBack()) router.back();
+    else router.navigate("/(tabs)/me");
+  }
 
   const primaryProfileId = useMemo(() => {
     const parsed = typeof profileIdParam === "string" ? Number(profileIdParam) : NaN;
@@ -98,7 +123,7 @@ export default function ExplorePacksScreen() {
   async function commitPackFromQueue(): Promise<ExploreAward> {
     const pack = packQueue?.[packQueueIndex];
     if (!pack) {
-      throw new Error("Pack queue expired. Try again from your inventory.");
+      throw new Error("That pack timed out. Try again from your packs.");
     }
     try {
       const result = await openExplorePack(pack.id);
@@ -114,90 +139,102 @@ export default function ExplorePacksScreen() {
     }
   }
 
+  const first = sections[0];
+  const totalPacks = sections.reduce((n, sec) => n + sec.packs.length, 0);
+  const primaryLabel = !first
+    ? ""
+    : sections.length > 1
+      ? `Open ${explorerName(first.profile)}’s packs`
+      : first.packs.length === 1
+        ? "Open the pack"
+        : "Open the packs";
+
   return (
     <>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <Stack.Screen options={{ headerShown: false }} />
-      <LinearGradient colors={["#1B2E22", "#0C1710"]} style={{ flex: 1 }}>
-        <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-          <View style={styles.header}>
-            <Pressable
-              onPress={() => router.back()}
-              accessibilityRole="button"
-              accessibilityLabel="Go back"
-              style={styles.iconBtn}
-            >
-              <MaterialIcons name="arrow-back" size={22} color="#FFF" />
-            </Pressable>
-            <ThemedText type="heading" lightColor="#FFF" darkColor="#FFF" style={styles.title}>
-              Packs Waiting
-            </ThemedText>
-          </View>
-
-          {profilesLoading && sections.length === 0 ? (
-            <View style={styles.center}>
-              <ActivityIndicator color="#FFF" />
+      <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+        {!ready ? (
+          <>
+            <View style={styles.headerPad}>
+              <FKPageHeader title="Packs to open" onBack={goBack} />
             </View>
-          ) : sections.length === 0 ? (
-            <ThemedText
-              lightColor="rgba(255,255,255,0.7)"
-              darkColor="rgba(255,255,255,0.7)"
-              style={{ textAlign: "center", marginTop: 24 }}
-            >
-              No packs waiting right now.
-            </ThemedText>
-          ) : (
-            <ScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ paddingHorizontal: H_PAD, paddingBottom: 28 }}
-              showsVerticalScrollIndicator={false}
-            >
-              {sections.map(({ profile, packs }) => (
-                <View key={profile.id} style={styles.section}>
-                  <View style={styles.sectionLabel}>
-                    <MaterialCommunityIcons name="cards" size={16} color="#B8F000" />
-                    <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.sectionTitle}>
-                      {(profile.nickname || profile.name || "Player") + "’s packs"}
-                    </ThemedText>
+            <View style={{ flex: 1 }}>
+              <FKLoading />
+            </View>
+          </>
+        ) : (
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={styles.content}
+            showsVerticalScrollIndicator={false}
+          >
+            <FKPageHeader title="Packs to open" onBack={goBack} />
+            {sections.length === 0 ? (
+              <FKCard>
+                <Text style={TYPE.heading}>Nothing to open right now</Text>
+                <Text style={[TYPE.bodySmall, styles.emptyBody]}>
+                  Packs turn up at Explore stops on the map. Any you save for later will wait here.
+                </Text>
+              </FKCard>
+            ) : (
+              <>
+                <Text style={styles.intro}>
+                  {totalPacks === 1
+                    ? "There’s one pack waiting. Tap it to open."
+                    : `There are ${totalPacks} packs waiting. Tap one to open.`}
+                </Text>
+                {sections.map(({ profile, packs }) => (
+                  <View key={profile.id} style={styles.section}>
+                    {sections.length > 1 || profiles.length > 1 ? (
+                      <Text style={styles.sectionTitle} accessibilityRole="header">
+                        {explorerName(profile)}’s packs
+                      </Text>
+                    ) : null}
+                    <View style={styles.grid}>
+                      {groupPacks(packs).map((group) => (
+                        <Pressable
+                          key={group.key}
+                          onPress={() => openTile(packs, group.packs)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Open ${group.packs.length} ${packCaption(group).toLowerCase()}${
+                            group.packs.length === 1 ? "" : "s"
+                          }`}
+                          style={styles.tileCard}
+                        >
+                          <View style={styles.tile}>
+                            <Image
+                              source={explorePackArt(group.source, group.eventSlug)}
+                              style={styles.tileImage}
+                              resizeMode="contain"
+                            />
+                            {group.packs.length > 1 ? (
+                              <View style={styles.countBadge}>
+                                <Text style={styles.countBadgeText}>×{group.packs.length}</Text>
+                              </View>
+                            ) : null}
+                          </View>
+                          <Text style={styles.tileCaption} numberOfLines={1}>
+                            {packCaption(group)}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
                   </View>
-                  <View style={styles.grid}>
-                    {groupPacks(packs).map((group) => (
-                      <Pressable
-                        key={group.key}
-                        onPress={() => openTile(packs, group.packs)}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Open ${group.packs.length} pack${
-                          group.packs.length === 1 ? "" : "s"
-                        } from ${group.source === "trade" ? "trades" : "stops"}`}
-                        style={styles.tileCard}
-                      >
-                        <View style={styles.tile}>
-                          <Image
-                            source={explorePackArt(group.source, group.eventSlug)}
-                            style={styles.tileImage}
-                            resizeMode="contain"
-                          />
-                          {group.packs.length > 1 ? (
-                            <View style={styles.countBadge}>
-                              <ThemedText
-                                lightColor="#132414"
-                                darkColor="#132414"
-                                style={styles.countBadgeText}
-                              >
-                                {group.packs.length}
-                              </ThemedText>
-                            </View>
-                          ) : null}
-                        </View>
-                      </Pressable>
-                    ))}
-                  </View>
-                </View>
-              ))}
-            </ScrollView>
-          )}
-        </SafeAreaView>
-      </LinearGradient>
+                ))}
+              </>
+            )}
+          </ScrollView>
+        )}
+        {ready && first ? (
+          <View style={styles.footer}>
+            <FKButton
+              label={primaryLabel}
+              onPress={() => openTile(first.packs, first.packs)}
+            />
+          </View>
+        ) : null}
+      </SafeAreaView>
 
       {packQueue && packQueue[packQueueIndex] ? (
         <ExploreCardPackReveal
@@ -225,44 +262,13 @@ export default function ExplorePacksScreen() {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 12,
-    paddingBottom: 12,
-  },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.12)",
-  },
-  title: { fontSize: 22, lineHeight: 26 },
-  section: {
-    marginBottom: 20,
-  },
-  sectionLabel: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(20,24,20,0.92)",
-    borderWidth: 1,
-    borderColor: "rgba(184,240,0,0.35)",
-    borderRadius: 14,
-    paddingVertical: 7,
-    paddingHorizontal: 14,
-    marginBottom: 14,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: "800",
-    letterSpacing: 0.3,
-  },
+  safe: { flex: 1, backgroundColor: FK.moss },
+  headerPad: { paddingHorizontal: H_PAD, paddingTop: 12 },
+  content: { paddingHorizontal: H_PAD, paddingTop: 12, paddingBottom: 24 },
+  intro: { ...TYPE.body, color: FK.muted, marginTop: -6, marginBottom: 18 },
+  emptyBody: { marginTop: 6 },
+  section: { marginBottom: 24 },
+  sectionTitle: { ...TYPE.heading, marginBottom: 12 },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -270,11 +276,9 @@ const styles = StyleSheet.create({
   },
   tileCard: {
     width: `${100 / COLUMNS - 3}%`,
-    borderRadius: 18,
-    padding: 10,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderRadius: RADIUS.lg,
+    padding: 14,
+    backgroundColor: FK.paper,
   },
   tile: {
     aspectRatio: PACK_ASPECT,
@@ -285,22 +289,29 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
+  tileCaption: {
+    fontFamily: FONT.displayBold,
+    fontSize: 16,
+    color: FK.ink,
+    textAlign: "center",
+    marginTop: 10,
+  },
   countBadge: {
     position: "absolute",
-    top: -6,
-    right: -6,
-    minWidth: 24,
-    height: 24,
-    borderRadius: 12,
-    paddingHorizontal: 6,
+    top: -4,
+    right: -4,
+    minWidth: 34,
+    height: 28,
+    borderRadius: 14,
+    paddingHorizontal: 8,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#B8F000",
-    borderWidth: 2,
-    borderColor: "#0C1710",
+    backgroundColor: FK.ink,
   },
   countBadgeText: {
-    fontSize: 12,
-    fontWeight: "800",
+    fontFamily: FONT.display,
+    fontSize: 15,
+    color: FK.white,
   },
+  footer: { paddingHorizontal: H_PAD, paddingTop: 8, paddingBottom: 16 },
 });

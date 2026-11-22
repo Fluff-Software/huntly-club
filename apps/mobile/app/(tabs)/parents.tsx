@@ -1,34 +1,19 @@
-import React, { useState, useEffect, useMemo } from "react";
-import {
-  View,
-  ScrollView,
-  StyleSheet,
-  Pressable,
-  ActivityIndicator,
-  Image } from "react-native";
-import Animated, {
-  FadeInDown } from "react-native-reanimated";
+import React, { useState, useEffect } from "react";
+import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ThemedText } from "@/components/ThemedText";
-import { StatCard } from "@/components/StatCard";
+import { router, useFocusEffect } from "expo-router";
+import { setStatusBarStyle } from "expo-status-bar";
+import { Ionicons } from "@expo/vector-icons";
+import { FKButton, FKCard, FKEyebrow, FKLoading, FKPageHeader } from "@/components/fieldkit";
 import { ParentPinModal } from "@/components/ParentPinModal";
+import { FK, FONT, RADIUS, TYPE } from "@/constants/fieldKit";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePlayer } from "@/contexts/PlayerContext";
 import { useUser } from "@/contexts/UserContext";
-import { useFocusEffect } from "expo-router";
-import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { supabase } from "@/services/supabase";
 import { getCategories } from "@/services/categoriesService";
-import { MaterialIcons } from "@expo/vector-icons";
-import { ChildScreenLayout } from "@/components/ChildScreenLayout";
-import { useNavigationReturn } from "@/contexts/NavigationReturnContext";
-
-const COLORS = {
-  darkGreen: "#4F6F52",
-  cream: "#F8F7F4",
-  white: "#FFFFFF",
-  black: "#000000",
-  charcoal: "#333333",
-  cardGray: "#E8E8E8" };
+import { familySentence } from "@/utils/familyNames";
 
 interface CategoryAnalytics {
   categoryId: number;
@@ -39,18 +24,21 @@ interface CategoryAnalytics {
   explorerCount: number;
 }
 
+const goBack = () => {
+  if (router.canGoBack()) router.back();
+  else router.navigate("/(tabs)/me");
+};
+
+/** Grown-up guides: a plain view of how the family is getting on, plus the printable guides. */
 export default function ParentsScreen() {
   const { user } = useAuth();
   const { daysPlayed, pointsEarned } = useUser();
-  const { goBack } = useNavigationReturn();
-  const { scaleW } = useLayoutScale();
+  const { profiles: players } = usePlayer();
   const [hasExplorers, setHasExplorers] = useState(false);
-  const [categoryAnalytics, setCategoryAnalytics] = useState<
-    CategoryAnalytics[]
-  >([]);
+  const [categoryAnalytics, setCategoryAnalytics] = useState<CategoryAnalytics[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalActivities, setTotalActivities] = useState(0);
-  const [skillAreasTotal, setSkillAreasTotal] = useState(0);
+  const [missionsByProfile, setMissionsByProfile] = useState<Record<number, number>>({});
   const [showAllProgress, setShowAllProgress] = useState(false);
   // Parent Zone math-gate temporarily disabled – keep state commented for easy restore
   // const [showPinModal, setShowPinModal] = useState(true);
@@ -63,10 +51,12 @@ export default function ParentsScreen() {
     if (isAuthenticated) {
       fetchExplorersData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, isAuthenticated]);
 
   useFocusEffect(
     React.useCallback(() => {
+      setStatusBarStyle("dark");
       // Parent PIN check disabled for now
       // setShowPinModal(true);
       // setIsAuthenticated(false);
@@ -86,6 +76,7 @@ export default function ParentsScreen() {
 
       const categoriesList = await getCategories();
       let totalActivitiesSum = 0;
+      const perProfile: Record<number, number> = {};
       const categoryStatsMap: {
         [categoryId: number]: {
           count: number;
@@ -119,11 +110,10 @@ export default function ParentsScreen() {
 
         const completedActivities = activities ?? [];
         totalActivitiesSum += completedActivities.length;
+        perProfile[profile.id] = completedActivities.length;
 
         completedActivities.forEach((activity) => {
-          const activityData = Array.isArray(activity.activities)
-            ? activity.activities[0]
-            : activity.activities;
+          const activityData = Array.isArray(activity.activities) ? activity.activities[0] : activity.activities;
           const activityCategoryIds = Array.isArray(activityData?.categories)
             ? (activityData.categories as number[]).filter((x): x is number => typeof x === "number" && x > 0)
             : [];
@@ -147,19 +137,15 @@ export default function ParentsScreen() {
           icon: cat.icon,
           totalActivities: categoryStatsMap[cat.id]?.count || 0,
           totalXp: categoryStatsMap[cat.id]?.xp || 0,
-          explorerCount: categoryStatsMap[cat.id]?.explorers.size || 0 }))
+          explorerCount: categoryStatsMap[cat.id]?.explorers.size || 0,
+        }))
         .filter((a) => a.totalActivities > 0)
         .sort((a, b) => b.totalActivities - a.totalActivities);
-
-      const skillTotal = Object.values(categoryStatsMap).reduce(
-        (sum, s) => sum + s.count,
-        0
-      );
 
       setHasExplorers((profiles?.length ?? 0) > 0);
       setCategoryAnalytics(analytics);
       setTotalActivities(totalActivitiesSum);
-      setSkillAreasTotal(skillTotal);
+      setMissionsByProfile(perProfile);
     } catch (error) {
       console.error("Error fetching explorers data:", error);
     } finally {
@@ -178,283 +164,181 @@ export default function ParentsScreen() {
     goBack();
   };
 
-  const styles = useMemo(
-    () =>
-      StyleSheet.create({
-        safeArea: {
-          flex: 1,
-          backgroundColor: COLORS.darkGreen },
-        headerBar: {
-          backgroundColor: COLORS.darkGreen },
-        scrollView: { flex: 1 },
-        scrollContent: {},
-        sectionTitle: {
-          fontSize: scaleW(18),
-          fontWeight: "600",
-          color: COLORS.white,
-          marginBottom: scaleW(12) },
-        sectionDesc: {
-          fontSize: scaleW(14),
-          color: COLORS.white,
-          marginBottom: scaleW(16) },
-        progressGrid: {
-          flexDirection: "row",
-          flexWrap: "wrap",
-          justifyContent: "center",
-          gap: scaleW(24),
-          marginBottom: scaleW(24) },
-        activityCard: {
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          backgroundColor: COLORS.cardGray,
-          paddingVertical: scaleW(14),
-          paddingHorizontal: scaleW(16),
-          marginBottom: scaleW(10) },
-        activityCardLeft: {
-          flexDirection: "row",
-          alignItems: "center",
-          flex: 1 },
-        activityIconWrap: {
-          width: scaleW(40),
-          height: scaleW(40),
-          borderRadius: scaleW(20),
-          backgroundColor: "rgba(0,0,0,0.06)",
-          alignItems: "center",
-          justifyContent: "center",
-          marginRight: scaleW(12) },
-        activityIconText: {
-          fontSize: scaleW(20) },
-        activityCategoryName: {
-          fontSize: scaleW(15),
-          color: COLORS.charcoal },
-        activityCountWrap: {
-          alignItems: "flex-end" },
-        activityCountNum: {
-          fontSize: scaleW(15),
-          fontWeight: "700",
-          color: COLORS.charcoal },
-        activityCountLabel: {
-          fontSize: scaleW(13),
-          color: COLORS.charcoal },
-        showAllProgressButton: {
-          alignSelf: "center",
-          paddingVertical: scaleW(12),
-          paddingHorizontal: scaleW(20),
-          marginTop: scaleW(8) },
-        showAllProgressText: {
-          fontSize: scaleW(15),
-          fontWeight: "600",
-          color: COLORS.white },
-        loadingWrap: {
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          padding: scaleW(24) },
-        loadingSpinner: {
-          width: scaleW(48),
-          height: scaleW(48),
-          marginBottom: scaleW(16) },
-        loadingText: {
-          fontSize: scaleW(16),
-          color: COLORS.white },
-        emptyWrap: {
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          padding: scaleW(24) },
-        emptyIcon: {
-          width: scaleW(64),
-          height: scaleW(64),
-          borderRadius: scaleW(32),
-          backgroundColor: "rgba(255,255,255,0.2)",
-          alignItems: "center",
-          justifyContent: "center",
-          marginBottom: scaleW(16) },
-        emptyTitle: {
-          fontSize: scaleW(18),
-          fontWeight: "700",
-          color: COLORS.white,
-          marginBottom: scaleW(8),
-          textAlign: "center" },
-        emptyDesc: {
-          fontSize: scaleW(14),
-          color: COLORS.white,
-          opacity: 0.9,
-          textAlign: "center" } }),
-    [scaleW]
-  );
-
-  if (loading && isAuthenticated) {
-    return (
-      <ChildScreenLayout
-        backgroundColor={COLORS.darkGreen}
-        contentContainerStyle={{ flex: 1 }}
-      >
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator
-            size="large"
-            color={COLORS.white}
-            style={styles.loadingSpinner}
-          />
-          <ThemedText style={styles.loadingText}>
-            Loading explorer insights...
-          </ThemedText>
-        </View>
-      </ChildScreenLayout>
-    );
-  }
-
-  if (!user) {
-    return (
-      <ChildScreenLayout
-        backgroundColor={COLORS.darkGreen}
-        contentContainerStyle={{ flex: 1 }}
-      >
-        <View style={styles.emptyWrap}>
-          <View style={styles.emptyIcon}>
-            <ThemedText style={{ fontSize: scaleW(28) }}>🔒</ThemedText>
-          </View>
-          <ThemedText style={styles.emptyTitle}>Access Denied</ThemedText>
-          <ThemedText style={styles.emptyDesc}>
-            Please sign in to view explorer insights
-          </ThemedText>
-        </View>
-      </ChildScreenLayout>
-    );
-  }
-
   if (showPinModal) {
     return (
-      <>
-        <ChildScreenLayout
-          backgroundColor={COLORS.darkGreen}
-          contentContainerStyle={{ flex: 1 }}
-        >
-          <View style={styles.loadingWrap}>
-            <ActivityIndicator
-              size="large"
-              color={COLORS.white}
-              style={styles.loadingSpinner}
-            />
-            <ThemedText style={styles.loadingText}>Loading...</ThemedText>
-          </View>
-        </ChildScreenLayout>
-        <ParentPinModal
-          visible={showPinModal}
-          onSuccess={handlePinSuccess}
-          onCancel={handlePinCancel}
-        />
-      </>
+      <View style={styles.root}>
+        <FKLoading />
+        <ParentPinModal visible={showPinModal} onSuccess={handlePinSuccess} onCancel={handlePinCancel} />
+      </View>
     );
   }
 
-  if (!hasExplorers) {
+  if (loading && isAuthenticated && user) {
     return (
-      <ChildScreenLayout
-        backgroundColor={COLORS.darkGreen}
-        contentContainerStyle={{ flex: 1 }}
-      >
-        <View style={styles.emptyWrap}>
-          <View style={styles.emptyIcon}>
-            <ThemedText style={{ fontSize: scaleW(28) }}>👥</ThemedText>
-          </View>
-          <ThemedText style={styles.emptyTitle}>No Explorers Found</ThemedText>
-          <ThemedText style={styles.emptyDesc}>
-            Create some explorers to see their progress and insights
-          </ThemedText>
-        </View>
-      </ChildScreenLayout>
+      <View style={styles.root}>
+        <FKLoading />
+      </View>
     );
   }
 
-  const summaryStats: { value: number; label: string; color: "pink" | "green" | "purple" | "cream" }[] = [
-    { value: totalActivities, label: "Activities completed", color: "purple" },
-    { value: skillAreasTotal, label: "Skill areas", color: "cream" },
-    { value: daysPlayed, label: "Days since started", color: "pink" },
-    { value: pointsEarned, label: "Points earned", color: "green" },
-  ];
+  const names = players.map((p) => p.name || p.nickname);
+  const who = familySentence(names, "your explorers");
+  const visibleCategories = showAllProgress ? categoryAnalytics : categoryAnalytics.slice(0, 4);
+  const maxCategory = categoryAnalytics[0]?.totalActivities ?? 1;
 
   return (
-    <ChildScreenLayout
-      backgroundColor={COLORS.darkGreen}
-      contentContainerStyle={styles.scrollContent}
-    >
-        {/* Progress – summary stats */}
-        <Animated.View entering={FadeInDown.duration(500).delay(0)}>
-          <ThemedText type="heading" style={styles.sectionTitle}>Progress</ThemedText>
-          <View style={styles.progressGrid}>
-            {summaryStats.map((stat, i) => (
-              <StatCard
-                key={i}
-                value={stat.value}
-                label={stat.label}
-                color={stat.color}
-              />
-            ))}
-          </View>
-        </Animated.View>
+    <SafeAreaView style={styles.root} edges={["top", "left", "right"]}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <FKPageHeader eyebrow="For grown-ups" title="Grown-up guides" onBack={goBack} />
 
-        {/* Progress – by category */}
-        <Animated.View entering={FadeInDown.duration(500).delay(150)}>
-          <ThemedText type="heading" style={styles.sectionTitle}>Progress</ThemedText>
-          {categoryAnalytics.length === 0 ? (
-            <View style={styles.activityCard}>
-              <ThemedText style={styles.activityCategoryName}>
-                No categories yet
-              </ThemedText>
-            </View>
-          ) : (
-            <>
-              {(showAllProgress ? categoryAnalytics : categoryAnalytics.slice(0, 4)).map((cat, i) => (
-                <Animated.View
-                  key={cat.categoryId}
-                >
-                  <View style={styles.activityCard}>
-                    <View style={styles.activityCardLeft}>
-                      <View style={styles.activityIconWrap}>
-                        {cat.icon ? (
-                          <Image
-                            source={{ uri: cat.icon }}
-                            style={{ width: scaleW(22), height: scaleW(22), borderRadius: 2 }}
-                            resizeMode="cover"
-                          />
-                        ) : (
-                          <MaterialIcons
-                            name="label"
-                            size={scaleW(22)}
-                            color={COLORS.charcoal}
-                          />
-                        )}
+        {!user ? (
+          <FKCard>
+            <Text style={TYPE.heading}>Sign in to see this</Text>
+            <Text style={[TYPE.body, { marginTop: 6 }]}>This page shows your family&apos;s progress once you&apos;re signed in.</Text>
+          </FKCard>
+        ) : (
+          <>
+            <Animated.View entering={FadeInDown.duration(400)}>
+              <View style={styles.guides}>
+                <View style={styles.guidesIcon}>
+                  <Ionicons name="book-outline" size={24} color={FK.skyInk} />
+                </View>
+                <Text style={[TYPE.heading, { color: FK.skyInk, marginTop: 12 }]}>Guides and downloads</Text>
+                <Text style={[TYPE.body, { color: FK.skyInk, marginTop: 4, marginBottom: 16 }]}>
+                  Printable sheets and short guides to help you plan time outside.
+                </Text>
+                <FKButton label="Open guides" onPress={() => router.push("/(tabs)/resources")} />
+              </View>
+            </Animated.View>
+
+            {!hasExplorers ? (
+              <FKCard style={{ marginTop: 16 }}>
+                <Text style={TYPE.heading}>No explorers yet</Text>
+                <Text style={[TYPE.body, { marginTop: 6, marginBottom: 14 }]}>
+                  Add an explorer and their progress will show up here.
+                </Text>
+                <FKButton label="Add an explorer" variant="ink" onPress={() => router.push("/(tabs)/profile")} />
+              </FKCard>
+            ) : (
+              <Animated.View entering={FadeInDown.duration(400).delay(100)}>
+                <FKEyebrow style={styles.section}>Progress so far</FKEyebrow>
+                <View style={styles.stats}>
+                  <Stat value={totalActivities} label={totalActivities === 1 ? "Mission done" : "Missions done"} />
+                  <Stat value={categoryAnalytics.length} label="Skill areas tried" />
+                  <Stat value={daysPlayed} label="Days since you joined" />
+                  <Stat value={pointsEarned} label="Points earned" />
+                </View>
+
+                {players.length > 1 ? (
+                  <>
+                    <FKEyebrow style={styles.section}>Each explorer</FKEyebrow>
+                    <FKCard style={{ paddingVertical: 6 }}>
+                      {players.map((p, i) => {
+                        const count = missionsByProfile[p.id] ?? 0;
+                        return (
+                          <View key={p.id} style={i > 0 ? [styles.explorerRow, styles.divider] : styles.explorerRow}>
+                            <Text style={styles.explorerName}>{p.name || p.nickname || "Explorer"}</Text>
+                            <Text style={styles.explorerCount}>
+                              {count} {count === 1 ? "mission" : "missions"}
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </FKCard>
+                  </>
+                ) : null}
+
+                <FKEyebrow style={styles.section}>What {who} {players.length === 1 ? "has" : "have"} practised</FKEyebrow>
+                {categoryAnalytics.length === 0 ? (
+                  <FKCard>
+                    <Text style={TYPE.body}>Finished missions will show the skills they cover here.</Text>
+                  </FKCard>
+                ) : (
+                  <FKCard style={{ paddingVertical: 8 }}>
+                    {visibleCategories.map((cat, i) => (
+                      <View key={cat.categoryId} style={i > 0 ? [styles.catRow, styles.divider] : styles.catRow}>
+                        <View style={styles.catIcon}>
+                          {cat.icon ? (
+                            <Image source={{ uri: cat.icon }} style={{ width: 22, height: 22, borderRadius: 2 }} resizeMode="cover" />
+                          ) : (
+                            <Ionicons name="pricetag-outline" size={20} color={FK.ink} />
+                          )}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <View style={styles.catTop}>
+                            <Text style={styles.catName} numberOfLines={1}>
+                              {cat.label}
+                            </Text>
+                            <Text style={styles.catCount}>{cat.totalActivities}</Text>
+                          </View>
+                          <View style={styles.track}>
+                            <View
+                              style={[styles.fill, { width: `${Math.max(6, Math.round((cat.totalActivities / maxCategory) * 100))}%` }]}
+                            />
+                          </View>
+                        </View>
                       </View>
-                      <ThemedText style={styles.activityCategoryName}>
-                        {cat.label}
-                      </ThemedText>
-                    </View>
-                    <View style={styles.activityCountWrap}>
-                      <ThemedText style={styles.activityCountNum}>
-                        {cat.totalActivities}
-                      </ThemedText>
-                      <ThemedText style={styles.activityCountLabel}>
-                        Activities Completed
-                      </ThemedText>
-                    </View>
-                  </View>
-                </Animated.View>
-              ))}
-              {categoryAnalytics.length > 4 && (
-                <Pressable
-                  onPress={() => setShowAllProgress((prev) => !prev)}
-                  style={styles.showAllProgressButton}
-                >
-                  <ThemedText style={styles.showAllProgressText}>
-                    {showAllProgress ? "Show Less" : "Show All"}
-                  </ThemedText>
-                </Pressable>
-              )}
-            </>
-          )}
-        </Animated.View>
-    </ChildScreenLayout>
+                    ))}
+                  </FKCard>
+                )}
+                {categoryAnalytics.length > 4 ? (
+                  <FKButton
+                    label={showAllProgress ? "Show fewer" : `Show all ${categoryAnalytics.length}`}
+                    variant="link"
+                    onPress={() => setShowAllProgress((prev) => !prev)}
+                  />
+                ) : null}
+              </Animated.View>
+            )}
+          </>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+function Stat({ value, label }: { value: number; label: string }) {
+  return (
+    <View style={styles.stat}>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: FK.moss },
+  content: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 24, width: "100%", maxWidth: 720, alignSelf: "center" },
+  section: { marginTop: 22, marginBottom: 10 },
+  guides: { backgroundColor: FK.sky, borderRadius: RADIUS.lg, padding: 18 },
+  guidesIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: FK.paper,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stats: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  stat: { flexGrow: 1, flexBasis: "45%", backgroundColor: FK.paper, borderRadius: RADIUS.md, padding: 14 },
+  statValue: { fontFamily: FONT.display, fontSize: 30, color: FK.ink },
+  statLabel: { fontFamily: FONT.displayBold, fontSize: 14, color: FK.muted },
+  explorerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 12 },
+  divider: { borderTopWidth: 1, borderTopColor: FK.line },
+  explorerName: { fontFamily: FONT.display, fontSize: 17, color: FK.ink },
+  explorerCount: { fontFamily: FONT.bodyBold, fontSize: 15, color: FK.muted },
+  catRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12 },
+  catIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: FK.moss,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  catTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  catName: { flex: 1, fontFamily: FONT.displayBold, fontSize: 16, color: FK.ink },
+  catCount: { fontFamily: FONT.display, fontSize: 16, color: FK.ink },
+  track: { height: 6, borderRadius: 3, backgroundColor: FK.line, overflow: "hidden", marginTop: 6 },
+  fill: { height: 6, borderRadius: 3, backgroundColor: FK.forest },
+});

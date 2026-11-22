@@ -14,6 +14,14 @@ import {
   useFonts as useComicNeueFonts,
   ComicNeue_400Regular,
   ComicNeue_700Bold } from "@expo-google-fonts/comic-neue";
+import {
+  useFonts as useBricolageFonts,
+  BricolageGrotesque_700Bold,
+  BricolageGrotesque_800ExtraBold } from "@expo-google-fonts/bricolage-grotesque";
+import {
+  useFonts as useAtkinsonFonts,
+  AtkinsonHyperlegibleNext_400Regular,
+  AtkinsonHyperlegibleNext_700Bold } from "@expo-google-fonts/atkinson-hyperlegible-next";
 
 import { useAppUpdate } from "@/hooks/useAppUpdate";
 import { useHideAndroidNavigationBar } from "@/hooks/useHideAndroidNavigationBar";
@@ -74,12 +82,19 @@ export default function RootLayout() {
   const [comicNeueLoaded, comicNeueError] = useComicNeueFonts({
     ComicNeue_400Regular,
     ComicNeue_700Bold });
+  const [bricolageLoaded, bricolageError] = useBricolageFonts({
+    BricolageGrotesque_700Bold,
+    BricolageGrotesque_800ExtraBold });
+  const [atkinsonLoaded, atkinsonError] = useAtkinsonFonts({
+    AtkinsonHyperlegibleNext_400Regular,
+    AtkinsonHyperlegibleNext_700Bold });
   const [spaceMonoLoaded] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf") });
   const [fontTimeoutElapsed, setFontTimeoutElapsed] = useState(false);
 
-  const fontsLoaded = juaLoaded && comicNeueLoaded && spaceMonoLoaded;
-  const fontsReady = fontsLoaded || fontTimeoutElapsed || !!(juaError || comicNeueError);
+  const fontsLoaded = juaLoaded && comicNeueLoaded && bricolageLoaded && atkinsonLoaded && spaceMonoLoaded;
+  const fontsReady =
+    fontsLoaded || fontTimeoutElapsed || !!(juaError || comicNeueError || bricolageError || atkinsonError);
 
   useEffect(() => {
     const timer = setTimeout(() => setFontTimeoutElapsed(true), 5000);

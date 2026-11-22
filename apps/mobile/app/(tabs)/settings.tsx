@@ -1,37 +1,42 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
-  View,
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Pressable,
   ScrollView,
   StyleSheet,
-  Pressable,
-  Alert,
-  Modal,
+  Text,
   TextInput,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform } from "react-native";
-import Animated, {
-  FadeInDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring } from "react-native-reanimated";
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { router, useFocusEffect } from "expo-router";
+import { setStatusBarStyle } from "expo-status-bar";
 import * as Device from "expo-device";
-import { ThemedText } from "@/components/ThemedText";
+import { FKButton, FKPageHeader } from "@/components/fieldkit";
+import {
+  DangerButton,
+  DialogCard,
+  dialogStyles,
+  LinkRow,
+  RowGroup,
+  RowIcon,
+  SectionLabel,
+  SwitchRow,
+} from "@/components/account/GrownUpRows";
+import { FK, FONT, RADIUS } from "@/constants/fieldKit";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUser } from "@/contexts/UserContext";
-// import { useSignUpOptional } from "@/contexts/SignUpContext";
-import { useRouter, useFocusEffect } from "expo-router";
 import { useNavigationReturn } from "@/contexts/NavigationReturnContext";
-import { useLayoutScale } from "@/hooks/useLayoutScale";
-import { MaterialIcons } from "@expo/vector-icons";
-import { ChildScreenLayout } from "@/components/ChildScreenLayout";
 import {
+  type AccountRemovalRequest,
   requestAccountRemoval,
   getPendingRemovalRequest,
   cancelRemovalRequest,
   canCancelRemovalRequest,
-  sendAccountRemovalNotification } from "@/services/accountRemovalService";
+  sendAccountRemovalNotification,
+} from "@/services/accountRemovalService";
 import { getPushEnabled, setPushEnabled } from "@/services/pushNotificationService";
 import {
   getLocationPermissionStatus,
@@ -43,110 +48,71 @@ import {
   setExploreSafetySkipEveryTime,
 } from "@/services/exploreSafetyPreference";
 
-const COLORS = {
-  darkGreen: "#4F6F52",
-  cream: "#F8F7F4",
-  white: "#FFFFFF",
-  black: "#000000",
-  charcoal: "#333333",
-  red: "#FF6666" };
+type LocationStatus = "granted" | "denied" | "undetermined" | "loading";
 
+/** Grown-up settings: emails, this phone, legal, and account actions at the bottom. */
 export default function SettingsScreen() {
   const { user, signOut } = useAuth();
-  // const { userData, updateWeeklyEmail, updateStartMissionStep } = useUser();
   const { userData, updateWeeklyEmail, updateGeneralEmail } = useUser();
-  const router = useRouter();
   const { pushWithReturn } = useNavigationReturn();
-  const { scaleW } = useLayoutScale();
-  // const signUpContext = useSignUpOptional();
-  // const setShowPostSignUpWelcome = signUpContext?.setShowPostSignUpWelcome;
-  // const setTutorialStep = signUpContext?.setTutorialStep;
-  // const setReplayTutorialRequested = signUpContext?.setReplayTutorialRequested;
+
   const weeklyEmail = userData?.weekly_email ?? true;
-  const [weeklyEmailToggling, setWeeklyEmailToggling] = useState(false);
   const generalEmail = userData?.general_email ?? true;
+  const [weeklyEmailToggling, setWeeklyEmailToggling] = useState(false);
   const [generalEmailToggling, setGeneralEmailToggling] = useState(false);
   const [pushNotifications, setPushNotifications] = useState(false);
   const [pushNotificationsLoading, setPushNotificationsLoading] = useState(true);
   const [pushNotificationsToggling, setPushNotificationsToggling] = useState(false);
-  const [locationPermission, setLocationPermission] = useState<"granted" | "denied" | "undetermined" | "loading">("loading");
+  const [locationPermission, setLocationPermission] = useState<LocationStatus>("loading");
   const [locationToggling, setLocationToggling] = useState(false);
   const [showExploreSafetyEveryTime, setShowExploreSafetyEveryTime] = useState(true);
   const [exploreSafetyLoading, setExploreSafetyLoading] = useState(true);
   const [exploreSafetyToggling, setExploreSafetyToggling] = useState(false);
-  const locationScale = useSharedValue(1);
-  const locationAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: locationScale.value }] }));
-  const exploreSafetyScale = useSharedValue(1);
-  const exploreSafetyAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: exploreSafetyScale.value }] }));
   const [showRemovalModal, setShowRemovalModal] = useState(false);
   const [removalReason, setRemovalReason] = useState("");
   const [removalSubmitting, setRemovalSubmitting] = useState(false);
-  const [pendingRemovalRequest, setPendingRemovalRequest] = useState<import("@/services/accountRemovalService").AccountRemovalRequest | null>(null);
+  const [pendingRemovalRequest, setPendingRemovalRequest] = useState<AccountRemovalRequest | null>(null);
   const [removalLoading, setRemovalLoading] = useState(false);
 
-  const signOutScale = useSharedValue(1);
-  const weeklyEmailScale = useSharedValue(1);
-  const generalEmailScale = useSharedValue(1);
-  const pushScale = useSharedValue(1);
-  const privacyScale = useSharedValue(1);
-  // const tutorialScale = useSharedValue(1);
-  const signOutAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: signOutScale.value }] }));
-  const weeklyEmailAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: weeklyEmailScale.value }] }));
-  const generalEmailAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: generalEmailScale.value }] }));
-  const pushAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pushScale.value }] }));
-  const privacyAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: privacyScale.value }] }));
-  // const tutorialAnimatedStyle = useAnimatedStyle(() => ({
-  //   transform: [{ scale: tutorialScale.value }] }));
+  const handleBack = () => (router.canGoBack() ? router.back() : router.navigate("/(tabs)/me"));
 
   const handleSignOut = () => {
-    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+    Alert.alert("Sign out?", "You'll need your email and password to sign back in.", [
       { text: "Cancel", style: "cancel" },
       {
-        text: "Sign Out",
+        text: "Sign out",
         style: "destructive",
         onPress: async () => {
           try {
             await signOut();
           } catch {
-            Alert.alert("Error", "Failed to sign out");
+            Alert.alert("Couldn't sign out", "Please try again.");
           }
-        } },
+        },
+      },
     ]);
   };
 
-  const refreshPendingRemoval = async () => {
+  const refreshPendingRemoval = useCallback(async () => {
     if (!user?.id) return;
     const pending = await getPendingRemovalRequest(user.id);
     setPendingRemovalRequest(pending ?? null);
-  };
-
-  React.useEffect(() => {
-    refreshPendingRemoval();
   }, [user?.id]);
+
+  useEffect(() => {
+    void refreshPendingRemoval();
+  }, [refreshPendingRemoval]);
 
   useEffect(() => {
     if (!user?.id) {
       setPushNotificationsLoading(false);
       return;
     }
-    getPushEnabled().then((enabled) => {
+    void getPushEnabled().then((enabled) => {
       setPushNotifications(enabled);
       setPushNotificationsLoading(false);
     });
   }, [user?.id]);
-
-  useEffect(() => {
-    getLocationPermissionStatus().then((status) => {
-      setLocationPermission(status);
-    });
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -160,6 +126,38 @@ export default function SettingsScreen() {
     };
   }, []);
 
+  // Re-read location on focus, so coming back from the phone's Settings app shows the new state.
+  useFocusEffect(
+    useCallback(() => {
+      setStatusBarStyle("dark");
+      void getLocationPermissionStatus().then(setLocationPermission);
+    }, [])
+  );
+
+  const handleWeeklyEmail = async () => {
+    if (weeklyEmailToggling) return;
+    setWeeklyEmailToggling(true);
+    try {
+      await updateWeeklyEmail(!weeklyEmail);
+    } catch {
+      Alert.alert("Couldn't save", "We couldn't update your weekly email setting. Please try again.");
+    } finally {
+      setWeeklyEmailToggling(false);
+    }
+  };
+
+  const handleGeneralEmail = async () => {
+    if (generalEmailToggling) return;
+    setGeneralEmailToggling(true);
+    try {
+      await updateGeneralEmail(!generalEmail);
+    } catch {
+      Alert.alert("Couldn't save", "We couldn't update your news email setting. Please try again.");
+    } finally {
+      setGeneralEmailToggling(false);
+    }
+  };
+
   const handleExploreSafetyToggle = async () => {
     if (exploreSafetyToggling || exploreSafetyLoading) return;
     setExploreSafetyToggling(true);
@@ -168,7 +166,7 @@ export default function SettingsScreen() {
       await setExploreSafetySkipEveryTime(!nextShow);
       setShowExploreSafetyEveryTime(nextShow);
     } catch {
-      Alert.alert("Error", "Failed to update Explore safety preference");
+      Alert.alert("Couldn't save", "We couldn't update the Explore safety setting. Please try again.");
     } finally {
       setExploreSafetyToggling(false);
     }
@@ -176,13 +174,8 @@ export default function SettingsScreen() {
 
   const handleLocationToggle = async () => {
     if (locationToggling) return;
-    if (locationPermission === "granted") {
-      // Can't revoke programmatically — send to settings.
-      openLocationSettings();
-      return;
-    }
-    if (locationPermission === "denied") {
-      // Already permanently denied — must go to settings.
+    // Once granted or permanently denied, only the phone's Settings app can change it.
+    if (locationPermission === "granted" || locationPermission === "denied") {
       openLocationSettings();
       return;
     }
@@ -195,17 +188,6 @@ export default function SettingsScreen() {
     }
   };
 
-  const refreshLocationStatus = async () => {
-    const status = await getLocationPermissionStatus();
-    setLocationPermission(status);
-  };
-
-  useFocusEffect(
-    React.useCallback(() => {
-      void refreshLocationStatus();
-    }, [])
-  );
-
   const handlePushToggle = async () => {
     if (pushNotificationsToggling) return;
     const next = !pushNotifications;
@@ -214,8 +196,8 @@ export default function SettingsScreen() {
       const ok = await setPushEnabled(next);
       if (next && !ok) {
         Alert.alert(
-          "Notifications unavailable",
-          "Permission was denied or push notifications are not available on this device (e.g. simulator). You can enable them later in your device settings."
+          "Notifications are off",
+          "Permission was turned down, or this device can't get notifications (a simulator, for example). You can turn them on later in your phone's Settings."
         );
         setPushNotifications(false);
       } else {
@@ -230,11 +212,11 @@ export default function SettingsScreen() {
     if (pendingRemovalRequest) return;
     setShowRemovalModal(true);
   };
+
   const handleCloseRemovalModal = () => {
-    if (!removalSubmitting) {
-      setShowRemovalModal(false);
-      setRemovalReason("");
-    }
+    if (removalSubmitting) return;
+    setShowRemovalModal(false);
+    setRemovalReason("");
   };
 
   const handleSubmitRemovalRequest = async () => {
@@ -247,550 +229,217 @@ export default function SettingsScreen() {
       await refreshPendingRemoval();
       sendAccountRemovalNotification(user.email ?? "", "created");
       Alert.alert(
-        "Request submitted",
-        "Your account removal request has been sent. An admin will review it. You can cancel the request within 24 hours from Settings."
+        "Request sent",
+        "We'll review it and then delete your account. You can cancel from Settings for the next 24 hours."
       );
     } catch (e) {
-      Alert.alert(
-        "Error",
-        e instanceof Error ? e.message : "Failed to submit request"
-      );
+      Alert.alert("Couldn't send request", e instanceof Error ? e.message : "Please try again.");
     } finally {
       setRemovalSubmitting(false);
     }
   };
 
-  // const handleShowTutorialAgain = async () => {
-  //   setReplayTutorialRequested?.(true);
-  //   setTutorialStep?.("welcome");
-  //   setShowPostSignUpWelcome?.(true);
-  //   await updateStartMissionStep(0);
-  //   router.replace("/onboarding/welcome");
-  // };
-
   const handleCancelRemovalRequest = () => {
-    Alert.alert(
-      "Cancel account removal",
-      "Are you sure you want to cancel your account removal request?",
-      [
-        { text: "No", style: "cancel" },
-        {
-          text: "Yes, cancel request",
-          onPress: async () => {
-            if (!user?.id) return;
-            setRemovalLoading(true);
-            try {
-              await cancelRemovalRequest(user.id);
-              setPendingRemovalRequest(null);
-              sendAccountRemovalNotification(user.email ?? "", "canceled");
-              Alert.alert("Request cancelled", "Your account removal request has been cancelled.");
-            } catch (e) {
-              Alert.alert(
-                "Error",
-                e instanceof Error ? e.message : "Failed to cancel request"
-              );
-            } finally {
-              setRemovalLoading(false);
-            }
-          } },
-      ]
-    );
+    Alert.alert("Keep your account?", "This cancels your request to delete your account.", [
+      { text: "Not now", style: "cancel" },
+      {
+        text: "Keep my account",
+        onPress: async () => {
+          if (!user?.id) return;
+          setRemovalLoading(true);
+          try {
+            await cancelRemovalRequest(user.id);
+            setPendingRemovalRequest(null);
+            sendAccountRemovalNotification(user.email ?? "", "canceled");
+            Alert.alert("Request cancelled", "Your account will stay as it is.");
+          } catch (e) {
+            Alert.alert("Couldn't cancel", e instanceof Error ? e.message : "Please try again.");
+          } finally {
+            setRemovalLoading(false);
+          }
+        },
+      },
+    ]);
   };
 
-  const styles = useMemo(
-    () =>
-      StyleSheet.create({
-        safeArea: {
-          flex: 1,
-          backgroundColor: COLORS.darkGreen },
-        headerBar: {
-          backgroundColor: COLORS.darkGreen },
-        scrollView: { flex: 1 },
-        scrollContent: {},
-        sectionTitle: {
-          fontSize: scaleW(18),
-          fontWeight: "600",
-          color: COLORS.white,
-          marginBottom: scaleW(8) },
-        email: {
-          fontSize: scaleW(15),
-          color: COLORS.white,
-          marginBottom: scaleW(20) },
-        signOutButton: {
-          width: scaleW(240),
-          backgroundColor: COLORS.cream,
-          borderRadius: scaleW(48),
-          paddingVertical: scaleW(16),
-          paddingHorizontal: scaleW(24),
-          alignItems: "center",
-          justifyContent: "center",
-          marginBottom: scaleW(48),
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.3,
-          shadowRadius: 2,
-          elevation: 2 },
-        signOutText: {
-          fontSize: scaleW(16),
-          fontWeight: "600",
-          color: COLORS.darkGreen },
-        prefsTitle: {
-          fontSize: scaleW(18),
-          fontWeight: "600",
-          color: COLORS.white,
-          marginBottom: scaleW(16) },
-        prefRow: {
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          paddingVertical: scaleW(14) },
-        prefLabel: {
-          fontSize: scaleW(16),
-          color: COLORS.white,
-          flex: 1 },
-        checkbox: {
-          width: scaleW(24),
-          height: scaleW(24),
-          borderRadius: scaleW(6),
-          borderWidth: 2,
-          borderColor: COLORS.white,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: COLORS.white },
-        privacyButton: {
-          width: "100%",
-          maxWidth: scaleW(280),
-          alignSelf: "center",
-          backgroundColor: COLORS.cream,
-          borderRadius: scaleW(48),
-          paddingVertical: scaleW(16),
-          paddingHorizontal: scaleW(24),
-          alignItems: "center",
-          justifyContent: "center",
-          marginTop: scaleW(24),
-          marginBottom: scaleW(24),
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.3,
-          shadowRadius: 2,
-          elevation: 2 },
-        privacyButtonText: {
-          fontSize: scaleW(16),
-          fontWeight: "600",
-          color: COLORS.darkGreen },
-        removalButton: {
-          width: "100%",
-          maxWidth: scaleW(280),
-          alignSelf: "center",
-          backgroundColor: "transparent",
-          borderRadius: scaleW(48),
-          paddingVertical: scaleW(16),
-          paddingHorizontal: scaleW(24),
-          alignItems: "center",
-          justifyContent: "center",
-          marginTop: scaleW(16),
-          marginBottom: scaleW(48),
-          borderWidth: 2,
-          borderColor: COLORS.red },
-        removalButtonText: {
-          fontSize: scaleW(15),
-          fontWeight: "600",
-          color: COLORS.red },
-        modalOverlay: {
-          flex: 1,
-          backgroundColor: "rgba(0,0,0,0.5)",
-          justifyContent: "center",
-          padding: scaleW(24) },
-        modalContent: {
-          backgroundColor: COLORS.white,
-          borderRadius: scaleW(24),
-          padding: scaleW(24) },
-        modalTitle: {
-          fontSize: scaleW(20),
-          fontWeight: "700",
-          color: COLORS.charcoal,
-          marginBottom: scaleW(16) },
-        modalDisclaimer: {
-          fontSize: scaleW(14),
-          color: COLORS.charcoal,
-          marginBottom: scaleW(12),
-          lineHeight: scaleW(20) },
-        modalInputLabel: {
-          fontSize: scaleW(15),
-          fontWeight: "600",
-          color: COLORS.charcoal,
-          marginTop: scaleW(8),
-          marginBottom: scaleW(8) },
-        modalInput: {
-          minHeight: scaleW(80),
-          borderWidth: 2,
-          borderColor: COLORS.darkGreen,
-          borderRadius: scaleW(12),
-          paddingHorizontal: scaleW(16),
-          paddingVertical: scaleW(12),
-          fontSize: scaleW(16),
-          color: COLORS.charcoal,
-          backgroundColor: COLORS.cream,
-          textAlignVertical: "top" },
-        modalActions: {
-          flexDirection: "row",
-          gap: scaleW(12),
-          marginTop: scaleW(24) },
-        modalButton: {
-          flex: 1,
-          paddingVertical: scaleW(14),
-          borderRadius: scaleW(14),
-          alignItems: "center",
-          justifyContent: "center" },
-        modalButtonCancel: {
-          backgroundColor: COLORS.charcoal },
-        modalButtonCancelText: {
-          fontSize: scaleW(16),
-          fontWeight: "600",
-          color: COLORS.white },
-        modalButtonSubmit: {
-          backgroundColor: COLORS.darkGreen },
-        modalButtonSubmitText: {
-          fontSize: scaleW(16),
-          fontWeight: "600",
-          color: COLORS.white } }),
-    [scaleW]
-  );
+  const removalCancellable = !!pendingRemovalRequest && canCancelRemovalRequest(pendingRemovalRequest);
+  const removalRow = !pendingRemovalRequest
+    ? { title: "Delete account", sub: "Ask us to remove your account and every explorer's data", onPress: handleOpenRemovalModal }
+    : removalCancellable
+      ? { title: "Cancel deletion request", sub: "You asked us to delete your account. You can still change your mind.", onPress: handleCancelRemovalRequest }
+      : { title: "Deletion requested", sub: "We're processing your request. It can no longer be cancelled.", onPress: undefined };
+
+  const locationSub =
+    locationPermission === "granted"
+      ? "On. Change this in your phone's Settings."
+      : locationPermission === "denied"
+        ? "Off. Turn it on in your phone's Settings."
+        : "For nearby adventures and Explore outdoors";
 
   return (
-    <>
-      <ChildScreenLayout
-        backgroundColor={COLORS.darkGreen}
-        contentContainerStyle={styles.scrollContent}
-      >
-        <Animated.View>
-          <ThemedText type="heading" style={styles.sectionTitle}>Your account</ThemedText>
-          <ThemedText style={styles.email} numberOfLines={1}>
-            {user?.email ?? "parentemail@somewhere.com"}
-          </ThemedText>
-          <Animated.View style={signOutAnimatedStyle}>
-            <Pressable
-              style={styles.signOutButton}
-              onPress={handleSignOut}
-              onPressIn={() => {
-                signOutScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-              }}
-              onPressOut={() => {
-                signOutScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-              }}
-            >
-              <ThemedText type="heading" style={styles.signOutText}>Sign Out</ThemedText>
-            </Pressable>
-          </Animated.View>
-        </Animated.View>
+    <SafeAreaView style={styles.root} edges={["top", "left", "right"]}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <FKPageHeader eyebrow="For grown-ups" title="Settings" onBack={handleBack} />
 
-        <Animated.View>
-          <ThemedText type="heading" style={styles.prefsTitle}>Your preferences</ThemedText>
-          <Animated.View style={weeklyEmailAnimatedStyle}>
-            <Pressable
-              style={styles.prefRow}
-              onPress={async () => {
-                if (weeklyEmailToggling) return;
-                setWeeklyEmailToggling(true);
-                try {
-                  await updateWeeklyEmail(!weeklyEmail);
-                } catch {
-                  Alert.alert("Error", "Failed to update weekly email preference");
-                } finally {
-                  setWeeklyEmailToggling(false);
-                }
-              }}
-              disabled={weeklyEmailToggling}
-              onPressIn={() => {
-                weeklyEmailScale.value = withSpring(0.98, { damping: 15, stiffness: 400 });
-              }}
-              onPressOut={() => {
-                weeklyEmailScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-              }}
-            >
-              <ThemedText style={styles.prefLabel}>Receive email notifications</ThemedText>
-              {weeklyEmailToggling ? (
-                <ActivityIndicator size="small" color={COLORS.darkGreen} />
-              ) : (
-                <View style={styles.checkbox}>
-                  {weeklyEmail ? (
-                    <MaterialIcons
-                      name="check"
-                      size={scaleW(18)}
-                      color={COLORS.darkGreen}
-                    />
-                  ) : null}
-                </View>
-              )}
-            </Pressable>
-          </Animated.View>
-          <Animated.View style={generalEmailAnimatedStyle}>
-            <Pressable
-              style={styles.prefRow}
-              onPress={async () => {
-                if (generalEmailToggling) return;
-                setGeneralEmailToggling(true);
-                try {
-                  await updateGeneralEmail(!generalEmail);
-                } catch {
-                  Alert.alert("Error", "Failed to update general email preference");
-                } finally {
-                  setGeneralEmailToggling(false);
-                }
-              }}
-              disabled={generalEmailToggling}
-              onPressIn={() => {
-                generalEmailScale.value = withSpring(0.98, { damping: 15, stiffness: 400 });
-              }}
-              onPressOut={() => {
-                generalEmailScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-              }}
-            >
-              <ThemedText style={styles.prefLabel}>Receive general Huntly World updates</ThemedText>
-              {generalEmailToggling ? (
-                <ActivityIndicator size="small" color={COLORS.darkGreen} />
-              ) : (
-                <View style={styles.checkbox}>
-                  {generalEmail ? (
-                    <MaterialIcons
-                      name="check"
-                      size={scaleW(18)}
-                      color={COLORS.darkGreen}
-                    />
-                  ) : null}
-                </View>
-              )}
-            </Pressable>
-          </Animated.View>
-          <Animated.View style={pushAnimatedStyle}>
-            <Pressable
-              style={styles.prefRow}
-              onPress={handlePushToggle}
-              disabled={pushNotificationsLoading || pushNotificationsToggling}
-              onPressIn={() => {
-                pushScale.value = withSpring(0.98, { damping: 15, stiffness: 400 });
-              }}
-              onPressOut={() => {
-                pushScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-              }}
-            >
-              <View style={{ flex: 1 }}>
-                <ThemedText style={styles.prefLabel}>
-                  Receive push notifications
-                </ThemedText>
-                {!Device.isDevice ? (
-                  <ThemedText style={[styles.prefLabel, { fontSize: scaleW(12), opacity: 0.7, marginTop: scaleW(4) }]}>
-                    Not available on simulator
-                  </ThemedText>
-                ) : null}
-              </View>
-              {pushNotificationsLoading || pushNotificationsToggling ? (
-                <ActivityIndicator size="small" color={COLORS.darkGreen} />
-              ) : (
-                <View style={styles.checkbox}>
-                  {pushNotifications ? (
-                    <MaterialIcons
-                      name="check"
-                      size={scaleW(18)}
-                      color={COLORS.darkGreen}
-                    />
-                  ) : null}
-                </View>
-              )}
-            </Pressable>
-          </Animated.View>
-          <Animated.View style={locationAnimatedStyle}>
-            <Pressable
-              style={styles.prefRow}
-              onPress={handleLocationToggle}
-              disabled={locationToggling || locationPermission === "loading"}
-              onPressIn={() => {
-                locationScale.value = withSpring(0.98, { damping: 15, stiffness: 400 });
-              }}
-              onPressOut={() => {
-                locationScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-              }}
-            >
-              <View style={{ flex: 1 }}>
-                <ThemedText style={styles.prefLabel}>Location</ThemedText>
-                <ThemedText style={[styles.prefLabel, { fontSize: scaleW(12), opacity: 0.7, marginTop: scaleW(2) }]}>
-                  {locationPermission === "denied"
-                    ? "Tap to open device settings"
-                    : locationPermission === "granted"
-                    ? "Tap to manage in device settings"
-                    : "Used for nearby adventures and outdoor features"}
-                </ThemedText>
-              </View>
-              {locationToggling || locationPermission === "loading" ? (
-                <ActivityIndicator size="small" color={COLORS.darkGreen} />
-              ) : (
-                <View style={styles.checkbox}>
-                  {locationPermission === "granted" ? (
-                    <MaterialIcons name="check" size={scaleW(18)} color={COLORS.darkGreen} />
-                  ) : null}
-                </View>
-              )}
-            </Pressable>
-          </Animated.View>
-          <Animated.View style={exploreSafetyAnimatedStyle}>
-            <Pressable
-              style={styles.prefRow}
-              onPress={() => void handleExploreSafetyToggle()}
-              disabled={exploreSafetyLoading || exploreSafetyToggling}
-              onPressIn={() => {
-                exploreSafetyScale.value = withSpring(0.98, { damping: 15, stiffness: 400 });
-              }}
-              onPressOut={() => {
-                exploreSafetyScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-              }}
-            >
-              <View style={{ flex: 1 }}>
-                <ThemedText style={styles.prefLabel}>
-                  Show Explore safety rules every time
-                </ThemedText>
-                <ThemedText
-                  style={[
-                    styles.prefLabel,
-                    { fontSize: scaleW(12), opacity: 0.7, marginTop: scaleW(2) },
-                  ]}
-                >
-                  Reminder when you open Explore outdoors
-                </ThemedText>
-              </View>
-              {exploreSafetyLoading || exploreSafetyToggling ? (
-                <ActivityIndicator size="small" color={COLORS.darkGreen} />
-              ) : (
-                <View style={styles.checkbox}>
-                  {showExploreSafetyEveryTime ? (
-                    <MaterialIcons
-                      name="check"
-                      size={scaleW(18)}
-                      color={COLORS.darkGreen}
-                    />
-                  ) : null}
-                </View>
-              )}
-            </Pressable>
-          </Animated.View>
-        </Animated.View>
+        <View style={styles.accountCard}>
+          <RowIcon name="person-outline" tone="moss" />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.accountLabel}>Signed in as</Text>
+            <Text style={styles.accountEmail} numberOfLines={1}>
+              {user?.email ?? "Not signed in"}
+            </Text>
+          </View>
+        </View>
 
-        {/*
-          <Animated.View style={tutorialAnimatedStyle}>
-            <Pressable
-              style={styles.privacyButton}
-              onPress={handleShowTutorialAgain}
-              onPressIn={() => {
-                tutorialScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-              }}
-              onPressOut={() => {
-                tutorialScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-              }}
-            >
-              <ThemedText type="heading" style={styles.privacyButtonText}>
-                Show tutorial again
-              </ThemedText>
-            </Pressable>
-          </Animated.View>
-        */}
+        <SectionLabel>Emails</SectionLabel>
+        <RowGroup>
+          <SwitchRow
+            icon="mail-outline"
+            title="New mission emails"
+            sub="This week's missions and anything to get ready"
+            value={weeklyEmail}
+            onChange={() => void handleWeeklyEmail()}
+            busy={weeklyEmailToggling}
+            testID="settings-weekly-email"
+          />
+          <SwitchRow
+            icon="newspaper-outline"
+            title="News from Huntly World"
+            sub="New features and seasonal events, now and then"
+            value={generalEmail}
+            onChange={() => void handleGeneralEmail()}
+            busy={generalEmailToggling}
+            testID="settings-general-email"
+          />
+        </RowGroup>
 
-        <Animated.View>
-          <ThemedText type="heading" style={styles.prefsTitle}>Legal</ThemedText>
-          <Animated.View style={privacyAnimatedStyle}>
-            <Pressable
-              style={styles.privacyButton}
-              onPress={() => pushWithReturn("/privacy")}
-              onPressIn={() => {
-                privacyScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-              }}
-              onPressOut={() => {
-                privacyScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-              }}
-            >
-              <ThemedText type="heading" style={styles.privacyButtonText}>
-                Privacy Policy
-              </ThemedText>
-            </Pressable>
-          </Animated.View>
-        </Animated.View>
+        <SectionLabel>On this phone</SectionLabel>
+        <RowGroup>
+          <SwitchRow
+            icon="notifications-outline"
+            title="Notifications"
+            sub={Device.isDevice ? "Reminders and new missions on this phone" : "Not available on a simulator"}
+            value={pushNotifications}
+            onChange={() => void handlePushToggle()}
+            busy={pushNotificationsLoading || pushNotificationsToggling}
+            testID="settings-push"
+          />
+          <SwitchRow
+            icon="location-outline"
+            title="Location"
+            sub={locationSub}
+            value={locationPermission === "granted"}
+            onChange={() => void handleLocationToggle()}
+            busy={locationToggling || locationPermission === "loading"}
+            testID="settings-location"
+          />
+          <SwitchRow
+            icon="shield-checkmark-outline"
+            title="Explore safety reminder"
+            sub="Show the outdoor safety rules every time Explore opens"
+            value={showExploreSafetyEveryTime}
+            onChange={() => void handleExploreSafetyToggle()}
+            busy={exploreSafetyLoading || exploreSafetyToggling}
+            testID="settings-explore-safety"
+          />
+        </RowGroup>
 
-        <Animated.View>
-          <Pressable
-            style={styles.removalButton}
-            onPress={pendingRemovalRequest && canCancelRemovalRequest(pendingRemovalRequest) ? handleCancelRemovalRequest : handleOpenRemovalModal}
-            disabled={removalLoading || (!!pendingRemovalRequest && !canCancelRemovalRequest(pendingRemovalRequest))}
-          >
-            {removalLoading ? (
-              <ActivityIndicator color={COLORS.white} size="small" />
-            ) : (
-              <ThemedText type="heading" style={styles.removalButtonText}>
-                {pendingRemovalRequest
-                  ? canCancelRemovalRequest(pendingRemovalRequest)
-                    ? "Cancel Account Removal"
-                    : "Account removal pending"
-                  : "Request account removal"}
-              </ThemedText>
-            )}
-          </Pressable>
-        </Animated.View>
-      </ChildScreenLayout>
+        <SectionLabel>Legal</SectionLabel>
+        <RowGroup>
+          <LinkRow
+            icon="document-text-outline"
+            title="Privacy policy"
+            sub="What we collect and how we keep it safe"
+            onPress={() => pushWithReturn("/privacy")}
+          />
+        </RowGroup>
 
-      <Modal
-        visible={showRemovalModal}
-        animationType="slide"
-        transparent
-        onRequestClose={handleCloseRemovalModal}
-      >
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          keyboardVerticalOffset={40}
-        >
-          <Pressable style={styles.modalOverlay} onPress={handleCloseRemovalModal}>
-            <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-              <ThemedText style={styles.modalTitle}>Request account removal</ThemedText>
-              <ThemedText style={styles.modalDisclaimer}>
-                If your account is removed, all your data will be permanently deleted, including your
-                profile(s), progress, achievements, and any uploaded content. This action cannot be
-                undone once the request is approved.
-              </ThemedText>
-              <ThemedText style={styles.modalDisclaimer}>
-                You can only cancel your removal request within 24 hours of submitting it. After
-                that, the request will be processed by an admin and cannot be cancelled.
-              </ThemedText>
-              <ThemedText style={styles.modalInputLabel}>Reason for request (optional)</ThemedText>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="Tell us why you're requesting account removal"
-                placeholderTextColor="#9CA3AF"
-                value={removalReason}
-                onChangeText={setRemovalReason}
-                multiline
-                editable={!removalSubmitting}
-              />
-              <View style={styles.modalActions}>
-                <Pressable
-                  style={[styles.modalButton, styles.modalButtonCancel]}
-                  onPress={handleCloseRemovalModal}
-                  disabled={removalSubmitting}
-                >
-                  <ThemedText style={styles.modalButtonCancelText}>Cancel</ThemedText>
-                </Pressable>
-                <Pressable
-                  style={[styles.modalButton, styles.modalButtonSubmit]}
-                  onPress={handleSubmitRemovalRequest}
-                  disabled={removalSubmitting}
-                >
-                  {removalSubmitting ? (
-                    <ActivityIndicator color={COLORS.white} size="small" />
-                  ) : (
-                    <ThemedText style={styles.modalButtonSubmitText}>Submit request</ThemedText>
-                  )}
-                </Pressable>
-              </View>
-            </Pressable>
-          </Pressable>
+        <View style={styles.dangerZone}>
+          <SectionLabel>Account</SectionLabel>
+          <RowGroup>
+            <LinkRow icon="log-out-outline" title="Sign out" sub="Sign out on this phone" onPress={handleSignOut} danger chevron={false} />
+            <LinkRow
+              icon="trash-outline"
+              title={removalRow.title}
+              sub={removalRow.sub}
+              onPress={removalRow.onPress}
+              loading={removalLoading}
+              disabled={!removalRow.onPress}
+              danger
+              chevron={false}
+              testID="settings-delete-account"
+            />
+          </RowGroup>
+        </View>
+      </ScrollView>
+
+      <Modal visible={showRemovalModal} animationType="fade" transparent onRequestClose={handleCloseRemovalModal}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+          <View style={dialogStyles.overlay}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={handleCloseRemovalModal} accessibilityLabel="Close" />
+            <DialogCard>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                <Text style={dialogStyles.title}>Delete your account?</Text>
+                <Text style={dialogStyles.body}>
+                  We'll delete your account and everything in it: every explorer, their progress, badges and photos. Once
+                  we've done it, it can't be undone.
+                </Text>
+                <Text style={dialogStyles.body}>
+                  You can cancel the request from Settings for 24 hours. After that we'll go ahead.
+                </Text>
+                <Text style={styles.inputLabel}>Anything you'd like to tell us? (optional)</Text>
+                <TextInput
+                  style={styles.reasonInput}
+                  placeholder="Why you're leaving"
+                  placeholderTextColor="#8C988F"
+                  value={removalReason}
+                  onChangeText={setRemovalReason}
+                  multiline
+                  editable={!removalSubmitting}
+                />
+                <View style={dialogStyles.actions}>
+                  <DangerButton
+                    label="Send deletion request"
+                    onPress={() => void handleSubmitRemovalRequest()}
+                    loading={removalSubmitting}
+                  />
+                  <FKButton label="Keep my account" variant="link" onPress={handleCloseRemovalModal} disabled={removalSubmitting} />
+                </View>
+              </ScrollView>
+            </DialogCard>
+          </View>
         </KeyboardAvoidingView>
       </Modal>
-    </>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: FK.moss },
+  content: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 32 },
+  accountCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    backgroundColor: FK.paper,
+    borderRadius: RADIUS.lg,
+    padding: 16,
+  },
+  accountLabel: { fontFamily: FONT.body, fontSize: 14, color: FK.muted },
+  accountEmail: { fontFamily: FONT.display, fontSize: 17, color: FK.ink, marginTop: 2 },
+  dangerZone: { marginTop: 18, paddingTop: 4, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#CBD3C2" },
+  inputLabel: { fontFamily: FONT.bodyBold, fontSize: 15, color: FK.ink, marginTop: 6, marginBottom: 8 },
+  reasonInput: {
+    minHeight: 96,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1.5,
+    borderColor: FK.line,
+    backgroundColor: FK.white,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontFamily: FONT.body,
+    fontSize: 16,
+    color: FK.ink,
+    textAlignVertical: "top",
+  },
+});

@@ -1,11 +1,13 @@
 /**
- * Binder filter sheet — profile, category, status, and sort.
+ * Binder sort and filter sheet: card type, found or not, and order.
+ * Choosing whose binder to look at lives on the binder screen itself.
  */
 import React from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ThemedText } from "@/components/ThemedText";
+import { FKButton, FKEyebrow } from "@/components/fieldkit";
+import { FK, FONT, RADIUS, TYPE } from "@/constants/fieldKit";
 import {
   BINDER_FILTERS,
   BINDER_SORT_OPTIONS,
@@ -15,21 +17,17 @@ import {
   type BinderStatusFilter,
 } from "@/utils/exploreBinder";
 
-export type BinderFilterProfile = {
-  id: number;
-  name: string;
-  nickname?: string | null;
+/** Friendlier labels for the found / not found filter. */
+export const BINDER_STATUS_LABELS: Record<BinderStatusFilter, string> = {
+  all: "All cards",
+  collected: "Found",
+  missing: "Still to find",
 };
 
 type Props = {
   visible: boolean;
   onClose: () => void;
   onReset: () => void;
-  profiles: BinderFilterProfile[];
-  showProfilePicker: boolean;
-  /** `null` shows every player's cards merged together. */
-  selectedProfileId: number | null;
-  onSelectProfile: (id: number | null) => void;
   category: BinderCategoryFilter;
   onSelectCategory: (id: BinderCategoryFilter) => void;
   status: BinderStatusFilter;
@@ -52,16 +50,11 @@ function OptionChip({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      style={[styles.chip, selected && styles.chipActive]}
+      style={[styles.chip, selected ? styles.chipActive : null]}
     >
-      <ThemedText
-        lightColor="#FFF"
-        darkColor="#FFF"
-        style={[styles.chipText, selected && styles.chipTextActive]}
-        numberOfLines={1}
-      >
+      <Text style={[styles.chipText, selected ? styles.chipTextActive : null]} numberOfLines={1}>
         {label}
-      </ThemedText>
+      </Text>
     </Pressable>
   );
 }
@@ -69,9 +62,7 @@ function OptionChip({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <View style={styles.section}>
-      <ThemedText lightColor="rgba(255,255,255,0.55)" darkColor="rgba(255,255,255,0.55)" style={styles.sectionTitle}>
-        {title}
-      </ThemedText>
+      <FKEyebrow style={styles.sectionTitle}>{title}</FKEyebrow>
       <View style={styles.chipRow}>{children}</View>
     </View>
   );
@@ -81,10 +72,6 @@ export function BinderFiltersModal({
   visible,
   onClose,
   onReset,
-  profiles,
-  showProfilePicker,
-  selectedProfileId,
-  onSelectProfile,
   category,
   onSelectCategory,
   status,
@@ -103,33 +90,22 @@ export function BinderFiltersModal({
       onRequestClose={onClose}
     >
       <View style={styles.root}>
-        <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Dismiss filters" />
-        <View style={[styles.sheet, { paddingBottom: Math.max(16, insets.bottom + 8) }]}>
+        <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close" />
+        <View style={[styles.sheet, { paddingBottom: Math.max(20, insets.bottom + 10) }]}>
           <View style={styles.handle} />
           <View style={styles.header}>
-            <ThemedText type="heading" lightColor="#FFF" darkColor="#FFF" style={styles.title}>
-              Filters
-            </ThemedText>
-            <View style={styles.headerActions}>
-              <Pressable
-                onPress={onReset}
-                accessibilityRole="button"
-                accessibilityLabel="Reset filters"
-                style={styles.textBtn}
-              >
-                <ThemedText lightColor="#8FCF7A" darkColor="#8FCF7A" style={styles.resetText}>
-                  Reset
-                </ThemedText>
-              </Pressable>
-              <Pressable
-                onPress={onClose}
-                accessibilityRole="button"
-                accessibilityLabel="Close filters"
-                style={styles.closeBtn}
-              >
-                <MaterialIcons name="close" size={22} color="#FFF" />
-              </Pressable>
-            </View>
+            <Text style={TYPE.heading} accessibilityRole="header">
+              Sort and filter
+            </Text>
+            <Pressable
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+              hitSlop={8}
+              style={styles.closeBtn}
+            >
+              <Ionicons name="close" size={24} color={FK.ink} />
+            </Pressable>
           </View>
 
           <ScrollView
@@ -137,25 +113,18 @@ export function BinderFiltersModal({
             contentContainerStyle={styles.body}
             bounces={false}
           >
-            {showProfilePicker ? (
-              <Section title="Player">
+            <Section title="Show">
+              {BINDER_STATUS_FILTERS.map((f) => (
                 <OptionChip
-                  label="All players"
-                  selected={selectedProfileId === null}
-                  onPress={() => onSelectProfile(null)}
+                  key={f.id}
+                  label={BINDER_STATUS_LABELS[f.id] ?? f.label}
+                  selected={status === f.id}
+                  onPress={() => onSelectStatus(f.id)}
                 />
-                {profiles.map((p) => (
-                  <OptionChip
-                    key={p.id}
-                    label={p.nickname || p.name}
-                    selected={selectedProfileId === p.id}
-                    onPress={() => onSelectProfile(p.id)}
-                  />
-                ))}
-              </Section>
-            ) : null}
+              ))}
+            </Section>
 
-            <Section title="Category">
+            <Section title="Type of card">
               {BINDER_FILTERS.map((f) => (
                 <OptionChip
                   key={f.id}
@@ -166,18 +135,7 @@ export function BinderFiltersModal({
               ))}
             </Section>
 
-            <Section title="Status">
-              {BINDER_STATUS_FILTERS.map((f) => (
-                <OptionChip
-                  key={f.id}
-                  label={f.label}
-                  selected={status === f.id}
-                  onPress={() => onSelectStatus(f.id)}
-                />
-              ))}
-            </Section>
-
-            <Section title="Sort">
+            <Section title="Order">
               {BINDER_SORT_OPTIONS.map((f) => (
                 <OptionChip
                   key={f.id}
@@ -189,16 +147,10 @@ export function BinderFiltersModal({
             </Section>
           </ScrollView>
 
-          <Pressable
-            onPress={onClose}
-            accessibilityRole="button"
-            accessibilityLabel="Done"
-            style={styles.doneBtn}
-          >
-            <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.doneText}>
-              Done
-            </ThemedText>
-          </Pressable>
+          <View style={styles.footer}>
+            <FKButton label="Done" variant="ink" icon="checkmark" onPress={onClose} />
+            <FKButton label="Reset" variant="link" onPress={onReset} />
+          </View>
         </View>
       </View>
     </Modal>
@@ -212,78 +164,63 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.55)",
+    backgroundColor: "rgba(16,37,27,0.5)",
   },
   sheet: {
-    backgroundColor: "#1A1A1D",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 8,
-    maxHeight: "85%",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.12)",
+    backgroundColor: FK.moss,
+    borderTopLeftRadius: RADIUS.lg,
+    borderTopRightRadius: RADIUS.lg,
+    paddingTop: 10,
+    maxHeight: "88%",
   },
   handle: {
     alignSelf: "center",
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "rgba(255,255,255,0.25)",
-    marginBottom: 8,
+    width: 44,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: FK.line,
+    marginBottom: 10,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingHorizontal: 22,
+    paddingBottom: 10,
   },
-  title: { fontSize: 20, lineHeight: 24 },
-  headerActions: { flexDirection: "row", alignItems: "center", gap: 4 },
-  textBtn: { paddingHorizontal: 10, paddingVertical: 8 },
-  resetText: { fontSize: 15, fontWeight: "700" },
   closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: FK.paper,
   },
   body: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    gap: 4,
+    paddingHorizontal: 22,
+    paddingBottom: 8,
   },
-  section: { marginBottom: 12 },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
-    marginBottom: 10,
-  },
+  section: { marginTop: 14 },
+  sectionTitle: { marginBottom: 10 },
   chipRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
   },
   chip: {
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
+    minHeight: 46,
+    justifyContent: "center",
+    backgroundColor: FK.paper,
+    borderRadius: RADIUS.pill,
+    borderWidth: 1.5,
+    borderColor: FK.line,
+    paddingHorizontal: 16,
   },
-  chipActive: { backgroundColor: "#62A94F" },
-  chipText: { fontSize: 13, fontWeight: "600" },
-  chipTextActive: { fontWeight: "700" },
-  doneBtn: {
-    marginHorizontal: 16,
-    marginTop: 4,
-    backgroundColor: "#62A94F",
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
+  chipActive: { backgroundColor: FK.ink, borderColor: FK.ink },
+  chipText: { fontFamily: FONT.displayBold, fontSize: 16, color: FK.ink },
+  chipTextActive: { color: FK.white },
+  footer: {
+    paddingHorizontal: 22,
+    paddingTop: 14,
   },
-  doneText: { fontSize: 16, fontWeight: "700" },
 });

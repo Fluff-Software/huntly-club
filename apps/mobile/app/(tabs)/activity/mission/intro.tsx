@@ -1,82 +1,66 @@
 import React, { useCallback, useEffect, useState } from "react";
-import {
-  View,
-  ScrollView,
-  Image,
-  Pressable,
-  ActivityIndicator } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring } from "react-native-reanimated";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
-import { MaterialIcons } from "@expo/vector-icons";
-import { ThemedText } from "@/components/ThemedText";
-import { useLayoutScale } from "@/hooks/useLayoutScale";
-import { getActivityById } from "@/services/packService";
+import { StatusBar } from "expo-status-bar";
+import { Image } from "expo-image";
+import { Ionicons } from "@expo/vector-icons";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import { FKButton, FKLoading } from "@/components/fieldkit";
+import { FK, FONT, RADIUS, TYPE } from "@/constants/fieldKit";
+import { GUIDES } from "@/constants/guides";
+import { useTeamGuide } from "@/hooks/useTeamGuide";
+import { getActivityById, getActivityImageSource } from "@/services/packService";
+import { shortDuration } from "@/services/firstMissionService";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { useUser } from "@/contexts/UserContext";
 import type { Activity } from "@/types/activity";
-import { ACTIVITY_CATEGORIES } from "@/types/activity";
-import { getCategoryColor, getCategoryLabel } from "@/utils/categoryUtils";
 import { hasOtherApprovedMissionPhotos } from "@/services/activityProgressService";
 
-// Legacy animal fallbacks (for missions that pre-date captain system)
-const BEAR_FACE = require("@/assets/images/bear-face.png");
-const FOX_FACE = require("@/assets/images/fox-face.png");
-const OTTER_FACE = require("@/assets/images/otter-face.png");
-
 const CAPTAIN_ASSETS = {
-  bella: {
-    avatar:          require("@/assets/images/bella-close-smiling.png"),
-    standing:        require("@/assets/images/bella-standing.png"),
-    "crossed-arms":  require("@/assets/images/bella-crossed-arms.png"),
-    waving:          require("@/assets/images/bella-waving.png"),
-  },
-  felix: {
-    avatar:          require("@/assets/images/felix-close-smiling.png"),
-    standing:        require("@/assets/images/felix-standing.png"),
-    "crossed-arms":  require("@/assets/images/felix-crossed-arms.png"),
-    waving:          require("@/assets/images/felix-waving.png"),
-  },
-  oli: {
-    avatar:          require("@/assets/images/oli-close-smiling.png"),
-    standing:        require("@/assets/images/oli-standing.png"),
-    "crossed-arms":  require("@/assets/images/oli-crossed-arms.png"),
-    waving:          require("@/assets/images/oli-waving.png"),
-  },
+  bella: require("@/assets/images/bella-close-smiling.png"),
+  felix: require("@/assets/images/felix-close-smiling.png"),
+  oli: require("@/assets/images/oli-close-smiling.png"),
 } as const;
-
 type CaptainKey = keyof typeof CAPTAIN_ASSETS;
-type PoseKey = "standing" | "crossed-arms" | "waving";
 
-function getLegacyFace(name: string) {
-  const lower = name.toLowerCase();
-  if (lower.includes("fox")) return FOX_FACE;
-  if (lower.includes("otter")) return OTTER_FACE;
-  return BEAR_FACE;
+function itemsList(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw.map(String).filter(Boolean);
+  if (typeof raw === "string") return raw.split(",").map((s) => s.trim()).filter(Boolean);
+  return [];
 }
 
-const FOREST_DARK = "#2D4A35";
-const FOREST_MID = "#3D5F45";
-const URGENT_RED = "#C0392B";
-const CREAM = "#F0E8C8";
-const CREAM_LIGHT = "#FAF6E8";
-const CREAM_SHADOW = "#D4C9A0";
+/** Grown-up note: explicit safety notes, else checklist lines that mention a grown-up. */
+function grownUpNote(activity: Activity): string | null {
+  const safety = (activity as { safety_notes?: string | null }).safety_notes;
+  if (safety?.trim()) return safety.trim();
+  const checklist = ((activity as { prep_checklist?: { title?: string; description?: string }[] }).prep_checklist ?? []).filter(
+    (c) => /grown-?up|permission|adult/i.test(`${c.title} ${c.description}`)
+  );
+  if (checklist.length) return checklist.map((c) => c.description || c.title).join(" ");
+  return null;
+}
 
 export default function IntroScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const { scaleW, width, isTablet } = useLayoutScale();
   const { profiles } = usePlayer();
+  const { team } = useUser();
+  const { guide: teamGuide } = useTeamGuide();
+  const guide = teamGuide ?? GUIDES[0];
   const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showInspirationGallery, setShowInspirationGallery] = useState(false);
+  const [briefingOpen, setBriefingOpen] = useState(false);
 
   const loadActivity = useCallback(async () => {
-    if (!id) { setError("No activity selected"); setLoading(false); return; }
+    if (!id) {
+      setError("No activity selected");
+      setLoading(false);
+      return;
+    }
     setError(null);
     setLoading(true);
     try {
@@ -90,426 +74,203 @@ export default function IntroScreen() {
     }
   }, [id]);
 
-  useEffect(() => { loadActivity(); }, [loadActivity]);
+  useEffect(() => {
+    void loadActivity();
+  }, [loadActivity]);
 
   useEffect(() => {
     const activityId = activity?.id ?? null;
-    if (!activityId) {
-      setShowInspirationGallery(false);
-      return;
-    }
-    if (profiles.length === 0) {
+    if (!activityId || profiles.length === 0) {
       setShowInspirationGallery(false);
       return;
     }
     let cancelled = false;
-    const excludeProfileIds = profiles.map((p) => p.id);
-    hasOtherApprovedMissionPhotos(activityId, excludeProfileIds)
-      .then((hasAny) => {
-        if (cancelled) return;
-        setShowInspirationGallery(Boolean(hasAny));
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setShowInspirationGallery(false);
-      });
+    hasOtherApprovedMissionPhotos(activityId, profiles.map((p) => p.id))
+      .then((hasAny) => !cancelled && setShowInspirationGallery(Boolean(hasAny)))
+      .catch(() => !cancelled && setShowInspirationGallery(false));
     return () => {
       cancelled = true;
     };
   }, [activity?.id, profiles]);
-
-  const buttonScale = useSharedValue(1);
-  const buttonStyle = useAnimatedStyle(() => ({ transform: [{ scale: buttonScale.value }] }));
 
   const handleAccept = () => {
     if (!activity?.id) return;
     router.push({ pathname: "/(tabs)/activity/mission/prep", params: { id: String(activity.id) } });
   };
 
-  const handleOpenInspirationGallery = () => {
-    if (!activity?.id) return;
-    router.push({
-      pathname: "/(tabs)/activity/mission/gallery",
-      params: { activityId: String(activity.id) },
-    });
-  };
-
-
-  if (loading) {
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: FOREST_DARK, justifyContent: "center", alignItems: "center" }} edges={["top", "left", "right"]}>
-        <ActivityIndicator size="large" color={CREAM} />
-        <ThemedText lightColor={CREAM} darkColor={CREAM} style={{ marginTop: scaleW(16), fontSize: scaleW(16) }}>
-          Loading your mission…
-        </ThemedText>
-      </SafeAreaView>
-    );
-  }
-
+  if (loading || !teamGuide) return <FKLoading />;
   if (error || !activity) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: FOREST_DARK, justifyContent: "center", alignItems: "center", padding: scaleW(24) }} edges={["top", "left", "right"]}>
-        <ThemedText lightColor="#FFF" darkColor="#FFF" style={{ fontSize: scaleW(17), textAlign: "center" }}>
-          {error ?? "Activity not found"}
-        </ThemedText>
+      <SafeAreaView style={[styles.root, styles.center]}>
+        <StatusBar style="dark" />
+        <Text style={TYPE.body}>{error ?? "We couldn't find that mission."}</Text>
       </SafeAreaView>
     );
   }
 
   const captainKey = (activity.intro_captain ?? null) as CaptainKey | null;
-  const validCaptain = captainKey != null && captainKey in CAPTAIN_ASSETS ? captainKey : null;
-  const poseKey: PoseKey = (activity.intro_captain_pose as PoseKey | null | undefined) ?? "standing";
-  const validPose: PoseKey =
-    validCaptain != null && poseKey in CAPTAIN_ASSETS[validCaptain] ? poseKey : "standing";
-
-  const captainAssets = validCaptain ? CAPTAIN_ASSETS[validCaptain] : null;
-  const avatarSource = captainAssets
-    ? captainAssets.avatar
-    : activity.intro_character_avatar_url
-      ? { uri: activity.intro_character_avatar_url }
-      : activity.intro_character_name
-        ? getLegacyFace(activity.intro_character_name)
-        : null;
-  const bodySource = captainAssets ? captainAssets[validPose] : null;
-
-  const characterName =
-    activity.intro_character_name?.trim() ||
-    (validCaptain ? validCaptain.charAt(0).toUpperCase() + validCaptain.slice(1) : null);
-
-  // Keep a little space above the fixed footer buttons.
-  const footerPaddingBottom = scaleW(10) + (isTablet ? scaleW(8) : 0);
-
-  const hasUrgent = !!activity.intro_urgent_message?.trim();
-  const hasDialogue = !!activity.intro_dialogue?.trim();
-  const items: string[] = Array.isArray(activity.optional_items) ? activity.optional_items : [];
-  const categories = (activity.categories ?? [])
-    .map((cat: unknown) => {
-      if (typeof cat === "number") return ACTIVITY_CATEGORIES[cat]?.category;
-      if (typeof cat === "string") return cat;
-      return undefined;
-    })
-    .filter((cat: unknown): cat is string => typeof cat === "string" && cat.trim() !== "");
+  const captainName = captainKey ? captainKey[0].toUpperCase() + captainKey.slice(1) : guide.guideName;
+  const captainImage = captainKey && CAPTAIN_ASSETS[captainKey] ? CAPTAIN_ASSETS[captainKey] : guide.portrait;
+  const items = itemsList((activity as { optional_items?: unknown }).optional_items);
+  const steps = activity.steps?.length ?? 0;
+  const missionType = (activity as { mission_type?: string | null }).mission_type;
+  const note = grownUpNote(activity);
+  const facts = [
+    { icon: "time-outline" as const, label: shortDuration(activity.estimated_duration) ?? "Any time" },
+    {
+      icon: missionType === "outdoor" ? ("leaf-outline" as const) : ("home-outline" as const),
+      label: missionType === "outdoor" ? "Outdoors" : missionType === "indoor" ? "Indoors" : "Anywhere",
+    },
+    { icon: "bag-handle-outline" as const, label: items.length ? `${items.length} things` : "No kit" },
+  ];
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: FOREST_DARK }} edges={["top", "left", "right"]}>
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{
-          paddingHorizontal: scaleW(20),
-          paddingTop: scaleW(8),
-          // Extra space so content can scroll above the fixed footer buttons.
-          paddingBottom: footerPaddingBottom + scaleW(120),
-        }}
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-      >
-        {/* Urgent banner */}
-        {hasUrgent && (
-          <View style={{
-            backgroundColor: URGENT_RED,
-            paddingVertical: scaleW(14),
-            transform: [{ rotate: "-1deg" }],
-            marginHorizontal: -scaleW(20),
-            marginBottom: scaleW(16) }}>
-            <ThemedText
-              lightColor="#FFF"
-              darkColor="#FFF"
-              style={{ fontSize: scaleW(16), fontWeight: "800", textAlign: "center", letterSpacing: 0.5 }}>
-              ⚡ {activity.intro_urgent_message}
-            </ThemedText>
+    <View style={styles.root}>
+      <StatusBar style="light" />
+      <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false} bounces={false}>
+        <View style={styles.hero}>
+          <Image source={getActivityImageSource(activity.image ?? null)} style={StyleSheet.absoluteFill} contentFit="cover" />
+          <View style={[styles.heroTop, { paddingTop: insets.top + 8 }]}>
+            <Pressable onPress={() => router.back()} style={styles.back} hitSlop={8} accessibilityLabel="Back">
+              <Ionicons name="arrow-back" size={24} color={FK.white} />
+            </Pressable>
+            {activity.intro_urgent_message?.trim() ? (
+              <View style={styles.urgent}>
+                <Text style={styles.urgentText} numberOfLines={2}>
+                  {activity.intro_urgent_message.trim()}
+                </Text>
+              </View>
+            ) : null}
           </View>
-        )}
-
-        {/* Character section */}
-        <View style={{ minHeight: scaleW(260), marginBottom: scaleW(20) }}>
-          {/* Full-body captain image — absolute right */}
-          {bodySource && (
-            <Image
-              source={bodySource}
-              resizeMode="contain"
-              style={{
-                position: "absolute",
-                right: -scaleW(16),
-                bottom: -scaleW(20),
-                width: width * 0.42,
-                height: scaleW(220) }}
-            />
-          )}
-
-          {/* Avatar + name */}
-          <View style={{ flexDirection: "row", alignItems: "center", gap: scaleW(12), marginBottom: scaleW(16) }}>
-            {avatarSource && (
-              <View style={{
-                width: scaleW(64),
-                height: scaleW(64),
-                borderRadius: scaleW(32),
-                overflow: "hidden",
-                borderWidth: 3,
-                borderColor: "#FFF" }}>
-                <Image
-                  source={avatarSource}
-                  style={{ width: "100%", height: "100%" }}
-                  resizeMode="cover"
-                />
-              </View>
-            )}
-            {characterName && (
-              <View>
-                <ThemedText
-                  type="heading"
-                  lightColor="#FFF"
-                  darkColor="#FFF"
-                  style={{ fontSize: scaleW(22), fontWeight: "800" }}>
-                  {characterName}
-                </ThemedText>
-              </View>
-            )}
-          </View>
-
-          {/* Speech bubble */}
-          {hasDialogue && (
-            <View style={{ marginRight: bodySource ? width * 0.36 : 0 }}>
-              <View style={{
-                backgroundColor: "#FFF",
-                borderRadius: scaleW(16),
-                padding: scaleW(16),
-                shadowColor: "#000",
-                shadowOpacity: 0.15,
-                shadowRadius: 8,
-                shadowOffset: { width: 0, height: 3 },
-                elevation: 4 }}>
-                <ThemedText style={{
-                  fontSize: scaleW(15),
-                  color: "#1a1a1a",
-                  lineHeight: scaleW(22),
-                  fontStyle: "italic" }}>
-                  "{activity.intro_dialogue}"
-                </ThemedText>
-              </View>
-              {/* Right-pointing tail */}
-              {bodySource && (
-                <View style={{
-                  position: "absolute",
-                  right: -scaleW(10),
-                  bottom: scaleW(20),
-                  width: 0,
-                  height: 0,
-                  borderTopWidth: scaleW(8),
-                  borderBottomWidth: scaleW(8),
-                  borderLeftWidth: scaleW(10),
-                  borderTopColor: "transparent",
-                  borderBottomColor: "transparent",
-                  borderLeftColor: "#FFF" }}
-                />
-              )}
-            </View>
-          )}
         </View>
 
-        {/* Mission card */}
-        <View style={{
-          backgroundColor: FOREST_MID,
-          borderRadius: scaleW(20),
-          overflow: "hidden",
-          marginBottom: scaleW(24),
-          shadowColor: "#000",
-          shadowOpacity: 0.2,
-          shadowRadius: 6,
-          shadowOffset: { width: 0, height: 3 },
-          elevation: 4 }}>
+        <View style={styles.sheet}>
+          <Animated.View entering={FadeInDown.duration(350)}>
+            <Pressable onPress={() => setBriefingOpen((o) => !o)} style={styles.briefing} accessibilityRole="button">
+              <Image source={captainImage} style={styles.briefingAvatar} contentFit="cover" contentPosition="top" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.briefingTitle}>{captainName}'s briefing</Text>
+                <Text style={styles.briefingSub}>{briefingOpen ? "Tap to close" : "Read it together"}</Text>
+              </View>
+              <View style={styles.briefingPlay}>
+                <Ionicons name={briefingOpen ? "chevron-up" : "chatbubble-ellipses"} size={22} color={FK.white} />
+              </View>
+            </Pressable>
+            {briefingOpen && activity.intro_dialogue ? (
+              <Text style={styles.dialogue}>"{activity.intro_dialogue}"</Text>
+            ) : null}
+          </Animated.View>
 
-          {/* Cover image */}
-          {!!activity.image && (
-            <Image
-              source={{ uri: activity.image }}
-              style={{ width: "100%", height: scaleW(160), borderRadius: scaleW(18), borderWidth: scaleW(4), borderColor: FOREST_MID }}
-              resizeMode="cover"
+          <Text style={styles.title}>{activity.title}</Text>
+          {activity.description ? <Text style={styles.desc}>{activity.description}</Text> : null}
+
+          <View style={styles.facts}>
+            {facts.map((f) => (
+              <View key={f.label} style={styles.fact}>
+                <Ionicons name={f.icon} size={24} color={FK.forest} />
+                <Text style={styles.factText}>{f.label}</Text>
+              </View>
+            ))}
+          </View>
+
+          {items.length ? (
+            <Text style={styles.items}>
+              <Text style={{ fontFamily: FONT.bodyBold, color: FK.ink }}>You'll need: </Text>
+              {items.join(", ")}
+            </Text>
+          ) : null}
+
+          {note ? (
+            <View style={styles.grownUps}>
+              <Ionicons name="shield-outline" size={22} color={FK.skyInk} />
+              <Text style={styles.grownUpsText}>
+                <Text style={{ fontFamily: FONT.bodyBold }}>For grown-ups: </Text>
+                {note}
+              </Text>
+            </View>
+          ) : null}
+
+          {showInspirationGallery ? (
+            <FKButton
+              label="See what other explorers made"
+              variant="link"
+              onPress={() => router.push({ pathname: "/(tabs)/activity/mission/gallery", params: { activityId: String(activity.id) } })}
             />
-          )}
-
-          <View style={{ padding: scaleW(20) }}>
-
-          {/* Header row */}
-          <View style={{ flexDirection: "row", alignItems: "center", gap: scaleW(8), marginBottom: scaleW(12) }}>
-            <MaterialIcons name="flag" size={scaleW(16)} color="rgba(255,255,255,0.7)" />
-            <ThemedText
-              lightColor="rgba(255,255,255,0.7)"
-              darkColor="rgba(255,255,255,0.7)"
-              style={{ fontSize: scaleW(11), fontWeight: "700", letterSpacing: 1.5, textTransform: "uppercase" }}>
-              Your Mission
-            </ThemedText>
-          </View>
-
-          <View style={{ borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.15)", paddingTop: scaleW(12) }}>
-            <ThemedText
-              type="heading"
-              lightColor="#FFF"
-              darkColor="#FFF"
-              style={{ fontSize: scaleW(24), fontWeight: "800", marginBottom: scaleW(8) }}>
-              {activity.title}
-            </ThemedText>
-            {categories.length > 0 && (
-              <View style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                gap: scaleW(8),
-                marginBottom: scaleW(12) }}>
-                {categories.map((category: string) => (
-                  <View
-                    key={category}
-                    style={{
-                      borderRadius: scaleW(999),
-                      paddingVertical: scaleW(6),
-                      paddingHorizontal: scaleW(10),
-                      borderWidth: 1,
-                      borderColor: "rgba(255,255,255,0.18)",
-                      backgroundColor: `${getCategoryColor(category)}33`,
-                    }}
-                  >
-                    <ThemedText
-                      lightColor="#FFF"
-                      darkColor="#FFF"
-                      style={{ fontSize: scaleW(12), fontWeight: "700" }}>
-                      {getCategoryLabel(category)}
-                    </ThemedText>
-                  </View>
-                ))}
-              </View>
-            )}
-            {!!activity.description?.trim() && (
-              <ThemedText
-                lightColor="rgba(255,255,255,0.88)"
-                darkColor="rgba(255,255,255,0.88)"
-                style={{ fontSize: scaleW(15), lineHeight: scaleW(22), marginBottom: scaleW(16) }}>
-                {activity.description}
-              </ThemedText>
-            )}
-
-            {/* Items + duration chips */}
-            {(items.length > 0 || !!activity.estimated_duration?.trim()) && (
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: scaleW(8) }}>
-                {items.map((item, i) => (
-                  <View
-                    key={i}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: scaleW(5),
-                      backgroundColor: "rgba(255,255,255,0.15)",
-                      borderRadius: scaleW(20),
-                      paddingVertical: scaleW(5),
-                      paddingHorizontal: scaleW(10) }}>
-                    <MaterialIcons name="local-offer" size={scaleW(12)} color="rgba(255,255,255,0.8)" />
-                    <ThemedText
-                      lightColor="#FFF"
-                      darkColor="#FFF"
-                      style={{ fontSize: scaleW(12), fontWeight: "600" }}>
-                      {item}
-                    </ThemedText>
-                  </View>
-                ))}
-                {!!activity.estimated_duration?.trim() && (
-                  <View style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: scaleW(5),
-                    backgroundColor: "rgba(255,255,255,0.15)",
-                    borderRadius: scaleW(20),
-                    paddingVertical: scaleW(5),
-                    paddingHorizontal: scaleW(10) }}>
-                    <MaterialIcons name="timer" size={scaleW(12)} color="rgba(255,255,255,0.8)" />
-                    <ThemedText
-                      lightColor="#FFF"
-                      darkColor="#FFF"
-                      style={{ fontSize: scaleW(12), fontWeight: "600" }}>
-                      {activity.estimated_duration}
-                    </ThemedText>
-                  </View>
-                )}
-              </View>
-            )}
-          </View>
-          </View>
+          ) : null}
         </View>
       </ScrollView>
-
-      {/* Accept button — fixed footer */}
-      <View style={{
-        position: "absolute",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        paddingHorizontal: scaleW(20),
-        paddingBottom: footerPaddingBottom }}
-        pointerEvents="box-none"
-      >
-        {showInspirationGallery && (
-          <View style={{ marginBottom: scaleW(10) }}>
-            <Pressable
-              onPress={handleOpenInspirationGallery}
-              style={{
-                backgroundColor: "rgba(255,255,255,0.10)",
-                borderRadius: scaleW(22),
-                paddingVertical: scaleW(12),
-                paddingHorizontal: scaleW(16),
-                alignItems: "center",
-                justifyContent: "center",
-                flexDirection: "row",
-                gap: scaleW(8),
-                borderWidth: 1,
-                borderColor: "rgba(255,255,255,0.20)",
-              }}
-            >
-              <MaterialIcons name="auto-awesome" size={scaleW(18)} color="#FFF" />
-              <ThemedText
-                type="heading"
-                lightColor="#FFF"
-                darkColor="#FFF"
-                style={{ fontSize: scaleW(14), fontWeight: "800" }}
-              >
-                Inspiration gallery
-              </ThemedText>
-            </Pressable>
-          </View>
-        )}
-        <Animated.View style={buttonStyle}>
-          <Pressable
-            onPress={handleAccept}
-            onPressIn={() => { buttonScale.value = withSpring(0.97, { damping: 15, stiffness: 400 }); }}
-            onPressOut={() => { buttonScale.value = withSpring(1, { damping: 15, stiffness: 400 }); }}
-            style={{
-              borderRadius: scaleW(32),
-              overflow: "hidden",
-              shadowColor: FOREST_DARK,
-              shadowOpacity: 0.45,
-              shadowRadius: scaleW(10),
-              shadowOffset: { width: 0, height: scaleW(5) },
-              elevation: 8 }}
-          >
-            <LinearGradient
-              colors={[CREAM_LIGHT, CREAM, CREAM_SHADOW]}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
-              style={{
-                paddingVertical: scaleW(18),
-                paddingHorizontal: scaleW(32),
-                alignItems: "center",
-                justifyContent: "center",
-                flexDirection: "row",
-                gap: scaleW(8) }}
-            >
-              <ThemedText
-                type="heading"
-                lightColor={FOREST_DARK}
-                darkColor={FOREST_DARK}
-                style={{ fontSize: scaleW(18), fontWeight: "800" }}>
-                Accept the mission
-              </ThemedText>
-              <MaterialIcons name="arrow-forward" size={scaleW(20)} color={FOREST_DARK} />
-            </LinearGradient>
-          </Pressable>
-        </Animated.View>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <FKButton label="Accept the mission" variant="ink" onPress={handleAccept} testID="intro-accept" />
+        <Text style={styles.footnote}>
+          {[activity.xp ? `+${activity.xp} for ${guide.teamName}` : null, steps ? `${steps} steps` : null]
+            .filter(Boolean)
+            .join(" · ")}
+        </Text>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: FK.moss },
+  center: { alignItems: "center", justifyContent: "center" },
+  hero: { height: 330, backgroundColor: FK.forest },
+  heroTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", paddingHorizontal: 20, gap: 12 },
+  back: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(16,37,27,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  urgent: { flexShrink: 1, backgroundColor: FK.ember, borderRadius: RADIUS.pill, paddingHorizontal: 16, paddingVertical: 10 },
+  urgentText: { fontFamily: FONT.display, fontSize: 15, color: FK.ink },
+  sheet: {
+    marginTop: -30,
+    backgroundColor: FK.moss,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 20,
+    paddingTop: 22,
+  },
+  briefing: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: FK.paper,
+    borderRadius: RADIUS.pill,
+    padding: 8,
+    paddingRight: 8,
+  },
+  briefingAvatar: { width: 54, height: 54, borderRadius: 27, backgroundColor: FK.forest },
+  briefingTitle: { fontFamily: FONT.display, fontSize: 17, color: FK.ink },
+  briefingSub: { fontFamily: FONT.displayBold, fontSize: 14, color: FK.muted },
+  briefingPlay: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: FK.ember,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dialogue: { ...TYPE.body, marginTop: 12, paddingHorizontal: 6, color: FK.ink, fontStyle: "italic" },
+  title: { fontFamily: FONT.display, fontSize: 36, lineHeight: 38, color: FK.ink, letterSpacing: -0.8, marginTop: 20 },
+  desc: { ...TYPE.body, color: "#33433A", marginTop: 8 },
+  facts: { flexDirection: "row", gap: 10, marginTop: 18 },
+  fact: { flex: 1, backgroundColor: FK.paper, borderRadius: RADIUS.md, padding: 14, gap: 8 },
+  factText: { fontFamily: FONT.display, fontSize: 16, color: FK.ink },
+  items: { ...TYPE.bodySmall, marginTop: 14 },
+  grownUps: {
+    flexDirection: "row",
+    gap: 12,
+    backgroundColor: FK.sky,
+    borderRadius: RADIUS.md,
+    padding: 16,
+    marginTop: 14,
+    alignItems: "flex-start",
+  },
+  grownUpsText: { flex: 1, fontFamily: FONT.body, fontSize: 15, lineHeight: 21, color: FK.skyInk },
+  footer: { paddingHorizontal: 20, paddingTop: 10, backgroundColor: FK.moss },
+  footnote: { fontFamily: FONT.displayBold, fontSize: 14, color: FK.muted, textAlign: "center", marginTop: 8 },
+});

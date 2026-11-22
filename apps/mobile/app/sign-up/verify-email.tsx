@@ -1,20 +1,19 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, ActivityIndicator, Pressable, Alert, AppState, AppStateStatus, Image } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
-import { Stack } from "expo-router";
+import { Alert, AppState, AppStateStatus, StyleSheet, Text, View } from "react-native";
+import { router, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { ThemedText } from "@/components/ThemedText";
+import { Ionicons } from "@expo/vector-icons";
+import Animated, { FadeIn } from "react-native-reanimated";
+import { FKButton, FKEyebrow, FKScreen } from "@/components/fieldkit";
+import { FK, FONT, RADIUS, TYPE } from "@/constants/fieldKit";
 import { useSignUp } from "@/contexts/SignUpContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/services/supabase";
 import { resendVerificationEmail } from "@/services/authService";
-import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { settleIn } from "@/constants/motion";
 
-const HUNTLY_GREEN = "#4F6F52";
-const CREAM = "#F4F0EB";
 
-function useVerifiedAndContinue(email: string, password: string) {
+function useVerifiedAndContinue(email: string, password: string, nextRoute: "/sign-up/finish" | "/sign-up/players") {
   const { session } = useAuth();
   const [verificationComplete, setVerificationComplete] = useState(false);
   const checkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -25,7 +24,7 @@ function useVerifiedAndContinue(email: string, password: string) {
       clearInterval(checkIntervalRef.current);
       checkIntervalRef.current = null;
     }
-    setTimeout(() => router.replace("/sign-up/players"), 1500);
+    setTimeout(() => router.replace(nextRoute), 1200);
   };
 
   const checkAndAdvance = async () => {
@@ -79,19 +78,22 @@ function useVerifiedAndContinue(email: string, password: string) {
 }
 
 export default function VerifyEmailScreen() {
-  const { scaleW } = useLayoutScale();
   const signUpContext = useSignUp();
   const { user, signOut } = useAuth();
   const parentEmail = (signUpContext.parentEmail || user?.email) ?? "";
   const [resendLoading, setResendLoading] = useState(false);
-  const { verificationComplete } = useVerifiedAndContinue(parentEmail, signUpContext.password);
+  const { verificationComplete } = useVerifiedAndContinue(
+    parentEmail,
+    signUpContext.password,
+    signUpContext.hasPendingSetup ? "/sign-up/finish" : "/sign-up/players"
+  );
 
   const handleResendEmail = async () => {
     if (!parentEmail || resendLoading) return;
     setResendLoading(true);
     try {
       await resendVerificationEmail(parentEmail, "signup");
-      Alert.alert("Email sent", "Check your inbox for a new verification link.");
+      Alert.alert("Email sent", "Check your inbox for a new link.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to resend email.";
       Alert.alert("Error", message);
@@ -102,230 +104,95 @@ export default function VerifyEmailScreen() {
 
   if (verificationComplete) {
     return (
-      <>
+      <FKScreen dark scroll={false} contentStyle={styles.center}>
+        <Stack.Screen options={{ title: "Email verified", headerShown: false }} />
         <StatusBar style="light" />
-        <Stack.Screen options={{ title: "Email Verified", headerShown: false }} />
-        <SafeAreaView style={{ flex: 1, backgroundColor: HUNTLY_GREEN }} edges={["top", "left", "right"]}>
-        <View style={{ flex: 1 }}>
-          <View
-            style={{
-              flex: 1,
-              justifyContent: "center",
-              alignItems: "center",
-              paddingHorizontal: scaleW(24) }}
-          >
-            <ThemedText
-              type="heading"
-              lightColor="#FFFFFF"
-              darkColor="#FFFFFF"
-              style={{
-                textAlign: "center",
-                fontWeight: "600",
-                fontSize: scaleW(24),
-                marginBottom: scaleW(12) }}
-            >
-              Email Verified!
-            </ThemedText>
-
-            <ThemedText
-              lightColor="#FFFFFF"
-              darkColor="#FFFFFF"
-              style={{
-                textAlign: "center",
-                fontSize: scaleW(16),
-                opacity: 0.95 }}
-            >
-              Setting up your account...
-            </ThemedText>
-          </View>
-        </View>
-        </SafeAreaView>
-      </>
+        <Animated.View entering={settleIn()} style={styles.tick}>
+          <Ionicons name="checkmark" size={56} color={FK.ink} />
+        </Animated.View>
+        <Text style={[styles.title, { color: FK.white, textAlign: "center" }]}>You're in!</Text>
+        <Text style={[styles.body, { color: FK.mutedOnDark, textAlign: "center" }]}>Getting your Clubhouse ready…</Text>
+      </FKScreen>
     );
   }
 
   return (
-    <>
-      <StatusBar style="light" />
-      <Stack.Screen options={{ title: "Verify Email", headerShown: false }} />
-      <SafeAreaView style={{ flex: 1, backgroundColor: HUNTLY_GREEN }} edges={["top", "left", "right"]}>
-      <View style={{ flex: 1, justifyContent: "flex-start", paddingHorizontal: scaleW(24), paddingTop: scaleW(32) }}>
-        <View
-          style={{
-            alignItems: "center" }}
-        >
-          <ThemedText
-            type="heading"
-            lightColor="#FFFFFF"
-            darkColor="#FFFFFF"
-            style={{
-              textAlign: "center",
-              fontWeight: "600",
-              fontSize: scaleW(26),
-              marginBottom: scaleW(12) }}
-          >
-            Check your email
-          </ThemedText>
-
-          <ThemedText
-            lightColor="#FFFFFF"
-            darkColor="#FFFFFF"
-            style={{
-              textAlign: "center",
-              fontSize: scaleW(16),
-              opacity: 0.95,
-              marginBottom: scaleW(8),
-              lineHeight: scaleW(24) }}
-          >
-            We've sent a confirmation link to
-          </ThemedText>
-          <ThemedText
-            lightColor="#FFFFFF"
-            darkColor="#FFFFFF"
-            style={{
-              textAlign: "center",
-              fontSize: scaleW(14),
-              fontWeight: "600",
-              opacity: 0.9,
-              marginBottom: scaleW(20) }}
-          >
-            {parentEmail}
-          </ThemedText>
-          <View
-            style={{
-              marginTop: scaleW(8),
-              marginBottom: scaleW(20),
-              paddingVertical: scaleW(14),
-              paddingHorizontal: scaleW(18),
-              borderRadius: scaleW(16),
-              backgroundColor: "rgba(244, 240, 235, 0.16)",
-              maxWidth: scaleW(340),
-              gap: scaleW(6) }}
-          >
-            <ThemedText
-              lightColor="#FFFFFF"
-              darkColor="#FFFFFF"
-              style={{
-                textAlign: "left",
-                fontSize: scaleW(14),
-                opacity: 0.95 }}
-            >
-              1. Open your email app.
-            </ThemedText>
-            <ThemedText
-              lightColor="#FFFFFF"
-              darkColor="#FFFFFF"
-              style={{
-                textAlign: "left",
-                fontSize: scaleW(14),
-                opacity: 0.95 }}
-            >
-              2. Tap the &quot;Verify email&quot; link we just sent.
-            </ThemedText>
-            <ThemedText
-              lightColor="#FFFFFF"
-              darkColor="#FFFFFF"
-              style={{
-                textAlign: "left",
-                fontSize: scaleW(14),
-                opacity: 0.95 }}
-            >
-              3. Come back here and we&apos;ll move you on automatically.
-            </ThemedText>
-          </View>
-
-          <ThemedText
-            lightColor="#FFFFFF"
-            darkColor="#FFFFFF"
-            style={{
-              textAlign: "center",
-              fontSize: scaleW(14),
-              opacity: 0.9,
-              marginTop: scaleW(16) }}
-          >
-            Didn't receive the email?
-          </ThemedText>
-          <Pressable
+    <FKScreen
+      footer={
+        <>
+          <FKButton
+            label={resendLoading ? "Sending…" : "Send it again"}
+            variant="paper"
+            icon="refresh"
             onPress={handleResendEmail}
-            disabled={resendLoading}
-            style={{
-              alignSelf: "center",
-              marginTop: scaleW(8),
-              paddingVertical: scaleW(14),
-              paddingHorizontal: scaleW(32),
-              borderRadius: scaleW(28),
-              backgroundColor: CREAM,
-              minWidth: scaleW(220),
-              alignItems: "center",
-              justifyContent: "center",
-              opacity: resendLoading ? 0.8 : 1 }}
-          >
-            {resendLoading ? (
-              <ActivityIndicator size="small" color={HUNTLY_GREEN} />
-            ) : (
-              <ThemedText
-                lightColor={HUNTLY_GREEN}
-                darkColor={HUNTLY_GREEN}
-                style={{
-                  fontSize: scaleW(16),
-                  fontWeight: "600" }}
-              >
-                Resend verification email
-              </ThemedText>
-            )}
-          </Pressable>
-
-          <ThemedText
-            lightColor="#FFFFFF"
-            darkColor="#FFFFFF"
-            style={{
-              textAlign: "center",
-              fontSize: scaleW(12),
-              opacity: 0.8,
-              marginTop: scaleW(16),
-              fontStyle: "italic" }}
-          >
-            Check your spam folder if you don't see it
-          </ThemedText>
-
-          <Pressable
-            onPress={() => {
-              Alert.alert("Log out", "Return to sign in? You can verify your email later.", [
+            loading={resendLoading}
+          />
+          <FKButton
+            label="Use a different email"
+            variant="link"
+            onPress={() =>
+              Alert.alert("Start again?", "You'll go back to sign in. Your team and plan are saved on this phone.", [
                 { text: "Cancel", style: "cancel" },
                 {
-                  text: "Log out",
+                  text: "Continue",
                   style: "destructive",
-                  onPress: async () => {
-                    try {
-                      await signOut();
-                      router.replace("/auth");
-                    } catch {
-                      router.replace("/auth");
-                    }
-                  } },
-              ]);
-            }}
-            style={{
-              alignSelf: "center",
-              marginTop: scaleW(20),
-              paddingVertical: scaleW(10),
-              paddingHorizontal: scaleW(20) }}
-          >
-            <ThemedText
-              lightColor="#FFFFFF"
-              darkColor="#FFFFFF"
-              style={{
-                fontSize: scaleW(15),
-                fontWeight: "600",
-                textDecorationLine: "underline",
-                opacity: 0.9 }}
-            >
-              Log out
-            </ThemedText>
-          </Pressable>
-        </View>
+                  onPress: () => void signOut().catch(() => undefined).finally(() => router.replace("/sign-up")),
+                },
+              ])
+            }
+          />
+        </>
+      }
+    >
+      <Stack.Screen options={{ title: "Check your email", headerShown: false }} />
+      <StatusBar style="dark" />
+      <Animated.View entering={FadeIn.duration(400)} style={styles.envelope}>
+        <Ionicons name="mail-open-outline" size={44} color={FK.ink} />
+      </Animated.View>
+      <FKEyebrow style={{ marginTop: 24, marginBottom: 6 }}>FOR GROWN-UPS</FKEyebrow>
+      <Text style={styles.title}>Check your email</Text>
+      <Text style={styles.body}>
+        Tap the link we sent to <Text style={{ fontFamily: FONT.bodyBold, color: FK.ink }}>{parentEmail || "your inbox"}</Text>. This
+        screen moves on by itself as soon as you do.
+      </Text>
+      <View style={styles.tip}>
+        <Ionicons name="information-circle-outline" size={20} color={FK.skyInk} />
+        <Text style={styles.tipText}>Can't see it? Check spam or promotions. It comes from Huntly World.</Text>
       </View>
-      </SafeAreaView>
-    </>
+    </FKScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  tick: {
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+    backgroundColor: FK.sunbeam,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 24,
+  },
+  envelope: {
+    marginTop: 40,
+    width: 96,
+    height: 96,
+    borderRadius: 30,
+    backgroundColor: FK.sunbeam,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  title: { ...TYPE.title },
+  body: { ...TYPE.body, color: FK.muted, marginTop: 10 },
+  tip: {
+    flexDirection: "row",
+    gap: 10,
+    backgroundColor: FK.sky,
+    borderRadius: RADIUS.md,
+    padding: 16,
+    marginTop: 24,
+    alignItems: "flex-start",
+  },
+  tipText: { flex: 1, fontFamily: FONT.body, fontSize: 15, lineHeight: 21, color: FK.skyInk },
+});

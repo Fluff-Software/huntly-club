@@ -26,6 +26,14 @@ const CARD_CHECKED_BG = "#D8EDD8";
 const HUNTLY_GREEN = "#4F6F52";
 const CHECK_GREEN = "#2D5A27";
 
+const backButtonStyle = {
+  position: "absolute" as const,
+  zIndex: 2,
+  alignItems: "center" as const,
+  justifyContent: "center" as const,
+  backgroundColor: "rgba(255,255,255,0.16)",
+};
+
 export default function PrepScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -93,7 +101,7 @@ export default function PrepScreen() {
         errorText: { fontSize: scaleW(17), color: "#2F3336", textAlign: "center" },
         header: {
           backgroundColor: FOREST_DARK,
-          paddingTop: scaleW(32),
+          paddingTop: scaleW(64),
           paddingBottom: scaleW(28),
           paddingHorizontal: scaleW(24),
           borderBottomLeftRadius: scaleW(28),
@@ -197,6 +205,18 @@ export default function PrepScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <View style={styles.header}>
+        <Pressable
+          onPress={() => (router.canGoBack() ? router.back() : router.replace("/(tabs)/missions"))}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          style={[
+            backButtonStyle,
+            { top: scaleW(14), left: scaleW(14), width: scaleW(44), height: scaleW(44), borderRadius: scaleW(22) },
+          ]}
+        >
+          <MaterialIcons name="arrow-back" size={scaleW(24)} color="#FFF" />
+        </Pressable>
         <ThemedText type="heading" style={styles.headerTitle}>
           Before you start…
         </ThemedText>

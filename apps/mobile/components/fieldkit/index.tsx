@@ -68,6 +68,7 @@ export function FKButton({
       style={[
         styles.button,
         { backgroundColor: bg, opacity: disabled ? 0.45 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] },
+        variant === "sunbeam" && { borderWidth: 1.5, borderColor: FK.sunbeamEdge },
         style,
       ]}
     >

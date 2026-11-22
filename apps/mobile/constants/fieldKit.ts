@@ -2,7 +2,7 @@
  * Field kit — Huntly World 2027 design foundations.
  *
  * One nav, one colour: the floating ink bar never changes colour between tabs.
- * Sunbeam means go: one yellow action per screen.
+ * Sunbeam means go: one cream action per screen.
  * Every child screen speaks: a play button sits beside any instruction.
  */
 import type { TextStyle } from "react-native";
@@ -11,7 +11,8 @@ export const FK = {
   ink: "#10251B", // Night ink: text, nav bar, secondary CTAs
   moss: "#F2F4EC", // Moss paper: page background
   paper: "#FFFDF6", // Card surface on moss
-  sunbeam: "#FFCB45", // The one primary action
+  sunbeam: "#F4E7CC", // Cream: the one primary action
+  sunbeamEdge: "#E2CFA8", // Keeps cream buttons defined on light paper
   forest: "#1E3B2C", // Deep forest: feature cards
   forestSoft: "#2B4A39",
   ember: "#E8642C", // Urgent / time-limited

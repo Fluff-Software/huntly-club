@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useIsFocused } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
@@ -44,6 +44,13 @@ export default function RemindersScreen() {
   // screen, so the gate must only show while Reminders is the focused screen.
   // Otherwise Cancel navigates away underneath and the gate stays on top.
   const isFocused = useIsFocused();
+  // The screen stays mounted between visits, so re-check the gate on every
+  // visit rather than once: otherwise one unlock lasts the whole app session.
+  useFocusEffect(
+    React.useCallback(() => {
+      setUnlocked(isParentGateFresh());
+    }, [])
+  );
   const [plan, setPlan] = useState<AdventurePlan | null>(null);
   const [draft, setDraft] = useState<AdventurePlanDraft>(EMPTY);
   const [loading, setLoading] = useState(true);

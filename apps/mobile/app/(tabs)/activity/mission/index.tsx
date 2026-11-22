@@ -14,6 +14,7 @@ import Animated, {
   useSharedValue,
   withSpring } from "react-native-reanimated";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { FKButton } from "@/components/fieldkit";
 import { ThemedText } from "@/components/ThemedText";
 import { useLayoutScale } from "@/hooks/useLayoutScale";
 import { getActivityById, getActivityImageSource } from "@/services/packService";
@@ -342,6 +343,7 @@ export default function InstructionScreen() {
         <ThemedText style={styles.errorText}>
           {error ?? "Activity not found"}
         </ThemedText>
+        <FKButton label="Back to Missions" icon="arrow-back" onPress={() => router.replace("/(tabs)/missions")} style={{ marginTop: 20, alignSelf: "stretch" }} />
       </SafeAreaView>
     );
   }

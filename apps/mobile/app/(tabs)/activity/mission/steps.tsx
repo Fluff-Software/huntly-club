@@ -82,6 +82,7 @@ export default function StepsScreen() {
       <SafeAreaView style={[styles.root, styles.center]}>
         <StatusBar style="light" />
         <Text style={styles.error}>{error ?? "This mission has no steps yet."}</Text>
+        <FKButton onDark label="Back to Missions" icon="arrow-back" onPress={() => router.replace("/(tabs)/missions")} style={{ marginTop: 20, alignSelf: "stretch" }} />
       </SafeAreaView>
     );
   }

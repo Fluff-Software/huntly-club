@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Modal, View, Text, TextInput, KeyboardAvoidingView, Platform, StyleSheet } from "react-native";
+import { Modal, View, Text, TextInput, KeyboardAvoidingView, Platform, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { FKButton } from "@/components/fieldkit";
 import { FK, FONT, RADIUS } from "@/constants/fieldKit";
@@ -115,6 +115,10 @@ export function ParentPinModal({
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
         <View style={styles.backdrop}>
           <View style={styles.card}>
+            {/* Always-visible way out: on small phones the number pad can cover Cancel. */}
+            <Pressable onPress={handleCancel} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close" style={styles.close}>
+              <Ionicons name="close" size={22} color={FK.ink} />
+            </Pressable>
             <View style={styles.icon}>
               <Ionicons name="lock-closed" size={26} color={FK.ink} />
             </View>
@@ -149,6 +153,18 @@ export function ParentPinModal({
 }
 
 const styles = StyleSheet.create({
+  close: {
+    position: "absolute",
+    top: 14,
+    right: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: FK.moss,
+    zIndex: 2,
+  },
   backdrop: { flex: 1, backgroundColor: "rgba(16,37,27,0.6)", justifyContent: "center", padding: 22 },
   card: { backgroundColor: FK.moss, borderRadius: RADIUS.lg, padding: 22 },
   icon: {

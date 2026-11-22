@@ -16,7 +16,7 @@ import { useRouter, useNavigation, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
-import { FKButton, FKLoading, FKScreen } from "@/components/fieldkit";
+import { FKButton, FKScreen } from "@/components/fieldkit";
 import { SlotPicker } from "@/components/onboarding/SlotPicker";
 import { FK, FONT, RADIUS, TYPE } from "@/constants/fieldKit";
 import { GUIDES } from "@/constants/guides";
@@ -219,7 +219,6 @@ export default function RewardScreen() {
   const offerWeekly = plan !== undefined && !(plan?.weeklyDays.length ?? 0) && !weeklySaved;
   const badge = unlockedBadges[0];
 
-  if (!teamGuide) return <FKLoading />;
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>

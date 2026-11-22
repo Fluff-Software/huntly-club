@@ -252,7 +252,11 @@ export default function ScavengerActiveScreen() {
   }, [detailVisible, scaleW, backdropOpacity, sheetTranslateY]);
 
   const endSession = () => {
-    if (!questId || !profileId || !quest) return;
+    if (!questId || !profileId || !quest) {
+      // Nothing loaded to finish: just take them back to the hunts list.
+      router.replace("/(tabs)/activity/scavenger");
+      return;
+    }
     router.push({
       pathname: "/(tabs)/activity/scavenger/quest/end",
       params: { questId, profileId: String(profileId), photoCount: String(photoCount) },

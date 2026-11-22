@@ -113,6 +113,17 @@ export default function ClubhouseScreen() {
 
   const { missions, completedByAnyProfileActivityIds, loading: missionsLoading, refetch: refetchMissions } =
     useLatestMissions(firstProfileId, { allProfileIds });
+  const latestMissions = useMemo(
+    () =>
+      missions.slice(0, MISSIONS_PER_WEEK).map((m) => ({
+        id: parseInt(m.id, 10),
+        title: m.title,
+        image: imageUrl(m),
+        completed: completedByAnyProfileActivityIds.has(m.id),
+      })),
+    [missions, completedByAnyProfileActivityIds]
+  );
+  const latestAllDone = latestMissions.length === MISSIONS_PER_WEEK && latestMissions.every((m) => m.completed);
   const next = useMemo(
     () => pickNextMission(missions, completedByAnyProfileActivityIds),
     [missions, completedByAnyProfileActivityIds]
@@ -205,9 +216,8 @@ export default function ClubhouseScreen() {
   const guideLine = (() => {
     if (adventureTime) return `It's adventure time! I'm ready when you are.`;
     if (stats.missionsTotal === 0) return `Your first mission is ready. I picked it just for you!`;
-    if (stats.missionsThisWeek >= MISSIONS_PER_WEEK && exploreSupported)
-      return `Missions done this week! Psst: cards are hiding near you.`;
-    if (stats.missionsThisWeek >= MISSIONS_PER_WEEK) return `Both missions done this week. You're a legend!`;
+    if (latestAllDone && exploreSupported) return `Latest missions done! Psst: cards are hiding near you.`;
+    if (latestAllDone) return `Both latest missions done. You're a legend!`;
     if (exploreSupported && stats.cardsThisWeek === 0) return `Psst! A card is hiding somewhere near you today.`;
     return `A new mission is waiting. Shall we?`;
   })();
@@ -298,11 +308,14 @@ export default function ClubhouseScreen() {
 
           <Animated.View entering={FadeInDown.duration(350).delay(160)}>
             <YourWeekCard
-              missionsThisWeek={stats.missionsThisWeek}
-              missionsGoal={MISSIONS_PER_WEEK}
+              latestMissions={latestMissions}
+              slots={MISSIONS_PER_WEEK}
               cardsThisWeek={stats.cardsThisWeek}
               exploreAvailable={exploreSupported}
               onMissions={() => router.push("/(tabs)/missions")}
+              onOpenMission={(id) =>
+                router.push({ pathname: "/(tabs)/activity/mission", params: { id: String(id) } } as Parameters<typeof router.push>[0])
+              }
               onExplore={() => router.push("/(tabs)/activity/explore" as Parameters<typeof router.push>[0])}
             />
           </Animated.View>

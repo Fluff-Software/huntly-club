@@ -172,22 +172,28 @@ export function AdventureHeroCard({
  * Missions move the story on (new ones each week), Explore is the bonus you
  * can do any time you're out.
  */
+export type WeekMission = { id: number; title: string; image: string | null; completed: boolean };
+
 export function YourWeekCard({
-  missionsThisWeek,
-  missionsGoal,
+  latestMissions,
+  slots,
   cardsThisWeek,
   exploreAvailable,
   onMissions,
+  onOpenMission,
   onExplore,
 }: {
-  missionsThisWeek: number;
-  missionsGoal: number;
+  /** The newest releases, newest first, even if they came out before this week. */
+  latestMissions: WeekMission[];
+  slots: number;
   cardsThisWeek: number;
   exploreAvailable: boolean;
   onMissions: () => void;
+  onOpenMission: (id: number) => void;
   onExplore: () => void;
 }) {
-  const done = Math.min(missionsThisWeek, missionsGoal);
+  const shown = latestMissions.slice(0, slots);
+  const allDone = shown.length === slots && shown.every((m) => m.completed);
   return (
     <View style={styles.week}>
       <View style={styles.weekHeader}>
@@ -200,13 +206,34 @@ export function YourWeekCard({
             <Text style={styles.weekLabel}>Missions</Text>
           </View>
           <View style={styles.boxes}>
-            {Array.from({ length: missionsGoal }).map((_, i) => (
-              <View key={i} style={[styles.box, i < done && styles.boxDone]}>
-                {i < done ? <Ionicons name="checkmark" size={18} color={FK.ink} /> : null}
-              </View>
-            ))}
+            {Array.from({ length: slots }).map((_, i) => {
+              const m = shown[i];
+              if (!m) return <View key={`empty-${i}`} style={styles.box} />;
+              return (
+                <Pressable
+                  key={m.id}
+                  onPress={() => onOpenMission(m.id)}
+                  style={styles.missionThumb}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${m.title}${m.completed ? ", done" : ""}`}
+                >
+                  {m.image ? (
+                    <Image source={{ uri: m.image }} style={[styles.missionThumbImage, m.completed && { opacity: 0.55 }]} contentFit="cover" />
+                  ) : (
+                    <View style={[styles.missionThumbImage, { backgroundColor: FK.forestSoft }]} />
+                  )}
+                  {m.completed ? (
+                    <View style={styles.missionTick}>
+                      <Ionicons name="checkmark" size={14} color={FK.ink} />
+                    </View>
+                  ) : null}
+                </Pressable>
+              );
+            })}
           </View>
-          <Text style={styles.weekText}>The story. New ones drop every week.</Text>
+          <Text style={styles.weekText}>
+            {allDone ? "All caught up. New ones drop every week." : "The latest from the story. New ones drop every week."}
+          </Text>
         </Pressable>
         <View style={styles.weekDivider} />
         <Pressable onPress={onExplore} style={styles.weekHalf} accessibilityRole="button" testID="week-explore">
@@ -469,16 +496,30 @@ const styles = StyleSheet.create({
   weekLabel: { fontFamily: FONT.display, fontSize: 18, color: FK.white },
   boxes: { flexDirection: "row", gap: 8, marginBottom: 10 },
   box: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
+    width: 52,
+    height: 52,
+    borderRadius: 12,
     borderWidth: 2,
     borderStyle: "dashed",
     borderColor: "#6E8F72",
     alignItems: "center",
     justifyContent: "center",
   },
-  boxDone: { backgroundColor: FK.sunbeam, borderColor: FK.sunbeam, borderStyle: "solid" },
+  missionThumb: { width: 52, height: 52 },
+  missionThumbImage: { width: 52, height: 52, borderRadius: 12, borderWidth: 2, borderColor: FK.sunbeam },
+  missionTick: {
+    position: "absolute",
+    right: -5,
+    top: -5,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: FK.sunbeam,
+    borderWidth: 2,
+    borderColor: FK.forest,
+  },
   weekBig: { fontFamily: FONT.display, fontSize: 28, color: FK.white, marginBottom: 6, lineHeight: 34 },
   weekBigUnit: { fontFamily: FONT.displayBold, fontSize: 16, color: FK.mutedOnDark },
   weekText: { fontFamily: FONT.body, fontSize: 14, lineHeight: 19, color: FK.mutedOnDark },

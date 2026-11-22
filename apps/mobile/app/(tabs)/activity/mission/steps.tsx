@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useLocalSearchParams } from "expo-router";
-import { StatusBar } from "expo-status-bar";
+import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
+import { StatusBar, setStatusBarStyle } from "expo-status-bar";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -14,6 +14,13 @@ import type { Activity, MissionStep } from "@/types/activity";
 
 /** One instruction per screen, big and readable, with the grown-up tip underneath. */
 export default function StepsScreen() {
+  // Other screens set the status bar style imperatively when they focus or blur,
+  // which overrides <StatusBar>. Re-assert light icons on this dark screen.
+  useFocusEffect(
+    useCallback(() => {
+      setStatusBarStyle("light");
+    }, [])
+  );
   const router = useRouter();
   const { id, step } = useLocalSearchParams<{ id?: string; step?: string }>();
   const [activity, setActivity] = useState<Activity | null>(null);

@@ -3,6 +3,7 @@ import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from "
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
+import { useNavigationReturn } from "@/contexts/NavigationReturnContext";
 import { setStatusBarStyle } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,6 +19,7 @@ import { supabase } from "@/services/supabase";
 
 /** Missions are the story: a couple drop each week; everything released stays playable. */
 export default function MissionsScreen() {
+  const { pushWithReturn } = useNavigationReturn();
   const { profiles } = usePlayer();
   const { missions, loading, error, refetch } = useLatestMissions(null);
   const { nextReleaseDate, refetch: refetchNextRelease } = useNextMissionReleaseDate();
@@ -71,7 +73,7 @@ export default function MissionsScreen() {
   }, [missions, profiles, isTutorialActive]);
 
   const open = (m: MissionActivityCard) =>
-    router.push({ pathname: "/(tabs)/activity/mission", params: { id: m.id } } as Parameters<typeof router.push>[0]);
+    pushWithReturn({ pathname: "/(tabs)/activity/mission", params: { id: m.id } });
 
   const thisWeek = missions.slice(0, 2);
   const earlier = missions.slice(2);

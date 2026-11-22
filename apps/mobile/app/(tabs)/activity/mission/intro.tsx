@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { useNavigationReturn } from "@/contexts/NavigationReturnContext";
 import { StatusBar } from "expo-status-bar";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
@@ -42,6 +43,7 @@ function grownUpNote(activity: Activity): string | null {
 }
 
 export default function IntroScreen() {
+  const { goBack } = useNavigationReturn();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -104,6 +106,7 @@ export default function IntroScreen() {
       <SafeAreaView style={[styles.root, styles.center]}>
         <StatusBar style="dark" />
         <Text style={TYPE.body}>{error ?? "We couldn't find that mission."}</Text>
+        <FKButton label="Back to Missions" icon="arrow-back" onPress={() => router.replace("/(tabs)/missions")} style={{ marginTop: 20, alignSelf: "stretch" }} />
       </SafeAreaView>
     );
   }
@@ -131,7 +134,7 @@ export default function IntroScreen() {
         <View style={styles.hero}>
           <Image source={getActivityImageSource(activity.image ?? null)} style={StyleSheet.absoluteFill} contentFit="cover" />
           <View style={[styles.heroTop, { paddingTop: insets.top + 8 }]}>
-            <Pressable onPress={() => router.back()} style={styles.back} hitSlop={8} accessibilityLabel="Back">
+            <Pressable onPress={() => goBack({ fallbackRoute: "/(tabs)/missions" })} style={styles.back} hitSlop={8} accessibilityLabel="Back">
               <Ionicons name="arrow-back" size={24} color={FK.white} />
             </Pressable>
             {activity.intro_urgent_message?.trim() ? (

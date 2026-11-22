@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Modal, Platform, ScrollView, StyleSheet, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
+import { useNavigationReturn } from "@/contexts/NavigationReturnContext";
 import { setStatusBarStyle } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -97,6 +98,7 @@ function isAdventureTime(slot: Date | null, now = new Date()): boolean {
 }
 
 export default function ClubhouseScreen() {
+  const { pushWithReturn } = useNavigationReturn();
   const { clubhouseActivityReady, requireClubhouseActivityReady, markClubhouseActivityReady } = useHomeBootstrap();
   const { profiles, loading: profilesLoading } = usePlayer();
   const { preload: preloadProfileDashboard } = useProfileDashboard();
@@ -242,7 +244,7 @@ export default function ClubhouseScreen() {
 
   const openMission = () => {
     if (!next) return;
-    router.push({ pathname: "/(tabs)/activity/mission", params: { id: String(next.id) } } as Parameters<typeof router.push>[0]);
+    pushWithReturn({ pathname: "/(tabs)/activity/mission", params: { id: String(next.id) } });
   };
 
   const openPlan = () => {
@@ -316,7 +318,7 @@ export default function ClubhouseScreen() {
               exploreAvailable={exploreSupported}
               onMissions={() => router.push("/(tabs)/missions")}
               onOpenMission={(id) =>
-                router.push({ pathname: "/(tabs)/activity/mission", params: { id: String(id) } } as Parameters<typeof router.push>[0])
+                pushWithReturn({ pathname: "/(tabs)/activity/mission", params: { id: String(id) } })
               }
               onExplore={() => router.push("/(tabs)/activity/explore" as Parameters<typeof router.push>[0])}
             />
@@ -341,6 +343,7 @@ export default function ClubhouseScreen() {
         <SecretMessage
           guide={guide}
           names={profiles.map((p) => p.name)}
+          onSaveForLater={() => setSecretOpen(false)}
           onDone={() => {
             setSecretOpen(false);
             setSecretPendingState(false);

@@ -5,27 +5,29 @@ import {
   Easing,
   Pressable,
   StyleSheet,
+  Text,
   View,
   type GestureResponderEvent,
   type LayoutChangeEvent,
+  type StyleProp,
+  type ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 import {
   setAudioModeAsync,
   setIsAudioActiveAsync,
   useAudioPlayer,
   useAudioPlayerStatus,
 } from "expo-audio";
-import { ThemedText } from "@/components/ThemedText";
+import { FK, FONT } from "@/constants/fieldKit";
 import { DEFAULT_PODCAST_HOST } from "@/services/campfireService";
 import type { CampfireListenTracker } from "@/hooks/useCampfireListenTracking";
 
-const CREAM = "#FFF8EE";
-const BROWN_DEEP = "#3B1A06";
-const BROWN_MID = "#6B3D1A";
-const AMBER = "#C47A2A";
-const GREEN = "#2F6B43";
+/** Firelight glow behind the play button. */
+const EMBER_GLOW = "rgba(255, 170, 80, 0.28)";
 const SKIP_SEC = 10;
 
 type Props = {
@@ -142,168 +144,175 @@ export function CampfirePodcastPlayer({
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      <View style={styles.dim} pointerEvents="none" />
-      <SafeAreaView
-        edges={["bottom"]}
-        style={styles.bottom}
-        pointerEvents="box-none"
-      >
+      <LinearGradient
+        pointerEvents="none"
+        colors={["rgba(8,14,10,0)", "rgba(8,14,10,0.55)", "rgba(8,14,10,0.85)"]}
+        locations={[0, 0.45, 1]}
+        style={styles.fade}
+      />
+      <SafeAreaView edges={["bottom"]} style={styles.bottom} pointerEvents="box-none">
         <View
           style={[
             styles.card,
             {
-              marginHorizontal: scaleW(18),
-              marginBottom: scaleW(18),
-              borderRadius: scaleW(28),
-              paddingHorizontal: scaleW(20),
-              paddingTop: scaleW(18),
-              paddingBottom: scaleW(16),
+              marginHorizontal: scaleW(14),
+              marginBottom: scaleW(14),
+              borderRadius: scaleW(32),
             },
           ]}
         >
-          <View style={[styles.hostPill, { paddingHorizontal: scaleW(10), paddingVertical: scaleW(4), gap: scaleW(6) }]}>
-            <OnAirDot playing={playing} size={scaleW(8)} />
-            <MaterialIcons name="radio" size={scaleW(14)} color={AMBER} />
-            <ThemedText
-              lightColor={BROWN_MID}
-              darkColor={BROWN_MID}
-              style={{
-                fontSize: scaleW(11),
-                fontWeight: "900",
-                letterSpacing: 0.8,
-                textTransform: "uppercase",
-              }}
-            >
-              {host?.trim() || DEFAULT_PODCAST_HOST}
-            </ThemedText>
-          </View>
-
-          <ThemedText
-            type="heading"
-            lightColor={BROWN_DEEP}
-            darkColor={BROWN_DEEP}
+          <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
+          <View style={[StyleSheet.absoluteFill, styles.glassTint]} />
+          <View
             style={{
-              marginTop: scaleW(10),
-              fontSize: scaleW(22),
-              lineHeight: scaleW(27),
-              fontWeight: "900",
-              textAlign: "center",
+              paddingHorizontal: scaleW(22),
+              paddingTop: scaleW(20),
+              paddingBottom: scaleW(18),
             }}
-            numberOfLines={2}
           >
-            {title}
-          </ThemedText>
-          {description ? (
-            <ThemedText
-              lightColor={BROWN_MID}
-              darkColor={BROWN_MID}
-              style={{
-                marginTop: scaleW(6),
-                fontSize: scaleW(13),
-                lineHeight: scaleW(18),
-                fontWeight: "600",
-                textAlign: "center",
+            <View style={[styles.hostPill, { paddingHorizontal: scaleW(12), paddingVertical: scaleW(6), gap: scaleW(8) }]}>
+              <OnAirDot playing={playing} size={scaleW(8)} />
+              <Text style={[styles.hostText, { fontSize: scaleW(11) }]} numberOfLines={1}>
+                {playing ? "On air · " : ""}
+                {host?.trim() || DEFAULT_PODCAST_HOST}
+              </Text>
+            </View>
+
+            <Text
+              style={[styles.title, { marginTop: scaleW(14), fontSize: scaleW(26), lineHeight: scaleW(30) }]}
+              numberOfLines={2}
+            >
+              {title}
+            </Text>
+            {description ? (
+              <Text
+                style={[styles.description, { marginTop: scaleW(6), fontSize: scaleW(14), lineHeight: scaleW(20) }]}
+                numberOfLines={3}
+              >
+                {description}
+              </Text>
+            ) : null}
+
+            <Scrubber
+              progress={progress}
+              disabled={loading || durationMs <= 0}
+              scaleW={scaleW}
+              onScrub={setScrubFraction}
+              onCommit={(fraction) => {
+                setScrubFraction(null);
+                if (durationMs > 0) {
+                  void player.seekTo((fraction * durationMs) / 1000);
+                }
               }}
-              numberOfLines={3}
-            >
-              {description}
-            </ThemedText>
-          ) : null}
+            />
+            <View style={styles.timeRow}>
+              <Text style={[styles.time, { fontSize: scaleW(12) }]}>{formatClock(shownPositionMs)}</Text>
+              <Text style={[styles.time, { fontSize: scaleW(12) }]}>
+                {durationMs > 0 ? `-${formatClock(durationMs - shownPositionMs)}` : "--:--"}
+              </Text>
+            </View>
 
-          <Scrubber
-            progress={progress}
-            disabled={loading || durationMs <= 0}
-            scaleW={scaleW}
-            onScrub={setScrubFraction}
-            onCommit={(fraction) => {
-              setScrubFraction(null);
-              if (durationMs > 0) {
-                void player.seekTo((fraction * durationMs) / 1000);
-              }
-            }}
-          />
-          <View style={styles.timeRow}>
-            <ThemedText
-              lightColor={BROWN_MID}
-              darkColor={BROWN_MID}
-              style={[styles.time, { fontSize: scaleW(11) }]}
-            >
-              {formatClock(shownPositionMs)}
-            </ThemedText>
-            <ThemedText
-              lightColor={BROWN_MID}
-              darkColor={BROWN_MID}
-              style={[styles.time, { fontSize: scaleW(11) }]}
-            >
-              {durationMs > 0 ? `-${formatClock(durationMs - shownPositionMs)}` : "--:--"}
-            </ThemedText>
+            <View style={[styles.controls, { gap: scaleW(26), marginTop: scaleW(10) }]}>
+              <CircleButton
+                size={scaleW(54)}
+                onPress={() => skip(-SKIP_SEC)}
+                disabled={loading}
+                accessibilityLabel={`Back ${SKIP_SEC} seconds`}
+                style={styles.skipButton}
+              >
+                <MaterialIcons name="replay-10" size={scaleW(28)} color={FK.white} />
+              </CircleButton>
+
+              <View style={[styles.playGlow, { width: scaleW(98), height: scaleW(98), borderRadius: scaleW(49) }]}>
+                <CircleButton
+                  size={scaleW(84)}
+                  onPress={togglePlay}
+                  disabled={loading}
+                  dimWhenDisabled={false}
+                  accessibilityLabel={playing ? "Pause" : finished ? "Play again" : "Play"}
+                  style={styles.playButton}
+                >
+                  {loading ? (
+                    <ActivityIndicator color={FK.ink} />
+                  ) : (
+                    <Ionicons
+                      name={playing ? "pause" : finished ? "refresh" : "play"}
+                      size={scaleW(42)}
+                      color={FK.ink}
+                      // The play triangle looks off-centre without a nudge.
+                      style={!playing && !finished ? { marginLeft: scaleW(5) } : undefined}
+                    />
+                  )}
+                </CircleButton>
+              </View>
+
+              <CircleButton
+                size={scaleW(54)}
+                onPress={() => skip(SKIP_SEC)}
+                disabled={loading}
+                accessibilityLabel={`Forward ${SKIP_SEC} seconds`}
+                style={styles.skipButton}
+              >
+                <MaterialIcons name="forward-10" size={scaleW(28)} color={FK.white} />
+              </CircleButton>
+            </View>
+
+            {!hasStarted && !loading ? (
+              <Text style={[styles.hint, { marginTop: scaleW(12), fontSize: scaleW(13) }]}>
+                Press play and pull up a log by the fire
+              </Text>
+            ) : null}
           </View>
-
-          <View style={[styles.controls, { gap: scaleW(28), marginTop: scaleW(4) }]}>
-            <Pressable
-              onPress={() => skip(-SKIP_SEC)}
-              disabled={loading}
-              hitSlop={12}
-              accessibilityLabel={`Back ${SKIP_SEC} seconds`}
-              style={({ pressed }) => ({ opacity: loading ? 0.35 : pressed ? 0.6 : 1 })}
-            >
-              <MaterialIcons name="replay-10" size={scaleW(32)} color={BROWN_MID} />
-            </Pressable>
-
-            <Pressable
-              onPress={togglePlay}
-              disabled={loading}
-              accessibilityRole="button"
-              accessibilityLabel={playing ? "Pause" : "Play"}
-              style={({ pressed }) => [
-                styles.playButton,
-                {
-                  width: scaleW(76),
-                  height: scaleW(76),
-                  borderRadius: scaleW(38),
-                  transform: [{ scale: pressed ? 0.95 : 1 }],
-                },
-              ]}
-            >
-              {loading ? (
-                <ActivityIndicator color={CREAM} />
-              ) : (
-                <MaterialIcons
-                  name={playing ? "pause" : finished ? "replay" : "play-arrow"}
-                  size={scaleW(44)}
-                  color={CREAM}
-                />
-              )}
-            </Pressable>
-
-            <Pressable
-              onPress={() => skip(SKIP_SEC)}
-              disabled={loading}
-              hitSlop={12}
-              accessibilityLabel={`Forward ${SKIP_SEC} seconds`}
-              style={({ pressed }) => ({ opacity: loading ? 0.35 : pressed ? 0.6 : 1 })}
-            >
-              <MaterialIcons name="forward-10" size={scaleW(32)} color={BROWN_MID} />
-            </Pressable>
-          </View>
-
-          {!hasStarted && !loading ? (
-            <ThemedText
-              lightColor={BROWN_MID}
-              darkColor={BROWN_MID}
-              style={{
-                marginTop: scaleW(10),
-                fontSize: scaleW(12),
-                fontWeight: "700",
-                textAlign: "center",
-              }}
-            >
-              Press play and pull up a log by the fire
-            </ThemedText>
-          ) : null}
         </View>
       </SafeAreaView>
     </View>
+  );
+}
+
+/**
+ * Round button with a press-in scale. Styles are static and the pressed state is
+ * tracked by hand: NativeWind's Pressable interop drops function styles.
+ */
+function CircleButton({
+  size,
+  onPress,
+  disabled,
+  dimWhenDisabled = true,
+  accessibilityLabel,
+  style,
+  children,
+}: {
+  size: number;
+  onPress: () => void;
+  disabled?: boolean;
+  dimWhenDisabled?: boolean;
+  accessibilityLabel: string;
+  style: StyleProp<ViewStyle>;
+  children: React.ReactNode;
+}) {
+  const [pressed, setPressed] = useState(false);
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      disabled={disabled}
+      hitSlop={10}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      style={[
+        style,
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          opacity: disabled && dimWhenDisabled ? 0.35 : 1,
+          transform: [{ scale: pressed ? 0.93 : 1 }],
+        },
+      ]}
+    >
+      {children}
+    </Pressable>
   );
 }
 
@@ -335,7 +344,7 @@ function Scrubber({
     return Math.max(0, Math.min(1, (e.nativeEvent.pageX - b.x) / b.width));
   };
 
-  const thumb = scaleW(16);
+  const thumb = scaleW(18);
 
   return (
     <View
@@ -415,7 +424,7 @@ function OnAirDot({ playing, size }: { playing: boolean; size: number }) {
         width: size,
         height: size,
         borderRadius: size / 2,
-        backgroundColor: playing ? "#E0452B" : "rgba(107, 61, 26, 0.35)",
+        backgroundColor: playing ? "#FF5A3C" : "rgba(255, 255, 255, 0.4)",
         opacity: playing
           ? pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 0.35] })
           : 1,
@@ -434,9 +443,12 @@ function formatClock(ms: number): string {
 }
 
 const styles = StyleSheet.create({
-  dim: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.2)",
+  fade: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: "62%",
   },
   bottom: {
     position: "absolute",
@@ -445,56 +457,91 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   card: {
-    backgroundColor: "rgba(255, 248, 238, 0.95)",
-    alignItems: "stretch",
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
+    overflow: "hidden",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255, 255, 255, 0.18)",
+  },
+  glassTint: {
+    backgroundColor: "rgba(16, 37, 27, 0.55)",
   },
   hostPill: {
     alignSelf: "center",
     flexDirection: "row",
     alignItems: "center",
     borderRadius: 999,
-    backgroundColor: "rgba(196, 122, 42, 0.14)",
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
+  },
+  hostText: {
+    fontFamily: FONT.display,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    color: FK.sunbeam,
+  },
+  title: {
+    fontFamily: FONT.display,
+    letterSpacing: -0.4,
+    textAlign: "center",
+    color: FK.white,
+  },
+  description: {
+    fontFamily: FONT.body,
+    textAlign: "center",
+    color: "rgba(255, 255, 255, 0.72)",
   },
   track: {
-    backgroundColor: "rgba(59, 26, 6, 0.15)",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
     overflow: "hidden",
   },
   fill: {
     height: "100%",
-    backgroundColor: GREEN,
+    backgroundColor: FK.sunbeam,
   },
   thumb: {
     position: "absolute",
-    backgroundColor: GREEN,
-    borderWidth: 2,
-    borderColor: CREAM,
+    backgroundColor: FK.white,
+    shadowColor: "#000",
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 3,
   },
   timeRow: {
     flexDirection: "row",
     justifyContent: "space-between",
   },
   time: {
-    fontWeight: "800",
+    fontFamily: FONT.bodyBold,
     fontVariant: ["tabular-nums"],
+    color: "rgba(255, 255, 255, 0.65)",
   },
   controls: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
   },
-  playButton: {
-    backgroundColor: GREEN,
+  skipButton: {
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
+  },
+  playGlow: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: EMBER_GLOW,
+  },
+  playButton: {
+    backgroundColor: FK.sunbeam,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#FFB45A",
+    shadowOpacity: 0.55,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
+  },
+  hint: {
+    fontFamily: FONT.bodyBold,
+    textAlign: "center",
+    color: "rgba(255, 255, 255, 0.7)",
   },
 });

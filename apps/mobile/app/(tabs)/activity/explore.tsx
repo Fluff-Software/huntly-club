@@ -7,6 +7,7 @@ import {
   AppState,
   Pressable,
   StyleSheet,
+  Text,
   View,
   type LayoutChangeEvent,
 } from "react-native";
@@ -14,7 +15,8 @@ import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { setStatusBarStyle } from "expo-status-bar";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { LinearGradient } from "expo-linear-gradient";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { FK, FONT, RADIUS } from "@/constants/fieldKit";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
@@ -29,7 +31,6 @@ import {
   type ActivityMapRegion,
 } from "@/components/activity-map";
 import { ExploreCardPackReveal } from "@/components/explore/ExploreCardPackReveal";
-import { ExploreSnowfall } from "@/components/explore/ExploreSnowfall";
 import { ExploreStopSheet } from "@/components/explore/ExploreStopSheet";
 import { ExploreSafetyWarning } from "@/components/explore/ExploreSafetyWarning";
 import { LocationPermissionModal } from "@/components/explore/LocationPermissionModal";
@@ -55,7 +56,6 @@ import {
 
 /** Same gap: FAB → screen bottom (no sheet) and FAB → top of sheet/panel (when open). */
 const MAP_FAB_GAP = 28;
-import { useExploreEventLive } from "@/hooks/useExploreEventLive";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
 import {
@@ -165,7 +165,6 @@ export default function ExploreScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const mapRef = useRef<ActivityMapRef>(null);
-  const christmasLive = useExploreEventLive("christmas");
   const lastFetchAt = useRef<{ latitude: number; longitude: number } | null>(null);
   const fetchInFlight = useRef(false);
   const mapFetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -410,7 +409,7 @@ export default function ExploreScreen() {
         color: playerStopColor(claimed),
         title: claimed ? "Collected today" : "Card spot",
         variant: "stop" as const,
-        icon: claimed ? ("check" as const) : ("lock" as const),
+        icon: claimed ? ("collected" as const) : ("card" as const),
       };
     });
     if (loc.status !== "ready") return stopMarkers;
@@ -994,15 +993,16 @@ export default function ExploreScreen() {
     setPackSession(null);
   }, []);
 
-  // Explore needs light status icons on the dark map; restore dark when leaving
-  // so Clubhouse / other light screens stay readable.
+  // Dark status icons over the light map; light ones over the dark "finding
+  // you" placeholder. Restore dark when leaving.
+  const hasMap = mapRegion != null;
   useFocusEffect(
     useCallback(() => {
-      setStatusBarStyle("light");
+      setStatusBarStyle(hasMap ? "dark" : "light");
       return () => {
         setStatusBarStyle("dark");
       };
-    }, [])
+    }, [hasMap])
   );
 
   // Keep the screen awake while walking around the map — no fumbling to wake
@@ -1031,18 +1031,17 @@ export default function ExploreScreen() {
             maxZoomLevel={18}
             rotateEnabled={false}
             pitchEnabled={false}
+            basemap="soft"
             onRegionChange={onMapRegionChange}
             onMarkerPress={(id: string) => setSelectedId(id)}
           />
         ) : null}
 
-        {mapRegion && christmasLive ? <ExploreSnowfall /> : null}
-
         {mapRegion ? (
-          // Scrim so the light status bar icons stay readable over light map tiles.
+          // Soft paper fade so the status bar stays readable over busy map tiles.
           <LinearGradient
             pointerEvents="none"
-            colors={["rgba(0,0,0,0.45)", "rgba(0,0,0,0)"]}
+            colors={["rgba(242,244,236,0.92)", "rgba(242,244,236,0)"]}
             style={[styles.topScrim, { height: insets.top + 56 }]}
           />
         ) : null}
@@ -1092,7 +1091,9 @@ export default function ExploreScreen() {
 
         {mapFetchPending && !loadingStops ? (
           <View style={styles.mapFetchBadge} pointerEvents="none">
-            <ActivityIndicator color={ACCENT} size="small" />
+            <View style={styles.mapFetchPill}>
+              <ActivityIndicator color={FK.forest} size="small" />
+            </View>
           </View>
         ) : null}
 
@@ -1106,7 +1107,7 @@ export default function ExploreScreen() {
             accessibilityLabel="Go back"
             style={styles.iconBtn}
           >
-            <MaterialIcons name="arrow-back" size={24} color="#FFF" />
+            <Ionicons name="arrow-back" size={22} color={FK.ink} />
           </Pressable>
           <View style={styles.topBarRight}>
             {profiles.length > 1 ? (
@@ -1117,7 +1118,7 @@ export default function ExploreScreen() {
                 accessibilityLabel="Choose your profile"
                 style={styles.iconBtn}
               >
-                <MaterialIcons name="switch-account" size={22} color="#FFF" />
+                <Ionicons name="people" size={20} color={FK.ink} />
               </Pressable>
             ) : null}
             <Pressable
@@ -1138,7 +1139,7 @@ export default function ExploreScreen() {
               accessibilityLabel="Open card binder"
               style={styles.iconBtn}
             >
-              <MaterialIcons name="collections-bookmark" size={22} color="#FFF" />
+              <Ionicons name="albums" size={20} color={FK.ink} />
             </Pressable>
           </View>
         </View>
@@ -1214,7 +1215,7 @@ export default function ExploreScreen() {
           accessibilityRole="button"
           accessibilityLabel="Centre map on you"
         >
-          <MaterialIcons name="my-location" size={22} color="#FFF" />
+          <Ionicons name="navigate" size={21} color={FK.ink} />
         </Pressable>
 
         <LocationPermissionModal
@@ -1232,9 +1233,9 @@ export default function ExploreScreen() {
               { top: insets.top + (__DEV__ ? 112 : 64) },
             ]}
           >
-            <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.bannerText}>
+            <Text style={styles.bannerText}>
               {exploreUserMessage(error.code, error.message)}
-            </ThemedText>
+            </Text>
           </View>
         ) : null}
 
@@ -1246,20 +1247,18 @@ export default function ExploreScreen() {
             ]}
             onLayout={onEmptyPanelLayout}
           >
-            <MaterialIcons name="explore" size={22} color="#FFE08A" />
+            <View style={styles.emptyIcon}>
+              <Ionicons name="compass" size={22} color={FK.sunbeam} />
+            </View>
             <View style={{ flex: 1, gap: 4 }}>
-              <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.emptyTitle}>
+              <Text style={styles.emptyTitle}>
                 {outsideCoverage ? "Explore isn’t here yet" : "No spots nearby"}
-              </ThemedText>
-              <ThemedText
-                lightColor="rgba(255,255,255,0.78)"
-                darkColor="rgba(255,255,255,0.78)"
-                style={styles.emptyBody}
-              >
+              </Text>
+              <Text style={styles.emptyBody}>
                 {outsideCoverage
                   ? "This place isn’t covered yet. Try parks and paths in the UK, Ireland, or the Philippines."
                   : "Pan the map toward parks, footpaths, or green space to find collectible spots."}
-              </ThemedText>
+              </Text>
             </View>
           </View>
         ) : null}
@@ -1376,6 +1375,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  mapFetchPill: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: FK.paper,
+    shadowColor: "#10251B",
+    shadowOpacity: 0.16,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
+  },
   topScrim: {
     position: "absolute",
     top: 0,
@@ -1397,22 +1409,32 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   iconBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.65)",
+    backgroundColor: FK.paper,
+    shadowColor: "#10251B",
+    shadowOpacity: 0.16,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
   },
   myPinButton: {
     position: "absolute",
     right: 16,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: ACCENT,
+    backgroundColor: FK.paper,
+    shadowColor: "#10251B",
+    shadowOpacity: 0.16,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
   },
   myPinButtonDisabled: {
     opacity: 0.45,
@@ -1430,14 +1452,21 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 16,
     right: 16,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    borderRadius: 14,
+    backgroundColor: FK.paper,
+    borderRadius: RADIUS.md,
     padding: 14,
     gap: 10,
+    shadowColor: "#10251B",
+    shadowOpacity: 0.16,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
   },
   bannerText: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontFamily: FONT.body,
+    fontSize: 15,
+    lineHeight: 21,
+    color: FK.ink,
   },
   bannerBtn: {
     alignSelf: "flex-start",
@@ -1451,19 +1480,36 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-    backgroundColor: "rgba(0,0,0,0.72)",
-    borderRadius: 16,
-    padding: 14,
+    alignItems: "center",
+    gap: 14,
+    backgroundColor: FK.paper,
+    borderRadius: RADIUS.lg,
+    padding: 16,
+    shadowColor: "#10251B",
+    shadowOpacity: 0.16,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
+  },
+  emptyIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: FK.forest,
   },
   emptyTitle: {
-    fontSize: 15,
-    fontWeight: "800",
+    fontFamily: FONT.display,
+    fontSize: 18,
+    lineHeight: 22,
+    color: FK.ink,
   },
   emptyBody: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontFamily: FONT.body,
+    fontSize: 15,
+    lineHeight: 21,
+    color: FK.muted,
   },
   devBtn: {
     flexDirection: "row",

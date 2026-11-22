@@ -4,15 +4,15 @@
  * parent can open the stop's collect sheet.
  */
 import React, { useEffect } from "react";
-import { Pressable, StyleSheet } from "react-native";
+import { Pressable, StyleSheet, Text } from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
-import { MaterialIcons } from "@expo/vector-icons";
-import { ThemedText } from "@/components/ThemedText";
+import { Ionicons } from "@expo/vector-icons";
+import { FK, FONT } from "@/constants/fieldKit";
 
 type Props = {
   visible: boolean;
@@ -49,11 +49,9 @@ export function ExploreNearbyStopBanner({ visible, label, top, onPress }: Props)
         accessibilityLabel={onPress ? `${label}. Tap to collect.` : label}
         style={styles.pill}
       >
-        <MaterialIcons name="vibration" size={18} color="#B8F000" />
-        <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.label}>
-          {label}
-        </ThemedText>
-        {onPress ? <MaterialIcons name="chevron-right" size={18} color="#B8F000" /> : null}
+        <Ionicons name="sparkles" size={18} color={FK.sunbeam} />
+        <Text style={styles.label}>{label}</Text>
+        {onPress ? <Ionicons name="chevron-forward" size={18} color={FK.sunbeam} /> : null}
       </Pressable>
     </Animated.View>
   );
@@ -71,15 +69,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: "rgba(20,24,20,0.92)",
-    borderWidth: 1,
-    borderColor: "rgba(184,240,0,0.35)",
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 999,
+    backgroundColor: FK.forest,
+    shadowColor: "#10251B",
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
   },
   label: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontFamily: FONT.displayBold,
+    fontSize: 15,
+    color: FK.white,
   },
 });

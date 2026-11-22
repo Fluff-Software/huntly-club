@@ -126,6 +126,7 @@ export default function StepsScreen() {
           <Ionicons name="arrow-back" size={26} color={FK.white} />
         </Pressable>
         <FKButton
+          onDark
           label={isLastStep ? "Finish mission" : "Done! Next step"}
           icon={isLastStep ? "flag" : "checkmark"}
           onPress={handleDone}

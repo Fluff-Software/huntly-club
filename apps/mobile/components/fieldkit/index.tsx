@@ -35,7 +35,10 @@ export function FKButton({
   loading?: boolean;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
-  /** Link buttons sit on dark backgrounds in some screens. */
+  /**
+   * The button sits on a dark surface (forest, ink, a photo). Primary buttons
+   * are forest green on light screens and cream on dark ones.
+   */
   onDark?: boolean;
   testID?: string;
 }) {
@@ -54,8 +57,11 @@ export function FKButton({
     );
   }
 
-  const bg = variant === "sunbeam" ? FK.sunbeam : variant === "ink" ? FK.ink : FK.paper;
-  const fg = variant === "sunbeam" ? FK.ink : variant === "ink" ? FK.sunbeam : FK.ink;
+  const creamPrimary = variant === "sunbeam" && onDark;
+  const bg =
+    variant === "sunbeam" ? (onDark ? FK.sunbeam : FK.forest) : variant === "ink" ? FK.ink : FK.paper;
+  const fg =
+    variant === "sunbeam" ? (onDark ? FK.ink : FK.sunbeam) : variant === "ink" ? FK.sunbeam : FK.ink;
   // Static style (NativeWind's Pressable interop drops function styles), press state tracked manually.
   return (
     <Pressable
@@ -68,7 +74,7 @@ export function FKButton({
       style={[
         styles.button,
         { backgroundColor: bg, opacity: disabled ? 0.45 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] },
-        variant === "sunbeam" && { borderWidth: 1.5, borderColor: FK.sunbeamEdge },
+        creamPrimary && { borderWidth: 1.5, borderColor: FK.sunbeamEdge },
         style,
       ]}
     >

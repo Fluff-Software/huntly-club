@@ -36,11 +36,11 @@ export function SecretMessage({
       footer={
         opened ? (
           <Animated.View entering={FadeInDown.duration(400).delay(500)}>
-            <FKButton label="To the Clubhouse" onPress={onDone} testID="secret-done" />
+            <FKButton onDark label="To the Clubhouse" onPress={onDone} testID="secret-done" />
           </Animated.View>
         ) : (
           <>
-            <FKButton label="I'm ready!" icon="play" onPress={open} testID="secret-open" />
+            <FKButton onDark label="I'm ready!" icon="play" onPress={open} testID="secret-open" />
             {onSaveForLater ? (
               <FKButton label="Save it for the morning" variant="link" onDark onPress={onSaveForLater} />
             ) : null}

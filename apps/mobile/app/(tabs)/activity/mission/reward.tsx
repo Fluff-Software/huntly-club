@@ -285,7 +285,7 @@ export default function RewardScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.inkTitle}>Make it a weekly adventure?</Text>
               <Text style={styles.inkText}>Pick a day and we'll nudge you when it comes round.</Text>
-              <FKButton label="Pick a day" onPress={() => setWeeklyOpen(true)} style={styles.inkButton} icon={null} testID="reward-weekly" />
+              <FKButton onDark label="Pick a day" onPress={() => setWeeklyOpen(true)} style={styles.inkButton} icon={null} testID="reward-weekly" />
             </View>
           </Animated.View>
         ) : weeklySaved ? (

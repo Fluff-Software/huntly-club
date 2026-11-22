@@ -159,7 +159,7 @@ export function AdventureHeroCard({
           {title}
         </Text>
         <View style={styles.heroFooter}>
-          <FKButton label={completed ? "Play again" : "Let's go"} onPress={onPress} style={styles.heroButton} testID="hero-lets-go" />
+          <FKButton onDark label={completed ? "Play again" : "Let's go"} onPress={onPress} style={styles.heroButton} testID="hero-lets-go" />
           {points ? <Text style={styles.heroPoints}>{points}</Text> : null}
         </View>
       </ImageBackground>

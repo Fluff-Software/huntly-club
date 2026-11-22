@@ -37,7 +37,7 @@ export function GrownUpWelcome({ onStart, onLogin }: { onStart: () => void; onLo
       scroll={false}
       footer={
         <Animated.View entering={FadeInDown.duration(500).delay(350)}>
-          <FKButton label="Set it up" onPress={onStart} testID="welcome-set-it-up" />
+          <FKButton onDark label="Set it up" onPress={onStart} testID="welcome-set-it-up" />
           <FKButton label="I already have an account" variant="link" onDark onPress={onLogin} style={{ marginTop: 6 }} />
         </Animated.View>
       }

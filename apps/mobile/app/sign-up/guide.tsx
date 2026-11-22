@@ -37,7 +37,7 @@ export default function SignUpGuideScreen() {
   return (
     <FKScreen
       backgroundColor={FK.forest}
-      footer={<FKButton label="Plan our first adventure" onPress={() => router.push("/sign-up/plan")} testID="guide-continue" />}
+      footer={<FKButton onDark label="Plan our first adventure" onPress={() => router.push("/sign-up/plan")} testID="guide-continue" />}
     >
       <StatusBar style="light" />
       <View style={styles.headerWrap}>

@@ -110,6 +110,7 @@ export function ExploreCardDetail({
           <View style={[styles.trade, { width: Math.max(cardWidth, 280) }]}>
             <Text style={styles.tradeText}>{tradeLabel}</Text>
             <FKButton
+              onDark
               label="Swap 5 for a new pack"
               icon="swap-horizontal"
               onPress={() => onTrade(card)}

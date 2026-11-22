@@ -133,7 +133,7 @@ export default function SignUpFinishScreen() {
           <>
             <Ionicons name="cloud-offline-outline" size={48} color={FK.sunbeam} />
             <Text style={styles.savingText}>{error}</Text>
-            <FKButton label="Try again" onPress={() => void run()} style={{ marginTop: 24, alignSelf: "stretch" }} />
+            <FKButton onDark label="Try again" onPress={() => void run()} style={{ marginTop: 24, alignSelf: "stretch" }} />
           </>
         )}
       </FKScreen>

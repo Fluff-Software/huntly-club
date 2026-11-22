@@ -1,16 +1,8 @@
 import React, { useState, useEffect } from "react";
-import {
-  Modal,
-  View,
-  TextInput,
-  TouchableOpacity,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-} from "react-native";
-import { ThemedText } from "@/components/ThemedText";
-import { ThemedView } from "@/components/ThemedView";
-import { Button } from "@/components/ui/Button";
+import { Modal, View, Text, TextInput, KeyboardAvoidingView, Platform, Pressable, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { FKButton } from "@/components/fieldkit";
+import { FK, FONT, RADIUS } from "@/constants/fieldKit";
 
 interface ParentPinModalProps {
   visible: boolean;
@@ -105,7 +97,7 @@ export function ParentPinModal({
       if (userAnswer === correctAnswer) {
         onSuccess();
       } else {
-        setError("Wrong answer. Please try again.");
+        setError("Not quite. Here's another one.");
         setAnswer("");
         generateMathQuestion();
       }
@@ -119,100 +111,84 @@ export function ParentPinModal({
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="fade"
-      transparent={true}
-      onRequestClose={handleCancel}
-    >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1"
-      >
-        <View className="flex-1 bg-black/50 justify-center items-center p-6">
-          <ThemedView className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-soft">
-            <View className="items-center mb-6">
-              <View className="w-16 h-16 bg-huntly-mint rounded-full items-center justify-center mb-4">
-                <ThemedText className="text-huntly-forest text-2xl">
-                  🔒
-                </ThemedText>
-              </View>
-              <ThemedText
-                type="title"
-                className="text-huntly-forest text-center mb-2"
-              >
-                Parent Access Required
-              </ThemedText>
-              <ThemedText
-                type="body"
-                className="text-huntly-charcoal text-center"
-              >
-                Please solve this math problem to access the parents dashboard
-              </ThemedText>
+    <Modal visible={visible} animationType="fade" transparent onRequestClose={handleCancel}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
+        <View style={styles.backdrop}>
+          <View style={styles.card}>
+            {/* Always-visible way out: on small phones the number pad can cover Cancel. */}
+            <Pressable onPress={handleCancel} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close" style={styles.close}>
+              <Ionicons name="close" size={22} color={FK.ink} />
+            </Pressable>
+            <View style={styles.icon}>
+              <Ionicons name="lock-closed" size={26} color={FK.ink} />
             </View>
-
-            <View className="bg-huntly-cream rounded-xl p-4 mb-6">
-              <ThemedText
-                type="body"
-                className="text-huntly-charcoal text-center mb-2"
-              >
-                What is:
-              </ThemedText>
-              <ThemedText
-                type="title"
-                className="text-huntly-forest text-center text-2xl"
-              >
-                {question} = ?
-              </ThemedText>
-            </View>
-
+            <Text style={styles.eyebrow}>FOR GROWN-UPS</Text>
+            <Text style={styles.title}>Quick check</Text>
+            <Text style={styles.sub}>Grown-ups only past this point. What is:</Text>
+            <Text style={styles.question}>{question} = ?</Text>
             <TextInput
-              className={`h-14 mb-4 border-2 rounded-xl px-4 bg-huntly-cream text-huntly-forest text-center text-xl font-bold ${
-                error ? "border-red-500" : "border-huntly-mint"
-              }`}
-              placeholder="Enter your answer"
-              placeholderTextColor="#8B4513"
               value={answer}
-              onChangeText={(text) => {
-                setAnswer(text);
-                setError(""); // Clear error when user types
+              onChangeText={(t) => {
+                setAnswer(t.replace(/[^0-9]/g, ""));
+                setError("");
               }}
-              keyboardType="numeric"
-              autoFocus={true}
+              keyboardType="number-pad"
+              placeholder="Your answer"
+              placeholderTextColor="#8C988F"
+              style={styles.input}
+              autoFocus
+              maxLength={4}
+              returnKeyType="done"
               onSubmitEditing={handleSubmit}
+              testID="parent-gate-answer"
             />
-
-            {/* Error Message */}
-            {error && (
-              <View className="mb-4 bg-red-50 rounded-xl p-3 border border-red-200">
-                <ThemedText type="caption" className="text-red-600 text-center">
-                  {error}
-                </ThemedText>
-              </View>
-            )}
-
-            <View className="flex-row" style={{ gap: 12 }}>
-              <Button
-                variant="secondary"
-                size="large"
-                onPress={handleCancel}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                size="large"
-                onPress={handleSubmit}
-                loading={loading}
-                className="flex-1"
-              >
-                Submit
-              </Button>
-            </View>
-          </ThemedView>
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+            <FKButton label="Continue" icon={null} onPress={handleSubmit} loading={loading} style={{ marginTop: 16 }} testID="parent-gate-submit" />
+            <FKButton label="Cancel" variant="link" onPress={handleCancel} />
+          </View>
         </View>
       </KeyboardAvoidingView>
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  close: {
+    position: "absolute",
+    top: 14,
+    right: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: FK.moss,
+    zIndex: 2,
+  },
+  backdrop: { flex: 1, backgroundColor: "rgba(16,37,27,0.6)", justifyContent: "center", padding: 22 },
+  card: { backgroundColor: FK.moss, borderRadius: RADIUS.lg, padding: 22 },
+  icon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: FK.sunbeam,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
+  },
+  eyebrow: { fontFamily: FONT.display, fontSize: 12, letterSpacing: 1.6, color: FK.muted },
+  title: { fontFamily: FONT.display, fontSize: 28, color: FK.ink, marginTop: 4 },
+  sub: { fontFamily: FONT.body, fontSize: 16, color: FK.muted, marginTop: 6 },
+  question: { fontFamily: FONT.display, fontSize: 36, color: FK.ink, marginTop: 14, letterSpacing: -0.5 },
+  input: {
+    backgroundColor: FK.paper,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    fontFamily: FONT.display,
+    fontSize: 22,
+    color: FK.ink,
+    marginTop: 14,
+  },
+  error: { fontFamily: FONT.bodyBold, fontSize: 15, color: "#B3261E", marginTop: 10 },
+});

@@ -84,7 +84,7 @@ export function Button({
           type={textSize === "caption" ? "caption" : undefined}
           lightColor={textColor === "text-white" ? "#FFFFFF" : undefined}
           darkColor={textColor === "text-white" ? "#FFFFFF" : undefined}
-          className={`${textColor} font-bold font-jua ${
+          className={`${textColor} font-display ${
             size === "large" ? "text-lg" : size === "small" ? "text-sm" : ""
           }`}
         >

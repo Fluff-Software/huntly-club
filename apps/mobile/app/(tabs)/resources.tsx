@@ -1,157 +1,127 @@
-import React, { useMemo } from "react";
-import {
-  View,
-  ScrollView,
-  StyleSheet,
-  Pressable,
-  ActivityIndicator,
-  Linking,
-} from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
-import { MaterialIcons } from "@expo/vector-icons";
-import { ThemedText } from "@/components/ThemedText";
-import { useLayoutScale } from "@/hooks/useLayoutScale";
-import { useParentResources } from "@/hooks/useParentResources";
-import { ChildScreenLayout } from "@/components/ChildScreenLayout";
+import React, { useCallback, useMemo } from "react";
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { router, useFocusEffect } from "expo-router";
+import { setStatusBarStyle } from "expo-status-bar";
+import { Ionicons } from "@expo/vector-icons";
+import { FKButton, FKCard, FKEyebrow, FKPageHeader, FKSkeleton } from "@/components/fieldkit";
+import { FK, FONT, RADIUS, TYPE } from "@/constants/fieldKit";
+import { useParentResources, type ParentResource } from "@/hooks/useParentResources";
 
-const RESOURCES_GREEN = "#3A5248";
-const CREAM = "#F4F0EB";
-const CHARCOAL = "#333333";
+const goBack = () => {
+  if (router.canGoBack()) router.back();
+  else router.navigate("/(tabs)/me");
+};
 
+/** Printable guides and downloads for grown-ups. */
 export default function ResourcesScreen() {
-  const { scaleW } = useLayoutScale();
-  const { resources, loading, error } = useParentResources();
+  const { resources, loading, error, refetch } = useParentResources();
 
-  const styles = useMemo(
-    () =>
-      StyleSheet.create({
-        container: {
-          flex: 1,
-          backgroundColor: RESOURCES_GREEN,
-        },
-        scrollContent: {
-          flexGrow: 1,
-        },
-        heading: {
-          fontSize: scaleW(24),
-          fontWeight: "700",
-          color: "#FFF",
-          textAlign: "center",
-          marginBottom: scaleW(4),
-        },
-        subtitle: {
-          fontSize: scaleW(14),
-          color: "rgba(255,255,255,0.85)",
-          textAlign: "center",
-          marginBottom: scaleW(24),
-        },
-        loadingContainer: {
-          paddingVertical: scaleW(48),
-          alignItems: "center",
-        },
-        loadingText: {
-          marginTop: scaleW(12),
-          fontSize: scaleW(16),
-          color: "#FFF",
-        },
-        emptyText: {
-          fontSize: scaleW(16),
-          color: "rgba(255,255,255,0.9)",
-          textAlign: "center",
-        },
-        errorText: {
-          fontSize: scaleW(16),
-          color: "#FFF",
-          textAlign: "center",
-        },
-        resourceCard: {
-          backgroundColor: CREAM,
-          borderRadius: scaleW(16),
-          padding: scaleW(16),
-          marginBottom: scaleW(12),
-        },
-        resourceTitle: {
-          fontSize: scaleW(16),
-          fontWeight: "700",
-          color: CHARCOAL,
-          marginBottom: scaleW(6),
-        },
-        resourceDesc: {
-          fontSize: scaleW(14),
-          color: CHARCOAL,
-          marginBottom: scaleW(12),
-          lineHeight: scaleW(20),
-        },
-        resourceButton: {
-          flexDirection: "row",
-          alignSelf: "flex-end",
-          alignItems: "center",
-          backgroundColor: RESOURCES_GREEN,
-          paddingVertical: scaleW(10),
-          paddingHorizontal: scaleW(16),
-          borderRadius: scaleW(24),
-          gap: scaleW(6),
-        },
-        resourceButtonText: {
-          fontSize: scaleW(14),
-          fontWeight: "600",
-          color: "#FFF",
-        },
-      }),
-    [scaleW]
+  useFocusEffect(
+    useCallback(() => {
+      setStatusBarStyle("dark");
+    }, [])
   );
+
+  // Keep the server's order, grouped by category where there is one.
+  const groups = useMemo(() => {
+    const out: { category: string | null; items: ParentResource[] }[] = [];
+    resources.forEach((r) => {
+      const category = r.category?.trim() || null;
+      const existing = out.find((g) => g.category === category);
+      if (existing) existing.items.push(r);
+      else out.push({ category, items: [r] });
+    });
+    return out;
+  }, [resources]);
+  const showCategories = groups.length > 1 || groups[0]?.category != null;
 
   return (
-    <ChildScreenLayout
-      backgroundColor={RESOURCES_GREEN}
-      contentContainerStyle={styles.scrollContent}
-    >
-        <ThemedText type="heading" style={styles.heading}>
-          Resources
-        </ThemedText>
-        <ThemedText style={styles.subtitle}>
-          Guides, tips and downloads for your adventures
-        </ThemedText>
+    <SafeAreaView style={styles.root} edges={["top", "left", "right"]}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <FKPageHeader eyebrow="For grown-ups" title="Guides and downloads" onBack={goBack} />
+        <Text style={[TYPE.body, { color: FK.muted, marginTop: -8, marginBottom: 8 }]}>
+          Printable sheets and short guides to help you plan time outside. They open in your browser.
+        </Text>
 
         {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#FFF" />
-            <ThemedText style={styles.loadingText}>Loading resources…</ThemedText>
+          <View style={{ gap: 10, marginTop: 12 }}>
+            <FKSkeleton height={88} />
+            <FKSkeleton height={88} />
+            <FKSkeleton height={88} />
           </View>
         ) : error ? (
-          <ThemedText style={styles.errorText}>Something went wrong loading resources.</ThemedText>
+          <FKCard style={{ marginTop: 12 }}>
+            <Text style={TYPE.heading}>We couldn&apos;t load these</Text>
+            <Text style={[TYPE.body, { marginTop: 6, marginBottom: 14 }]}>
+              Check your connection and try again.
+            </Text>
+            <FKButton label="Try again" variant="ink" icon="refresh" onPress={() => void refetch()} />
+          </FKCard>
         ) : resources.length === 0 ? (
-          <ThemedText style={styles.emptyText}>No resources yet.</ThemedText>
+          <FKCard style={{ marginTop: 12 }}>
+            <Text style={TYPE.heading}>Nothing here yet</Text>
+            <Text style={[TYPE.body, { marginTop: 6 }]}>New guides will appear here when we add them.</Text>
+          </FKCard>
         ) : (
-          resources.map((resource, index) => (
-            <Animated.View
-              key={resource.id}
-              entering={FadeInDown.duration(400).delay(index * 60)}
-            >
-              <View style={styles.resourceCard}>
-                <ThemedText type="heading" style={styles.resourceTitle}>
-                  {resource.title}
-                </ThemedText>
-                {resource.description ? (
-                  <ThemedText style={styles.resourceDesc}>{resource.description}</ThemedText>
-                ) : null}
+          groups.map((group, gIndex) => (
+            <View key={group.category ?? `none-${gIndex}`}>
+              {showCategories ? (
+                <FKEyebrow style={styles.section}>{group.category ?? "Other"}</FKEyebrow>
+              ) : (
+                <View style={{ height: 12 }} />
+              )}
+              {group.items.map((resource) => (
                 <Pressable
-                  style={styles.resourceButton}
+                  key={resource.id}
+                  style={styles.row}
+                  disabled={!resource.file_url}
                   onPress={() => {
-                    if (resource.file_url) {
-                      void Linking.openURL(resource.file_url);
-                    }
+                    if (resource.file_url) void Linking.openURL(resource.file_url);
                   }}
+                  accessibilityRole="link"
+                  accessibilityLabel={`Open ${resource.title}`}
                 >
-                  <ThemedText type="heading" style={styles.resourceButtonText}>
-                    Download
-                  </ThemedText>
-                  <MaterialIcons name="file-download" size={scaleW(18)} color="#FFF" />
+                  <View style={styles.rowIcon}>
+                    <Ionicons name="document-text-outline" size={22} color={FK.skyInk} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.rowTitle}>{resource.title}</Text>
+                    {resource.description ? <Text style={styles.rowSub}>{resource.description}</Text> : null}
+                  </View>
+                  <Ionicons name="open-outline" size={20} color={FK.muted} />
                 </Pressable>
-              </View>
-            </Animated.View>
+              ))}
+            </View>
           ))
         )}
-    </ChildScreenLayout>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: FK.moss },
+  content: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 24, width: "100%", maxWidth: 720, alignSelf: "center" },
+  section: { marginTop: 20, marginBottom: 10 },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    backgroundColor: FK.paper,
+    borderRadius: RADIUS.md,
+    padding: 14,
+    paddingRight: 16,
+    marginBottom: 8,
+  },
+  rowIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: FK.sky,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rowTitle: { fontFamily: FONT.display, fontSize: 17, color: FK.ink },
+  rowSub: { fontFamily: FONT.body, fontSize: 15, lineHeight: 21, color: FK.muted, marginTop: 2 },
+});

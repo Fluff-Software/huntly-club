@@ -85,7 +85,9 @@ export default function ActivityLayout() {
         name="explore"
         options={{
           title: "Explore",
-          headerShown: false }}
+          headerShown: false,
+          // Explore is a tab in the nav bar, so it fades in like the other tabs instead of sliding.
+          animation: "fade" }}
       />
       <Stack.Screen
         name="explore-collection"

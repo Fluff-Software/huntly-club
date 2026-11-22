@@ -3,6 +3,7 @@ import { BackHandler, Image, View, StyleSheet, Pressable, ScrollView } from "rea
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { FKButton } from "@/components/fieldkit";
 import ConfettiCannon from "react-native-confetti-cannon";
 import {
   ActivityMap,
@@ -236,6 +237,14 @@ export default function WalkSummaryScreen() {
             <ThemedText style={styles.emptyText}>
               {sessionLoading ? "Restoring your walk summary." : "Head back to the map screen and complete a walk to see your stats."}
             </ThemedText>
+            {!sessionLoading ? (
+              <FKButton
+                label="Back to the Clubhouse"
+                icon="home"
+                onPress={() => router.replace("/(tabs)")}
+                style={{ marginTop: 16, alignSelf: "stretch" }}
+              />
+            ) : null}
           </View>
         </View>
       </SafeAreaView>

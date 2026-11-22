@@ -1,9 +1,8 @@
 import React from "react";
 import { Modal, View, Pressable, StyleSheet, ScrollView } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
-
-const ACCENT = "#B8F000";
+import { FK, FONT, RADIUS } from "@/constants/fieldKit";
 
 type Profile = {
   id: number;
@@ -41,7 +40,7 @@ export function ExploreProfileSelectModal({
       <Pressable style={styles.overlay} onPress={onDismiss}>
         <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
           <View style={styles.header}>
-            <ThemedText style={styles.title}>Choose your profile</ThemedText>
+            <ThemedText style={styles.title}>Who's collecting?</ThemedText>
             <Pressable
               onPress={onDismiss}
               hitSlop={12}
@@ -49,7 +48,7 @@ export function ExploreProfileSelectModal({
               accessibilityLabel="Close"
               style={styles.closeBtn}
             >
-              <MaterialIcons name="close" size={20} color="#666" />
+              <Ionicons name="close" size={20} color={FK.ink} />
             </Pressable>
           </View>
 
@@ -64,18 +63,16 @@ export function ExploreProfileSelectModal({
                     onDismiss();
                   }}
                   accessibilityRole="button"
-                  accessibilityLabel={`Collect cards as ${p.nickname || p.name}`}
+                  accessibilityLabel={`Collect cards as ${p.name}`}
                   style={[styles.row, active && styles.rowActive]}
                 >
                   <ThemedText
                     style={[styles.rowText, active && styles.rowTextActive]}
                     numberOfLines={1}
                   >
-                    {p.nickname || p.name}
+                    {p.name}
                   </ThemedText>
-                  {active ? (
-                    <MaterialIcons name="check" size={18} color="#222" />
-                  ) : null}
+                  {active ? <Ionicons name="checkmark" size={20} color={FK.sunbeam} /> : null}
                 </Pressable>
               );
             })}
@@ -86,17 +83,15 @@ export function ExploreProfileSelectModal({
                 onDismiss();
               }}
               accessibilityRole="button"
-              accessibilityLabel="View all profiles"
+              accessibilityLabel="Collect cards for everyone"
               style={[styles.row, claimedMode === "all" && styles.rowActive]}
             >
               <ThemedText
                 style={[styles.rowText, claimedMode === "all" && styles.rowTextActive]}
               >
-                All
+                Everyone
               </ThemedText>
-              {claimedMode === "all" ? (
-                <MaterialIcons name="check" size={18} color="#222" />
-              ) : null}
+              {claimedMode === "all" ? <Ionicons name="checkmark" size={20} color={FK.sunbeam} /> : null}
             </Pressable>
           </ScrollView>
         </Pressable>
@@ -108,42 +103,43 @@ export function ExploreProfileSelectModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.55)",
+    backgroundColor: "rgba(16,37,27,0.55)",
     justifyContent: "center",
     alignItems: "center",
-    padding: 32,
+    padding: 28,
   },
   card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    padding: 20,
+    backgroundColor: FK.moss,
+    borderRadius: RADIUS.lg,
+    padding: 22,
     width: "100%",
-    maxWidth: 360,
+    maxWidth: 380,
     maxHeight: "70%",
-    shadowColor: "#000",
+    shadowColor: "#10251B",
     shadowOpacity: 0.25,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
     elevation: 8,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 12,
+    marginBottom: 16,
   },
   title: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#222",
+    fontFamily: FONT.display,
+    fontSize: 22,
+    lineHeight: 26,
+    color: FK.ink,
   },
   closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F1F1F1",
+    backgroundColor: FK.paper,
   },
   list: {
     flexGrow: 0,
@@ -152,21 +148,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 13,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    marginBottom: 8,
-    backgroundColor: "#F5F6F3",
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    borderRadius: RADIUS.md,
+    marginBottom: 10,
+    backgroundColor: FK.paper,
   },
   rowActive: {
-    backgroundColor: ACCENT,
+    backgroundColor: FK.forest,
   },
   rowText: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#333",
+    fontFamily: FONT.displayBold,
+    fontSize: 17,
+    color: FK.ink,
   },
   rowTextActive: {
-    color: "#1A2A1C",
+    color: FK.white,
   },
 });

@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import { StyleSheet, View } from "react-native";
 /** Default provider is Apple MapKit — no Google Maps API key on iOS. */
-import MapView, { Marker, Polyline } from "react-native-maps";
+import MapView, { Marker, Polyline, type MapViewProps } from "react-native-maps";
 import { ActivityMapStopMarkerView } from "./ActivityMapStopMarkerView";
 import { ActivityMapUserMarkerView } from "./ActivityMapUserMarkerView";
 import {
@@ -50,7 +50,8 @@ function ActivityMapStopMarker({
   return (
     <Marker
       coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
-      title={marker.title}
+      // Explore pins open their own sheet, so skip MapKit's callout bubble.
+      title={icon === "card" || icon === "collected" ? undefined : marker.title}
       anchor={{ x: 0.5, y: 0.5 }}
       zIndex={1}
       tracksViewChanges={tracksViewChanges}
@@ -60,6 +61,20 @@ function ActivityMapStopMarker({
     </Marker>
   );
 }
+
+/**
+ * Muted Apple map, always light, keeping only outdoorsy places so shop and
+ * restaurant labels don't compete with the game pins.
+ */
+const SOFT_BASEMAP_PROPS = {
+  mapType: "mutedStandard",
+  userInterfaceStyle: "light",
+  pointsOfInterestFilter: ["park", "nationalPark", "beach", "campground", "zoo", "marina"],
+  showsBuildings: false,
+  showsCompass: false,
+  showsScale: false,
+  showsTraffic: false,
+} satisfies Partial<MapViewProps>;
 
 /**
  * Stop markers use a plain View + Text bubble (no MaterialIcons children).
@@ -83,6 +98,7 @@ export const ActivityMap = forwardRef<ActivityMapRef, ActivityMapProps>(function
     onRegionChange,
     markers,
     onMarkerPress,
+    basemap = "standard",
   },
   ref
 ) {
@@ -141,6 +157,7 @@ export const ActivityMap = forwardRef<ActivityMapRef, ActivityMapProps>(function
       minZoomLevel={minZoomLevel}
       maxZoomLevel={maxZoomLevel}
       onRegionChangeComplete={(region) => onRegionChange?.(region)}
+      {...(basemap === "soft" ? SOFT_BASEMAP_PROPS : null)}
     >
       {route.length >= 2 && (
         <Polyline

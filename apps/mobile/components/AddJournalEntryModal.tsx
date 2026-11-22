@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Modal,
   View,
   ScrollView,
+  Text,
   TextInput,
   StyleSheet,
   Pressable,
@@ -10,12 +11,11 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
 } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { ThemedText } from "@/components/ThemedText";
-import { useLayoutScale } from "@/hooks/useLayoutScale";
+import { FKButton } from "@/components/fieldkit";
+import { FK, FONT, RADIUS, TYPE } from "@/constants/fieldKit";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useUser } from "@/contexts/UserContext";
@@ -27,29 +27,12 @@ import {
   type JournalEntry,
 } from "@/services/journalService";
 
-const PARCHMENT = "#FFFDF7";
-const PARCHMENT_BORDER = "#D9C9A3";
-const AMBER = "#B07D3E";
-const CHARCOAL = "#3D3D3D";
-const MUTED = "#8A8A8A";
-const HUNTLY_GREEN = "#4F6F52";
-const CREAM = "#F4F0EB";
-
 function todayISODate(): string {
   const d = new Date();
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
-}
-
-function formatDisplayDate(iso: string): string {
-  const parts = iso.split("-");
-  if (parts.length === 3) {
-    const [yyyy, mm, dd] = parts;
-    return `${dd}/${mm}/${yyyy}`;
-  }
-  return iso;
 }
 
 function addDays(iso: string, delta: number): string {
@@ -65,6 +48,15 @@ function isDateInFuture(iso: string): boolean {
   return iso > todayISODate();
 }
 
+function formatDisplayDate(iso: string): string {
+  const today = todayISODate();
+  if (iso === today) return "Today";
+  if (iso === addDays(today, -1)) return "Yesterday";
+  const d = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+}
+
 interface AddJournalEntryModalProps {
   visible: boolean;
   onClose: () => void;
@@ -72,13 +64,7 @@ interface AddJournalEntryModalProps {
   initialActivityTag?: ActivityTag;
 }
 
-export function AddJournalEntryModal({
-  visible,
-  onClose,
-  onSuccess,
-  initialActivityTag,
-}: AddJournalEntryModalProps) {
-  const { scaleW } = useLayoutScale();
+export function AddJournalEntryModal({ visible, onClose, onSuccess, initialActivityTag }: AddJournalEntryModalProps) {
   const { user } = useAuth();
   const { profiles } = usePlayer();
   const { teamId } = useUser();
@@ -87,9 +73,7 @@ export function AddJournalEntryModal({
   const [notes, setNotes] = useState("");
   const [activityTag, setActivityTag] = useState<ActivityTag>("Walk");
   const [entryDate, setEntryDate] = useState(todayISODate);
-  const [selectedProfileId, setSelectedProfileId] = useState<number | null>(
-    null
-  );
+  const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -121,10 +105,7 @@ export function AddJournalEntryModal({
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert(
-          "Camera access",
-          "Please allow camera access in your settings to take photos."
-        );
+        Alert.alert("Camera access", "Please allow camera access in your settings to take photos.");
         return;
       }
       const result = await ImagePicker.launchCameraAsync({
@@ -141,13 +122,9 @@ export function AddJournalEntryModal({
 
   const handlePickPhoto = useCallback(async () => {
     try {
-      const { status } =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert(
-          "Gallery access",
-          "Please allow photo library access in your settings."
-        );
+        Alert.alert("Photo access", "Please allow photo library access in your settings.");
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -165,14 +142,11 @@ export function AddJournalEntryModal({
 
   const handleSave = useCallback(async () => {
     if (!title.trim()) {
-      Alert.alert("Title required", "Please give this adventure a title.");
+      Alert.alert("Add a title", "Give this adventure a name first.");
       return;
     }
     if (!selectedProfileId) {
-      Alert.alert(
-        "Choose an explorer",
-        "Select which explorer is logging this adventure."
-      );
+      Alert.alert("Choose an explorer", "Pick whose adventure this is.");
       return;
     }
     if (!user?.id || teamId == null) return;
@@ -193,462 +167,155 @@ export function AddJournalEntryModal({
       onClose();
     } catch (err) {
       console.error("Error saving journal entry:", err);
-      Alert.alert(
-        "Oops!",
-        "Something went wrong saving your adventure. Please try again."
-      );
+      Alert.alert("That didn't save", "Something went wrong saving your adventure. Please try again.");
     } finally {
       setSaving(false);
     }
-  }, [
-    title,
-    selectedProfileId,
-    user?.id,
-    teamId,
-    notes,
-    photoUri,
-    activityTag,
-    entryDate,
-    onSuccess,
-    onClose,
-  ]);
+  }, [title, selectedProfileId, user?.id, teamId, notes, photoUri, activityTag, entryDate, onSuccess, onClose]);
 
-  const styles = useMemo(
-    () =>
-      StyleSheet.create({
-        overlay: {
-          flex: 1,
-          backgroundColor: "rgba(0,0,0,0.45)",
-          justifyContent: "flex-end",
-        },
-        sheet: {
-          backgroundColor: PARCHMENT,
-          borderTopLeftRadius: scaleW(24),
-          borderTopRightRadius: scaleW(24),
-          paddingTop: scaleW(12),
-          maxHeight: "92%",
-        },
-        dragIndicator: {
-          width: scaleW(40),
-          height: scaleW(4),
-          backgroundColor: PARCHMENT_BORDER,
-          borderRadius: scaleW(2),
-          alignSelf: "center",
-          marginBottom: scaleW(16),
-        },
-        scrollContent: {
-          paddingHorizontal: scaleW(20),
-          paddingBottom: scaleW(40),
-        },
-        sheetTitle: {
-          fontSize: scaleW(20),
-          fontWeight: "700",
-          color: CHARCOAL,
-          marginBottom: scaleW(20),
-          textAlign: "center",
-        },
-        sectionLabel: {
-          fontSize: scaleW(13),
-          fontWeight: "600",
-          color: MUTED,
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
-          marginBottom: scaleW(8),
-          marginTop: scaleW(16),
-        },
-        textInput: {
-          backgroundColor: "#FFF",
-          borderRadius: scaleW(10),
-          borderWidth: 1,
-          borderColor: PARCHMENT_BORDER,
-          paddingHorizontal: scaleW(14),
-          paddingVertical: scaleW(12),
-          fontSize: scaleW(15),
-          color: CHARCOAL,
-        },
-        notesInput: {
-          minHeight: scaleW(80),
-          textAlignVertical: "top",
-        },
-        tagRow: {
-          flexDirection: "row",
-          flexWrap: "wrap",
-          gap: scaleW(8),
-        },
-        tagChip: {
-          borderRadius: scaleW(20),
-          paddingHorizontal: scaleW(14),
-          paddingVertical: scaleW(8),
-          borderWidth: 1.5,
-        },
-        tagChipActive: {
-          backgroundColor: AMBER,
-          borderColor: AMBER,
-        },
-        tagChipInactive: {
-          backgroundColor: "#FFF",
-          borderColor: PARCHMENT_BORDER,
-        },
-        tagChipText: {
-          fontSize: scaleW(13),
-          fontWeight: "600",
-        },
-        tagChipTextActive: {
-          color: "#FFF",
-        },
-        tagChipTextInactive: {
-          color: CHARCOAL,
-        },
-        dateRow: {
-          flexDirection: "row",
-          alignItems: "center",
-          backgroundColor: "#FFF",
-          borderRadius: scaleW(10),
-          borderWidth: 1,
-          borderColor: PARCHMENT_BORDER,
-          paddingHorizontal: scaleW(12),
-          paddingVertical: scaleW(10),
-        },
-        dateText: {
-          flex: 1,
-          textAlign: "center",
-          fontSize: scaleW(15),
-          color: CHARCOAL,
-          fontWeight: "600",
-        },
-        dateArrow: {
-          padding: scaleW(4),
-        },
-        profileRow: {
-          flexDirection: "row",
-          flexWrap: "wrap",
-          gap: scaleW(8),
-        },
-        profileChip: {
-          borderRadius: scaleW(20),
-          paddingHorizontal: scaleW(14),
-          paddingVertical: scaleW(8),
-          borderWidth: 1.5,
-        },
-        profileChipActive: {
-          backgroundColor: HUNTLY_GREEN,
-          borderColor: HUNTLY_GREEN,
-        },
-        profileChipInactive: {
-          backgroundColor: "#FFF",
-          borderColor: PARCHMENT_BORDER,
-        },
-        profileChipText: {
-          fontSize: scaleW(13),
-          fontWeight: "600",
-        },
-        profileChipTextActive: {
-          color: "#FFF",
-        },
-        profileChipTextInactive: {
-          color: CHARCOAL,
-        },
-        photoButtons: {
-          flexDirection: "row",
-          gap: scaleW(10),
-        },
-        photoBtn: {
-          flex: 1,
-          backgroundColor: "#FFF",
-          borderRadius: scaleW(10),
-          borderWidth: 1,
-          borderColor: PARCHMENT_BORDER,
-          paddingVertical: scaleW(12),
-          alignItems: "center",
-          flexDirection: "row",
-          justifyContent: "center",
-          gap: scaleW(6),
-        },
-        photoBtnText: {
-          fontSize: scaleW(13),
-          color: CHARCOAL,
-          fontWeight: "600",
-        },
-        thumbnailContainer: {
-          marginTop: scaleW(10),
-          position: "relative",
-          alignSelf: "flex-start",
-        },
-        thumbnail: {
-          width: scaleW(88),
-          height: scaleW(88),
-          borderRadius: scaleW(10),
-        },
-        removeThumbnail: {
-          position: "absolute",
-          top: -scaleW(8),
-          right: -scaleW(8),
-          backgroundColor: "#FFF",
-          borderRadius: scaleW(12),
-          width: scaleW(24),
-          height: scaleW(24),
-          alignItems: "center",
-          justifyContent: "center",
-          shadowColor: "#000",
-          shadowOpacity: 0.15,
-          shadowRadius: scaleW(3),
-          elevation: 2,
-        },
-        saveButton: {
-          backgroundColor: AMBER,
-          borderRadius: scaleW(28),
-          paddingVertical: scaleW(16),
-          alignItems: "center",
-          marginTop: scaleW(24),
-        },
-        saveButtonDisabled: {
-          opacity: 0.6,
-        },
-        saveButtonText: {
-          fontSize: scaleW(16),
-          fontWeight: "700",
-          color: "#FFF",
-        },
-        cancelButton: {
-          paddingVertical: scaleW(12),
-          alignItems: "center",
-          marginTop: scaleW(8),
-        },
-        cancelButtonText: {
-          fontSize: scaleW(15),
-          color: MUTED,
-        },
-        xpNote: {
-          fontSize: scaleW(12),
-          color: AMBER,
-          textAlign: "center",
-          marginTop: scaleW(6),
-        },
-      }),
-    [scaleW]
-  );
-
-  const canSave =
-    title.trim().length > 0 &&
-    selectedProfileId != null &&
-    teamId != null &&
-    !saving;
+  const canSave = title.trim().length > 0 && selectedProfileId != null && teamId != null && !saving;
+  const nextIsFuture = isDateInFuture(addDays(entryDate, 1));
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={{ width: "100%" }}
-        >
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ width: "100%" }}>
           <View style={styles.sheet}>
-            <View style={styles.dragIndicator} />
+            <View style={styles.sheetTop}>
+              <Text style={TYPE.title}>Add an adventure</Text>
+              <Pressable onPress={onClose} hitSlop={10} style={styles.close} accessibilityRole="button" accessibilityLabel="Close">
+                <Ionicons name="close" size={24} color={FK.ink} />
+              </Pressable>
+            </View>
             <ScrollView
               contentContainerStyle={styles.scrollContent}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              <ThemedText style={styles.sheetTitle}>
-                Add an adventure
-              </ThemedText>
-
-              {/* Profile selector — only if multiple profiles */}
-              {profiles.length > 1 && (
+              {profiles.length > 1 ? (
                 <>
-                  <ThemedText style={styles.sectionLabel}>
-                    Who's logging this?
-                  </ThemedText>
-                  <View style={styles.profileRow}>
+                  <Text style={styles.label}>Whose adventure is it?</Text>
+                  <View style={styles.chipRow}>
                     {profiles.map((profile) => {
-                      const isActive = selectedProfileId === profile.id;
+                      const active = selectedProfileId === profile.id;
                       return (
                         <Pressable
                           key={profile.id}
-                          style={[
-                            styles.profileChip,
-                            isActive
-                              ? styles.profileChipActive
-                              : styles.profileChipInactive,
-                          ]}
+                          style={active ? [styles.chip, styles.chipActive] : styles.chip}
                           onPress={() => setSelectedProfileId(profile.id)}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: active }}
                         >
-                          <ThemedText
-                            style={[
-                              styles.profileChipText,
-                              isActive
-                                ? styles.profileChipTextActive
-                                : styles.profileChipTextInactive,
-                            ]}
-                          >
-                            {profile.nickname}
-                          </ThemedText>
+                          <Text style={active ? [styles.chipText, { color: FK.white }] : styles.chipText}>
+                            {profile.name || profile.nickname}
+                          </Text>
                         </Pressable>
                       );
                     })}
                   </View>
                 </>
-              )}
+              ) : null}
 
-              {/* Title */}
-              <ThemedText style={styles.sectionLabel}>
-                Adventure title *
-              </ThemedText>
+              <Text style={styles.label}>What did you do?</Text>
               <TextInput
-                style={styles.textInput}
+                style={styles.input}
                 value={title}
                 onChangeText={setTitle}
-                placeholder="e.g. Den in the woods"
-                placeholderTextColor={MUTED}
+                placeholder="Built a den in the woods"
+                placeholderTextColor={FK.muted}
                 maxLength={80}
                 returnKeyType="next"
               />
 
-              {/* Activity tag */}
-              <ThemedText style={styles.sectionLabel}>Activity type</ThemedText>
-              <View style={styles.tagRow}>
+              <Text style={styles.label}>What kind of adventure?</Text>
+              <View style={styles.chipRow}>
                 {ACTIVITY_TAGS.map((tag) => {
-                  const isActive = activityTag === tag;
+                  const active = activityTag === tag;
                   return (
                     <Pressable
                       key={tag}
-                      style={[
-                        styles.tagChip,
-                        isActive ? styles.tagChipActive : styles.tagChipInactive,
-                      ]}
+                      style={active ? [styles.chip, styles.chipActive] : styles.chip}
                       onPress={() => setActivityTag(tag)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
                     >
-                      <ThemedText
-                        style={[
-                          styles.tagChipText,
-                          isActive
-                            ? styles.tagChipTextActive
-                            : styles.tagChipTextInactive,
-                        ]}
-                      >
-                        {tag}
-                      </ThemedText>
+                      <Text style={active ? [styles.chipText, { color: FK.white }] : styles.chipText}>{tag}</Text>
                     </Pressable>
                   );
                 })}
               </View>
 
-              {/* Date */}
-              <ThemedText style={styles.sectionLabel}>Date</ThemedText>
+              <Text style={styles.label}>When?</Text>
               <View style={styles.dateRow}>
                 <Pressable
                   style={styles.dateArrow}
                   onPress={() => setEntryDate((d) => addDays(d, -1))}
+                  accessibilityRole="button"
+                  accessibilityLabel="Day before"
                 >
-                  <MaterialIcons
-                    name="chevron-left"
-                    size={scaleW(24)}
-                    color={CHARCOAL}
-                  />
+                  <Ionicons name="chevron-back" size={22} color={FK.ink} />
                 </Pressable>
-                <ThemedText style={styles.dateText}>
-                  {formatDisplayDate(entryDate)}
-                </ThemedText>
+                <Text style={styles.dateText}>{formatDisplayDate(entryDate)}</Text>
                 <Pressable
-                  style={styles.dateArrow}
+                  style={nextIsFuture ? [styles.dateArrow, { opacity: 0.35 }] : styles.dateArrow}
                   onPress={() => {
-                    if (!isDateInFuture(addDays(entryDate, 1))) {
-                      setEntryDate((d) => addDays(d, 1));
-                    }
+                    if (!nextIsFuture) setEntryDate((d) => addDays(d, 1));
                   }}
-                  disabled={isDateInFuture(addDays(entryDate, 1))}
+                  disabled={nextIsFuture}
+                  accessibilityRole="button"
+                  accessibilityLabel="Day after"
                 >
-                  <MaterialIcons
-                    name="chevron-right"
-                    size={scaleW(24)}
-                    color={
-                      isDateInFuture(addDays(entryDate, 1)) ? MUTED : CHARCOAL
-                    }
-                  />
+                  <Ionicons name="chevron-forward" size={22} color={FK.ink} />
                 </Pressable>
               </View>
 
-              {/* Notes */}
-              <ThemedText style={styles.sectionLabel}>
-                Notes (optional)
-              </ThemedText>
+              <Text style={styles.label}>Anything to remember? (optional)</Text>
               <TextInput
-                style={[styles.textInput, styles.notesInput]}
+                style={[styles.input, styles.notesInput]}
                 value={notes}
                 onChangeText={setNotes}
-                placeholder="What happened? What did you find?"
-                placeholderTextColor={MUTED}
+                placeholder="What did you see or find?"
+                placeholderTextColor={FK.muted}
                 multiline
                 maxLength={500}
               />
 
-              {/* Photo */}
-              <ThemedText style={styles.sectionLabel}>
-                Photo (optional)
-              </ThemedText>
+              <Text style={styles.label}>Photo (optional)</Text>
               {!photoUri ? (
                 <View style={styles.photoButtons}>
-                  <Pressable style={styles.photoBtn} onPress={handleTakePhoto}>
-                    <MaterialIcons
-                      name="camera-alt"
-                      size={scaleW(18)}
-                      color={CHARCOAL}
-                    />
-                    <ThemedText style={styles.photoBtnText}>Camera</ThemedText>
+                  <Pressable style={styles.photoBtn} onPress={handleTakePhoto} accessibilityRole="button">
+                    <Ionicons name="camera-outline" size={20} color={FK.ink} />
+                    <Text style={styles.photoBtnText}>Take one</Text>
                   </Pressable>
-                  <Pressable style={styles.photoBtn} onPress={handlePickPhoto}>
-                    <MaterialIcons
-                      name="photo-library"
-                      size={scaleW(18)}
-                      color={CHARCOAL}
-                    />
-                    <ThemedText style={styles.photoBtnText}>Gallery</ThemedText>
+                  <Pressable style={styles.photoBtn} onPress={handlePickPhoto} accessibilityRole="button">
+                    <Ionicons name="images-outline" size={20} color={FK.ink} />
+                    <Text style={styles.photoBtnText}>Choose one</Text>
                   </Pressable>
                 </View>
               ) : (
-                <View style={styles.thumbnailContainer}>
-                  <Image
-                    source={{ uri: photoUri }}
-                    style={styles.thumbnail}
-                    resizeMode="cover"
-                  />
+                <View style={styles.thumbWrap}>
+                  <Image source={{ uri: photoUri }} style={styles.thumb} resizeMode="cover" />
                   <Pressable
-                    style={styles.removeThumbnail}
+                    style={styles.removeThumb}
                     onPress={() => setPhotoUri(null)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Remove photo"
                   >
-                    <MaterialIcons name="close" size={scaleW(16)} color={MUTED} />
+                    <Ionicons name="close" size={16} color={FK.ink} />
                   </Pressable>
                 </View>
               )}
 
-              {/* Save */}
-              <Pressable
-                style={[
-                  styles.saveButton,
-                  !canSave && styles.saveButtonDisabled,
-                ]}
+              <FKButton
+                label="Save to journal"
+                icon="checkmark"
                 onPress={handleSave}
                 disabled={!canSave}
-              >
-                {saving ? (
-                  <ActivityIndicator color="#FFF" />
-                ) : (
-                  <ThemedText style={styles.saveButtonText}>
-                    Save adventure
-                  </ThemedText>
-                )}
-              </Pressable>
-              <ThemedText style={styles.xpNote}>
-                +{JOURNAL_XP_PER_ENTRY} XP awarded on save
-              </ThemedText>
-
-              <Pressable style={styles.cancelButton} onPress={onClose}>
-                <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
-              </Pressable>
+                loading={saving}
+                style={{ marginTop: 26 }}
+              />
+              <Text style={styles.xpNote}>Adds {JOURNAL_XP_PER_ENTRY} XP</Text>
+              <FKButton label="Cancel" variant="link" onPress={onClose} />
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
@@ -656,3 +323,98 @@ export function AddJournalEntryModal({
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: "rgba(16,37,27,0.5)", justifyContent: "flex-end" },
+  sheet: {
+    backgroundColor: FK.paper,
+    borderTopLeftRadius: RADIUS.lg,
+    borderTopRightRadius: RADIUS.lg,
+    paddingTop: 18,
+    maxHeight: "92%",
+  },
+  sheetTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    marginBottom: 4,
+  },
+  close: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: FK.moss,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 32 },
+  label: { fontFamily: FONT.display, fontSize: 16, color: FK.ink, marginTop: 18, marginBottom: 8 },
+  input: {
+    backgroundColor: FK.moss,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1.5,
+    borderColor: FK.line,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontFamily: FONT.body,
+    fontSize: 17,
+    color: FK.ink,
+  },
+  notesInput: { minHeight: 96, textAlignVertical: "top" },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chip: {
+    backgroundColor: FK.moss,
+    borderRadius: RADIUS.pill,
+    borderWidth: 1.5,
+    borderColor: FK.line,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    minHeight: 42,
+    justifyContent: "center",
+  },
+  chipActive: { backgroundColor: FK.ink, borderColor: FK.ink },
+  chipText: { fontFamily: FONT.displayBold, fontSize: 15, color: FK.ink },
+  dateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: FK.moss,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1.5,
+    borderColor: FK.line,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+  },
+  dateText: { flex: 1, textAlign: "center", fontFamily: FONT.displayBold, fontSize: 17, color: FK.ink },
+  dateArrow: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+  photoButtons: { flexDirection: "row", gap: 10 },
+  photoBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: FK.moss,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1.5,
+    borderColor: FK.line,
+    paddingVertical: 14,
+  },
+  photoBtnText: { fontFamily: FONT.displayBold, fontSize: 15, color: FK.ink },
+  thumbWrap: { alignSelf: "flex-start", position: "relative" },
+  thumb: { width: 96, height: 96, borderRadius: RADIUS.sm },
+  removeThumb: {
+    position: "absolute",
+    top: -8,
+    right: -8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: FK.paper,
+    borderWidth: 1.5,
+    borderColor: FK.line,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  xpNote: { fontFamily: FONT.bodyBold, fontSize: 14, color: FK.muted, textAlign: "center", marginTop: 8 },
+});

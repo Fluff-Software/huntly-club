@@ -1,29 +1,34 @@
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { StyleSheet, View } from "react-native";
+import { FKLoading } from "@/components/fieldkit";
 import { useRouter, useSegments } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePurchases } from "@/contexts/PurchasesContext";
 import { useSignUpOptional } from "@/contexts/SignUpContext";
 import { useExploreAreaWarmup } from "@/hooks/useExploreAreaWarmup";
+import { useResetToTabs } from "@/hooks/useResetToTabs";
 import { getProfiles, getUserData } from "@/services/profileService";
 import type { Profile } from "@/services/profileService";
 import { REQUIRE_EMAIL_VERIFICATION } from "@/constants/auth";
-const LOADER_BACKGROUND = "#FFF8DC";
 
 function routeAfterSignupCheck(
   router: ReturnType<typeof useRouter>,
   profiles: Profile[],
-  userData: Awaited<ReturnType<typeof getUserData>>
+  userData: Awaited<ReturnType<typeof getUserData>>,
+  hasPendingSetup: boolean,
+  goToTabs: () => void
 ) {
-  if (profiles.length === 0) {
-    router.replace("/sign-up/players");
+  if (profiles.length === 0 || userData?.team == null) {
+    // A family that picked a team and booked a slot before creating the account
+    // only has the final save left.
+    if (hasPendingSetup) {
+      router.replace("/sign-up/finish");
+      return;
+    }
+    router.replace(profiles.length === 0 ? "/sign-up/players" : "/sign-up/team");
     return;
   }
-  if (userData?.team == null) {
-    router.replace("/sign-up/team");
-    return;
-  }
-  router.replace("/(tabs)");
+  goToTabs();
 }
 
 async function resolveSignupState(userId: string) {
@@ -31,7 +36,6 @@ async function resolveSignupState(userId: string) {
   const userData = await getUserData(userId);
   return { profiles, userData };
 }
-const LOADER_SPINNER = "#4F6F52";
 
 type AuthGuardProps = {
   children: React.ReactNode;
@@ -41,8 +45,29 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const { user, session, loading } = useAuth();
   const { hasAccess, isLoading: purchasesLoading } = usePurchases();
   const segments = useSegments();
-  const router = useRouter();
+  const rawRouter = useRouter();
+  // Auth state settles over several renders; don't fire the same redirect repeatedly
+  // (it can stack duplicate screens, e.g. two onboarding finish screens).
+  const lastReplaceRef = useRef<{ to: string; at: number } | null>(null);
+  const router = useMemo(
+    () =>
+      ({
+        ...rawRouter,
+        replace: (to: Parameters<typeof rawRouter.replace>[0]) => {
+          const key = typeof to === "string" ? to : JSON.stringify(to);
+          const last = lastReplaceRef.current;
+          if (last && last.to === key && Date.now() - last.at < 1500) return;
+          lastReplaceRef.current = { to: key, at: Date.now() };
+          rawRouter.replace(to);
+        },
+      }) as typeof rawRouter,
+    [rawRouter]
+  );
   const signUpContext = useSignUpOptional();
+  const resetToTabs = useResetToTabs();
+  const goToTabs = () => {
+    if (!resetToTabs()) router.replace("/(tabs)");
+  };
   const [checkingProfiles, setCheckingProfiles] = useState(true);
   const onTabs = segments[0] === "(tabs)";
 
@@ -63,6 +88,8 @@ export function AuthGuard({ children }: AuthGuardProps) {
     }
 
     if (loading) return;
+    // Wait for the saved onboarding draft so a returning parent lands on the right step.
+    if (user && signUpContext && !signUpContext.draftLoaded) return;
 
     if (!user && inUnauthFlow) {
       setCheckingProfiles(false);
@@ -91,7 +118,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
         setCheckingProfiles(true);
         resolveSignupState(user.id)
           .then(({ profiles, userData }) => {
-            routeAfterSignupCheck(router, profiles, userData);
+            routeAfterSignupCheck(router, profiles, userData, signUpContext?.hasPendingSetup ?? false, goToTabs);
           })
           .catch((error) => {
             console.error("Error checking profiles/user data:", error);
@@ -118,12 +145,8 @@ export function AuthGuard({ children }: AuthGuardProps) {
       setCheckingProfiles(true);
       resolveSignupState(user.id)
         .then(({ profiles, userData }) => {
-          if (profiles.length === 0) {
-            router.replace("/sign-up/players");
-            return;
-          }
-          if (userData?.team == null) {
-            router.replace("/sign-up/team");
+          if (profiles.length === 0 || userData?.team == null) {
+            routeAfterSignupCheck(router, profiles, userData, signUpContext?.hasPendingSetup ?? false, goToTabs);
             return;
           }
           // Require active subscription (or grandfathered access) for signed-in users
@@ -152,7 +175,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
     }
 
     setCheckingProfiles(false);
-  }, [user, session, loading, segments, hasAccess, purchasesLoading]);
+  }, [user, session, loading, segments, hasAccess, purchasesLoading, signUpContext?.draftLoaded, signUpContext?.hasPendingSetup]);
 
   // We still validate profiles/userData during normal navigation, but we don't want a blocking
   // full-screen spinner during tab switches. Keep the UI responsive and only block during
@@ -164,7 +187,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
       {children}
       {showOverlay && (
         <View style={styles.overlay} pointerEvents="auto">
-          <ActivityIndicator size="large" color={LOADER_SPINNER} />
+          <FKLoading />
         </View>
       )}
     </View>
@@ -175,16 +198,7 @@ const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
   },
-  fullScreenLoader: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#4F6F52",
-  },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: LOADER_BACKGROUND,
-    justifyContent: "center",
-    alignItems: "center",
   },
 });

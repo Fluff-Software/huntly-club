@@ -248,6 +248,57 @@ export async function uploadCampfireAudio(
   }
 }
 
+const CAMPFIRE_PODCAST_TYPES = [
+  ...CAMPFIRE_AUDIO_TYPES,
+  "audio/x-m4a",
+  "audio/mp4",
+  "audio/x-wav",
+];
+const CAMPFIRE_PODCAST_MAX_SIZE = 100 * 1024 * 1024;
+
+/**
+ * Podcast recordings are too big for a server-action body (6MB limit), so the
+ * browser uploads straight to storage with a signed URL minted here.
+ */
+export async function createCampfirePodcastUploadUrl(input: {
+  fileName: string;
+  contentType: string;
+  size: number;
+}): Promise<{
+  path?: string;
+  token?: string;
+  publicUrl?: string;
+  error?: string;
+}> {
+  if (!input.size) return { error: "No file provided" };
+  if (!CAMPFIRE_PODCAST_TYPES.includes(input.contentType)) {
+    return { error: "Invalid file type. Use MP3, M4A, WAV, OGG or AAC." };
+  }
+  if (input.size > CAMPFIRE_PODCAST_MAX_SIZE) {
+    return { error: "File too large. Maximum size is 100MB." };
+  }
+
+  try {
+    const supabase = createServerSupabaseClient();
+    const ext = input.fileName.split(".").pop()?.toLowerCase() || "mp3";
+    const path = `podcasts/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+    const { data, error } = await supabase.storage
+      .from("campfire-audio")
+      .createSignedUploadUrl(path);
+    if (error || !data) return { error: error?.message ?? "Upload failed" };
+
+    const { data: urlData } = supabase.storage
+      .from("campfire-audio")
+      .getPublicUrl(path);
+    return { path, token: data.token, publicUrl: urlData.publicUrl };
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Upload failed",
+    };
+  }
+}
+
 const CAMPFIRE_VIDEO_TYPES = [
   "video/mp4",
   "video/webm",

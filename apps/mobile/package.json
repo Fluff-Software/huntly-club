@@ -36,6 +36,8 @@
     }
   },
   "dependencies": {
+    "@expo-google-fonts/atkinson-hyperlegible-next": "^0.4.1",
+    "@expo-google-fonts/bricolage-grotesque": "^0.4.1",
     "@expo-google-fonts/comic-neue": "^0.4.1",
     "@expo-google-fonts/jua": "^0.4.1",
     "@expo/ui": "^55.0.15",

@@ -20,9 +20,9 @@ import { CampfireFullscreenVideo } from "./CampfireFullscreenVideo";
 import { CampfireOriginalVideoCard } from "./CampfireOriginalVideoCard";
 import { getVideoCardLayout } from "./campfireVideoLayout";
 
-const FONT_JUA = "Jua_400Regular";
-const FONT_BODY = "ComicNeue_400Regular";
-const FONT_BODY_BOLD = "ComicNeue_700Bold";
+const FONT_DISPLAY = "BricolageGrotesque_800ExtraBold";
+const FONT_BODY = "AtkinsonHyperlegibleNext_400Regular";
+const FONT_BODY_BOLD = "AtkinsonHyperlegibleNext_700Bold";
 
 const CLUB_CARD_AUTHOR_COLORS = [
   "#D4A05A",
@@ -326,7 +326,7 @@ export function CampfireStage({
                     textAlign: "center",
                     color: "#000",
                     flex: 1,
-                    fontFamily: FONT_JUA,
+                    fontFamily: FONT_DISPLAY,
                   }}
                 >
                   {mission.title}
@@ -376,7 +376,7 @@ export function CampfireStage({
                   justifyContent: "center",
                 }}
               >
-                <Text style={{ fontSize: s(16), color: "#FFF", fontFamily: FONT_JUA }}>
+                <Text style={{ fontSize: s(16), color: "#FFF", fontFamily: FONT_DISPLAY }}>
                   Start
                 </Text>
               </View>
@@ -449,7 +449,7 @@ export function CampfireStage({
                     borderRadius: s(20),
                     paddingHorizontal: s(5),
                     color: "#1a1a1a",
-                    fontFamily: FONT_JUA,
+                    fontFamily: FONT_DISPLAY,
                     overflow: "hidden",
                   }}
                 >
@@ -467,7 +467,7 @@ export function CampfireStage({
                     color: "#FFF",
                     borderRadius: s(20),
                     paddingHorizontal: s(5),
-                    fontFamily: FONT_JUA,
+                    fontFamily: FONT_DISPLAY,
                     overflow: "hidden",
                   }}
                 >

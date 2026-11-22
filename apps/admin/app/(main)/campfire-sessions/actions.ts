@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import {
   CAMPFIRE_COMPONENT_TYPES,
+  CAMPFIRE_FORMATS,
   CAMPFIRE_STATUSES,
   LAYER_DB_TYPE_PLACEHOLDER,
   defaultLayerSeedRows,
@@ -12,6 +13,8 @@ import {
   type ApprovedPhotoOption,
   type CampfireComponentRow,
   type CampfireComponentType,
+  type CampfireListenStats,
+  type CampfireSessionFormat,
   CAMPFIRE_SESSION_COLUMNS,
   type CampfireSessionRow,
   type CampfireSessionStatus,
@@ -78,6 +81,66 @@ export async function setCampfireSessionShowViewerCount(
 
   if (error) throw new Error(error.message);
   revalidateCampfire(sessionId);
+}
+
+const EMPTY_LISTEN_STATS: CampfireListenStats = {
+  opens: 0,
+  unique_users: 0,
+  plays: 0,
+  unique_listeners: 0,
+  completions: 0,
+  total_listened_ms: 0,
+  avg_listened_ms: 0,
+  avg_view_ms: 0,
+  last_opened_at: null,
+};
+
+/** Open / play / listen-time rollup for one session (from campfire_listens). */
+export async function getCampfireListenStats(
+  sessionId: number
+): Promise<CampfireListenStats> {
+  const supabase = createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("campfire_listen_stats")
+    .select(
+      "opens, unique_users, plays, unique_listeners, completions, total_listened_ms, avg_listened_ms, avg_view_ms, last_opened_at"
+    )
+    .eq("session_id", sessionId)
+    .maybeSingle();
+
+  if (error) {
+    // Table/view not migrated yet — show zeros rather than breaking the editor.
+    console.error("Failed to load campfire listen stats:", error.message);
+    return EMPTY_LISTEN_STATS;
+  }
+  if (!data) return EMPTY_LISTEN_STATS;
+  return {
+    ...EMPTY_LISTEN_STATS,
+    ...(data as Partial<CampfireListenStats>),
+    total_listened_ms: Number(data.total_listened_ms ?? 0),
+  };
+}
+
+/** Opens / plays per session for the sessions list. */
+export async function getCampfireListenStatsBySession(): Promise<
+  Record<number, { opens: number; plays: number }>
+> {
+  const supabase = createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("campfire_listen_stats")
+    .select("session_id, opens, plays");
+  if (error) {
+    console.error("Failed to load campfire listen stats:", error.message);
+    return {};
+  }
+  const out: Record<number, { opens: number; plays: number }> = {};
+  for (const row of data ?? []) {
+    out[row.session_id as number] = {
+      opens: Number(row.opens ?? 0),
+      plays: Number(row.plays ?? 0),
+    };
+  }
+  return out;
 }
 
 export async function getEditorData(sessionId: number): Promise<{
@@ -176,6 +239,11 @@ export async function createCampfireSession(
 ): Promise<CampfireFormState> {
   const title = (formData.get("title") as string)?.trim();
   if (!title) return { error: "Title is required" };
+  const formatRaw = (formData.get("format") as string | null) ?? "podcast";
+  if (!CAMPFIRE_FORMATS.includes(formatRaw as CampfireSessionFormat)) {
+    return { error: "Invalid format" };
+  }
+  const format = formatRaw as CampfireSessionFormat;
 
   const supabase = createServerSupabaseClient();
   const { data, error } = await supabase
@@ -184,6 +252,7 @@ export async function createCampfireSession(
       title,
       status: "draft",
       missions: [],
+      format,
     })
     .select("id")
     .single();
@@ -477,6 +546,9 @@ export async function persistCampfireEditorDraft(
       missions: draft.session.missions,
       description: draft.session.description,
       duration: draft.session.duration,
+      format: draft.session.format,
+      podcast_audio_url: draft.session.podcast_audio_url,
+      podcast_host: draft.session.podcast_host,
       ...(shouldClearLiveTimes
         ? { live_started_at: null, live_ended_at: null }
         : {}),

@@ -1,18 +1,21 @@
 /**
- * Full-screen Explore card detail — flip / spin the trading card.
+ * Full-screen Explore card detail: flip and spin the card, and swap spares
+ * for a new pack when there are enough.
  */
 import React from "react";
 import {
   Modal,
   Pressable,
   StyleSheet,
+  Text,
   View,
   useWindowDimensions,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ThemedText } from "@/components/ThemedText";
+import { FKButton } from "@/components/fieldkit";
+import { FK, FONT } from "@/constants/fieldKit";
 import { ExploreCardArt } from "@/components/explore/ExploreCardArt";
 import { ExploreCardFlip } from "@/components/explore/ExploreCardFlip";
 import { EXPLORE_CARD_ART_ASPECT, EXPLORE_RARITY_COLORS } from "@/constants/exploreBinder";
@@ -25,7 +28,7 @@ type Props = {
   onCloseComplete?: () => void;
   /** Provided only when trading is eligible for this card right now. */
   onTrade?: (card: BinderCardEntry) => void;
-  /** e.g. "Artistic Deer can trade 5 copies of this card for a new pack". */
+  /** Short line above the swap button, e.g. "Mia has spares of this card." */
   tradeLabel?: string;
 };
 
@@ -45,8 +48,11 @@ export function ExploreCardDetail({
     Number(card.count) > 0 ||
     Boolean(card.firstCollectedAt);
 
-  const cardWidth = Math.min(width * 0.88, 340);
-  const cardHeight = Math.min(height * 0.78, cardWidth / EXPLORE_CARD_ART_ASPECT);
+  const canTrade = Boolean(onTrade && tradeLabel);
+  // Leave room for the swap line and button under the card when they show.
+  const maxCardH = height * (canTrade ? 0.62 : 0.76);
+  const cardHeight = Math.min(maxCardH, Math.min(width * 0.86, 340) / EXPLORE_CARD_ART_ASPECT);
+  const cardWidth = cardHeight * EXPLORE_CARD_ART_ASPECT;
 
   function handleClose() {
     onClose();
@@ -64,9 +70,10 @@ export function ExploreCardDetail({
           onPress={handleClose}
           accessibilityRole="button"
           accessibilityLabel="Close card"
-          style={[styles.closeBtn, { top: insets.top + 10, right: 16 }]}
+          hitSlop={8}
+          style={[styles.closeBtn, { top: insets.top + 12, right: 20 }]}
         >
-          <MaterialIcons name="close" size={22} color="#FFF" />
+          <Ionicons name="close" size={26} color={FK.ink} />
         </Pressable>
 
         <View style={[styles.card, { width: cardWidth, height: cardHeight }]}>
@@ -99,31 +106,17 @@ export function ExploreCardDetail({
           </ExploreCardFlip>
         </View>
 
-        {onTrade && tradeLabel ? (
-          <Pressable
-            onPress={() => onTrade(card)}
-            accessibilityRole="button"
-            accessibilityLabel={`Trade 5 ${card.name} for a pack`}
-            style={[styles.tradeBanner, { maxWidth: cardWidth }]}
-          >
-            <View style={styles.tradeBannerContent}>
-              <MaterialIcons
-                name="swap-horiz"
-                size={20}
-                color="#B8F000"
-                style={styles.tradeBannerIcon}
-              />
-              <ThemedText
-                lightColor="#FFF"
-                darkColor="#FFF"
-                style={styles.tradeBannerText}
-                numberOfLines={2}
-              >
-                {tradeLabel}
-              </ThemedText>
-            </View>
-            <MaterialIcons name="chevron-right" size={26} color="#B8F000" />
-          </Pressable>
+        {canTrade && onTrade ? (
+          <View style={[styles.trade, { width: Math.max(cardWidth, 280) }]}>
+            <Text style={styles.tradeText}>{tradeLabel}</Text>
+            <FKButton
+              onDark
+              label="Swap 5 for a new pack"
+              icon="swap-horizontal"
+              onPress={() => onTrade(card)}
+              style={styles.tradeButton}
+            />
+          </View>
         ) : null}
       </GestureHandlerRootView>
     </Modal>
@@ -138,17 +131,17 @@ const styles = StyleSheet.create({
   },
   dim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.72)",
+    backgroundColor: "rgba(16,37,27,0.9)",
   },
   closeBtn: {
     position: "absolute",
     zIndex: 20,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.55)",
+    backgroundColor: FK.paper,
   },
   card: {
     borderRadius: 14,
@@ -159,28 +152,20 @@ const styles = StyleSheet.create({
   art: {
     borderRadius: 0,
   },
-  tradeBanner: {
-    marginTop: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 18,
-    backgroundColor: "rgba(20,24,20,0.92)",
-    borderWidth: 1,
-    borderColor: "rgba(184,240,0,0.35)",
+  trade: {
+    marginTop: 22,
+    alignItems: "stretch",
+    maxWidth: "88%",
   },
-  tradeBannerContent: {
-    flex: 1,
-    alignItems: "center",
-  },
-  tradeBannerIcon: {
-    marginBottom: 4,
-  },
-  tradeBannerText: {
-    fontSize: 13,
-    fontWeight: "700",
+  tradeText: {
+    fontFamily: FONT.bodyBold,
+    fontSize: 16,
+    lineHeight: 22,
+    color: FK.white,
     textAlign: "center",
+    marginBottom: 12,
+  },
+  tradeButton: {
+    paddingHorizontal: 20,
   },
 });

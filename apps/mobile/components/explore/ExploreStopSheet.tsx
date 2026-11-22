@@ -18,6 +18,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { ThemedText } from "@/components/ThemedText";
 import { closenessProgress, formatDistanceParts, warmthMessage } from "@/utils/exploreSheet";
+import { FK } from "@/constants/fieldKit";
 
 const SHEET_BG = "#FFF8E7";
 const INK = "#1F4D2B";
@@ -194,7 +195,7 @@ export function ExploreStopSheet({
                 accessibilityLabel="Enable location"
                 style={[styles.bigBtn, locationLoading && styles.btnDisabled]}
               >
-                <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.bigBtnText}>
+                <ThemedText lightColor={FK.sunbeam} darkColor={FK.sunbeam} style={styles.bigBtnText}>
                   {locationLoading ? "Finding you…" : "Turn on location"}
                 </ThemedText>
               </Pressable>
@@ -221,7 +222,7 @@ export function ExploreStopSheet({
                 style={[styles.bigBtn, claiming && styles.btnDisabled]}
               >
                 <MaterialIcons name="star" size={18} color="#FFF" />
-                <ThemedText lightColor="#FFF" darkColor="#FFF" style={styles.bigBtnText}>
+                <ThemedText lightColor={FK.sunbeam} darkColor={FK.sunbeam} style={styles.bigBtnText}>
                   {claiming
                     ? "Opening…"
                     : collectForEveryone
@@ -420,18 +421,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
   },
+  // Field kit primary button: forest pill with cream text, as on other light screens.
   bigBtn: {
     alignSelf: "stretch",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    marginTop: 4,
-    backgroundColor: ACCENT,
-    borderRadius: 15,
-    paddingVertical: 10,
-    borderBottomWidth: 4,
-    borderBottomColor: ACCENT_EDGE,
+    marginTop: 6,
+    backgroundColor: FK.forest,
+    borderRadius: 999,
+    paddingVertical: 15,
   },
   bigBtnText: {
     fontSize: 17,

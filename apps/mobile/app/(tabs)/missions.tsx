@@ -135,7 +135,6 @@ function BigMissionCard({ mission, done, onPress }: { mission: MissionActivityCa
           </View>
         ) : null}
         <View style={{ flex: 1 }} />
-        {mission.xp ? <FKChip label={`+${mission.xp} points`} dark style={{ alignSelf: "flex-start", marginBottom: 8 }} /> : null}
         <Text style={styles.bigTitle}>{mission.title}</Text>
         {mission.description ? (
           <Text style={styles.bigDesc} numberOfLines={2}>

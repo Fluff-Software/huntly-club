@@ -202,9 +202,7 @@ export default function IntroScreen() {
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
         <FKButton label="Accept the mission" variant="ink" onPress={handleAccept} testID="intro-accept" />
         <Text style={styles.footnote}>
-          {[activity.xp ? `+${activity.xp} for ${guide.teamName}` : null, steps ? `${steps} steps` : null]
-            .filter(Boolean)
-            .join(" · ")}
+          {steps ? `${steps} steps` : null}
         </Text>
       </View>
     </View>

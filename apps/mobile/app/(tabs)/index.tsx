@@ -276,7 +276,7 @@ export default function ClubhouseScreen() {
                 title={next.title}
                 image={next.image}
                 chips={chips}
-                points={next.xp ? `+${next.xp} for ${guide.teamName}` : null}
+                points={null}
                 onPress={openMission}
                 completed={next.completed}
               />

@@ -72,7 +72,7 @@ export function raceHeadline(race: Pick<TeamRace, "mine" | "myPlace" | "next" | 
   const tiedTop = rows.filter((r) => r.total === mine.total).length > 1 && myPlace === 1;
   if (tiedTop) return `The ${mine.guide.teamName} are level at the top`;
   if (myPlace === 1) return `The ${mine.guide.teamName} are in the lead`;
-  if (next) return `The ${mine.guide.teamName} are ${gapToNext.toLocaleString()} ${gapToNext === 1 ? "point" : "points"} behind the ${next.guide.teamName}`;
+  if (next) return `The ${mine.guide.teamName} are chasing the ${next.guide.teamName}`;
   return `The ${mine.guide.teamName} are in the race`;
 }
 

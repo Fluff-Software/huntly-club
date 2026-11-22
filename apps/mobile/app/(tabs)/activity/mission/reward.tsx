@@ -214,7 +214,6 @@ export default function RewardScreen() {
     setWeeklySaved(granted ? "Weekly adventure booked. See you then!" : "Saved. Turn on notifications to get the nudge.");
   };
 
-  const totalXp = achievements.length > 0 ? achievements.reduce((sum, a) => sum + (a.xp ?? 0), 0) : activityXp ?? 0;
   const names = achievements.length ? [...new Set(achievements.map((a) => a.profile_name))] : profiles.slice(0, 1).map((p) => p.name);
   const who = names.length === 1 ? names[0] : names.length > 1 ? "team" : "explorer";
   const offerWeekly = plan !== undefined && !(plan?.weeklyDays.length ?? 0) && !weeklySaved;
@@ -245,12 +244,12 @@ export default function RewardScreen() {
         <Animated.View entering={FadeInDown.duration(350).delay(300)} style={styles.statRow}>
           <View style={styles.statCard}>
             <View style={styles.statTop}>
-              <Text style={styles.statBig}>+{totalXp}</Text>
               <View style={[styles.statBadge, { backgroundColor: guide.colour }]}>
                 <Image source={guide.badge} style={{ width: 30, height: 30 }} contentFit="contain" />
               </View>
+              <Text style={styles.statNew}>Team</Text>
             </View>
-            <Text style={styles.statLabel}>Points for {guide.teamName}</Text>
+            <Text style={styles.statLabel}>Added to the {guide.teamName}' score</Text>
           </View>
           {badge ? (
             <Pressable style={styles.statCard} onPress={handleViewUnlockedBadge} accessibilityRole="button">
@@ -370,7 +369,6 @@ const styles = StyleSheet.create({
   statRow: { flexDirection: "row", gap: 12, marginTop: 18 },
   statCard: { flex: 1, backgroundColor: FK.paper, borderRadius: RADIUS.md, padding: 14, minHeight: 100 },
   statTop: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
-  statBig: { fontFamily: FONT.display, fontSize: 36, color: FK.ink, letterSpacing: -1 },
   statBadge: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   statNew: { fontFamily: FONT.display, fontSize: 20, color: FK.ink, flexShrink: 1 },
   statLabel: { fontFamily: FONT.displayBold, fontSize: 15, color: FK.muted },

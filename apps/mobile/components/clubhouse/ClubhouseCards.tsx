@@ -330,7 +330,6 @@ export function TeamRaceCard({ race, onPress }: { race: TeamRace; onPress: () =>
                     {r.guide.teamName}
                     {isMine ? "  ·  You" : ""}
                   </Text>
-                  <Text style={styles.racePts}>{r.total.toLocaleString()}</Text>
                 </View>
                 <View style={styles.raceTrack}>
                   <View
@@ -443,7 +442,7 @@ const styles = StyleSheet.create({
   planTitle: { fontFamily: FONT.display, fontSize: 16, color: FK.ink },
   planSub: { fontFamily: FONT.body, fontSize: 14, color: FK.muted, marginTop: 2 },
   planLink: { fontFamily: FONT.displayBold, fontSize: 15, color: FK.forest, textDecorationLine: "underline" },
-  hero: { ...PINNED, minHeight: 360, borderRadius: RADIUS.lg, padding: 20, marginBottom: 14, overflow: "hidden" },
+  hero: { ...PINNED, minHeight: 300, borderRadius: RADIUS.lg, padding: 20, marginBottom: 14, overflow: "hidden" },
   heroEyebrow: {
     alignSelf: "flex-start",
     flexDirection: "row",
@@ -530,7 +529,6 @@ const styles = StyleSheet.create({
   raceName: { fontFamily: FONT.display, fontSize: 16, color: FK.white },
   raceTrack: { height: 10, borderRadius: 5, backgroundColor: "rgba(255,255,255,0.12)", overflow: "hidden" },
   raceBar: { height: "100%", borderRadius: 5 },
-  racePts: { fontFamily: FONT.displayBold, fontSize: 15, color: FK.white },
   raceFooter: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 14, alignSelf: "flex-end" },
   raceFooterText: { fontFamily: FONT.display, fontSize: 15, color: FK.sunbeam },
 });

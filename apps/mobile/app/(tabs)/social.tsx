@@ -136,7 +136,6 @@ export default function TeamRaceScreen() {
                   />
                 </View>
                 <Text style={styles.podiumTeam}>{r.guide.teamName}</Text>
-                <Text style={styles.podiumPts}>{r.total.toLocaleString()}</Text>
                 <View
                   style={[
                     styles.podiumBlock,
@@ -172,8 +171,7 @@ export default function TeamRaceScreen() {
             <View style={{ flex: 1 }}>
               <Text style={TYPE.eyebrow}>YOUR FAMILY THIS MONTH</Text>
               <Text style={styles.familyPts}>
-                {race.familyPoints.toLocaleString()}{" "}
-                {race.familyPoints === 1 ? "point" : "points"}
+                {race.familyPoints === 0 ? "Not on the board yet" : `Helping the ${guide.teamName}`}
               </Text>
               <Text style={TYPE.bodySmall}>
                 {race.familyPoints === 0
@@ -204,8 +202,8 @@ export default function TeamRaceScreen() {
               {formatMonthYear(
                 race.lastMonthWinner.year,
                 race.lastMonthWinner.month,
-              )}{" "}
-              with {race.lastMonthWinner.total_xp.toLocaleString()} points.
+              )}
+              .
             </Text>
           </FKCard>
         ) : null}
@@ -243,7 +241,6 @@ export default function TeamRaceScreen() {
                   </Text>
                   <Text style={styles.momentTime}>{timeAgo(m.created_at)}</Text>
                 </View>
-                {m.xp ? <Text style={styles.momentPts}>+{m.xp}</Text> : null}
               </View>
             );
           })
@@ -308,12 +305,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: FK.ink,
     marginTop: 6,
-  },
-  podiumPts: {
-    fontFamily: FONT.displayBold,
-    fontSize: 14,
-    color: FK.muted,
-    marginBottom: 8,
   },
   podiumBlock: {
     width: "100%",
@@ -407,5 +398,4 @@ const styles = StyleSheet.create({
     color: FK.muted,
     marginTop: 2,
   },
-  momentPts: { fontFamily: FONT.display, fontSize: 16, color: FK.forest },
 });

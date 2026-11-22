@@ -18,7 +18,7 @@ export type ActivityMapRegion = {
   longitudeDelta: number;
 };
 
-export type ActivityMapMarkerIcon = "lock" | "check" | "pin";
+export type ActivityMapMarkerIcon = "lock" | "check" | "pin" | "card" | "collected";
 
 export type ActivityMapMarker = {
   id: string;
@@ -32,6 +32,7 @@ export type ActivityMapMarker = {
   /**
    * Optional glyph for stop markers.
    * `lock` = not yet collected, `check` = already collected.
+   * `card` / `collected` are the Explore pins: self-coloured, `color` is ignored.
    */
   icon?: ActivityMapMarkerIcon;
 };
@@ -60,6 +61,11 @@ export type ActivityMapProps = {
   /** Optional point markers (Explore debug / POI overlays). */
   markers?: ActivityMapMarker[];
   onMarkerPress?: (markerId: string) => void;
+  /**
+   * `soft` = a calm, muted base map with only nature points of interest, so
+   * game pins stand out (Explore). Defaults to the platform's standard map.
+   */
+  basemap?: "standard" | "soft";
 };
 
 export type ActivityMapRecenterOptions = {

@@ -1,33 +1,35 @@
 /**
- * Explore Card Binder — single scrolling grid of sleeve pockets.
+ * Explore card binder: whose cards, how many found, packs to open, then one
+ * scrolling grid of card pockets.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Image,
   Pressable,
+  ScrollView,
   StyleSheet,
+  Text,
   useWindowDimensions,
   View,
+  type LayoutChangeEvent,
 } from "react-native";
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { ThemedText } from "@/components/ThemedText";
+import { Ionicons } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { BinderCardPocket, fitBinderCardSize } from "@/components/explore/BinderCardPocket";
 import {
   BinderInteractionProvider,
   useBinderInteraction,
 } from "@/components/explore/BinderInteractionContext";
-import { BinderFiltersModal } from "@/components/explore/BinderFiltersModal";
-import { BinderPageSheet } from "@/components/explore/BinderPageSheet";
+import { BINDER_STATUS_LABELS, BinderFiltersModal } from "@/components/explore/BinderFiltersModal";
 import { ExploreCardDetail } from "@/components/explore/ExploreCardDetail";
 import { ExploreCardPackReveal } from "@/components/explore/ExploreCardPackReveal";
+import { FKButton, FKCard, FKLoading, FKPageHeader } from "@/components/fieldkit";
+import { FK, FONT, RADIUS, TYPE } from "@/constants/fieldKit";
 import {
-  EXPLORE_BINDER_SCREEN_BG,
   EXPLORE_CARD_ART_ASPECT,
   EXPLORE_PACK_ART_BY_SOURCE,
 } from "@/constants/exploreBinder";
@@ -41,9 +43,12 @@ import {
   openExplorePack,
   tradeExploreCards,
 } from "@/services/exploreStopsService";
+import { familyHeading, familySentence } from "@/utils/familyNames";
 import { newIdempotencyKey } from "@/utils/idempotency";
 import type { ExploreAward } from "@/types/exploreStops";
 import {
+  BINDER_FILTERS,
+  BINDER_SORT_OPTIONS,
   binderFiltersAreActive,
   completionPercent,
   filterBinderCardsFull,
@@ -55,9 +60,8 @@ import {
   type BinderStatusFilter,
 } from "@/utils/exploreBinder";
 
-const H_PAD = 12;
-const GRID_GAP = 4;
-const INNER_PAD = 8;
+const H_PAD = 20;
+const GRID_GAP = 10;
 const COLUMNS = 3;
 
 const DEFAULT_CATEGORY: BinderCategoryFilter = "all";
@@ -85,14 +89,14 @@ function BinderGridRow({ row, columns, cardW, cardH, onOpenCard }: BinderGridRow
   const { pulledId, highlightId } = useBinderInteraction();
   const rowPulled = row.some((c) => pulledId === c.id);
   return (
-    <View style={[styles.pageRow, { height: cardH }, rowPulled && { zIndex: 20 }]}>
+    <View style={[styles.pageRow, { height: cardH }, rowPulled ? styles.raised : null]}>
       {row.map((card) => (
         <View
           key={card.id}
           style={[
             styles.cell,
             { width: cardW, height: cardH },
-            pulledId === card.id && { zIndex: 20 },
+            pulledId === card.id ? styles.raised : null,
           ]}
         >
           <BinderCardPocket
@@ -116,7 +120,6 @@ function BinderGridRow({ row, columns, cardW, cardH, onOpenCard }: BinderGridRow
 
 export default function ExploreCollectionScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { width: windowW } = useWindowDimensions();
   const { profileId: profileIdParam, highlightCardId, mode } = useLocalSearchParams<{
     profileId?: string;
@@ -172,21 +175,22 @@ export default function ExploreCollectionScreen() {
   >(new Map());
 
   const listRef = useRef<FlatList<BinderCardEntry[]>>(null);
+  /** Height of the list header (title, explorers, packs), for scroll maths. */
+  const [headerH, setHeaderH] = useState(0);
 
-  const pageWidth = Math.max(0, windowW - H_PAD * 2);
-  const gridWidth = Math.max(0, pageWidth - INNER_PAD * 2);
+  const gridWidth = Math.max(0, windowW - H_PAD * 2);
   const cellW = gridWidth > 0 ? (gridWidth - GRID_GAP * (COLUMNS - 1)) / COLUMNS : 0;
   const cardSize = fitBinderCardSize(cellW, cellW / EXPLORE_CARD_ART_ASPECT);
   const rowStride = cardSize.h + GRID_GAP;
 
+  // Whose binder is chosen on the screen itself, so reset only clears the
+  // sort and filter sheet's own options.
   const resetFilters = useCallback(() => {
     setCategory(DEFAULT_CATEGORY);
     setStatus(DEFAULT_STATUS);
     setSort(DEFAULT_SORT);
-    profileChosenByUserRef.current = false;
-    setSelectedProfileId(defaultProfileId);
     listRef.current?.scrollToOffset({ offset: 0, animated: false });
-  }, [defaultProfileId]);
+  }, []);
 
   // Follow the requested / default player until the user picks one themselves,
   // and fall back if the chosen profile is no longer in the household.
@@ -203,7 +207,7 @@ export default function ExploreCollectionScreen() {
   const load = useCallback(
     async (opts?: { soft?: boolean }) => {
       if (!session) {
-        setError("Sign in to open the Card Binder.");
+        setError("Sign in to see the card binder.");
         setCards([]);
         setLoading(false);
         return;
@@ -217,7 +221,7 @@ export default function ExploreCollectionScreen() {
           setLoading(true);
           return;
         }
-        setError("Create a player profile to view cards.");
+        setError("Add an explorer to start collecting cards.");
         setCards([]);
         setLoading(false);
         return;
@@ -345,7 +349,7 @@ export default function ExploreCollectionScreen() {
             exploreUserMessage(err.exploreError.code, err.exploreError.message)
           );
         } else {
-          setError("Couldn’t load your binder. Please try again.");
+          setError("We couldn’t load the binder. Check your connection and try again.");
         }
       } finally {
         setLoading(false);
@@ -431,21 +435,33 @@ export default function ExploreCollectionScreen() {
   const rows = useMemo(() => groupIntoRows(filtered, COLUMNS), [filtered]);
 
   const filtersActive = binderFiltersAreActive(category, status, sort);
-  const profileChangedFromDefault =
-    showProfilePicker && selectedProfileId !== defaultProfileId;
-  const showFilterBadge = filtersActive || profileChangedFromDefault;
+
+  /** Plain summary of active sort/filter choices, e.g. "Animals, Still to find". */
+  const filterSummary = useMemo(() => {
+    const parts: string[] = [];
+    if (status !== DEFAULT_STATUS) parts.push(BINDER_STATUS_LABELS[status]);
+    if (category !== DEFAULT_CATEGORY) {
+      const label = BINDER_FILTERS.find((f) => f.id === category)?.label;
+      if (label) parts.push(label);
+    }
+    if (sort !== DEFAULT_SORT) {
+      const label = BINDER_SORT_OPTIONS.find((f) => f.id === sort)?.label;
+      if (label) parts.push(label);
+    }
+    return parts.join(", ");
+  }, [category, status, sort]);
 
   const overallUnique = uniqueCollectedCount(cards);
   const overallTotal = cards.length;
   const overallCopies = totalCopyCount(cards);
   const overallPct = completionPercent(overallUnique, overallTotal);
 
-  /** Whose binder is on screen — only when a specific player is selected. */
+  /** Whose binder is on screen, for the eyebrow above the title. */
   const scopeLabel = useMemo(() => {
-    if (profiles.length <= 1 || selectedProfileId == null) return null;
+    if (profiles.length === 0) return undefined;
+    if (selectedProfileId == null) return familyHeading(profiles.map(profileName));
     const profile = profiles.find((p) => p.id === selectedProfileId);
-    if (!profile) return null;
-    return profile.nickname || profile.name;
+    return profile ? profileName(profile) || undefined : undefined;
   }, [profiles, selectedProfileId]);
 
   useEffect(() => {
@@ -461,7 +477,7 @@ export default function ExploreCollectionScreen() {
     if (idx < 0) return;
 
     const row = Math.floor(idx / COLUMNS);
-    const y = 14 + row * rowStride;
+    const y = headerH + row * rowStride;
     requestAnimationFrame(() => {
       listRef.current?.scrollToOffset({ offset: Math.max(0, y - 8), animated: true });
     });
@@ -472,7 +488,7 @@ export default function ExploreCollectionScreen() {
     }
     const t = setTimeout(() => setHighlightId(null), 2500);
     return () => clearTimeout(t);
-  }, [highlightId, filtered, rowStride]);
+  }, [highlightId, filtered, rowStride, headerH]);
 
   function openCard(card: BinderCardEntry) {
     setPulledId(card.id);
@@ -514,7 +530,7 @@ export default function ExploreCollectionScreen() {
         return;
       }
       Alert.alert(
-        "Couldn’t start trade",
+        "Couldn’t swap these cards",
         !result.success
           ? exploreUserMessage(result.error, "Please try again.")
           : "Please try again."
@@ -524,12 +540,12 @@ export default function ExploreCollectionScreen() {
         err instanceof ExploreStopsRequestError
           ? exploreUserMessage(err.exploreError.code, err.exploreError.message)
           : "Please try again.";
-      Alert.alert("Couldn’t start trade", message);
+      Alert.alert("Couldn’t swap these cards", message);
     }
   }
 
   const TRADE_EXPLAINER =
-    "Trade 5 copies for a brand-new pack with better odds of a rare card. Guaranteed: you won't get this card back. This can't be undone.";
+    "You’ll get a new pack with a better chance of a rare card. It won’t have this card in it. A swap can’t be undone.";
 
   function handleTrade(card: BinderCardEntry) {
     const candidates = tradeCandidatesFor(card);
@@ -539,21 +555,21 @@ export default function ExploreCollectionScreen() {
       const only = candidates[0]!;
       // In a single-profile view it's obviously "you"; only name the
       // player when viewing the merged "All players" binder.
-      const who = viewingAllProfiles ? ` for ${only.name || "this player"}` : "";
-      Alert.alert(`Trade 5 ${card.name}${who}?`, TRADE_EXPLAINER, [
+      const who = viewingAllProfiles && only.name ? ` from ${only.name}` : "";
+      Alert.alert(`Swap 5 ${card.name} cards${who}?`, TRADE_EXPLAINER, [
         { text: "Cancel", style: "cancel" },
-        { text: "Trade", onPress: () => void startTrade(card, only.profileId) },
+        { text: "Swap", onPress: () => void startTrade(card, only.profileId) },
       ]);
       return;
     }
 
     // More than one player has 6+ copies — ask which one is trading.
     Alert.alert(
-      `Trade 5 ${card.name}?`,
-      `${TRADE_EXPLAINER}\n\nWhose copies are trading?`,
+      `Swap 5 ${card.name} cards?`,
+      `${TRADE_EXPLAINER}\n\nWhose cards are we swapping?`,
       [
         ...candidates.map((c) => ({
-          text: c.name || "Player",
+          text: c.name || "Explorer",
           onPress: () => void startTrade(card, c.profileId),
         })),
         { text: "Cancel", style: "cancel" as const },
@@ -563,7 +579,7 @@ export default function ExploreCollectionScreen() {
 
   const commitTradeClaim = useCallback(async (): Promise<ExploreAward> => {
     if (!tradeSession) {
-      throw new Error("Trade session expired. Try again from the binder.");
+      throw new Error("That swap timed out. Try again from the binder.");
     }
     try {
       const result = await openExplorePack(tradeSession.packId);
@@ -604,152 +620,222 @@ export default function ExploreCollectionScreen() {
     listRef.current?.scrollToOffset({ offset: 0, animated: false });
   }
 
-  return (
-    <>
-      <StatusBar style="light" />
-      <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-        <View style={styles.listHeader}>
-          <View style={styles.header}>
-            <Pressable
-              onPress={() => router.back()}
-              accessibilityRole="button"
-              accessibilityLabel="Go back"
-              style={styles.iconBtn}
-            >
-              <MaterialIcons name="arrow-back" size={22} color="#FFF" />
-            </Pressable>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <ThemedText type="heading" lightColor="#FFF" darkColor="#FFF" style={styles.title}>
-                Card Binder
-              </ThemedText>
-              <ThemedText
-                lightColor="rgba(255,255,255,0.75)"
-                darkColor="rgba(255,255,255,0.75)"
-                style={styles.subtitle}
-              >
-                {overallTotal > 0
-                  ? [
-                      scopeLabel,
-                      overallCopies > overallUnique
-                        ? `${overallUnique} of ${overallTotal} found · ${overallCopies} cards in total`
-                        : `${overallUnique} of ${overallTotal} found`,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")
-                  : loading
-                    ? "Loading…"
-                    : "No cards"}
-              </ThemedText>
-            </View>
-            {bankedPackCount > 0 ? (
-              <Pressable
-                onPress={openPacksInventory}
-                accessibilityRole="button"
-                accessibilityLabel={`${bankedPackCount} pack${bankedPackCount === 1 ? "" : "s"} waiting — Open`}
-                style={styles.iconBtn}
-              >
-                <MaterialCommunityIcons name="cards" size={20} color="#B8F000" />
-                <View style={styles.packCountBadge}>
-                  <ThemedText lightColor="#132414" darkColor="#132414" style={styles.packCountText}>
-                    {bankedPackCount}
-                  </ThemedText>
-                </View>
-              </Pressable>
-            ) : null}
-            <Pressable
-              onPress={() => setFiltersOpen(true)}
-              accessibilityRole="button"
-              accessibilityLabel="Open filters"
-              style={styles.iconBtn}
-            >
-              <MaterialIcons name="tune" size={22} color="#FFF" />
-              {showFilterBadge ? <View style={styles.filterDot} /> : null}
-            </Pressable>
+  function goBack() {
+    if (router.canGoBack()) router.back();
+    else router.navigate("/(tabs)/me");
+  }
+
+  function selectProfile(id: number | null) {
+    profileChosenByUserRef.current = true;
+    setSelectedProfileId(id);
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }
+
+  function onHeaderLayout(e: LayoutChangeEvent) {
+    const h = Math.round(e.nativeEvent.layout.height);
+    if (h !== headerH) setHeaderH(h);
+  }
+
+  const tradeLabel = (() => {
+    if (!selected) return undefined;
+    const candidates = tradeCandidatesFor(selected);
+    if (candidates.length === 0) return undefined;
+    if (!viewingAllProfiles) return "You have spares of this card.";
+    const names = candidates.map((c) => c.name).filter(Boolean);
+    if (names.length === 0) return "There are spares of this card.";
+    return `${familySentence(names)} ${names.length === 1 ? "has" : "have"} spares of this card.`;
+  })();
+
+  const filterButton = (
+    <Pressable
+      onPress={() => setFiltersOpen(true)}
+      accessibilityRole="button"
+      accessibilityLabel={filtersActive ? "Sort and filter, some filters on" : "Sort and filter"}
+      hitSlop={8}
+      style={styles.roundBtn}
+    >
+      <Ionicons name="options-outline" size={24} color={FK.ink} />
+      {filtersActive ? <View style={styles.filterDot} /> : null}
+    </Pressable>
+  );
+
+  const pageHeader = (
+    <FKPageHeader title="Card binder" eyebrow={scopeLabel} onBack={goBack} right={filterButton} />
+  );
+
+  if (loading && cards.length === 0) {
+    return (
+      <>
+        <StatusBar style="dark" />
+        <Stack.Screen options={{ headerShown: false }} />
+        <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+          <View style={styles.loadingHeader}>
+            <FKPageHeader title="Card binder" onBack={goBack} />
           </View>
+          <View style={styles.loadingBody}>
+            <FKLoading line="Opening the binder" />
+          </View>
+        </SafeAreaView>
+      </>
+    );
+  }
 
-          {overallTotal > 0 ? (
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${overallPct}%` }]} />
-            </View>
-          ) : null}
+  const listHeader = (
+    <View onLayout={onHeaderLayout} style={styles.listHeader}>
+      {pageHeader}
 
-          {error ? (
-            <View style={styles.errorBox}>
-              <ThemedText lightColor="#FFD8D8" darkColor="#FFD8D8" style={{ textAlign: "center" }}>
-                {error}
-              </ThemedText>
-              <Pressable onPress={() => void load()} style={[styles.retryBtn, { marginTop: 8 }]}>
-                <ThemedText lightColor="#FFF" darkColor="#FFF">
-                  Retry
-                </ThemedText>
-              </Pressable>
-            </View>
+      {overallTotal > 0 ? (
+        <View style={styles.progress}>
+          <Text style={styles.progressLine}>
+            <Text style={styles.progressCount}>
+              {overallUnique} of {overallTotal}
+            </Text>
+            {" cards found"}
+          </Text>
+          <View
+            style={styles.track}
+            accessible
+            accessibilityLabel={`${overallPct} percent of the binder found`}
+          >
+            <View style={[styles.fill, { width: `${overallPct}%` }]} />
+          </View>
+          {overallCopies > overallUnique ? (
+            <Text style={styles.copiesLine}>{overallCopies} cards in all, counting spares</Text>
           ) : null}
         </View>
+      ) : null}
 
-        {loading && cards.length === 0 ? (
-          <View style={styles.center}>
-            <ActivityIndicator color="#FFF" />
+      {showProfilePicker ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.explorerRow}
+          style={styles.explorerScroll}
+        >
+          <ExplorerChip
+            label="Everyone"
+            selected={selectedProfileId == null}
+            onPress={() => selectProfile(null)}
+            a11y="Show everyone’s cards"
+          />
+          {profiles.map((p) => {
+            const name = profileName(p) || "Explorer";
+            return (
+              <ExplorerChip
+                key={p.id}
+                label={name}
+                selected={selectedProfileId === p.id}
+                onPress={() => selectProfile(p.id)}
+                a11y={`Show ${name}’s cards`}
+              />
+            );
+          })}
+        </ScrollView>
+      ) : null}
+
+      {bankedPackCount > 0 ? (
+        <Pressable
+          onPress={openPacksInventory}
+          accessibilityRole="button"
+          accessibilityLabel={`Open ${bankedPackCount} ${bankedPackCount === 1 ? "pack" : "packs"}`}
+          style={styles.packsCard}
+        >
+          <Image
+            source={EXPLORE_PACK_ART_BY_SOURCE.stop_claim}
+            style={styles.packsArt}
+            resizeMode="contain"
+          />
+          <View style={styles.packsTextWrap}>
+            <Text style={styles.packsTitle}>
+              {bankedPackCount} {bankedPackCount === 1 ? "pack" : "packs"} to open
+            </Text>
+            <Text style={styles.packsSub}>See what’s inside</Text>
           </View>
-        ) : filtered.length === 0 && !loading && !error ? (
-          <ThemedText
-            lightColor="rgba(255,255,255,0.7)"
-            darkColor="rgba(255,255,255,0.7)"
-            style={{ textAlign: "center", marginTop: 24 }}
-          >
-            No cards match these filters.
-          </ThemedText>
-        ) : (
-          <View style={styles.pageWrap}>
-            <BinderInteractionProvider pulledId={pulledId} highlightId={highlightId}>
-              <BinderPageSheet style={styles.sheet}>
-                {cardSize.w > 0 ? (
-                  <FlatList
-                    ref={listRef}
-                    data={rows}
-                    keyExtractor={(_, index) => `row-${index}`}
-                    renderItem={({ item }) => (
-                      <BinderGridRow
-                        row={item}
-                        columns={COLUMNS}
-                        cardW={cardSize.w}
-                        cardH={cardSize.h}
-                        onOpenCard={openCard}
-                      />
-                    )}
-                    getItemLayout={(_, index) => ({
-                      length: rowStride,
-                      offset: rowStride * index,
-                      index,
-                    })}
-                    ItemSeparatorComponent={() => <View style={{ height: GRID_GAP }} />}
-                    contentContainerStyle={{
-                      paddingTop: 2,
-                      paddingBottom: 28 + insets.bottom,
-                    }}
-                    showsVerticalScrollIndicator={false}
-                    initialNumToRender={8}
-                    removeClippedSubviews
-                  />
-                ) : null}
-              </BinderPageSheet>
-            </BinderInteractionProvider>
+          <View style={styles.packsArrow}>
+            <Ionicons name="arrow-forward" size={22} color={FK.sunbeam} />
           </View>
-        )}
+        </Pressable>
+      ) : null}
+
+      {filtersActive ? (
+        <View style={styles.filterRow}>
+          <Text style={styles.filterText} numberOfLines={2}>
+            Showing: {filterSummary}
+          </Text>
+          <FKButton label="Clear" variant="link" onPress={resetFilters} style={styles.clearLink} />
+        </View>
+      ) : null}
+
+      {error ? (
+        <FKCard style={styles.messageCard}>
+          <Text style={TYPE.body}>{error}</Text>
+          <FKButton
+            label="Try again"
+            variant="ink"
+            icon="refresh"
+            onPress={() => void load()}
+            style={styles.messageButton}
+          />
+        </FKCard>
+      ) : null}
+    </View>
+  );
+
+  const emptyState =
+    error || loading ? null : (
+      <FKCard style={styles.messageCard}>
+        <Text style={TYPE.heading}>
+          {filtersActive ? "No cards match" : "No cards to show yet"}
+        </Text>
+        <Text style={[TYPE.bodySmall, styles.messageBody]}>
+          {filtersActive
+            ? "Try a different filter to see more of the binder."
+            : "Cards turn up at Explore stops on the map."}
+        </Text>
+        {filtersActive ? (
+          <FKButton label="Clear filters" variant="link" onPress={resetFilters} style={styles.clearLinkLeft} />
+        ) : null}
+      </FKCard>
+    );
+
+  return (
+    <>
+      <StatusBar style="dark" />
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+        <BinderInteractionProvider pulledId={pulledId} highlightId={highlightId}>
+          <FlatList
+            ref={listRef}
+            data={cardSize.w > 0 ? rows : []}
+            keyExtractor={(_, index) => `row-${index}`}
+            renderItem={({ item }) => (
+              <BinderGridRow
+                row={item}
+                columns={COLUMNS}
+                cardW={cardSize.w}
+                cardH={cardSize.h}
+                onOpenCard={openCard}
+              />
+            )}
+            getItemLayout={(_, index) => ({
+              length: rowStride,
+              offset: headerH + rowStride * index,
+              index,
+            })}
+            ListHeaderComponent={listHeader}
+            ListEmptyComponent={emptyState}
+            ItemSeparatorComponent={RowGap}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            initialNumToRender={8}
+            removeClippedSubviews
+          />
+        </BinderInteractionProvider>
 
         <BinderFiltersModal
           visible={filtersOpen}
           onClose={() => setFiltersOpen(false)}
           onReset={resetFilters}
-          profiles={profiles}
-          showProfilePicker={showProfilePicker}
-          selectedProfileId={selectedProfileId}
-          onSelectProfile={(id) => {
-            profileChosenByUserRef.current = true;
-            setSelectedProfileId(id);
-            listRef.current?.scrollToOffset({ offset: 0, animated: false });
-          }}
           category={category}
           onSelectCategory={applyCategory}
           status={status}
@@ -761,24 +847,8 @@ export default function ExploreCollectionScreen() {
         <ExploreCardDetail
           card={selected}
           onClose={closeDetail}
-          onTrade={
-            selected && tradeCandidatesFor(selected).length > 0 ? handleTrade : undefined
-          }
-          tradeLabel={
-            selected
-              ? (() => {
-                  const candidates = tradeCandidatesFor(selected);
-                  if (candidates.length === 0) return undefined;
-                  if (!viewingAllProfiles) {
-                    return "You can trade 5 copies of this card for a new pack";
-                  }
-                  if (candidates.length === 1) {
-                    return `${candidates[0]!.name || "This player"} can trade 5 copies of this card for a new pack`;
-                  }
-                  return "Trade 5 copies of this card for a new pack";
-                })()
-              : undefined
-          }
+          onTrade={tradeLabel ? handleTrade : undefined}
+          tradeLabel={tradeLabel}
         />
 
         {tradeSession ? (
@@ -789,7 +859,7 @@ export default function ExploreCollectionScreen() {
             onClose={() => {
               setTradeSession(null);
               // Closing without ripping leaves the pack banked -- refresh
-              // so the pack badge picks it up immediately.
+              // so the packs card picks it up immediately.
               void refreshBankedPacks();
             }}
             onViewBinder={(award) => {
@@ -798,93 +868,138 @@ export default function ExploreCollectionScreen() {
             }}
           />
         ) : null}
-
       </SafeAreaView>
     </>
   );
 }
 
+function RowGap() {
+  return <View style={styles.rowGap} />;
+}
+
+function profileName(p: { name: string; nickname?: string | null }): string {
+  // Families know their children by name; nicknames are for other families.
+  return (p.name || p.nickname || "").trim();
+}
+
+function ExplorerChip({
+  label,
+  selected,
+  onPress,
+  a11y,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+  a11y: string;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={a11y}
+      accessibilityState={{ selected }}
+      style={[styles.explorerChip, selected ? styles.explorerChipOn : null]}
+    >
+      <Text style={[styles.explorerChipText, selected ? styles.explorerChipTextOn : null]} numberOfLines={1}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: EXPLORE_BINDER_SCREEN_BG },
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  listHeader: { paddingBottom: 8 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 12,
-    paddingBottom: 8,
-  },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  safe: { flex: 1, backgroundColor: FK.moss },
+  loadingHeader: { paddingHorizontal: H_PAD, paddingTop: 12 },
+  loadingBody: { flex: 1 },
+  listContent: { paddingHorizontal: H_PAD, paddingBottom: 24 },
+  listHeader: { paddingTop: 12, paddingBottom: 18 },
+  roundBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: FK.paper,
   },
   filterDot: {
     position: "absolute",
-    top: 8,
-    right: 8,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#62A94F",
+    top: 9,
+    right: 9,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: FK.ember,
+    borderWidth: 2,
+    borderColor: FK.paper,
   },
-  packCountBadge: {
-    position: "absolute",
-    top: -4,
-    right: -4,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    paddingHorizontal: 4,
+  progress: { marginTop: -4 },
+  progressLine: { fontFamily: FONT.body, fontSize: 17, lineHeight: 24, color: FK.muted },
+  progressCount: { fontFamily: FONT.display, fontSize: 20, color: FK.ink },
+  track: {
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: FK.line,
+    overflow: "hidden",
+    marginTop: 8,
+  },
+  fill: { height: "100%", borderRadius: 5, backgroundColor: FK.forest },
+  copiesLine: { ...TYPE.bodySmall, marginTop: 8 },
+  explorerScroll: { marginTop: 18, marginHorizontal: -H_PAD },
+  explorerRow: { gap: 8, paddingHorizontal: H_PAD },
+  explorerChip: {
+    minHeight: 48,
+    justifyContent: "center",
+    paddingHorizontal: 18,
+    borderRadius: RADIUS.pill,
+    backgroundColor: FK.paper,
+    borderWidth: 1.5,
+    borderColor: FK.line,
+  },
+  explorerChipOn: { backgroundColor: FK.ink, borderColor: FK.ink },
+  explorerChipText: { fontFamily: FONT.displayBold, fontSize: 17, color: FK.ink },
+  explorerChipTextOn: { color: FK.white },
+  packsCard: {
+    marginTop: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    minHeight: 84,
+    paddingVertical: 10,
+    paddingLeft: 14,
+    paddingRight: 14,
+    borderRadius: RADIUS.lg,
+    backgroundColor: FK.sunbeam,
+  },
+  packsArt: { width: 36, height: 64 },
+  packsTextWrap: { flex: 1, minWidth: 0 },
+  packsTitle: { ...TYPE.heading },
+  packsSub: { fontFamily: FONT.body, fontSize: 15, lineHeight: 20, color: FK.ink, marginTop: 2 },
+  packsArrow: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#B8F000",
-    borderWidth: 1,
-    borderColor: EXPLORE_BINDER_SCREEN_BG,
+    backgroundColor: FK.ink,
   },
-  packCountText: {
-    fontSize: 11,
-    fontWeight: "800",
-    lineHeight: 14,
+  filterRow: {
+    marginTop: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
-  title: { fontSize: 22, lineHeight: 26 },
-  subtitle: { fontSize: 12, marginTop: 2 },
-  progressTrack: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "rgba(255,255,255,0.12)",
-    overflow: "hidden",
-    marginHorizontal: 12,
-    marginBottom: 10,
-  },
-  progressFill: {
-    height: "100%",
-    borderRadius: 3,
-    backgroundColor: "#62A94F",
-  },
-  retryBtn: {
-    backgroundColor: "#62A94F",
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  errorBox: { paddingHorizontal: 16, paddingVertical: 8, alignItems: "center" },
-  pageWrap: {
-    flex: 1,
-    paddingHorizontal: H_PAD,
-  },
-  sheet: {
-    width: "100%",
-    borderRadius: 12,
-    overflow: "visible",
-  },
+  filterText: { flex: 1, fontFamily: FONT.bodyBold, fontSize: 15, lineHeight: 20, color: FK.muted },
+  clearLink: { alignSelf: "auto", paddingVertical: 8 },
+  clearLinkLeft: { alignSelf: "flex-start", marginTop: 4 },
+  messageCard: { marginTop: 18 },
+  messageBody: { marginTop: 6 },
+  messageButton: { marginTop: 16 },
+  rowGap: { height: GRID_GAP },
+  raised: { zIndex: 20 },
   pageRow: {
     flexDirection: "row",
-    gap: GRID_GAP,
+    justifyContent: "space-between",
     overflow: "visible",
   },
   cell: {

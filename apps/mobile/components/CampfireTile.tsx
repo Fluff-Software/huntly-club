@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { View, ImageBackground, Pressable } from "react-native";
+import { View, ImageBackground, Pressable, type StyleProp, type ViewStyle } from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -46,11 +46,14 @@ type CampfireTileProps = {
   /** When true, parent handles entrance; tile reports readiness via onReadyChange. */
   coordinatedEntrance?: boolean;
   onReadyChange?: (ready: boolean) => void;
+  /** Applied to the tile's outer wrapper (e.g. spacing in the parent list). Not applied when there's nothing to show. */
+  style?: StyleProp<ViewStyle>;
 };
 
 export function CampfireTile({
   coordinatedEntrance = false,
   onReadyChange,
+  style,
 }: CampfireTileProps) {
   const { scaleW } = useLayoutScale();
   const { pushWithReturn } = useNavigationReturn();
@@ -189,7 +192,7 @@ export function CampfireTile({
   );
 
   if (!statusReady) {
-    return <View style={{ minHeight: scaleW(150) }} />;
+    return <View style={[{ minHeight: scaleW(150) }, style]} />;
   }
 
   // Nothing live or scheduled, and no past session to replay — there's nothing to show.
@@ -552,8 +555,8 @@ export function CampfireTile({
   );
 
   if (coordinatedEntrance) {
-    return tileContent;
+    return style ? <View style={style}>{tileContent}</View> : tileContent;
   }
 
-  return <Animated.View style={tileSlideStyle}>{tileContent}</Animated.View>;
+  return <Animated.View style={[tileSlideStyle, style]}>{tileContent}</Animated.View>;
 }

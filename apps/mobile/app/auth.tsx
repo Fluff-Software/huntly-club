@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
+  BackHandler,
   View,
   Image,
   Pressable,
@@ -53,6 +54,17 @@ export default function AuthScreen() {
     if (params.mode === "signup") setMode(AuthScreenMode.SIGNUP);
     if (params.mode === "login") setMode(AuthScreenMode.LOGIN);
   }, [params.mode]);
+
+  // Welcome, sign in and sign up are states of this one screen, so Android's back
+  // button had nothing to go back to and closed the app. Step back to Welcome.
+  useEffect(() => {
+    if (mode === AuthScreenMode.WELCOME) return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      setMode(AuthScreenMode.WELCOME);
+      return true;
+    });
+    return () => sub.remove();
+  }, [mode]);
 
   if (mode === AuthScreenMode.LOGIN) {
     return (

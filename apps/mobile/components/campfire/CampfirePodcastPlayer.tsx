@@ -22,6 +22,7 @@ import {
   useAudioPlayer,
   useAudioPlayerStatus,
 } from "expo-audio";
+import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { FK, FONT } from "@/constants/fieldKit";
 import { DEFAULT_PODCAST_HOST } from "@/services/campfireService";
 import type { CampfireListenTracker } from "@/hooks/useCampfireListenTracking";
@@ -29,6 +30,7 @@ import type { CampfireListenTracker } from "@/hooks/useCampfireListenTracking";
 /** Firelight glow behind the play button. */
 const EMBER_GLOW = "rgba(255, 170, 80, 0.28)";
 const SKIP_SEC = 10;
+const KEEP_AWAKE_TAG = "campfire-radio";
 
 type Props = {
   audioUrl: string;
@@ -92,6 +94,17 @@ export function CampfirePodcastPlayer({
       // ignore — player may already be released
     }
   }, [active, player]);
+
+  // Audio doesn't play in the background, so a screen that dims and locks
+  // would cut the episode off. Hold the screen awake only while it plays.
+  const keepAwake = active && status.playing;
+  useEffect(() => {
+    if (!keepAwake) return;
+    void activateKeepAwakeAsync(KEEP_AWAKE_TAG).catch(() => undefined);
+    return () => {
+      void deactivateKeepAwake(KEEP_AWAKE_TAG).catch(() => undefined);
+    };
+  }, [keepAwake]);
 
   useEffect(() => {
     tracker.onPlayback({ playing: status.playing, positionMs, durationMs });

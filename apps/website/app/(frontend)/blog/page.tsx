@@ -60,15 +60,6 @@ export default async function BlogIndexPage() {
                 )}
                 <h2 className="text-lg font-semibold text-huntly-forest">{post.title}</h2>
                 {post.excerpt && <p className="text-sm text-huntly-slate">{post.excerpt}</p>}
-                {post.publishedAt && (
-                  <p className="text-xs font-semibold uppercase tracking-wide text-huntly-slate">
-                    {new Date(post.publishedAt).toLocaleDateString("en-GB", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })}
-                  </p>
-                )}
               </Link>
             );
           })}

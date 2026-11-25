@@ -98,15 +98,6 @@ export default async function BlogPostPage({ params }: Args) {
       <article className="mx-auto max-w-2xl space-y-6">
         <header className="space-y-3">
           <h1 className="font-display text-2xl font-semibold text-huntly-forest sm:text-3xl">{post.title}</h1>
-          {post.publishedAt && (
-            <p className="text-xs font-semibold uppercase tracking-wide text-huntly-slate">
-              {new Date(post.publishedAt).toLocaleDateString("en-GB", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
-            </p>
-          )}
         </header>
 
         {cover?.url && (

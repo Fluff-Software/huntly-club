@@ -1,7 +1,7 @@
 import { useAppTheme } from "@/contexts/AppThemeContext";
 import { Tabs, router, usePathname, useSegments } from "expo-router";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Image, Platform, Pressable, StyleSheet, View } from "react-native";
+import { AppState, Image, Platform, Pressable, StyleSheet, View } from "react-native";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { MaterialIcons } from "@expo/vector-icons";
 import Animated, {
@@ -31,11 +31,8 @@ import {
 import {
   getHasCompletedTutorial,
   recordTutorialAchievement } from "@/services/activityProgressService";
-import {
-  hasAskedPushOptIn,
-  registerForPushNotificationsAsync,
-  setPushEnabled,
-  setPushOptInAsked } from "@/services/pushNotificationService";
+import { PushOptInModal } from "@/components/PushOptInModal";
+import { shouldShowPushOptInPrompt, syncPushAfterSettingsReturn } from "@/services/pushOptInPrompt";
 
 const TAB_BAR_COLORS: Record<string, string> = {
   index: "#4F6F52",
@@ -198,42 +195,8 @@ export default function TabLayout() {
     };
   }, [showPostSignUpWelcome, firstProfileId, replayTutorialRequested, setShowPostSignUpWelcome]);
 
-  // After a modal/tour is dismissed we wait a short moment so the user lands on the clubhouse first.
-  const POST_MODAL_DELAY_MS = 600;
-
-  // One-time automatic push permission request after sign-in.
-  // We avoid prompting while onboarding/tutorial/season modals are visible.
-  const hasRequestedPushPermissionRef = useRef(false);
-  const maybeRequestPushPermission = useCallback(async () => {
-    if (!user?.id) return;
-    if (showPostSignUpWelcome) return;
-    if (hasRequestedPushPermissionRef.current) return;
-    hasRequestedPushPermissionRef.current = true;
-
-    try {
-      const asked = await hasAskedPushOptIn(user.id);
-      if (asked) return;
-
-      const token = await registerForPushNotificationsAsync();
-      if (token) {
-        await setPushEnabled(true, token);
-      } else {
-        // User denied permission (or push not available) — ensure backend is disabled.
-        await setPushEnabled(false);
-      }
-
-      await setPushOptInAsked(user.id);
-    } catch {
-      // If anything fails, don't block the UI and don't loop prompts this session.
-    }
-  }, [user?.id, showPostSignUpWelcome]);
-
-  useEffect(() => {
-    hasRequestedPushPermissionRef.current = false;
-  }, [user?.id]);
-
-  // Notification permission is no longer requested automatically on first launch:
-  // it's asked when a family books an adventure slot, with the reason stated.
+  // Notification permission is asked when a family books an adventure slot (sign-up
+  // finish), and once more for families who still don't have it on (PushOptInModal).
 
   const activeColor = "#FFFFFF";
   const inactiveColor = "rgba(255,255,255,0.6)";
@@ -294,6 +257,45 @@ export default function TabLayout() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tutorialVisible, isOnClubhouseTab]);
+
+  // One-time "turn on notifications?" for families without push. Only on the Clubhouse,
+  // once everything has loaded, and never mid-adventure or during the tour.
+  const [showPushOptIn, setShowPushOptIn] = useState(false);
+  const pushOptInCheckedRef = useRef<string | null>(null);
+  const pushOptInReady =
+    !!user?.id &&
+    showTabBar &&
+    isOnClubhouseTab &&
+    !tutorialVisible &&
+    userData?.team != null &&
+    activeTrackingSession?.status !== "active" &&
+    activeHuntSession?.status !== "active";
+  useEffect(() => {
+    if (!pushOptInReady || !user?.id || pushOptInCheckedRef.current === user.id) return;
+    pushOptInCheckedRef.current = user.id;
+    let fired = false;
+    // Let the Clubhouse settle before asking.
+    const timer = setTimeout(() => {
+      fired = true;
+      void shouldShowPushOptInPrompt().then((show) => {
+        if (show) setShowPushOptIn(true);
+      });
+    }, 1500);
+    return () => {
+      if (fired) return;
+      clearTimeout(timer);
+      // Left the Clubhouse before we checked: check again next time conditions are met.
+      pushOptInCheckedRef.current = null;
+    };
+  }, [pushOptInReady, user?.id]);
+
+  // Back from the phone's Settings after "Yes" on the prompt: save the token if they turned it on.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") void syncPushAfterSettingsReturn();
+    });
+    return () => sub.remove();
+  }, []);
 
   const renderTabBar = useCallback(
     (props: BottomTabBarProps) => {
@@ -501,6 +503,7 @@ export default function TabLayout() {
           <MaterialIcons name="travel-explore" size={scaleW(26)} color="#FFFFFF" />
         </Pressable>
       ) : null}
+      <PushOptInModal visible={showPushOptIn} onClose={() => setShowPushOptIn(false)} />
     </View>
   );
 }

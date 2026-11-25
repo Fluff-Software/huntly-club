@@ -21,6 +21,7 @@ import {
   weeklyLabel,
 } from "@/services/adventurePlanService";
 import { requestReminderPermission, syncAdventureReminders } from "@/services/adventureReminderService";
+import { markPushOptInPromptShown } from "@/services/pushOptInPrompt";
 import { useResetToTabs } from "@/hooks/useResetToTabs";
 import { completeOnboarding } from "@/services/onboardingService";
 import { setSecretMessagePending } from "@/services/secretMessageService";
@@ -85,6 +86,8 @@ export default function SignUpFinishScreen() {
 
   const handleRemind = async () => {
     setAsking(true);
+    // They've just been asked; don't follow up with the one-time Clubhouse prompt.
+    void markPushOptInPromptShown();
     try {
       const granted = await requestReminderPermission();
       if (granted) await syncAdventureReminders(plan, guide.guideName);
@@ -156,7 +159,10 @@ export default function SignUpFinishScreen() {
       footer={
         <>
           <FKButton label="Remind me" icon="notifications" onPress={handleRemind} loading={asking} testID="finish-remind" />
-          <FKButton label="No reminders, thanks" variant="link" onPress={() => setPhase("secret")} testID="finish-no-remind" />
+          <FKButton label="No reminders, thanks" variant="link" onPress={() => {
+            void markPushOptInPromptShown();
+            setPhase("secret");
+          }} testID="finish-no-remind" />
         </>
       }
     >

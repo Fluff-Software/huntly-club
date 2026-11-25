@@ -343,3 +343,7 @@ verify_jwt = false
 
 [functions.explore-health]
 verify_jwt = false
+
+# Admin push broadcast — admin JWT (aal2 + public.admins) verified inside the function
+[functions.send-admin-push]
+verify_jwt = false

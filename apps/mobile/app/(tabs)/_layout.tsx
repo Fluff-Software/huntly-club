@@ -31,8 +31,7 @@ import {
 import {
   getHasCompletedTutorial,
   recordTutorialAchievement } from "@/services/activityProgressService";
-import { PushOptInModal } from "@/components/PushOptInModal";
-import { shouldShowPushOptInPrompt, syncPushAfterSettingsReturn } from "@/services/pushOptInPrompt";
+import { autoEnablePush } from "@/services/pushAutoEnable";
 
 const TAB_BAR_COLORS: Record<string, string> = {
   index: "#4F6F52",
@@ -195,8 +194,7 @@ export default function TabLayout() {
     };
   }, [showPostSignUpWelcome, firstProfileId, replayTutorialRequested, setShowPostSignUpWelcome]);
 
-  // Notification permission is asked when a family books an adventure slot (sign-up
-  // finish), and once more for families who still don't have it on (PushOptInModal).
+  // Notifications are on by default: see autoEnablePush below (and services/pushAutoEnable.ts).
 
   const activeColor = "#FFFFFF";
   const inactiveColor = "rgba(255,255,255,0.6)";
@@ -258,11 +256,11 @@ export default function TabLayout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tutorialVisible, isOnClubhouseTab]);
 
-  // One-time "turn on notifications?" for families without push. Only on the Clubhouse,
-  // once everything has loaded, and never mid-adventure or during the tour.
-  const [showPushOptIn, setShowPushOptIn] = useState(false);
-  const pushOptInCheckedRef = useRef<string | null>(null);
-  const pushOptInReady =
+  // Notifications are on by default. Once the Clubhouse has settled (never mid-adventure or
+  // during the tour, since Android 13+ shows a system prompt), switch push on for this device
+  // unless the family turned it off in the app.
+  const pushAutoCheckedRef = useRef<string | null>(null);
+  const pushAutoReady =
     !!user?.id &&
     showTabBar &&
     isOnClubhouseTab &&
@@ -271,31 +269,29 @@ export default function TabLayout() {
     activeTrackingSession?.status !== "active" &&
     activeHuntSession?.status !== "active";
   useEffect(() => {
-    if (!pushOptInReady || !user?.id || pushOptInCheckedRef.current === user.id) return;
-    pushOptInCheckedRef.current = user.id;
+    if (!pushAutoReady || !user?.id || pushAutoCheckedRef.current === user.id) return;
+    pushAutoCheckedRef.current = user.id;
     let fired = false;
-    // Let the Clubhouse settle before asking.
     const timer = setTimeout(() => {
       fired = true;
-      void shouldShowPushOptInPrompt().then((show) => {
-        if (show) setShowPushOptIn(true);
-      });
+      void autoEnablePush({ ask: true });
     }, 1500);
     return () => {
       if (fired) return;
       clearTimeout(timer);
       // Left the Clubhouse before we checked: check again next time conditions are met.
-      pushOptInCheckedRef.current = null;
+      pushAutoCheckedRef.current = null;
     };
-  }, [pushOptInReady, user?.id]);
+  }, [pushAutoReady, user?.id]);
 
-  // Back from the phone's Settings after "Yes" on the prompt: save the token if they turned it on.
+  // Back in the app (e.g. from the phone's Settings): pick up notifications turned on there.
   useEffect(() => {
+    if (!user?.id) return;
     const sub = AppState.addEventListener("change", (state) => {
-      if (state === "active") void syncPushAfterSettingsReturn();
+      if (state === "active") void autoEnablePush({ ask: false });
     });
     return () => sub.remove();
-  }, []);
+  }, [user?.id]);
 
   const renderTabBar = useCallback(
     (props: BottomTabBarProps) => {
@@ -503,7 +499,6 @@ export default function TabLayout() {
           <MaterialIcons name="travel-explore" size={scaleW(26)} color="#FFFFFF" />
         </Pressable>
       ) : null}
-      <PushOptInModal visible={showPushOptIn} onClose={() => setShowPushOptIn(false)} />
     </View>
   );
 }

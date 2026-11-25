@@ -30,25 +30,41 @@ export async function getDeviceId(): Promise<string | null> {
   }
 }
 
-export async function registerForPushNotificationsAsync(): Promise<string | null> {
+type PermissionLike = {
+  status: "granted" | "denied" | "undetermined";
+  granted?: boolean;
+  canAskAgain: boolean;
+  ios?: { status?: number };
+};
+
+/** Push can be delivered: fully allowed, or iOS "quiet" (provisional) delivery to Notification Center. */
+export function isPushAllowed(perm: PermissionLike): boolean {
+  return (
+    perm.status === "granted" ||
+    perm.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL
+  );
+}
+
+// expo-modules-core is nested under expo here, so the permission fields don't resolve for tsc.
+export const getPushPermissions = () =>
+  Notifications.getPermissionsAsync() as unknown as Promise<PermissionLike>;
+
+/** Android 13+ only shows the permission prompt once a channel exists, so create it first. */
+export async function ensureDefaultNotificationChannel(): Promise<void> {
+  if (Platform.OS !== "android") return;
+  await Notifications.setNotificationChannelAsync("default", {
+    name: "default",
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 250, 250, 250],
+    lightColor: "#4F6F52",
+  });
+}
+
+/** The Expo push token, without asking for permission. Null if push isn't allowed. */
+export async function getPushTokenIfAllowed(): Promise<string | null> {
   if (!Device.isDevice) return null;
-
-  if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("default", {
-      name: "default",
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: "#4F6F52",
-    });
-  }
-
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  let finalStatus = existingStatus;
-  if (existingStatus !== "granted") {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
-  }
-  if (finalStatus !== "granted") return null;
+  await ensureDefaultNotificationChannel();
+  if (!isPushAllowed(await getPushPermissions())) return null;
 
   const projectId =
     Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
@@ -59,9 +75,25 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
       projectId: projectId as string,
     });
     return tokenResult.data ?? null;
-  } catch {
+  } catch (e) {
+    console.warn("Could not get an Expo push token:", e);
     return null;
   }
+}
+
+/**
+ * Asks for full permission if needed (on iOS this also upgrades quiet/provisional
+ * delivery to full), then returns the Expo push token. Null if not allowed.
+ */
+export async function registerForPushNotificationsAsync(): Promise<string | null> {
+  if (!Device.isDevice) return null;
+  await ensureDefaultNotificationChannel();
+
+  const existing = await getPushPermissions();
+  if (existing.status !== "granted" && existing.canAskAgain) {
+    await Notifications.requestPermissionsAsync();
+  }
+  return getPushTokenIfAllowed();
 }
 
 /**
@@ -97,20 +129,30 @@ export async function setPushEnabled(
 }
 
 /**
- * Returns true only if (1) a row exists for this device with enabled true, and (2) device notification permission is granted.
- * So the toggle shows unchecked when the user disabled notifications in device settings.
+ * What this device's push setting is in the app: "on", "off" (turned off by the family),
+ * or "unset" (never set on this device).
  */
-export async function getPushEnabled(): Promise<boolean> {
+export async function getPushState(): Promise<"on" | "off" | "unset" | null> {
   const deviceId = await getDeviceId();
-  if (!deviceId) return false;
+  if (!deviceId) return null;
 
   const { data, error } = await supabase.rpc("get_push_enabled", {
     p_device_id: deviceId,
   });
-  if (error || data !== true) return false;
+  if (error) return null;
+  if (data === true) return "on";
+  if (data === false) return "off";
+  return "unset";
+}
 
-  const { status } = await Notifications.getPermissionsAsync();
-  return status === "granted";
+/**
+ * Returns true only if (1) a row exists for this device with enabled true, and (2) the phone
+ * allows notifications (including iOS quiet delivery).
+ * So the toggle shows unchecked when the user disabled notifications in device settings.
+ */
+export async function getPushEnabled(): Promise<boolean> {
+  if ((await getPushState()) !== "on") return false;
+  return isPushAllowed(await getPushPermissions());
 }
 
 export async function hasAskedPushOptIn(userId: string): Promise<boolean> {

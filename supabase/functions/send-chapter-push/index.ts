@@ -1,55 +1,72 @@
+/**
+ * "New chapter available" push to every device with push enabled.
+ *
+ * Auth: admin-only. The caller must send the admin's own access token (aal2 and a row
+ * in `public.admins`); see `_shared/requireAdminCaller.ts`.
+ *
+ * Body: { chapterId: number }
+ * Response: { success, recipients, count, report } where count is the number of
+ * notifications Expo accepted and report is the full delivery summary.
+ */
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { loadEnabledPushTokens, sendExpoPush } from "../_shared/expoPush.ts";
+import { requireAdminCaller } from "../_shared/requireAdminCaller.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
-const BATCH_SIZE = 100;
-
-function jsonResponse(body: object, status: number, headers?: HeadersInit) {
+function jsonResponse(body: object, status: number) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json", ...headers },
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
 
-type Payload = { chapterId?: number };
+type Payload = { chapterId?: unknown };
 
 type ChapterRow = { id: number; title: string | null; season_id: number };
-type SeasonRow = { id: number; name: string | null };
+type SeasonRow = { name: string | null };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
-
   if (req.method !== "POST") {
     return jsonResponse({ error: "Method not allowed" }, 405);
   }
 
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const admin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  // --- Admin-only access ---
+  const caller = await requireAdminCaller(req, admin);
+  if (!caller.ok) return jsonResponse({ error: caller.error }, caller.status);
+
+  // --- Input ---
+  let body: Payload;
   try {
-    const body = (await req.json()) as Payload;
-    const chapterId = typeof body.chapterId === "number" && Number.isFinite(body.chapterId) ? body.chapterId : null;
+    body = (await req.json()) as Payload;
+  } catch {
+    return jsonResponse({ error: "Invalid JSON body." }, 400);
+  }
+  const chapterId =
+    typeof body.chapterId === "number" && Number.isInteger(body.chapterId) ? body.chapterId : null;
+  if (chapterId == null) {
+    return jsonResponse({ error: "chapterId is required and must be a number." }, 400);
+  }
 
-    if (chapterId == null) {
-      return jsonResponse({ error: "chapterId is required and must be a number." }, 400);
-    }
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const admin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-
+  try {
     const { data: chapter, error: chapterError } = await admin
       .from("chapters")
       .select("id, title, season_id")
       .eq("id", chapterId)
-      .single();
-
+      .maybeSingle();
     if (chapterError || !chapter) {
       return jsonResponse({ error: "Chapter not found." }, 404);
     }
@@ -58,7 +75,7 @@ Deno.serve(async (req) => {
       .from("seasons")
       .select("name")
       .eq("id", (chapter as ChapterRow).season_id)
-      .single();
+      .maybeSingle();
 
     const seasonName = (season as SeasonRow | null)?.name ?? null;
     const chapterTitle = (chapter as ChapterRow).title ?? "New chapter";
@@ -67,57 +84,46 @@ Deno.serve(async (req) => {
       ? `${chapterTitle} is now available in ${seasonName}.`
       : `${chapterTitle} is now available.`;
 
-    const { data: tokens, error: tokensError } = await admin
-      .from("push_tokens")
-      .select("expo_push_token")
-      .eq("enabled", true);
+    const tokens = await loadEnabledPushTokens(admin);
 
-    if (tokensError) {
-      console.error("send-chapter-push: error loading tokens", tokensError.message);
-      return jsonResponse({ error: "Could not load push tokens." }, 500);
+    console.log(
+      `send-chapter-push: admin ${caller.user.id} sending chapter ${chapterId} to ${tokens.length} devices`
+    );
+
+    if (tokens.length === 0) {
+      return jsonResponse({ success: true, recipients: 0, count: 0 }, 200);
     }
 
-    const tokenList = (tokens ?? []).map((r: { expo_push_token: string }) => r.expo_push_token).filter(Boolean);
-    if (tokenList.length === 0) {
-      return jsonResponse({ success: true, count: 0 }, 200);
-    }
+    const report = await sendExpoPush(
+      admin,
+      tokens,
+      (to) => ({
+        to,
+        title,
+        body: bodyText,
+        sound: "default",
+        priority: "high",
+        data: { chapterId, screen: "story" },
+      }),
+      { logTag: "send-chapter-push" }
+    );
 
-    const messages = tokenList.map((to: string) => ({
-      to,
-      sound: "default" as const,
-      title,
-      body: bodyText,
-      data: { chapterId, screen: "story" },
-    }));
+    console.log("send-chapter-push: report", JSON.stringify(report));
 
-    let sent = 0;
-    for (let i = 0; i < messages.length; i += BATCH_SIZE) {
-      const batch = messages.slice(i, i + BATCH_SIZE);
-      const res = await fetch(EXPO_PUSH_URL, {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Accept-encoding": "gzip, deflate",
-          "Content-Type": "application/json",
+    if (report.accepted === 0 && report.rejected > 0) {
+      return jsonResponse(
+        {
+          success: false,
+          recipients: tokens.length,
+          count: 0,
+          report,
+          error: "Expo rejected every notification. Check the push credentials in Expo.",
         },
-        body: JSON.stringify(batch),
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        console.error("send-chapter-push: Expo API error", res.status, text);
-        return jsonResponse(
-          { error: "Failed to send some or all notifications.", sent },
-          res.status >= 500 ? 502 : 500
-        );
-      }
-
-      const result = (await res.json()) as { data?: { status?: string }[] };
-      const receipts = Array.isArray(result?.data) ? result.data : [];
-      sent += receipts.filter((r) => r?.status === "ok").length;
+        502
+      );
     }
 
-    return jsonResponse({ success: true, count: sent }, 200);
+    return jsonResponse({ success: true, recipients: tokens.length, count: report.accepted, report }, 200);
   } catch (e) {
     console.error("send-chapter-push error:", e);
     return jsonResponse({ error: "Something went wrong. Please try again." }, 500);

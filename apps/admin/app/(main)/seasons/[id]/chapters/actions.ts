@@ -1,5 +1,6 @@
 "use server";
 
+import { requireAdmin } from "@/lib/require-admin";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 
@@ -136,25 +137,52 @@ export async function setChapterActivities(
 export type SendChapterPushResult = { error?: string; count?: number };
 export type SendChapterEmailResult = { error?: string; count?: number };
 
+/**
+ * Calls send-chapter-push with the signed-in admin's own access token. The function
+ * re-checks admin membership and MFA itself.
+ */
 export async function sendChapterPushNotification(
   chapterId: number
 ): Promise<SendChapterPushResult> {
-  if (!Number.isFinite(chapterId)) return { error: "Invalid chapter" };
+  if (!Number.isInteger(chapterId)) return { error: "Invalid chapter" };
+
+  const session = await requireAdmin();
+  if ("error" in session) return { error: session.error };
+
+  const supabaseUrl = process.env.SUPABASE_URL?.replace(/\/+$/, "");
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !anonKey) return { error: "Supabase is not configured." };
+
+  let res: Response;
   try {
-    const supabase = createServerSupabaseClient();
-    const { data, error } = await supabase.functions.invoke("send-chapter-push", {
-      body: { chapterId },
+    res = await fetch(`${supabaseUrl}/functions/v1/send-chapter-push`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.accessToken}`,
+        apikey: anonKey,
+      },
+      body: JSON.stringify({ chapterId }),
+      cache: "no-store",
     });
-    if (error) {
-      console.log("sendChapterPushNotification error", error.message);
-      return { error: error.message }
-    };
-    const count = typeof (data as { count?: number })?.count === "number" ? (data as { count: number }).count : 0;
-    return { count };
-  } catch (e) {
-    const message = e instanceof Error ? e.message : "Failed to send notification";
-    return { error: message };
+  } catch {
+    return { error: "Could not reach the push service." };
   }
+
+  let json: { count?: unknown; error?: unknown } | null = null;
+  try {
+    json = await res.json();
+  } catch {
+    // ignore
+  }
+
+  if (!res.ok) {
+    const error =
+      typeof json?.error === "string" && json.error ? json.error : `Request failed (${res.status})`;
+    console.log("sendChapterPushNotification error", error);
+    return { error };
+  }
+  return { count: typeof json?.count === "number" ? json.count : 0 };
 }
 
 export async function sendChapterEmailNotification(

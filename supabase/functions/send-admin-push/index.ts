@@ -17,6 +17,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { sendExpoPush } from "../_shared/expoPush.ts";
+import { requireAdminCaller } from "../_shared/requireAdminCaller.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -62,18 +63,6 @@ function parseAudience(raw: unknown): Audience | { error: string } {
   return { error: "Unknown audience." };
 }
 
-function decodeJwtPayload(jwt: string): Record<string, unknown> | null {
-  try {
-    const part = jwt.split(".")[1];
-    if (!part) return null;
-    const b64 = part.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
-    return JSON.parse(atob(padded));
-  } catch {
-    return null;
-  }
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -89,26 +78,9 @@ Deno.serve(async (req) => {
   });
 
   // --- Admin-only access ---
-  const jwt = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
-  if (!jwt) return jsonResponse({ error: "Not signed in." }, 401);
-
-  const { data: userData, error: userError } = await admin.auth.getUser(jwt);
-  const user = userData?.user;
-  if (userError || !user) return jsonResponse({ error: "Not signed in." }, 401);
-
-  const claims = decodeJwtPayload(jwt);
-  if (claims?.aal !== "aal2") {
-    return jsonResponse({ error: "Two-factor verification is required." }, 403);
-  }
-
-  const { data: adminRow, error: adminError } = await admin
-    .from("admins")
-    .select("user_id")
-    .eq("user_id", user.id)
-    .maybeSingle();
-  if (adminError || !adminRow) {
-    return jsonResponse({ error: "Admins only." }, 403);
-  }
+  const caller = await requireAdminCaller(req, admin);
+  if (!caller.ok) return jsonResponse({ error: caller.error }, caller.status);
+  const user = caller.user;
 
   // --- Input ---
   let body: Payload;

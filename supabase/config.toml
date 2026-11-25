@@ -347,3 +347,7 @@ verify_jwt = false
 # Admin push broadcast — admin JWT (aal2 + public.admins) verified inside the function
 [functions.send-admin-push]
 verify_jwt = false
+
+# Chapter push — admin JWT (aal2 + public.admins) verified inside the function
+[functions.send-chapter-push]
+verify_jwt = false

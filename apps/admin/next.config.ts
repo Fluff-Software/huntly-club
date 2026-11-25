@@ -1,3 +1,4 @@
+// Admin site config. Touch this file to force a redeploy of the admin site.
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {

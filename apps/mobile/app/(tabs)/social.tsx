@@ -29,15 +29,6 @@ import { formatMonthYear } from "@/services/teamActivityService";
 const PODIUM_MIN = 70;
 const PODIUM_EXTRA = 110;
 
-function timeAgo(iso: string, now = Date.now()): string {
-  const mins = Math.max(0, Math.round((now - new Date(iso).getTime()) / 60000));
-  if (mins < 60) return mins <= 1 ? "Just now" : `${mins} min ago`;
-  const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.round(hours / 24);
-  return days === 1 ? "Yesterday" : `${days} days ago`;
-}
-
 /** The monthly team race: standings, the family's part in it, and what's been happening. */
 export default function TeamRaceScreen() {
   const { team, teamId } = useUser();
@@ -208,15 +199,13 @@ export default function TeamRaceScreen() {
           </FKCard>
         ) : null}
 
-        <Text style={[TYPE.eyebrow, { marginTop: 24, marginBottom: 10 }]}>
-          LATEST FOR THE {guide.teamName.toUpperCase()}
-        </Text>
-        {race.moments.length === 0 ? (
-          <Text style={TYPE.bodySmall}>
-            Nothing yet this month. Be the first on the board.
+        {/* No timestamps, and no "nothing yet" message: neither should hint at how busy the team is. */}
+        {race.moments.length > 0 ? (
+          <Text style={[TYPE.eyebrow, { marginTop: 24, marginBottom: 10 }]}>
+            LATEST FOR THE {guide.teamName.toUpperCase()}
           </Text>
-        ) : (
-          race.moments.map((m) => {
+        ) : null}
+        {race.moments.map((m) => {
             // Your own explorers by name; everyone else by their public explorer nickname.
             const own = profiles.find((p) => p.id === m.profile_id);
             const who = own?.name ?? m.profile_name;
@@ -239,12 +228,10 @@ export default function TeamRaceScreen() {
                     <Text style={{ fontFamily: FONT.bodyBold }}>{who}</Text>{" "}
                     {m.message}
                   </Text>
-                  <Text style={styles.momentTime}>{timeAgo(m.created_at)}</Text>
                 </View>
               </View>
             );
-          })
-        )}
+          })}
 
         <FKButton
           label="Score with a mission"
@@ -391,11 +378,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 20,
     color: FK.ink,
-  },
-  momentTime: {
-    fontFamily: FONT.body,
-    fontSize: 13,
-    color: FK.muted,
-    marginTop: 2,
   },
 });

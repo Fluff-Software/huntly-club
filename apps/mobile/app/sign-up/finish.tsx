@@ -21,7 +21,7 @@ import {
   weeklyLabel,
 } from "@/services/adventurePlanService";
 import { requestReminderPermission, syncAdventureReminders } from "@/services/adventureReminderService";
-import { markPushOptInPromptShown } from "@/services/pushOptInPrompt";
+import { deferPushAutoAsk, markPushAutoAsked } from "@/services/pushAutoEnable";
 import { useResetToTabs } from "@/hooks/useResetToTabs";
 import { completeOnboarding } from "@/services/onboardingService";
 import { setSecretMessagePending } from "@/services/secretMessageService";
@@ -86,8 +86,8 @@ export default function SignUpFinishScreen() {
 
   const handleRemind = async () => {
     setAsking(true);
-    // They've just been asked; don't follow up with the one-time Clubhouse prompt.
-    void markPushOptInPromptShown();
+    // They're being asked here; don't ask again when they reach the Clubhouse.
+    void markPushAutoAsked();
     try {
       const granted = await requestReminderPermission();
       if (granted) await syncAdventureReminders(plan, guide.guideName);
@@ -160,7 +160,8 @@ export default function SignUpFinishScreen() {
         <>
           <FKButton label="Remind me" icon="notifications" onPress={handleRemind} loading={asking} testID="finish-remind" />
           <FKButton label="No reminders, thanks" variant="link" onPress={() => {
-            void markPushOptInPromptShown();
+            // Don't follow up with the system prompt on the Clubhouse straight after; ask next time.
+            deferPushAutoAsk();
             setPhase("secret");
           }} testID="finish-no-remind" />
         </>
